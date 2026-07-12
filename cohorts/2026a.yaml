@@ -1,0 +1,40 @@
+# Cohort descriptor — the ONLY file you add/edit to register a cohort.
+# Adding a new cohort = copy this file to cohorts/<key>.yaml, edit the fields, drop the data on disk,
+# then re-run pipelines with `--cohort <key>`. No code edits, no restructuring.
+
+cohort: 2026a
+label: "First outdoor social cohort (pilot, field season Jun–Oct 2026)"
+description: >
+  First Field_2026_Social outdoor rat cohort in the 20x40 ft paddock. Multimodal: WISER/UWB positions,
+  Reolink video (6 ch + CH07/CH08 interior pinhole from 2026-07-07), camera-mic audio (CH01/CH02),
+  thermal, and Ambient Weather. This is the cohort the migrated 2026 analyses were computed over.
+
+# Analysis window currently consolidated across drivers (extend `end` as more nights are added; a re-run
+# with the wider window appends, it does not restructure).
+date_range:
+  start: "2026-06-28"
+  end: "2026-07-08"     # 11-night consolidation (06-28 -> 07-08); some drivers reach 07-10 (motifs)
+timezone_wallclock: "America/New_York"   # NVR/AWN local (EDT/EST). WISER timestamps are Unix ms UTC.
+
+identities: wiser/configs/rat_identities.csv   # shortid -> animal; resolve here, a tag is not an animal
+
+# Membership / caveats that shape every result over this cohort (not exclusion rules — covariates).
+notes: >
+  Cohort size 6 -> 5 (Sova / tag 12409 removed 2026-06-29 15:00) -> 4 (Hypnos / tag 12380 implant dropped
+  2026-07-09 03:35 EDT; exclude 12380 after that). refuge_4 ("shelter 4") was a burrow entrance with UWB
+  dropout 2026-07-03..07-07, removed 07-07 13:00; 06-28->06-30 data predates it. WISER inch frame is an
+  UNVERIFIED offset origin until a pole survey passes QC — no physical/directional claims.
+
+# Raw-data roots per machine. A driver picks the block for the machine it runs on; these are read-only.
+raw_data_roots:
+  analysis_pc:            # RTX 3060 offline box; transferred read-only copies under D:\Reolink_record\audio_in
+    wiser_snapshots:   "D:/Reolink_record/audio_in/Wiser_backup/snapshots"
+    wiser_incremental: "D:/Reolink_record/audio_in/Wiser_backup/incremental"
+    reolink:           "D:/Reolink_record/audio_in/Reolink_record"
+    thermal:           "D:/Reolink_record/audio_in/thermal_record"
+    weather:           "D:/Reolink_record/audio_in/weather_data"
+  field_pc:             # RTX 5060 Ti capture box (source of truth); do not disturb capture
+    wiser_live:        "D:/Wiser/data/1stcohort_2026.sqlite"
+    reolink:           "E:/Reolink_record"
+    thermal:           "E:/thermal_record"
+    weather:           null

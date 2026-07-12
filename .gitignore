@@ -1,0 +1,47 @@
+# --- Field2026_Social_analysis .gitignore ---
+# NOTE the cohort-appendable rule: canonical reports + canonical figures under results/<cohort>/<direction>/
+# and archive/<cohort>/ ARE tracked. Only BULK run artifacts live off-repo under
+# $FIELD2026_ANALYSIS_OUT_ROOT (outside this tree entirely) — nothing to ignore for those here.
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Machine-specific Claude/Codex settings (regenerate per machine; never commit absolute local paths)
+.claude/settings.local.json
+
+# Model weights & third-party backbones (re-downloadable / live off-repo under the artifact root)
+*.pt
+*.onnx
+*.engine
+
+# CV detector training scratch, labeled dataset, and per-run track dumps (regenerate or off-repo assets)
+cv/dataset/
+cv/runs/
+cv/scratch/
+cv/tracks/
+
+# Subsystem runtime scratch output dirs (route real outputs through common/output_paths -> off-repo)
+audio/outputs/
+cv/outputs/
+wiser/outputs/
+episode_browser/outputs/
+episode_browser/data/
+
+# Large media / databases (never committed)
+*.mp4
+*.mkv
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

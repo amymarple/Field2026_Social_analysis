@@ -1,0 +1,63 @@
+run_name: episode_browser_real_slice_v2_2026-06-30_2100_2115
+purpose: selected-episode UI integration; not a storm-response analysis
+timezone:
+  local: America/New_York
+  source_clock: WISER Unix milliseconds UTC
+window:
+  local_start: "2026-06-30T21:00:00-04:00"
+  local_end: "2026-06-30T21:15:00-04:00"
+  label: pre-night-rain integration slice
+  temporal_note: nighttime rain was recorded near 22:20-22:30; this slice precedes it
+raw_wiser:
+  paths:
+    - D:\Reolink_record\audio_in\Wiser_backup\incremental\1stcohort_2026_2026-06-30.csv.gz
+    - D:\Reolink_record\audio_in\Wiser_backup\incremental\1stcohort_2026_2026-07-01.csv.gz
+  access: read-only
+  units: inches
+  coordinate_frame: WISER native offset frame; unverified vs physical field
+  identity_map: wiser/configs/rat_identities.csv
+state_models:
+  wiser_route_bout_v1:
+    existing_method: wiser/src/trajectory_stereotypy.py::extract_route_bouts
+    moving_threshold_inps: 12.63
+    threshold_source: stationary-baseline smoothed-speed p99
+    min_duration_s: 3.0
+    max_gap_s: 2.0
+    min_displacement_in: 15.0
+    max_per_night: null
+  wiser_lagged_path_reuse_v1:
+    existing_output: wiser/outputs/following_incidents_2026-06-28_to_2026-07-08/strict_following_episodes.csv
+    source_manifest: wiser/outputs/following_incidents_2026-06-28_to_2026-07-08/run_manifest.json
+    source_git_commit: 384d1d019d914c19daa3411b2397adeca5e29812
+    grid_bin_s: 1.0
+    position_smoothing_s: 5.0
+    moving_threshold_inps: 6.55
+    follow_radius_in: 24.0
+    heading_cosine_min: 0.5
+    lags_s: [1, 30]
+    min_run_bins: 3
+    max_gap_s: 2.0
+    slice_overlap_count: 16
+    role_semantics: leader/follower is temporal order; not dominance
+    label_semantics: following and strict_trailing_candidate are post-hoc candidates; video validation pending
+timestamp_normalization:
+  following_source_start: first one-second grid-bin timestamp in local EDT
+  following_source_end: final one-second grid-bin timestamp, inclusive, in local EDT
+  canonical_start: Unix milliseconds UTC converted from source start
+  canonical_end: Unix milliseconds UTC converted from source end plus 1000 ms; half-open
+camera_routing:
+  map: wiser/configs/camera_visibility_map.yaml
+  map_confirmed: false
+  jitter_margin_in: 15.0
+  interpretation: camera candidates are unverified; no channel is globally attached
+alignment:
+  wiser_to_weather: wall-clock only; unverified across devices
+  wiser_to_video: filename-wall-clock routing only; unverified across devices
+derived_outputs:
+  builder: episode_browser/build_real_slice.py
+  episode_store: episode_browser/data/real_episodes_20260630_2100_2115_v2.parquet
+  episode_jsonl: episode_browser/data/real_episodes_20260630_2100_2115_v2.jsonl
+  wiser_evidence: episode_browser/data/real_wiser_evidence_20260630_2100_2115_v2.parquet
+  run_manifest: episode_browser/data/real_slice_manifest_20260630_2100_2115_v2.json
+  previous_route_only_outputs: preserved; not overwritten
+  overwrite_policy: refuse unless --force is explicit; raw files are never modified
