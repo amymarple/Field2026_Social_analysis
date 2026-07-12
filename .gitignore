@@ -3,6 +3,9 @@
 # and archive/<cohort>/ ARE tracked. Only BULK run artifacts live off-repo under
 # $FIELD2026_ANALYSIS_OUT_ROOT (outside this tree entirely) — nothing to ignore for those here.
 
+# Migration holding area: untouched copy of C:\Users\Cornell\Documents\CV for the CV merge (local only)
+staging/
+
 # Python
 __pycache__/
 *.py[cod]
