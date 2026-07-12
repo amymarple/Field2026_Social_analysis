@@ -1,0 +1,28 @@
+{
+  "cohort": "2026a",
+  "artifact_root_env": "FIELD2026_ANALYSIS_OUT_ROOT",
+  "location": "D:\\Field2026_analysis_out\\2026a\\assets\\cv",
+  "assets": [
+    {
+      "name": "dataset/rat",
+      "kind": "hand-labeled YOLO dataset (~940 images + labels)",
+      "regeneratable": false,
+      "old_repo_source": "cv/dataset/rat",
+      "note": "NOT in git and NOT regeneratable \u2014 must be copied out-of-band so the detector stays retrainable."
+    },
+    {
+      "name": "runs/detect/rat_daynight/weights/best.pt",
+      "kind": "production shelter detector weights",
+      "regeneratable": true,
+      "old_repo_source": "cv/runs/detect/rat_daynight",
+      "note": "Regeneratable from the labeled dataset via train_detector.py; copy out-of-band to avoid retrain."
+    },
+    {
+      "name": "runs/detect/rat_feasibility-6/weights/best.pt",
+      "kind": "current feasibility detector weights",
+      "regeneratable": true,
+      "old_repo_source": "cv/runs/detect/rat_feasibility-6"
+    }
+  ],
+  "note": "Large / non-regeneratable CV assets live off-repo under the artifact root; this file is the in-repo pointer."
+}
