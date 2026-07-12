@@ -1,0 +1,106 @@
+# state_models.yaml — the state-model registry (the atom's provenance).
+#
+# An episode is ONLY meaningful relative to the low-level representation over which
+# it was segmented — the "state model". That representation is an unresolved
+# scientific decision (kinematics? position? proximity graph? multi-scale?), so it
+# is kept explicit, named, versioned, and swappable here. Every episode carries a
+# `state_model_id` that is a foreign key into this registry.
+#
+# INVARIANTS enforced by utils/validation.py:
+#   - Every episode's state_model_id must resolve to an entry here.
+#   - `zones` may NOT appear in a model's `features` unless the model sets
+#     `zone_is_feature: true`. Zone stays a POST-HOC LABEL by default so the
+#     segmentation blade never rides on human categories.
+#   - `is_synthetic: true` episodes are marked distinctly in the browser; real and
+#     synthetic episodes coexist in ONE store, told apart by this flag — never by
+#     living in separate files.
+
+schema_version: 1
+
+state_models:
+
+  synthetic_v0:
+    description: >-
+      Placeholder for demo only. NOT a real segmentation model. Change-points are
+      fabricated by generate_synthetic_episodes.py over a toy state vector so the
+      browser can be exercised against messy field-like episodes before any real CV
+      or WISER segmentation exists.
+    features: [x, y, speed, dyad_distance]   # the toy state vector the generator cuts over
+    scale: single                            # single | multi
+    source: synthetic
+    is_synthetic: true
+    zone_is_feature: false                   # zone stays a post-hoc label (default)
+    created: "2026-07-02"
+
+  wiser_route_bout_v1:
+    description: >-
+      Existing WISER route-bout cut reused for the bounded real Episode Browser
+      integration slice. A bout is a maximal contiguous run above the established
+      smoothed-speed noise threshold, with gaps <=2 s, duration >=3 s, and net
+      displacement >=15 in. This is a low-level kinematic cut, not a behavior label.
+    features: [x, y, speed, displacement, path_length, calculation_error]
+    scale: single
+    source: wiser
+    is_synthetic: false
+    zone_is_feature: false
+    parameters:
+      moving_threshold_inps: 12.63
+      threshold_source: stationary_baseline_p99
+      min_duration_s: 3.0
+      max_gap_s: 2.0
+      min_displacement_in: 15.0
+      smooth_window_samples: 7
+    frame: "WISER native inches; offset origin unverified"
+    created: "2026-07-10"
+
+  wiser_lagged_path_reuse_v1:
+    description: >-
+      Existing Phase B2 strict lagged path-reuse incident cut. Pair intervals are
+      connected unions of low-level moving, lagged-distance, and heading-alignment
+      states across lags 1-30 s. The post-hoc `following` label is a candidate
+      interpretation, not part of the state representation and not video-validated.
+    features:
+      - median_lag_s
+      - min_lag_s
+      - max_lag_s
+      - n_lags_fired
+      - mean_separation_in
+      - mean_heading_cosine
+      - n_follow_bins
+    scale: multi
+    source: wiser
+    is_synthetic: false
+    zone_is_feature: false
+    parameters:
+      bin_s: 1.0
+      position_smoothing_s: 5.0
+      moving_threshold_inps: 6.55
+      follow_radius_in: 24.0
+      heading_cosine_min: 0.5
+      lag_min_s: 1
+      lag_max_s: 30
+      min_run_bins: 3
+      max_gap_s: 2.0
+    frame: "WISER native inches; offset origin unverified"
+    interpretation: >-
+      Leader/follower is temporal order only. Social following remains a candidate
+      post-hoc label until video recall and event interpretation are validated.
+    created: "2026-07-11"
+
+  # --- Real models are added here as they are built. Examples (NOT yet active): ---
+  #
+  # kinematic_v1:
+  #   description: "Change-points over smoothed WISER kinematics (speed, turn, accel)."
+  #   features: [x, y, speed, heading, accel]
+  #   scale: multi
+  #   source: wiser
+  #   is_synthetic: false
+  #   zone_is_feature: false
+  #
+  # proximity_graph_v1:
+  #   description: "Dyad/group proximity-graph change-points (social structure)."
+  #   features: [dyad_distance, group_convergence, mean_nn_distance]
+  #   scale: multi
+  #   source: video+wiser
+  #   is_synthetic: false
+  #   zone_is_feature: false

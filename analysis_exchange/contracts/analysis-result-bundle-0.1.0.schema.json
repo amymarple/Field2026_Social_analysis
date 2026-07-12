@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://field-2026-social.local/contracts/analysis-result-bundle-0.1.0.schema.json",
+  "title": "Field 2026 Social analysis-result bundle",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "status",
+    "published_at_utc",
+    "supersedes_bundle_id",
+    "producer",
+    "analysis",
+    "result",
+    "record_contract",
+    "payloads",
+    "provenance",
+    "handoff"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "bundle_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "status": {"enum": ["draft", "published"]},
+    "published_at_utc": {"type": ["string", "null"], "format": "date-time"},
+    "supersedes_bundle_id": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "producer": {
+      "type": "object",
+      "required": ["tool", "agent"],
+      "properties": {
+        "tool": {"type": "string", "minLength": 1},
+        "agent": {"type": "string", "minLength": 1}
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "required": [
+        "analysis_id",
+        "analysis_version",
+        "run_id",
+        "created_at_utc",
+        "code_repository",
+        "code_commit",
+        "code_dirty"
+      ],
+      "properties": {
+        "analysis_id": {"type": "string", "minLength": 1},
+        "analysis_version": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "minLength": 1},
+        "created_at_utc": {"type": "string", "format": "date-time"},
+        "code_repository": {"type": ["string", "null"]},
+        "code_commit": {"type": ["string", "null"]},
+        "code_dirty": {"type": ["boolean", "null"]}
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "object_type",
+        "title",
+        "summary",
+        "semantic_status",
+        "allowed_claim",
+        "forbidden_promotions",
+        "temporal_semantics",
+        "subject_semantics"
+      ],
+      "properties": {
+        "object_type": {
+          "enum": [
+            "episode_candidate",
+            "aggregate_metric",
+            "observation_candidate",
+            "model_evaluation",
+            "artifact_only"
+          ]
+        },
+        "title": {"type": "string", "minLength": 1},
+        "summary": {"type": "string"},
+        "semantic_status": {"type": "string", "minLength": 1},
+        "allowed_claim": {"type": "string", "minLength": 1},
+        "forbidden_promotions": {"type": "array", "items": {"type": "string"}},
+        "temporal_semantics": {
+          "enum": ["point", "interval", "bounded_window", "aggregate", "none"]
+        },
+        "subject_semantics": {
+          "type": "object",
+          "required": ["level", "roles"],
+          "properties": {
+            "level": {
+              "enum": ["individual", "pair", "group", "environment", "cohort", "none"]
+            },
+            "roles": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "record_contract": {
+      "type": "object",
+      "required": ["primary_key", "time_fields", "subject_fields"],
+      "properties": {
+        "primary_key": {"type": ["string", "null"]},
+        "time_fields": {"type": "object"},
+        "subject_fields": {"type": "object"},
+        "candidate_label_field": {"type": "string"},
+        "analysis_run_id_field": {"type": "string"},
+        "qc_fields": {"type": "array", "items": {"type": "string"}},
+        "score_fields": {"type": "object"},
+        "evidence_fields": {"type": "array", "items": {"type": "string"}}
+        ,"state_vector_fields": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "payloads": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "format"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "uri": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1},
+          "format": {"type": "string", "minLength": 1},
+          "schema_ref": {"type": ["string", "null"]},
+          "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+        },
+        "oneOf": [
+          {"required": ["path"], "not": {"required": ["uri"]}},
+          {"required": ["uri"], "not": {"required": ["path"]}}
+        ]
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["inputs", "parameters", "qc", "limitations"],
+      "properties": {
+        "inputs": {"type": "array"},
+        "parameters": {"type": "object"},
+        "qc": {"type": "object"},
+        "limitations": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "required": [
+        "recommended_destination",
+        "import_ready",
+        "blockers",
+        "codex_notes"
+      ],
+      "properties": {
+        "recommended_destination": {
+          "enum": [
+            "episode_browser",
+            "observation_compiler",
+            "observation_registry",
+            "evaluation_registry",
+            "artifact_store"
+          ]
+        },
+        "import_ready": {"type": "boolean"},
+        "blockers": {"type": "array", "items": {"type": "string"}},
+        "codex_notes": {"type": "string"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"result": {"properties": {"object_type": {"const": "episode_candidate"}}}}},
+      "then": {
+        "properties": {
+          "handoff": {"properties": {"recommended_destination": {"const": "episode_browser"}}},
+          "result": {
+            "required": ["candidate_label", "source_streams", "detector"],
+            "properties": {
+              "temporal_semantics": {"enum": ["point", "interval", "bounded_window"]},
+              "candidate_label": {"type": "string", "minLength": 1},
+              "source_streams": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string", "minLength": 1}
+              },
+              "detector": {
+                "type": "object",
+                "required": ["model_id", "model_version", "importer_id", "importer_version"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"result": {"properties": {"object_type": {"const": "aggregate_metric"}}}}},
+      "then": {
+        "properties": {
+          "handoff": {"properties": {"recommended_destination": {"const": "observation_compiler"}}},
+          "result": {"properties": {"temporal_semantics": {"const": "aggregate"}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"result": {"properties": {"object_type": {"const": "observation_candidate"}}}}},
+      "then": {
+        "properties": {
+          "handoff": {"properties": {"recommended_destination": {"const": "observation_registry"}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"result": {"properties": {"object_type": {"const": "model_evaluation"}}}}},
+      "then": {
+        "properties": {
+          "handoff": {"properties": {"recommended_destination": {"const": "evaluation_registry"}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"result": {"properties": {"object_type": {"const": "artifact_only"}}}}},
+      "then": {
+        "properties": {
+          "handoff": {"properties": {"recommended_destination": {"const": "artifact_store"}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "draft"}}},
+      "then": {"properties": {"published_at_utc": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "published"}}},
+      "then": {"properties": {"published_at_utc": {"type": "string", "format": "date-time"}}}
+    }
+  ]
+}

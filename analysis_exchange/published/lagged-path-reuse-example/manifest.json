@@ -1,0 +1,139 @@
+{
+  "analysis": {
+    "analysis_id": "lagged-path-reuse",
+    "analysis_version": "1.0.0",
+    "code_commit": "384d1d019d914c19daa3411b2397adeca5e29812",
+    "code_dirty": true,
+    "code_repository": "https://github.com/amymarple/Field_2026_Social.git",
+    "created_at_utc": "2026-07-11T16:00:00Z",
+    "run_id": "following-incidents-phase-b2-example-run"
+  },
+  "bundle_id": "lagged-path-reuse-example",
+  "handoff": {
+    "blockers": [],
+    "codex_notes": "Map through record_contract only. Preserve the original candidate label and do not add a social-following label.",
+    "import_ready": true,
+    "recommended_destination": "episode_browser"
+  },
+  "payloads": [
+    {
+      "format": "jsonl",
+      "path": "data/records.jsonl",
+      "role": "primary_records",
+      "schema_ref": null,
+      "sha256": "a92a746e9cc0e16207dfe39c59ebc78f1fb0d238c0a9b09b9d29ba7429574635"
+    }
+  ],
+  "producer": {
+    "agent": "analysis-result-bridge",
+    "tool": "claude-code"
+  },
+  "provenance": {
+    "inputs": [
+      {
+        "read_only": true,
+        "role": "derived_candidate_table",
+        "uri": "repo://wiser_tracking_analysis/outputs/following_incidents/strict_following_episodes.csv"
+      }
+    ],
+    "limitations": [
+      "Path reuse is a computational candidate and has not been confirmed as social following by video review.",
+      "The WISER coordinate frame and camera visibility routing are unverified.",
+      "Absence of an exported candidate is not evidence that no path reuse occurred."
+    ],
+    "parameters": {
+      "follow_radius_in": 24.0,
+      "heading_cosine_min": 0.5,
+      "lag_range_s": [
+        1,
+        30
+      ],
+      "minimum_run_s": 3.0
+    },
+    "qc": {
+      "camera_visibility_map_confirmed": false,
+      "coordinate_frame": "WISER native inches; offset origin unverified",
+      "cross_device_alignment": "unverified"
+    }
+  },
+  "published_at_utc": "2026-07-11T21:32:44Z",
+  "record_contract": {
+    "analysis_run_id_field": "analysis_run_id",
+    "candidate_label_field": "original_candidate_label",
+    "evidence_fields": [
+      "evidence_reference"
+    ],
+    "primary_key": "episode_id",
+    "qc_fields": [
+      "qc_flags"
+    ],
+    "score_fields": {
+      "best_lag_s": {
+        "meaning": "Lag at which the configured path-reuse criteria were strongest for this candidate.",
+        "missing_value": null,
+        "unit": "s"
+      }
+    },
+    "state_vector_fields": [
+      "median_lag_s",
+      "min_lag_s",
+      "max_lag_s",
+      "n_lags_fired",
+      "mean_separation_in",
+      "mean_heading_cosine",
+      "n_follow_bins"
+    ],
+    "subject_fields": {
+      "ordered_roles": {
+        "field": "subject_roles"
+      },
+      "subjects": {
+        "field": "subject_ids"
+      }
+    },
+    "time_fields": {
+      "end": {
+        "field": "t_end_utc_ms",
+        "representation": "unix_ms_utc"
+      },
+      "interval_convention": "[start,end)",
+      "start": {
+        "field": "t_start_utc_ms",
+        "representation": "unix_ms_utc"
+      }
+    }
+  },
+  "result": {
+    "allowed_claim": "The later subject occupied positions near the earlier subject's path with aligned heading within the configured lag range.",
+    "candidate_label": "lagged_path_reuse_candidate",
+    "detector": {
+      "importer_id": "analysis_exchange_episode_candidate_v0",
+      "importer_version": "0.1.0",
+      "model_id": "wiser_lagged_path_reuse_v1",
+      "model_version": "1.0.0"
+    },
+    "forbidden_promotions": [
+      "social following",
+      "information transfer",
+      "stable leader-follower relationship"
+    ],
+    "object_type": "episode_candidate",
+    "semantic_status": "candidate",
+    "source_streams": [
+      "WISER"
+    ],
+    "subject_semantics": {
+      "level": "pair",
+      "roles": [
+        "earlier_subject",
+        "later_subject"
+      ]
+    },
+    "summary": "One bounded pair candidate exported to demonstrate the analysis-result bridge.",
+    "temporal_semantics": "interval",
+    "title": "Lagged path-reuse candidate example"
+  },
+  "schema_version": "0.1.0",
+  "status": "published",
+  "supersedes_bundle_id": null
+}
