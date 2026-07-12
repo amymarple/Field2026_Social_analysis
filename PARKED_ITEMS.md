@@ -15,7 +15,14 @@ migrates it (with links rewired) or leaves it in the archived old repo.
 | `observation.md` (root) | a pointer to the separate `Field_2026_Social_Recording` repo (recording-oriented) | → keep as a cross-repo pointer, or drop |
 | `.codex/` (root) | Codex-ecosystem counterpart to `.claude/`; not analysis content | → migrate only if this repo keeps Codex tooling |
 | `wiser_tracking_analysis/install_wiser_occupancy_task.ps1` (old repo) | scheduled-task installer (ops automation) for an analysis output | → an `ops/` area, or leave in recording repo |
-| `wiser_tracking_analysis/scratch_env_change_audit.py`, `scratch_habituation_power_out.json` (old repo) | untracked scratch, not wired into any pipeline | → discard or promote to a real driver |
+
+## Ruled (2026-07-12)
+
+| Item | Ruling | New location |
+|---|---|---|
+| `scratch_env_change_audit.py` + `scratch_habituation_power_out.json` | **Migrate** as audit/agent scratch (user ruling) | `wiser/audit/` (import path fixed for the new depth; inputs are the off-repo policy bulk run) |
+
+The remaining parked items above stay unmigrated pending a ruling.
 
 ## Reclassified AMBIGUOUS → MIGRATE (evidence-driven, not a guess) — already migrated
 
