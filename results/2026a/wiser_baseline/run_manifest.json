@@ -1,0 +1,11 @@
+{
+  "cohort": "2026a",
+  "direction": "wiser_baseline",
+  "artifact_root_env": "FIELD2026_ANALYSIS_OUT_ROOT",
+  "artifact_root_default": "D:\\Field2026_analysis_out",
+  "bulk_run_dir_pattern": "D:\\Field2026_analysis_out\\2026a\\<name>_<YYYYMMDD_HHMM>",
+  "migrated_from_old_repo_runs": [
+    "wiser/outputs/fixed_position_summary.csv"
+  ],
+  "note": "Bulk run artifacts (CSVs, dense figure dumps, per-run manifests) live OFF-repo under $FIELD2026_ANALYSIS_OUT_ROOT/2026a/<name>_<ts>/. This repo keeps only the canonical reports + canonical figures. Source folders below are from the old Field_2026_Social repo (migrated 2026a)."
+}

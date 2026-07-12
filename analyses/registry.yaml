@@ -1,0 +1,487 @@
+# analyses/registry.yaml — the single source of truth for the human navigation layer.
+#
+# One entry per SCIENTIFIC QUESTION. `analyses/_generate_analyses.py` renders a per-question card
+# (analyses/<direction>/<id>.md) + the top-level map (analyses/README.md), and
+# `summaries/_generate_summaries.py` renders per-direction narrative — BOTH from this file, cross-referenced
+# with results/<cohort>/<direction>/reports (for cohort coverage + report/figure links). Edit facts HERE,
+# never the generated .md. Verdicts trace to wiser/ANALYSIS_STATUS.md and change_log/.
+#
+# Fields per question: id, direction, question, verdict {confirmed|candidate|blocked|retracted},
+#   claim (one sentence), evidence (numbers), report_glob (matches results/<cohort>/<direction>/reports/),
+#   driver, blockers[], superseded, changelog, rerun, status_ref.
+
+meta:
+  status_tracker: wiser/ANALYSIS_STATUS.md
+  verdict_marks: {confirmed: "✅", candidate: "⚠️", blocked: "⛔", retracted: "❌"}
+
+questions:
+
+  # ---------------- wiser_baseline ----------------
+  - id: fixed_position_precision
+    direction: wiser_baseline
+    question: "What is WISER's static position precision (the jitter floor that bounds every spatial claim)?"
+    verdict: confirmed
+    claim: "Stationary jitter floor is ~7 in (18 cm) median, p95 ~15 in, at ~3.7-3.9 Hz — a precision floor, not accuracy."
+    evidence: "Fixed-position test vs surveyed ground truth; RMS jitter median ~7 in."
+    report_glob: "wiser_baseline_fixed_position_summary_*"
+    driver: wiser/scripts/analyze_fixed_position_test.py
+    blockers: ["precision only, not absolute accuracy", "inch frame is an unverified offset origin"]
+    superseded: ""
+    changelog: ""
+    rerun: "python wiser/scripts/analyze_fixed_position_test.py --data D:\\Wiser\\data --trim-minutes 5"
+    status_ref: "Fixed-position precision"
+
+  - id: hourly_occupancy
+    direction: wiser_baseline
+    question: "Where do the animals spend time, hour by hour (live-DB-safe occupancy maps)?"
+    verdict: confirmed
+    claim: "Per-hour scatter/heatmaps computed from a strictly read-only view of the live WAL DB; the in-progress hour is never plotted."
+    evidence: "Live-DB-safe hourly occupancy over the recording window."
+    report_glob: ""
+    driver: wiser/scripts/plot_hourly_occupancy.py
+    blockers: ["inch frame unverified (no physical/directional claim)"]
+    superseded: ""
+    changelog: change_log/2026-06-28-hourly-occupancy-maps.md
+    rerun: "python wiser/scripts/plot_hourly_occupancy.py"
+    status_ref: "Hourly occupancy maps"
+
+  # ---------------- wiser_d1_nightly ----------------
+  - id: nightly_habituation_vs_rain
+    direction: wiser_d1_nightly
+    question: "Do the rats move less on later/rainy nights, and is that habituation or rain?"
+    verdict: candidate
+    claim: "Nightly active distance falls with habituation (229->152 m/valid-hr over 11 nights); rain vs habituation is NOT separable."
+    evidence: "n=5, 11 nights; wet 122 vs dry 164 m confounded (wet nights are late-sequence + raise dropout); 6/30 DiD CI spans 0."
+    report_glob: ""
+    driver: wiser/scripts/analyze_nightly_progression.py
+    blockers: ["rain and habituation confounded (wet nights late + low-N)", "weather drives dropout AND behavior", "n=5"]
+    superseded: ""
+    changelog: change_log/2026-06-30-nightly-progression.md
+    rerun: "python wiser/scripts/analyze_nightly_progression.py --cohort 2026a"
+    status_ref: "Nightly movement (habituation vs rain)"
+
+  - id: nightly_settling_social
+    direction: wiser_d1_nightly
+    question: "Does the group's use of space settle/stabilize across nights?"
+    verdict: candidate
+    claim: "Settling strengthens: home use up, outside down (246->174 m/valid-hr), edge-cosine 0.50->0.81; the exploration graph simplifies."
+    evidence: "n=5 paired, 11 nights."
+    report_glob: ""
+    driver: wiser/scripts/analyze_nightly_behavior.py
+    blockers: ["sub-1 m proximity below jitter floor", "inch frame unverified", "n=5"]
+    superseded: ""
+    changelog: change_log/2026-06-30-nightly-behavior.md
+    rerun: "python wiser/scripts/analyze_nightly_behavior.py --cohort 2026a"
+    status_ref: "Nightly behavior & social"
+
+  # ---------------- wiser_d2_routes ----------------
+  - id: route_corridor_structure
+    direction: wiser_d2_routes
+    question: "Do the animals reuse spatial corridors, and are the corridors shared or individual?"
+    verdict: candidate
+    claim: "Corridors are robust to QC and shared/environment-driven: cross-rat edge similarity 0.90 >> within-rat 0.35."
+    evidence: "11 nights; night-to-night IoU only ~27%."
+    report_glob: ""
+    driver: wiser/scripts/analyze_route_structure.py
+    blockers: ["inch frame unverified (no physical-road claim)", "roadway-vs-camera audit undone (needs georeference)"]
+    superseded: ""
+    changelog: change_log/2026-06-29-route-structure-analysis.md
+    rerun: "python wiser/scripts/analyze_route_structure.py --cohort 2026a"
+    status_ref: "Route structure"
+
+  - id: trajectory_stereotypy
+    direction: wiser_d2_routes
+    question: "Does each animal have an individually stereotyped trajectory, or is stereotypy shared?"
+    verdict: candidate
+    claim: "Space-use stabilizes (0.15->0.89 over 11 nights) but is mostly SHARED/road-driven — residual individual correlation ~ -0.01, label-perm 0/10 above null."
+    evidence: "11 nights (Phase A re-run); only Dormi shows any individual residual."
+    report_glob: "wiser_d2_routes_trajectory_stereotypy_2026a*"
+    driver: wiser/scripts/analyze_trajectory_stereotypy.py
+    blockers: ["inch frame unverified", "stereotyped != memory"]
+    superseded: ""
+    changelog: change_log/2026-07-07-trajectory-stereotypy.md
+    rerun: "python wiser/scripts/analyze_trajectory_stereotypy.py --cohort 2026a"
+    status_ref: "Trajectory stereotypy (Phase A)"
+
+  - id: following_structure
+    direction: wiser_d2_routes
+    question: "Are there stable leader-follower dyads, or is following a promiscuous herd effect?"
+    verdict: candidate
+    claim: "Following is HERD/promiscuous, not stable dyads: 7-10/10 pairs beat the circular-shift null nightly but the top pair reshuffles (Spearman 0.11); Sen is the dominant leader."
+    evidence: "10 nights (07-04 excluded); movement ~1.25% co-moving; Sen top leader 5/7 nights."
+    report_glob: "wiser_d2_routes_following_structure_2026a*"
+    driver: wiser/scripts/analyze_following_structure.py
+    blockers: ["single-session weak short-lag/asymmetry -> candidate", "leader = temporal order, not intent"]
+    superseded: ""
+    changelog: change_log/2026-06-29-leader-follower-analysis.md
+    rerun: "python wiser/scripts/analyze_following_structure.py --cohort 2026a"
+    status_ref: "Leader-follower / route-following"
+
+  - id: route_motifs
+    direction: wiser_d2_routes
+    question: "Do route bouts recur as a small set of reused motifs, and does the repertoire develop over time?"
+    verdict: candidate
+    claim: "Trajectories are strongly stereotyped: 97% of route bouts recur (<=3x jitter), broad repertoire (top-motif share only 3-10%/night), present from night 1 (not developing)."
+    evidence: "13 nights (06-28..07-10); recurrence 92-99%/night; activity concentrates at 21:00."
+    report_glob: "wiser_d2_routes_route_motifs_2026a*"
+    driver: wiser/scripts/analyze_route_motifs.py
+    blockers: ["motif endpoints mostly open->open (corridor segments)", "inch frame unverified"]
+    superseded: ""
+    changelog: change_log/2026-07-11-motif-rerun-per-hour-day.md
+    rerun: "python wiser/scripts/analyze_route_motifs.py --cohort 2026a"
+    status_ref: "Route motifs (Phase B)"
+
+  - id: route_vocabulary
+    direction: wiser_d2_routes
+    question: "Is there a discrete, shared route 'vocabulary' the animals draw from?"
+    verdict: retracted
+    claim: "FALSIFIED (conditional on 3s-bout segmentation): verdict C = continuous route manifold, NOT a discrete vocabulary; endpoints dominate and the shared structure is the endpoint GRAPH, not a path vocabulary."
+    evidence: "1692 units, 13 nights; endpoint chord 7.88 in ~ jitter beats the K=176 route dict 15.72; robust to bouts<->pause-merged episodes."
+    report_glob: "wiser_d2_routes_route_vocabulary_*"
+    driver: wiser/scripts/analyze_route_vocabulary.py
+    blockers: ["PROVISIONAL: settled only by re-running on validated decision-to-decision legs, which WISER cannot resolve (needs CV)", "reusable-shape reduction is sub-jitter-floor"]
+    superseded: "the 'discrete shared route vocabulary' reading; also corrected a Phase-B 'z>2' individual-residual claim (z was 1.84)"
+    changelog: change_log/2026-07-11-route-vocabulary-validation.md
+    rerun: "python wiser/scripts/analyze_route_vocabulary.py --cohort 2026a"
+    status_ref: "Route-vocabulary validation (PROVISIONAL)"
+
+  - id: following_incidents
+    direction: wiser_d2_routes
+    question: "How frequent is strict trailing, and who leads (incident-level)?"
+    verdict: candidate
+    claim: "Trailing is frequent but brief: 2046 strict-following episodes (median 3 s) over 11 nights; all 4 top ordered pairs are Sen->X (Sen the dominant lead)."
+    evidence: "11 nights; Sen->Siesta 1.82/hr, ->Hypnos 1.70, ->Dormi 1.47, ->Nox 1.41; 2046/2046 routed to a camera queue."
+    report_glob: "wiser_d2_routes_following_incidents_2026a*"
+    driver: wiser/scripts/analyze_following_incidents.py
+    blockers: ["camera map is a PLACEHOLDER (confirmed:false)", "video recall not yet claimed (needs marked events)", "leader = temporal order"]
+    superseded: ""
+    changelog: change_log/2026-07-08-following-incidents-b2.md
+    rerun: "python wiser/scripts/analyze_following_incidents.py --cohort 2026a"
+    status_ref: "Following incidents + video audit (Phase B2)"
+
+  - id: bout_segmentation_validation
+    direction: wiser_d2_routes
+    question: "Is the ~4 s / ~100 in 'bout capacity' a real behavioral unit?"
+    verdict: retracted
+    claim: "RETRACTED: the '~4 s bout capacity' is a SEGMENTATION ARTIFACT (scale moves 1:1 with the 3 s min-bout filter); the un-truncated median run is sub-second at the jitter floor; hazard is non-monotone lognormal with no 4 s breakpoint ('memoryless' retracted)."
+    evidence: "0.54 s no-filter median; 99% of bouts sit inside longer pause-merged episodes."
+    report_glob: "wiser_d2_routes_bout_segmentation_validation_*"
+    driver: wiser/bout_segmentation_validation/
+    blockers: ["needs CV pose/keypoints to define validated legs"]
+    superseded: "the '~4 s / ~100 in bout capacity' and 'memoryless' claims"
+    changelog: change_log/2026-07-11-bout-segmentation-validation.md
+    rerun: "see wiser/bout_segmentation_validation/ (validation subproject)"
+    status_ref: "Bout-segmentation validation"
+
+  - id: decision_boundary_validation
+    direction: wiser_d2_routes
+    question: "Can decision-to-decision legs (a 'reorientation-punctuated' structure) be resolved from WISER?"
+    verdict: blocked
+    claim: "NO reliable boundary class at WISER resolution: pause heading-change is not separable from jitter (matched +18 deg vs jitter-null +20 deg); decision legs are NOT validatable without CV pose/keypoints."
+    evidence: "changepoint detector 30-77% false-positive, 4-24% sensitivity."
+    report_glob: "wiser_d2_routes_decision_boundary_validation_*"
+    driver: wiser/decision_boundary_validation/
+    blockers: ["needs CV pose/keypoints (WISER cannot validate decision boundaries)"]
+    superseded: "the 'reorientation-punctuated' / discrete-legs reading"
+    changelog: change_log/2026-07-11-decision-boundary-validation.md
+    rerun: "see wiser/decision_boundary_validation/ (validation subproject)"
+    status_ref: "Decision-boundary validation (Stage 1)"
+
+  # ---------------- wiser_d3_sleep ----------------
+  - id: daytime_sleep_site
+    direction: wiser_d3_sleep
+    question: "Does each animal have a stable daytime rest site, and how often does it relocate?"
+    verdict: candidate
+    claim: "Per-animal daytime (05:00-21:00) rest site with tiered relocation: over 50 day-pairs {stable 31, major-switch 19}; ALL 5 animals switch house_1<->house_2 at least once, heterogeneous by rate."
+    evidence: "11 days (06-28..07-08); rates 12395 5/10, 12407 5/10, others 3/10."
+    report_glob: "wiser_d3_sleep_SCIENTIFIC_SUMMARY_*"
+    driver: wiser/scripts/analyze_daytime_sleep_site.py
+    blockers: ["'sleep' = low-speed proxy, not ephys-validated", "site precision gated by ~7 in jitter", "frame unverified"]
+    superseded: "the old '8/10 relocated' (jitter) and 3-day 'only 2 animals' (small-sample) readings"
+    changelog: change_log/2026-07-02-daytime-sleep-site.md
+    rerun: "python wiser/scripts/analyze_daytime_sleep_site.py --cohort 2026a"
+    status_ref: "Daytime sleep-site + tiered relocation (Direction 3)"
+
+  - id: heat_gated_relocation
+    direction: wiser_d3_sleep
+    question: "Does high temperature drive the animals out of the shelter (a temperature gate)?"
+    verdict: candidate
+    claim: "Within-day heat-gated dispersal: the late-morning shelter aggregation thins/disperses at the 12:00-15:00 heat peak on 9/10 days, a repeated candidate temperature-linked signature."
+    evidence: "66 within-day events, 56 bouts; gate ~32 C; within-day contrast (day is its own control)."
+    report_glob: "wiser_d3_sleep_heat_gated_relocation_*"
+    driver: wiser/scripts/analyze_heat_gated_relocation.py
+    blockers: ["outside-air temp proxy (no shelter thermistor)", "temp acts on animal AND UWB paths", "house_2 not verified cooler (inch frame)", "thermal vs social vs habit not separable"]
+    superseded: "'no detectable temperature effect' (full-day/linear tests missed the ~32 C threshold)"
+    changelog: change_log/2026-07-12-heat-gated-relocation.md
+    rerun: "python wiser/scripts/analyze_heat_gated_relocation.py --cohort 2026a"
+    status_ref: "Heat-gated relocation (Direction 3)"
+
+  - id: circadian_rest
+    direction: wiser_d3_sleep
+    question: "Do the animals show a circadian/diel rest-activity rhythm, and is it stable across nights?"
+    verdict: candidate
+    claim: "Clear nocturnal/crepuscular rhythm (REST 0.92 day vs 0.86 night, ~2.5x activity swing peaking sharply at 21:00); dusk-onset phase FIXED from night 1; rhythm does not drift, only amplitude modulates."
+    evidence: "5 rats x 11 days; activity peak = 21:00 on all 11 nights; narrow SEM (synchronized)."
+    report_glob: "wiser_d3_sleep_circadian_rest_*"
+    driver: wiser/scripts/analyze_circadian_rest.py
+    blockers: ["rest = low-speed proxy at the jitter ceiling (overcounts sleep, compresses swing)", "not ephys/CV-validated"]
+    superseded: "the calendar '06-29 01:00 peak' (a night-splitting artifact; bio-night alignment corrects it)"
+    changelog: change_log/2026-07-08-circadian-rest-profile.md
+    rerun: "python wiser/scripts/analyze_circadian_rest.py --cohort 2026a"
+    status_ref: "Circadian / diel REST profile"
+
+  - id: biological_day_sleep
+    direction: wiser_d3_sleep
+    question: "Across the biological day, which site does each animal rest at (multi-site, not binary)?"
+    verdict: candidate
+    claim: "Rebuilt on a multi-site state space (house_1/house_2/open/...); the earlier binary house_2-fraction test was state-space misspecification."
+    evidence: "canonical rebuild 2026-07-11."
+    report_glob: "wiser_d3_sleep_biological_day_*"
+    driver: wiser/scripts/analyze_biological_day_sleep.py
+    blockers: ["'sleep' = low-speed proxy", "frame unverified"]
+    superseded: "the binary house_2-fraction test (state-space misspecification)"
+    changelog: change_log/2026-07-10-biological-day-sleep.md
+    rerun: "python wiser/scripts/analyze_biological_day_sleep.py --cohort 2026a"
+    status_ref: "Biological-day sleep (Direction 3 core rebuild)"
+
+  - id: evening_morning_sleep
+    direction: wiser_d3_sleep
+    question: "Do rest onset (evening) and wake (morning) times differ by site?"
+    verdict: candidate
+    claim: "Site + morning structure hold; the `sleep_end` metric was RETIRED and replaced by `wake_hour` (the earlier evening/morning endpoint was unreliable)."
+    evidence: "11 nights."
+    report_glob: "wiser_d3_sleep_evening_morning_*"
+    driver: wiser/scripts/analyze_evening_morning_sleep.py
+    blockers: ["'sleep' = low-speed proxy", "wake = speed-onset above jitter (a lower bound)"]
+    superseded: "the `sleep_end` metric (retired -> `wake_hour`)"
+    changelog: change_log/2026-07-08-evening-morning-sleep.md
+    rerun: "python wiser/scripts/analyze_evening_morning_sleep.py --cohort 2026a"
+    status_ref: "Evening vs morning sleep (Direction 3)"
+
+  - id: sleep_site_hierarchy
+    direction: wiser_d3_sleep
+    question: "Is there a ranked hierarchy of preferred rest landmarks?"
+    verdict: candidate
+    claim: "Landmark rest sites rank into a hierarchy (H1-H4) by occupancy."
+    evidence: "11 days."
+    report_glob: "wiser_d3_sleep_site_hierarchy_*"
+    driver: wiser/scripts/analyze_sleep_site_hierarchy.py
+    blockers: ["'sleep' = low-speed proxy", "frame unverified"]
+    superseded: ""
+    changelog: change_log/2026-07-11-sleep-site-hierarchy.md
+    rerun: "python wiser/scripts/analyze_sleep_site_hierarchy.py --cohort 2026a"
+    status_ref: "Sleep-site hierarchy (Direction 3)"
+
+  - id: night_consolidated_rest
+    direction: wiser_d3_sleep
+    question: "Is overnight rest consolidated into a single bout (a consolidated rest block)?"
+    verdict: candidate
+    claim: "Overnight rest forms a consolidated rest block (CRB) per animal per night."
+    evidence: "see report."
+    report_glob: "wiser_d3_sleep_night_consolidated_rest_*"
+    driver: wiser/scripts/analyze_night_consolidated_rest.py
+    blockers: ["'rest' = low-speed proxy", "night dropout guarded"]
+    superseded: ""
+    changelog: change_log/2026-07-12-night-consolidated-rest.md
+    rerun: "python wiser/scripts/analyze_night_consolidated_rest.py --cohort 2026a"
+    status_ref: "Night consolidated rest (Direction 3)"
+
+  - id: rest_temperature
+    direction: wiser_d3_sleep
+    question: "Does within-day rest-site sequence track temperature?"
+    verdict: candidate
+    claim: "Within-day rest-site sequence + relocation events align with the heat peak (candidate temperature-linked), weather now full coverage across 11 days."
+    evidence: "66 within-day events, 56 bouts; refuge_4 burrow windows flagged as UWB lower bound, not sleep."
+    report_glob: "wiser_d3_sleep_temperature_relocation_*"
+    driver: wiser/scripts/analyze_daytime_rest_temperature.py
+    blockers: ["outside-air temp proxy", "temp a covariate on both animal + UWB paths", "refuge_4 burrow removed 07-07"]
+    superseded: ""
+    changelog: change_log/2026-07-07-direction3-temperature-relocation.md
+    rerun: "python wiser/scripts/analyze_daytime_rest_temperature.py --cohort 2026a"
+    status_ref: "Within-day rest-site & temperature (Direction 3, Stage B)"
+
+  # ---------------- wiser_policy ----------------
+  - id: policy_identifiability
+    direction: wiser_policy
+    question: "Beyond a shared layout + weather baseline, does identity or social state predict leaving/destination?"
+    verdict: candidate
+    claim: "Environment+dwell explains leaving hazard (skill 0.13-0.26); INDIVIDUAL is detectable but NEGLIGIBLE (~0.001 bits); real-time GROUP social state is a ROBUST predictor of leaving (~0.012 bits, +on all 8 nights, jitter-floor-safe). Endpoint = environment+dwell+group-social semi-Markov choice model; no IRL."
+    evidence: "8 nights, hysteretic ROI-state decision unit; social survives day-shuffle z~30."
+    report_glob: "wiser_policy_identifiability_*"
+    driver: wiser/scripts/analyze_policy_identifiability.py
+    blockers: ["inch frame unverified (topology + coarse >=14 in only)", "social is group-level, identity-agnostic", "individual + social policy NOT identifiable beyond shared layout -> IRL/reward-feasibility NO-GO"]
+    superseded: "the contaminated raw point-in-ROI decision unit (M4/M5 invalidated; social flipped NO-GO->GO)"
+    changelog: change_log/2026-07-10-decision-unit-hysteretic-social.md
+    rerun: "python wiser/scripts/analyze_policy_identifiability.py --cohort 2026a"
+    status_ref: "Agent-policy identifiability (modules 5+6)"
+
+  - id: temporal_policy
+    direction: wiser_policy
+    question: "Does the leaving rule change over the night, or is it time-invariant?"
+    verdict: candidate
+    claim: "The conditional leaving RULE is time-invariant (held-out hour-varying Delta-bits -0.0004; night-slope z 0.51); hour/night differences are state occupancy under ONE shared rule; crowding suppresses leaving, constant across the night."
+    evidence: "hour-label null z 0.73."
+    report_glob: "wiser_policy_temporal_*"
+    driver: wiser/scripts/analyze_temporal_policy.py
+    blockers: ["inch frame unverified"]
+    superseded: ""
+    changelog: change_log/2026-07-11-temporal-policy.md
+    rerun: "python wiser/scripts/analyze_temporal_policy.py --cohort 2026a"
+    status_ref: "Temporal policy (time-invariance)"
+
+  - id: locomotor_initiation
+    direction: wiser_policy
+    question: "What predicts the START of a locomotor bout (the entry side of the loop)?"
+    verdict: candidate
+    claim: "Bout-initiation hazard is 3.3x higher from open low-speed (0.85%) than settled shelter-rest (0.25%); initiation != ROI departure (26x); weather ~0, group-social NO-GO for initiation (asymmetry with leaving)."
+    evidence: "8 nights; 1,016 onsets / 198,735 at-risk epochs; state skill 6.2%."
+    report_glob: "wiser_policy_locomotor_initiation_*"
+    driver: wiser/scripts/analyze_locomotor_initiation.py
+    blockers: ["onset = speed-onset above ~7 in jitter (a lower bound; in-nest stirring invisible)", "not 'wake'", "frame unverified"]
+    superseded: "a first per-bin-rest decision unit that over-fragmented rest and violated D1"
+    changelog: change_log/2026-07-11-locomotor-bout-initiation.md
+    rerun: "python wiser/scripts/analyze_locomotor_initiation.py --cohort 2026a"
+    status_ref: "Locomotor-bout initiation (Module 3)"
+
+  - id: destination_settlement
+    direction: wiser_policy
+    question: "When an animal leaves a shelter, where does it go, and is destination conditioned on origin?"
+    verdict: candidate
+    claim: "~60% of shelter departures END IN THE OPEN (open_field_termination); only 19% relocate to a named site, 13% same-site return. Gated choice fit: origin conditions destination (Delta-bits 0.63 / skill 14%)."
+    evidence: "8 nights; 1,110 stationary episodes -> 321 settlements, 295 departures; choice fit n=55 (exploratory)."
+    report_glob: "wiser_policy_destination_*"
+    driver: wiser/scripts/analyze_destination_choice.py
+    blockers: ["endpoints only (frame unverified, no route/direction claim)", "choice fit thin (n=55)"]
+    superseded: "the old named->named `build_destination_table` (blind to 60% open-field terminations)"
+    changelog: change_log/2026-07-11-destination-settlement-rebuild.md
+    rerun: "python wiser/scripts/analyze_destination_choice.py --cohort 2026a"
+    status_ref: "Destination & settlement (Module 6)"
+
+  - id: approach_avoid
+    direction: wiser_policy
+    question: "Do animals actively maintain a preferred inter-individual distance (social spacing)?"
+    verdict: candidate
+    claim: "Distance-dependent social spacing: real-time APPROACH to far conspecifics (>3.8m, 8/8 nights, p=0.008) and AVOIDANCE of near ones (1-3.8m, p<=0.016) — active maintenance of a preferred distance; the first robustly night-validated social signal."
+    evidence: "8 nights, 3,936 bout-partner pairs; night-level binomial sign test (survived pseudoreplication correction)."
+    report_glob: "wiser_policy_approach_avoid_*"
+    driver: wiser/scripts/build_approach_avoid.py
+    blockers: ["coarse net proximity >=1m, heading-free (no fine steering)", "association NOT motivation (not 'attraction')", "group-level", "frame unverified"]
+    superseded: "a per-pair z test (pseudoreplicated -> corrected to a night-block test)"
+    changelog: change_log/2026-07-12-approach-avoid.md
+    rerun: "python wiser/scripts/build_approach_avoid.py --cohort 2026a"
+    status_ref: "Approach/avoid social spacing (Module 7)"
+
+  - id: search_excursions
+    direction: wiser_policy
+    question: "Do animals return to known sites vs explore, and is movement area-restricted or global?"
+    verdict: candidate
+    claim: "Return vs explore shows NO return-bias beyond layout (null); area-restricted vs global search is geometry-only and DBV-capped (coarse)."
+    evidence: "11 nights (Phase 4)."
+    report_glob: "wiser_policy_search_excursions_*"
+    driver: wiser/scripts/build_search_excursions.py
+    blockers: ["geometry, not 'foraging strategy'", "DBV-capped (fine kinematics not resolvable)", "frame unverified"]
+    superseded: ""
+    changelog: change_log/2026-07-12-phase4-search-excursions.md
+    rerun: "python wiser/scripts/build_search_excursions.py --cohort 2026a"
+    status_ref: "Return vs explore / ARS (Modules 9-10)"
+
+  - id: social_nonstationarity
+    direction: wiser_policy
+    question: "Is the social-on-leaving effect stable across the season, or does it habituate?"
+    verdict: candidate
+    claim: "Social-on-leaving is non-stationary across the 11 nights; rest-need vs social is disambiguated and co-departure/following contagion is negligible."
+    evidence: "11-night social extension."
+    report_glob: "wiser_policy_social_habituation_*"
+    driver: wiser/scripts/analyze_social_habituation.py
+    blockers: ["group-level, identity-agnostic", "frame unverified"]
+    superseded: ""
+    changelog: change_log/2026-07-12-social-nonstationarity-and-following.md
+    rerun: "python wiser/scripts/analyze_social_habituation.py --cohort 2026a"
+    status_ref: "Social non-stationarity (Module 5 extension)"
+
+  # ---------------- cv_shelter ----------------
+  - id: shelter_occupancy
+    direction: cv_shelter
+    question: "How many animals are inside each shelter, and are they resting or active (through-glass CV)?"
+    verdict: candidate
+    claim: "CH05/CH06 through-glass occupancy + rest/active state, view-quality-gated: degraded inside-glass never becomes occupied_high_motion, unusable -> indeterminate; counts are a LOWER bound (wall-edge blind zone)."
+    evidence: "6 dates x 2 cameras; robust_inside_motion rejects rain speckle/glare/AE."
+    report_glob: "cv_shelter_measurement_context_audit_*"
+    driver: cv/shelter_sleep.py
+    blockers: ["glass fog/condensation/rain/film view-quality artifacts", "wall-edge blind zone -> counts are a lower bound", "no cross-camera identity"]
+    superseded: ""
+    changelog: change_log/2026-07-03-wiser-shelter-occupancy-state.md
+    rerun: "python cv/shelter_sleep.py --channel CH05 --date 2026-06-30"
+    status_ref: "Shelter occupancy (docs/methods/shelter_cv_measurement.md)"
+
+  - id: detector_validation
+    direction: cv_shelter
+    question: "How accurate is the shelter detector, stratified by view quality?"
+    verdict: candidate
+    claim: "Ground-truth validation on random closed-footage samples reports accuracy stratified by view_quality and asserts the safety check that degraded/unusable bins never score occupied_high_motion."
+    evidence: "validate_shelter rescored with rat_feasibility-6; see cv_audit."
+    report_glob: "cv_shelter_cv_audit_2026a*"
+    driver: cv/validate_shelter.py
+    blockers: ["accuracy is view-quality-dependent", "small labeled ground-truth set"]
+    superseded: "cv_audit 07-02/07-03 (-> 07-04, archived)"
+    changelog: change_log/2026-07-01-glass-degradation-zones.md
+    rerun: ".\\cv\\run_validate.ps1 --date 2026-06-30 --n 60"
+    status_ref: "Detector validation (validate_shelter)"
+
+  - id: fog_dynamics_vs_detectability
+    direction: cv_shelter
+    question: "Does post-film glass fog degrade detectability, and how severe is it?"
+    verdict: candidate
+    claim: "Post-anti-fog-film fog severity + fog dynamics vs detectability characterized; the recall gap is a coverage/definition limit, not an optical/fog failure (does not concentrate in degraded/foggy strata)."
+    evidence: "postfilm fog severity 2026-07; phaseA fog dynamics."
+    report_glob: "cv_shelter_postfilm_fog_severity_*"
+    driver: cv/fog_risk.py
+    blockers: ["fog is a covariate on the sensor path, not behavior", "through-glass regime confounds counts"]
+    superseded: ""
+    changelog: change_log/2026-07-09-duo3-keyframe-cap.md
+    rerun: "see cv/fog_risk.py + docs/methods/shelter_failure_modes.md"
+    status_ref: "Fog dynamics vs detectability"
+
+  # ---------------- audio_soundscape ----------------
+  - id: soundscape_features
+    direction: audio_soundscape
+    question: "What is the environmental soundscape at the paddock over time (relative level + indices)?"
+    verdict: confirmed
+    claim: "Resumable extraction of relative camera-mic level (dBFS, NOT calibrated SPL) + band-limited ecoacoustic indices from CH01/CH02 hourly-MP4 audio; comparable only within this dataset."
+    evidence: "CH01/CH02 (mics enabled ~2026-06-29 12:00); 16 kHz mono (~8 kHz ceiling)."
+    report_glob: ""
+    driver: audio/scripts/extract_audio_features.py
+    blockers: ["relative dBFS, not absolute SPL", "band-limited indices (within-dataset only)", "rat USVs >20 kHz out of scope"]
+    superseded: ""
+    changelog: change_log/2026-06-29-environmental-audio-pipeline.md
+    rerun: "python audio/scripts/extract_audio_features.py --config audio/configs/audio_analysis.analysis_pc.yaml --channel CH01 --date 2026-06-29"
+    status_ref: "Environmental audio pipeline (Phase 1)"
+
+  # ---------------- crossmodal ----------------
+  - id: cv_wiser_sleep_reconciliation
+    direction: crossmodal
+    question: "Do CV shelter occupancy (CH05/CH06) and WISER near-shelter occupancy agree?"
+    verdict: candidate
+    claim: "Asymmetric measurement reconciliation (NOT symmetric cross-val): CV visible-through-glass is a LOWER bound on WISER near-shelter occupancy; headline is per-shelter CV precision ~1.0 + recall gap ~0.49-0.64, never a pooled agreement number."
+    evidence: "07-02 rerun: 960 bins / 42 episodes; low joint kappa~0.20 is the kappa paradox + definition mismatch, NOT misalignment (+/-1 h lag sweep flat) and NOT optical failure (recall gap on clear glass = wall-edge blind zone)."
+    report_glob: "crossmodal_cv_wiser_*"
+    driver: wiser/scripts/analyze_sleep_site_cv_crossval.py
+    blockers: ["kappa is a base-rate-warned diagnostic only, never the headline", "recall gap = coverage/definition limit (wall-edge blind zone)", "CV a lower bound (huddle overlap + blind zone)"]
+    superseded: "older 6/29-6/30 kappa (0.66/0.68-0.82) predate the [ns] pandas binning fix"
+    changelog: change_log/2026-07-06-cv-wiser-reconciliation-reframe.md
+    rerun: "python wiser/scripts/analyze_sleep_site_cv_crossval.py --cohort 2026a"
+    status_ref: "Sleep-site WISER<->CV cross-val (Direction 3)"
+
+  - id: fireworks_following
+    direction: crossmodal
+    question: "Do fireworks (a loud acoustic startle) trigger following/co-flight?"
+    verdict: candidate
+    claim: "Following bursts on 07-04 (z=2.4 at 21:30, z=5.2 at 22:20 vs matched-clock controls) are acoustically TIME-LOCKED to the fireworks (CH01/CH02 mics, r~0.35 lag0); rain does NOT raise following."
+    evidence: "n=1 night; a 96-episode video watch-list is staged to resolve following-vs-startle-co-flight."
+    report_glob: "crossmodal_fireworks_*"
+    driver: wiser/scripts/analyze_fireworks_audio_align.py
+    blockers: ["n=1 night", "clock alignment unverified", "construct (following vs startle co-flight) needs video"]
+    superseded: ""
+    changelog: change_log/2026-07-12-fireworks-following-audio.md
+    rerun: "python wiser/scripts/analyze_fireworks_audio_align.py --cohort 2026a"
+    status_ref: "Fireworks <-> following (audio time-lock)"

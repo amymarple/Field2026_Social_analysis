@@ -1,0 +1,17 @@
+{
+  "cohort": "2026a",
+  "direction": "wiser_d2_routes",
+  "artifact_root_env": "FIELD2026_ANALYSIS_OUT_ROOT",
+  "artifact_root_default": "D:\\Field2026_analysis_out",
+  "bulk_run_dir_pattern": "D:\\Field2026_analysis_out\\2026a\\<name>_<YYYYMMDD_HHMM>",
+  "migrated_from_old_repo_runs": [
+    "route_motifs_2026-06-28_to_2026-07-10",
+    "following_structure_2026-06-28_to_2026-07-08",
+    "trajectory_stereotypy_2026-06-28_to_2026-07-08",
+    "route_vocabulary_validation_2026-06-28_to_2026-07-10",
+    "following_incidents_2026-06-28_to_2026-07-08",
+    "wiser/bout_segmentation_validation",
+    "wiser/decision_boundary_validation"
+  ],
+  "note": "Bulk run artifacts (CSVs, dense figure dumps, per-run manifests) live OFF-repo under $FIELD2026_ANALYSIS_OUT_ROOT/2026a/<name>_<ts>/. This repo keeps only the canonical reports + canonical figures. Source folders below are from the old Field_2026_Social repo (migrated 2026a)."
+}
