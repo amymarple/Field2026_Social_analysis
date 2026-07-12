@@ -1,0 +1,5 @@
+metric,across_pause,within_run
+median_turn_deg,63.6,16.5
+mean_turn_deg,68.8,26.1
+frac_turn_gt_60deg,0.511,0.111
+n,84158.0,23365.0

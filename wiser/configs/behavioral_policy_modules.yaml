@@ -1,0 +1,383 @@
+# behavioral_policy_modules.yaml — machine-readable registry of the rat-agent's behavioral-policy
+# modules for Field_2026_Social. The purpose is to STOP the analysis from treating one process
+# (site-residence termination) as the animal's complete policy.
+#
+# The existing modeled process is exactly:  MODULE 5 (site-residence termination) + MODULE 6
+# (destination & settlement).  It is NOT "the rat policy" and NOT "search strategy".
+#
+# Organizing framework = a hierarchical SEMI-MARKOV state machine (residence/rest -> bout initiation
+# -> active bout -> departure -> destination/settlement -> residence), with social + search + memory
+# modules layered on the VALIDATED states. A graph transformer (module 13) is a LATE CHALLENGER
+# model for pairwise temporal social memory only — NOT the project's organizing framework.
+#
+# Every module carries the same 18 fields so scope, observability, and allowed language travel with it.
+# status: done | candidate | partial | planned | blocked
+# Frame is the UNVERIFIED WISER inch frame everywhere: topology + coarse (>=14 in) distances only,
+# no absolute-direction claims, gaps are 'unknown', jitter floor ~7 in (p95 ~15 in), ~4 Hz.
+
+meta:
+  units: inches
+  frame: WISER native (offset origin, UNVERIFIED)
+  jitter_floor_in: 7.0
+  min_resolvable_distance_in: 14.0
+  social_safe_radius_in: 39.37        # 1 m — jitter-floor-safe
+  outer_cv_block: whole_night          # ~8 nights are the independent inference unit, NOT 40 cells
+  organizing_framework: hierarchical_semi_markov_state_machine
+  graph_transformer_role: late_challenger_model_for_module_13_only
+
+modules:
+
+  - id: 1
+    name: behavioral_state_segmentation
+    short: "cut the continuous trajectory into jitter-tolerant discrete states"
+    question: "Can the trajectory be segmented into a small set of discrete, jitter-tolerant behavioral
+      states (stable-rest, active-in-place, transit/active-bout, at-resource) whose boundaries are REAL
+      transitions, not measurement flicker?"
+    conditioning_state: "raw per-fix position, smoothed speed, ROI membership"
+    action_outcome: "per-epoch state label + change-point boundaries"
+    denominator: "all valid in-night epochs"
+    temporal_resolution: "5 s epochs (>= jitter integration time)"
+    segmentation: "THIS is the segmentation substrate — hysteretic ROI-residence (built) + a speed/
+      movement hysteresis for rest-vs-active (to build in Phase 1)"
+    wiser_observability: "yes for position/speed; rest-vs-active is a LOW-SPEED PROXY only"
+    sensor_requirements: "video/thermal (CH05-08) to validate rest=sleep vs quiescent; ephys for true sleep"
+    measurement_limits: "~7 in jitter blurs in-place-active vs rest; gaps=unknown; states != validated ethogram"
+    allowed_predictors: "kinematics only (frame-invariant); never the downstream behavioral labels"
+    memory_inputs: {short_term: none, long_term: none}
+    null_models: "planted boundary-flicker must collapse to one state; planted real transition must survive"
+    cv_block: "descriptive; validate against held-out video where available"
+    prerequisites: []
+    outputs: "state stream + episode table + change-points (src/locomotor_states.py; locomotor_state_stream.csv)"
+    status: candidate          # BUILT 2026-07-11: unified rest/local_active/transit/pause machine, jitter/gap-tolerant, selftested (proxy, not an ethogram)
+    language_allowed: "jitter-tolerant behavioral-state segmentation; occupancy/kinematic state"
+    language_overclaim: "'sleep'; 'the ethogram'; 'the behavioral repertoire' (states are a proxy, unvalidated)"
+
+  - id: 2
+    name: stable_residence_rest
+    short: "the animal is settled at a site (not merely inside an ROI)"
+    question: "Given the state stream, which epochs are STABLE residence/rest vs transient/active-in-ROI?"
+    conditioning_state: "ROI + dwell so far + local speed distribution"
+    action_outcome: "residence/rest state occupancy + high-confidence rest episodes"
+    denominator: "epochs inside a named ROI (or its buffer)"
+    temporal_resolution: "5-60 s (rest is slow)"
+    segmentation: "hysteretic ROI-state + sustained low-speed; distinguish settlement from brief pauses"
+    wiser_observability: "yes (occupancy); rest depth NOT observable"
+    sensor_requirements: "thermal/interior cams (CH07/08) for huddle vs solo; ephys for sleep depth"
+    measurement_limits: "low-speed proxy overcounts rest; refuge_4 burrow nights under-count (excluded)"
+    allowed_predictors: "ROI type, dwell, local kinematics, weather/regime"
+    memory_inputs: {short_term: "recent activity", long_term: "site familiarity"}
+    null_models: "hysteresis selftest (flicker -> one rest episode)"
+    cv_block: whole_night
+    prerequisites: [1]
+    outputs: "rest-state stream + stationary episodes (stationary_episodes.csv; in_named_roi = settled residence)"
+    status: candidate          # BUILT 2026-07-11: gap-holding stationary episodes (median 6.6 min), settlement vs pause distinguished
+    language_allowed: "stable residence / low-speed rest state"
+    language_overclaim: "'sleep'; 'the animal decided to rest' (settlement is observed, not the decision)"
+
+  - id: 3
+    name: locomotor_bout_initiation
+    short: "when the animal STARTS a movement bout (rest -> active)"
+    question: "Given stable residence, what is the hazard of INITIATING a locomotor bout, conditional on
+      dwell, layout, weather/regime, measurement quality, and current group-social state?"
+    conditioning_state: "resident+at-rest; dwell, ROI, clock, regime, weather, pre-decision group-social"
+    action_outcome: "binary initiate-vs-stay per at-risk epoch (discrete-time hazard)"
+    denominator: "at-risk rest epochs (animal resident & at rest)"
+    temporal_resolution: "5-15 s epochs"
+    segmentation: "requires the Phase-1 state machine: movement INITIATION is distinct from ROI DEPARTURE"
+    wiser_observability: "yes — speed onset above jitter is observable"
+    sensor_requirements: "none for onset; video to confirm the onset is locomotion not in-nest stirring"
+    measurement_limits: "in-nest micro-movement below jitter -> onset is a LOWER bound; ~18:00 arousal invisible"
+    allowed_predictors: "dwell basis, ROI/resource type, clock, weather/regime, jitter-safe group-social"
+    memory_inputs: {short_term: "time since last bout, recent activity", long_term: "site's typical bout rate"}
+    null_models: "circular time-shift; env-matched conditional permutation; day-shuffle (social)"
+    cv_block: whole_night
+    prerequisites: [1, 2]
+    outputs: "initiation_decisions.csv + fitted hazard + effect curve (scripts/analyze_locomotor_initiation.py)"
+    status: candidate          # BUILT 2026-07-11: 1,016 onsets/198,735 at-risk epochs; initiation != departure (D1 26x); hazard 3.3x higher from open than settled shelter. change_log/2026-07-11-locomotor-bout-initiation.md
+    language_allowed: "locomotor-bout initiation hazard; movement onset"
+    language_overclaim: "'the animal decided to forage/explore' (onset != goal); 'wake' (below jitter)"
+
+  - id: 4
+    name: active_locomotor_bout
+    short: "the validated moving segment between rest states"
+    question: "What defines a valid active locomotor bout (start, end, path), and how do speed/turn/pause
+      structure within it behave — separately from whether it crosses an ROI boundary?"
+    conditioning_state: "in-bout; current kinematics, local layout"
+    action_outcome: "bout objects (t_start,t_end,path,length,tortuosity) + within-bout kinematic summaries"
+    denominator: "epochs in an active bout"
+    temporal_resolution: "per-fix to 5 s (kinematics); bout-level"
+    segmentation: "REQUIRED: activity-inside-an-ROI must be distinguished from leaving it; a bout can
+      occur without an ROI transition"
+    wiser_observability: "bout existence + coarse path yes; FINE turn/pause control below jitter"
+    sensor_requirements: "higher-rate tracking / video for fine locomotor control"
+    measurement_limits: "sub-jitter turns are noise; raw path length jitter-inflated; unverified frame -> no absolute heading. FALSIFIED at WISER resolution by decision_boundary_validation (2026-07-11): no reliable fine kinematic-boundary/leg class (pause reorientation not separable from a jitter null; heading-cp 30-77% false-positive). Claim ONLY bout existence + coarse endpoints."
+    allowed_predictors: "frame-invariant kinematics only (speed, turn-angle relative to heading)"
+    memory_inputs: {short_term: "bout phase", long_term: "route familiarity"}
+    null_models: "displacement-matched jitter null for path shape/length"
+    cv_block: whole_night
+    prerequisites: [1]
+    outputs: "validated bout table (bouts.csv: in_place/relocating, gap-split; substrate for modules 7,9,10,11)"
+    status: partial            # bout objects BUILT 2026-07-11 (bouts_table, dropout-split); within-bout kinematics/model still deferred
+    language_allowed: "active locomotor bout; coarse path"
+    language_overclaim: "'trajectory/route choice' (endpoints yes, fine path no); fine steering claims"
+
+  - id: 5
+    name: site_residence_termination
+    short: "when the animal LEAVES its current site  [CURRENTLY MODELED — exit side]"
+    question: "Given residence in a named ROI, what is the hazard of terminating residence within the next
+      epoch, conditional on ROI, elapsed dwell, layout, weather/regime, measurement quality, group-social?"
+    conditioning_state: "resident in ROI r; dwell (mandatory), moving/still, clock, regime, weather, pre-decision social"
+    action_outcome: "binary leave-vs-stay per at-risk epoch (discrete-time hazard)"
+    denominator: "at-risk residence epochs (excludes below-plane dropout ROIs, e.g. refuge_4 burrow nights)"
+    temporal_resolution: "5-15-30 s epochs (rule shown time-INVARIANT)"
+    segmentation: "hysteretic ROI-residence; a signal dropout is 'unknown', never a departure"
+    wiser_observability: "yes (hysteresis-confirmed departure above jitter)"
+    sensor_requirements: "video to confirm inferred exits + rule out in-nest stirring"
+    measurement_limits: "movement-proxy outcome; unverified frame; single 8-night pilot"
+    allowed_predictors: "dwell basis, ROI/resource type, clock, weather/regime, jitter-safe group-social, leave-focal-out shared-use"
+    memory_inputs: {short_term: "elapsed dwell (mandatory)", long_term: "site-use history (shared-use field, animal-derived)"}
+    null_models: "circular time-shift; env-matched conditional permutation; day-shuffle (social)"
+    cv_block: whole_night
+    prerequisites: [1, 2]
+    outputs: "leave_decisions.csv + fitted hazard + M1-M5 verdicts (clean hysteretic run)"
+    status: candidate          # DONE on the clean hysteretic unit; crowding SUPPRESSES leaving; rule time-invariant. EXTENDED to 11 nights (06-28..07-08): the crowding effect ATTENUATES to Dbits~0.003 (jitter-safe 0.0027, below the 0.003 GO threshold -> magnitude NO-GO) though still beating time-shift/day-shuffle nulls (z 2.5-3.4); it SURVIVES rest-need control (67% retained; change_log/2026-07-12-11night-rest-social-circadian.md). NON-STATIONARITY (reviewer's front-loaded/habituation hypothesis) is UNRESOLVED at n=11: held-out early(0-2) 0.0046 > late 0.0020 (weak, n.s., rho=-0.19), pooled night-permuted interaction null, power ~0.27, 2-night fragile (0.0027->0.0007 w/o 06-28+07-06). A direct FOLLOWING test (n_others_departed) is NEGLIGIBLE (<=0.001) + not front-loaded. Adversarially verified (5-agent workflow). change_log/2026-07-12-social-nonstationarity-and-following.md
+    language_allowed: "site-residence termination hazard; 'when the animal leaves a site'"
+    language_overclaim: "'the rat's policy'; 'decides to forage'; 'search strategy'; absolute-direction departure"
+
+  - id: 6
+    name: destination_and_settlement
+    short: "where the animal goes next and whether it settles  [CURRENTLY MODELED — destination side]"
+    question: "Given a departure, which named ROI is entered next (over an origin-specific supported choice
+      set), and does the animal SETTLE there vs pass through?"
+    conditioning_state: "origin ROI, reachable/supported choice set, layout, regime, pre-decision social"
+    action_outcome: "categorical next-ROI + settle-vs-transient"
+    denominator: "realized departures with a supported destination"
+    temporal_resolution: "per-departure event"
+    segmentation: "requires the state machine to separate ENTRY into an ROI from stable residence (settlement)"
+    wiser_observability: "endpoints yes; settlement via re-entry to residence state"
+    sensor_requirements: "video for feeding/huddle at destination"
+    measurement_limits: "food inside house (co-location artifact, folded to house); unverified frame -> no route/direction"
+    allowed_predictors: "origin, choice-set, resource type, coarse distance, regime, group-social"
+    memory_inputs: {short_term: "origin, recent path", long_term: "origin->dest transition propensities (shared-use)"}
+    null_models: "origin-conditioned base-rate; conditional permutation; day-shuffle (social)"
+    cv_block: whole_night
+    prerequisites: [1, 5]
+    outputs: "settlement_transitions.csv (5 typed transitions) + gated destination_choice.csv (src/settlement_transitions.py)"
+    status: candidate          # REBUILT 2026-07-11 on the unified locomotor state; destination defined only after sustained residence; representation VALIDATED (gate PASS) before fitting; headline: ~60% of shelter departures are open-field terminations, not named destinations. change_log/2026-07-11-destination-settlement-rebuild.md
+    language_allowed: "destination choice + settlement over supported sites"
+    language_overclaim: "'route choice' (endpoints not path); 'goal-directed navigation' (unverified)"
+
+  - id: 7
+    name: approach_avoid_group_partners
+    short: "does the animal steer TOWARD or AWAY from others (within active bouts)"
+    question: "WITHIN validated active movement bouts, does heading/step change systematically toward or
+      away from group crowding (and specific partners), beyond layout + own kinematics?"
+    conditioning_state: "IN an active bout; own heading/speed, layout, pre-step group-social configuration"
+    action_outcome: "per-step relative bearing / distance-change toward-vs-away from others"
+    denominator: "in-bout steps with >=1 other animal present and reliable focal heading"
+    temporal_resolution: "per-fix to 5 s within bouts"
+    segmentation: "MUST be within validated bouts ONLY — crowding-dependent suppression of INITIATION
+      would otherwise confound steering with failure-to-initiate (see roadmap Phase 3)"
+    wiser_observability: "coarse approach/avoid at >=1 m yes; fine steering below jitter"
+    sensor_requirements: "video for true orientation / contact"
+    measurement_limits: "relative bearing needs reliable heading (>jitter speed); sub-1 m pseudo-proximity"
+    allowed_predictors: "own kinematics, layout, jitter-safe group-social (>=1 m), partner identity (late)"
+    memory_inputs: {short_term: "recent relative motion", long_term: "pairwise affiliation (module 13)"}
+    null_models: "within-night time-shift; day-shuffle; heading permutation"
+    cv_block: whole_night
+    prerequisites: [1, 4]
+    outputs: "night_block_gate.csv + toward/away sign (src/approach_avoid.py; heading-free, >=1m)"
+    status: candidate          # BUILT 2026-07-12 (Phase 3): coarse heading-free (DBV), NIGHT-BLOCK gate (not per-pair z). DISTANCE-DEPENDENT SOCIAL SPACING: real-time approach far conspecifics / avoid near ones, night-consistent (sign-test p<=0.016, 0 or 8/8 nights). change_log/2026-07-12-approach-avoid.md. EXTENDED to 11 nights: spacing STRENGTHENS (avoid 1-2m e_day=-0.26 0/11, approach >3.8m +0.12 11/11) and is CIRCADIAN-ROBUST — it holds in BOTH the active and nap population-rest phases (a moving-time behaviour, not a nap artifact; change_log/2026-07-12-11night-rest-social-circadian.md)
+    language_allowed: "in-bout approach/avoid tendency relative to group; social steering increment"
+    language_overclaim: "'the rat chooses to approach X'; 'attraction/aversion' (association, not motivation); dyadic unless module 13 passes"
+
+  - id: 8
+    name: following_leading
+    short: "directed, lagged co-movement (who moves after whom)"
+    question: "Do animals show directed, lagged co-movement (follower re-uses a leader's recent path within
+      a radius + heading window) beyond shared corridor/time?"
+    conditioning_state: "moving pair on a common time grid; lag, radius, heading alignment"
+    action_outcome: "strict-following episodes; leader/follower asymmetry"
+    denominator: "co-moving grid-seconds per ordered pair"
+    temporal_resolution: "1 s grid, lags 1-30 s"
+    segmentation: "movement bouts (module 4) + follow-run merging"
+    wiser_observability: "temporal-order following yes; NOT verified pursuit (needs video)"
+    sensor_requirements: "video to confirm the follower is orienting to the leader"
+    measurement_limits: "leader = temporal order, not intent; unverified frame; herd not dyadic (prior)"
+    allowed_predictors: "lag, radius, heading cosine, pre-decision social"
+    memory_inputs: {short_term: "recent co-movement", long_term: "pairwise following propensity (module 13)"}
+    null_models: "circular-shift (weak); DAY-SHUFFLE (strong — prior 0/10 pairs beat it)"
+    cv_block: whole_night
+    prerequisites: [1, 4, 12]
+    outputs: "following episodes + leadership summary (existing Phase-B/B2 candidate)"
+    status: candidate          # exists (following-structure); herd-not-dyadic; integrate onto the clean state. CROSS-CHECK 2026-07-12: departure-CONTAGION on the leave decision is NEGLIGIBLE (co-departure Dbits <=0.001) — following is SPATIAL corridor re-use, not temporal departure-triggering. FIREWORKS (07-04): following bursts (21:30 z=2.4, 22:20 z=5.2) are acoustically time-locked to the fireworks (CH01/CH02 audio, r~0.35 lag0) but following-vs-startle-co-flight unresolved (video watch-list staged). change_log/2026-07-12-fireworks-following-audio.md
+    language_allowed: "lagged path-reuse / temporal-order following; candidate leadership asymmetry"
+    language_overclaim: "'following/pursuit'; 'leader' as intent; 'social bond' (temporal order != verified follow)"
+
+  - id: 9
+    name: return_versus_explore
+    short: "at each departure, go back to a known site or sample a new one"
+    question: "At the excursion level, does the animal RETURN to a recently/ frequently used site vs EXPLORE
+      a less-used one, beyond layout base rates?"
+    conditioning_state: "departure event; recent + long-run site-visit history, layout"
+    action_outcome: "return (known) vs explore (novel/under-used) per excursion"
+    denominator: "excursions with a defined destination"
+    temporal_resolution: "per-excursion"
+    segmentation: "excursion = validated departure -> next settlement (modules 4,5,6)"
+    wiser_observability: "yes (visit history is WISER-native)"
+    sensor_requirements: "none"
+    measurement_limits: "novelty defined in the inch frame / ROI set; unvisited != avoided (coverage gap)"
+    allowed_predictors: "site recency/frequency, layout, regime, social"
+    memory_inputs: {short_term: "last-k visited sites", long_term: "cumulative site-visit distribution"}
+    null_models: "history-shuffle; layout base-rate null"
+    cv_block: whole_night
+    prerequisites: [1, 5, 6]
+    outputs: "return-vs-explore rate + history dependence"
+    status: candidate          # BUILT 2026-07-12 (Phase 4), gate-first, 11 nights: 123 named-dest excursions, return_rate 0.76 but NOT distinguishable from the layout base rate (site popularity), night-block sign-test p=0.55 -> no return-vs-explore PREFERENCE beyond layout is resolvable; 39% of named-dest moves are same-site returns. change_log/2026-07-12-phase4-search-excursions.md
+    language_allowed: "return-vs-explore tendency; site-history dependence"
+    language_overclaim: "'curiosity/novelty-seeking' as a drive (association, not motivation)"
+
+  - id: 10
+    name: area_restricted_vs_global_search
+    short: "tight looping after a find vs broad coverage"
+    question: "Do excursions show area-restricted search (short radius, high revisit, low displacement) vs
+      global search (long radius, low revisit), and does the mode switch with context?"
+    conditioning_state: "within/after an excursion; recent displacement + turn statistics"
+    action_outcome: "search-radius, revisit latency, ARS-vs-global label, coverage gain"
+    denominator: "excursions / search bouts"
+    temporal_resolution: "bout-to-excursion"
+    segmentation: "bouts (module 4) + excursions (module 9)"
+    wiser_observability: "coarse radius/coverage yes; fine ARS turn structure jitter-limited"
+    sensor_requirements: "higher-rate for fine ARS"
+    measurement_limits: "radius/coverage in unverified frame (relative, not metric); jitter inflates small radii"
+    allowed_predictors: "recent displacement/turn stats, layout, regime, resource proximity"
+    memory_inputs: {short_term: "recent find/coverage", long_term: "home-range envelope"}
+    null_models: "displacement-matched null; shuffled search-order"
+    cv_block: whole_night
+    prerequisites: [4, 9]
+    outputs: "search-mode labels + radius/coverage/revisit metrics"
+    status: candidate          # BUILT 2026-07-12 (Phase 4), COARSE-only per DBV, 11 nights: 1,541 bouts, 99.7% clear 3 jitter floors; bouts are UNIFORMLY TORTUOUS (straightness ~0.17-0.21 across in_place/relocating/open), radius gradient modest (in_place 100 < relocating 124 < open 142 in). No clean ARS-vs-global bimodality resolvable; reported as coarse geometry, NOT a search strategy. change_log/2026-07-12-phase4-search-excursions.md
+    language_allowed: "area-restricted vs global search geometry; coverage/revisit statistics"
+    language_overclaim: "'foraging strategy'/'optimal search' (geometry, not an inferred strategy or reward)"
+
+  - id: 11
+    name: route_corridor_selection
+    short: "which PATH between two sites (not just endpoints)"
+    question: "Given an origin->destination excursion, which corridor/path is taken, and is path choice
+      structured beyond endpoint + layout?"
+    conditioning_state: "origin, destination, layout corridors"
+    action_outcome: "path/corridor label + directness"
+    denominator: "excursions between the same origin-destination pair"
+    temporal_resolution: "per-excursion path"
+    segmentation: "bouts (module 4) + corridor skeleton"
+    wiser_observability: "coarse path yes but DIRECTIONAL/metric claims need georeference"
+    sensor_requirements: "confirmed WISER->field transform (pole survey)"
+    measurement_limits: "UNVERIFIED FRAME blocks route/direction claims; jitter-inflated path length"
+    allowed_predictors: "layout corridors, endpoints, regime"
+    memory_inputs: {short_term: "recent path", long_term: "route reuse propensity"}
+    null_models: "corridor base-rate; displacement-matched"
+    cv_block: whole_night
+    prerequisites: [4, 6]
+    outputs: "route/corridor choice + reuse"
+    status: blocked            # ⛔ georeference (unverified inch frame)
+    language_allowed: "corridor reuse (topological); path directness (relative)"
+    language_overclaim: "'route choice'/'navigation'/directional/metric route claims (frame unverified)"
+
+  - id: 12
+    name: short_term_social_history
+    short: "recent social context as a predictor"
+    question: "Do short-horizon social-history features (recent crowding, recent co-movement, recent
+      partner proximity) improve held-out prediction of the residence/initiation/steering modules?"
+    conditioning_state: "the target decision + a trailing social window"
+    action_outcome: "history features feeding modules 3,5,6,7"
+    denominator: "the host module's denominator"
+    temporal_resolution: "trailing windows 10 s - minutes"
+    segmentation: "pre-decision (strictly before the decision instant)"
+    wiser_observability: "yes at >=1 m; sub-1 m unreliable"
+    sensor_requirements: "video for interaction-level history"
+    measurement_limits: "strictly pre-decision (no leakage); >=1 m only; gaps unknown"
+    allowed_predictors: "trailing jitter-safe group/partner features"
+    memory_inputs: {short_term: "this module IS short-term memory", long_term: "-"}
+    null_models: "within-night time-shift; day-shuffle"
+    cv_block: whole_night
+    prerequisites: [1, 5, 7]
+    outputs: "social-history feature increments per host module"
+    status: planned            # PHASE 5 (first half)
+    language_allowed: "short-term social-history predictive increment"
+    language_overclaim: "'memory of' as cognition; causal social influence"
+
+  - id: 13
+    name: long_term_pairwise_social_graph
+    short: "who-with-whom structure over the season (LATE CHALLENGER)"
+    question: "Does a long-run pairwise social graph (affiliation/avoidance over nights) add held-out
+      predictive value beyond short-term social history + layout?"
+    conditioning_state: "the host decision + a learned pairwise embedding"
+    action_outcome: "pairwise affiliation weights improving downstream prediction"
+    denominator: "pair-nights with sufficient co-presence"
+    temporal_resolution: "night-to-season"
+    segmentation: "aggregate over validated bouts/episodes"
+    wiser_observability: "co-presence yes; affiliation is inferred, not observed"
+    sensor_requirements: "video for interaction-validated affiliation"
+    measurement_limits: "n=5 (10 pairs); herd-not-dyadic prior; ~8-11 nights = thin for a graph model"
+    allowed_predictors: "pairwise co-presence/co-movement history"
+    memory_inputs: {short_term: "-", long_term: "this module IS long-term social memory"}
+    null_models: "pair-label permutation; day-shuffle; degree-preserving graph null"
+    cv_block: whole_night
+    prerequisites: [8, 12]
+    outputs: "pairwise social-graph features + held-out gain vs short-term"
+    status: planned            # PHASE 5 (second half) — ONLY if short-term history first improves prediction
+    language_allowed: "pairwise social-graph predictive increment (if it beats short-term history)"
+    language_overclaim: "'social network/bonds'; a graph-transformer as the project's framework (it is a LATE CHALLENGER only)"
+
+  - id: 14
+    name: latent_motivation_reward
+    short: "the drives behind all of the above (capstone, gated)"
+    question: "Can a latent motivation / reward function be identified that rationalizes the validated
+      choice modules, up to the equivalence class, on the covered support?"
+    conditioning_state: "the full validated choice model + estimable dynamics"
+    action_outcome: "reward equivalence class (IRL) OR a formal NO-GO"
+    denominator: "covered state-action support across all upstream modules"
+    temporal_resolution: "as the choice modules"
+    segmentation: "all upstream modules validated"
+    wiser_observability: "NO — motivation is latent; only its behavioral shadow is seen"
+    sensor_requirements: "ephys / thermal / deprivation manipulation to observe drives"
+    measurement_limits: "unobserved odor/temp/food-state/habituation/social -> observationally-equivalent rewards"
+    allowed_predictors: "frame-invariant state features only"
+    memory_inputs: {short_term: "-", long_term: "-"}
+    null_models: "policy-matching vs the forward model; equivalence-class / shaping ambiguity report"
+    cv_block: whole_night
+    prerequisites: [3, 5, 6, 7, 9, 10]
+    outputs: "reward-feasibility verdict (expected NO-GO) or gated IRL"
+    status: blocked            # ⛔ capstone; run ONLY if every upstream gate passes; likely NO-GO
+    language_allowed: "reward-feasibility verdict; equivalence-class reward on covered support (if gated open)"
+    language_overclaim: "'the reward function'; 'the animal's goal/utility' (latent, not identified)"
+
+# dependency edges (A -> B means A is a prerequisite of B)
+dependency_edges:
+  - [1, 2]
+  - [1, 3]
+  - [1, 4]
+  - [1, 5]
+  - [2, 3]
+  - [2, 5]
+  - [1, 6]
+  - [5, 6]
+  - [4, 7]
+  - [4, 8]
+  - [12, 8]
+  - [5, 9]
+  - [6, 9]
+  - [4, 10]
+  - [9, 10]
+  - [4, 11]
+  - [6, 11]
+  - [5, 12]
+  - [7, 12]
+  - [8, 13]
+  - [12, 13]
+  - [3, 14]
+  - [5, 14]
+  - [6, 14]
+  - [7, 14]
+  - [9, 14]
+  - [10, 14]

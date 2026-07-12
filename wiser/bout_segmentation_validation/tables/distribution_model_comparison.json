@@ -1,0 +1,48 @@
+{
+  "exponential": {
+    "loglik_full": -51599.6,
+    "n_params": 1,
+    "AIC": 103201.1,
+    "BIC": 103210.3,
+    "params": {
+      "lambda": 1.3521
+    }
+  },
+  "weibull": {
+    "loglik_full": -51232.3,
+    "n_params": 2,
+    "AIC": 102468.6,
+    "BIC": 102487.1,
+    "params": {
+      "k": 1.1047,
+      "lambda": 0.8082
+    }
+  },
+  "gamma": {
+    "loglik_full": -51510.9,
+    "n_params": 2,
+    "AIC": 103025.8,
+    "BIC": 103044.2,
+    "params": {
+      "kappa": 1.5595,
+      "theta": 0.4993
+    }
+  },
+  "lognormal": {
+    "loglik_full": -46148.2,
+    "n_params": 2,
+    "AIC": 92300.4,
+    "BIC": 92318.8,
+    "params": {
+      "mu": -0.6061,
+      "sigma": 0.8306
+    }
+  },
+  "piecewise_hazard": {
+    "loglik_full": -51254.8,
+    "n_params": 3,
+    "AIC": 102515.6,
+    "BIC": 102543.2,
+    "breakpoint_s": 1.29
+  }
+}

@@ -1,0 +1,15 @@
+dur_s,n_samp,kind,sim_straight_median,sim_straight_p90,sim_disp_median
+0.5,2,straight_line,,,0.0
+0.5,2,curved,,,0.0
+1.0,4,straight_line,,,0.0
+1.0,4,curved,,,0.0
+1.5,7,straight_line,1.07,1.25,17.7
+1.5,7,curved,1.073,1.295,17.5
+2.0,9,straight_line,1.063,1.2,28.2
+2.0,9,curved,1.069,1.196,29.2
+3.0,13,straight_line,1.064,1.164,51.4
+3.0,13,curved,1.067,1.15,51.5
+4.0,18,straight_line,1.056,1.122,80.3
+4.0,18,curved,1.069,1.134,79.9
+5.0,22,straight_line,1.052,1.12,103.1
+5.0,22,curved,1.076,1.126,102.4

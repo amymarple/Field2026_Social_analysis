@@ -1,0 +1,25 @@
+{
+  "matched_null_turn (straight+pauses, NO real turns)": {
+    "null_mean_turn_pause": 35.5,
+    "null_mean_turn_continuous": 15.1,
+    "null_turn_diff": 20.4,
+    "null_P>90_pause": 0.053,
+    "null_P>90_continuous": 0.0,
+    "n_pause": 1435
+  },
+  "false_positive_heading_cp_rate": {
+    "straight_pauses": 0.2963,
+    "speed_change": 0.7692
+  },
+  "detection_sensitivity": {
+    "real_turn_90deg": 0.24,
+    "pause_turn_90deg": 0.04
+  },
+  "apparent_turn_vs_flank_disp_median": {
+    "(0, 10]": 33.3,
+    "(10, 15]": 25.8,
+    "(15, 25]": 28.9
+  },
+  "sigma_per_axis_in": 5.0,
+  "real_matched_pause_turn_diff_for_comparison": 17.9
+}

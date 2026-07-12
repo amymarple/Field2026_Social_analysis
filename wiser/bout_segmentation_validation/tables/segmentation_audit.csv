@@ -1,0 +1,14 @@
+pipeline_rule,current_value,expected_statistical_consequence,observed_consequence,likely_confound
+temporal_sampling,median dt 0.228 s (~4.4 Hz); p10 0.134 s; p90 0.403 s; bursty/VFR,durations quantized in ~0.23 s steps; frame-number addressing invalid,measured; min run of 2 samples ~= 0.13-0.4 s,VFR grid quantizes short durations
+position_smoothing,rolling median 7 samples (~1.6 s span),suppresses jitter but blurs start/stop; imposes a >~1 s persistence on the moving mask,shorter smoothing -> shorter runs (dur_median 1.21->0.67 s at smooth 7->1),smoothing sets the floor timescale not biology
+speed_smoothing,fixed 1.0 s displacement window (DEFAULT_SPEED_WINDOW_S),moving/stationary transitions smeared over ~1 s; sub-1 s runs cannot be resolved,only hazard 'breakpoint' appears at 1.29 s ~= this window,1 s window is the true lower timescale limit
+movement_speed_threshold,12.63 in/s (p99 stationary smoothed speed),higher thr keeps faster samples -> longer disp per fixed duration,disp_median 86->118 in as thr x0.75->x1.5 (dur ~pinned by min_bout),thr sets disp scale via speed not a distance capacity
+minimum_bout_duration,3.0 s AND >=2 samples,LEFT-TRUNCATES duration at 3 s; forces disp >= 3 s x speed,"dur_median 3.8 s = conditional median|>=3s of an untruncated 0.54 s dist; disp_median = 21.6 + 25.0*min_bout",THE dominant confound: it MANUFACTURES the 4 s / 100 in scale
+max_data_gap,2.0 s (dropout tolerance),splits a run at a sampling gap > 2 s,only 0.4% of dt exceed 2 s; rarely fires inside movement,a dropout guard not a pause rule
+pause_handling,pause_merge = 0 (ANY non-moving sample ends the bout),a run-pause-run journey is chopped into separate bouts,99% of bouts become multi-bout trips at merge >= 5 s,production bout is one LEG of a longer trip
+displacement_threshold,15 in net,removes curved/back-forth short bouts,not binding for straight bouts (3 s x 12.63 = 37.9 in > 15); disp mode set by min_bout x speed,secondary to min_bout
+path_length_threshold,none,-,-,-
+per_night_cap,top 40 per animal-night by displacement,drops the SHORTEST bouts on busy nights,dropped ~85 of 1777; biases retained set toward longer,mild extra left-bias on high-activity nights
+gap_dropout_shelter,valid-only fixes (validity flags); shelter-entry not special-cased,dropouts excluded; not interpolated,segments never bridge a >2 s gap,shelter/burrow dropout reduces long-run detection
+shortest_retained_bout,3.0 s (~13 samples at 4.4 Hz),min displacement ~ 3 s x speed,straight 3 s bout ~= 38-75 in >> 15 in floor,min_bout not min_disp sets the floor
+first_last_sample,inclusive (i0..i1),duration = t[i1]-t[i0]; >=2 samples,as implemented,none material

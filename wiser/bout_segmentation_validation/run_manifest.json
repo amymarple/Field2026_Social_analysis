@@ -1,0 +1,56 @@
+{
+  "analysis": "bout_segmentation_validation",
+  "purpose": "Falsification test: is the reported ~4 s / ~100 in bout scale a biological run timescale or a segmentation artifact?",
+  "generated_local": "2026-07-11",
+  "units": "inches (WISER native, UNVERIFIED offset frame); seconds",
+  "data": {
+    "source": "cached cleaned night positions (re-extracted from positions, NOT route_bouts.csv)",
+    "n_positions": 5972190,
+    "nights": 13,
+    "night_range": "2026-06-28..2026-07-10",
+    "night_window_local": [21, 4],
+    "animals": 5,
+    "cohort_note": "5 rats through 07-08 night, 4 from 07-09 (Hypnos cutoff)"
+  },
+  "sampling": {"dt_median_s": 0.228, "hz_median": 4.39, "dt_p90_s": 0.403, "frac_dt_gt_2s": 0.0038},
+  "production_params": {"moving_thr_inps": 12.63, "min_bout_s": 3.0, "max_gap_s": 2.0,
+                        "min_disp_in": 15.0, "smooth_window": 7, "speed_window_s": 1.0, "max_per_night": 40},
+  "engine_reproduction": {"n_bouts_engine_no_cap": 1778, "prod_n_post_cap": 1692,
+                          "disp_median_engine": 97.8, "disp_median_prod": 100.0,
+                          "dur_median_engine": 3.76, "dur_median_prod": 3.8, "match": true},
+  "key_results": {
+    "untruncated_duration_median_s": 0.54,
+    "prod_duration_median_is_conditional_median_at_3s": 3.76,
+    "dur_median_vs_minbout_slope": 0.95,
+    "disp_median_vs_minbout_slope_inps": 25.0,
+    "median_speed_inps": 25.0,
+    "duration_cv_untruncated": 0.67,
+    "duration_cv_prod_minbout3": 0.26,
+    "best_distribution": "lognormal",
+    "weibull_shape_k": 1.10,
+    "hazard_only_breakpoint_s": 1.29,
+    "hazard_breakpoint_matches_speed_window": true,
+    "frac_bouts_multi_bout_trip_at_merge5s": 0.989,
+    "trip_disp_max_at_merge30s_in": 524.1,
+    "paddock_diagonal_in": 537,
+    "ballisticity_real_short_bout_straightness": 1.08,
+    "ballisticity_jitter_null_straightness": 1.06,
+    "pause_turn_median_deg": 63.6,
+    "within_run_turn_median_deg": 16.5
+  },
+  "verdict": "D (segmentation-defined scale) for the reported '~4 s capacity / ~8 ft length'; true structure is B (ballistic reorientation-punctuated primitives, near-memoryless hazard) + C (fragments of paddock-scale multi-stop trips). A (genuine characteristic run duration) is FALSIFIED.",
+  "coverage": {
+    "A1_audit": "done", "A2_sensitivity": "done", "A3_left_truncation": "done",
+    "A4_hazard_models": "done", "A5_scale_vs_filter": "done", "A6_trips": "done",
+    "A7_pauses_decision": "partial (turn-angle across pause vs within run; full landmark/social A7 deferred)",
+    "A8_ballisticity_null": "done", "A9_reuse_length_matched": "deferred (secondary claim; not verdict-critical)",
+    "A10_distributions": "done (exp/gamma/weibull/lognormal + piecewise hazard; power-law not fit - durations bounded)",
+    "A11_stability": "done"
+  },
+  "caveats": [
+    "scipy/statsmodels/sklearn absent -> MLE, hazard, model comparison implemented in numpy; truncated-gamma normalization approximated",
+    "durations left-censored at ~2 samples (~0.13-0.4 s) even at min_bout=0",
+    "inch frame UNVERIFIED; speeds/distances are internal",
+    "stationary-noise sigma for A8 estimated ~5 in/axis (fallback if baseline unreadable)"
+  ]
+}

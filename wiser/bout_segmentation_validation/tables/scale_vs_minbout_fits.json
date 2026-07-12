@@ -1,0 +1,24 @@
+{
+  "dur_median_vs_minbout": [
+    0.89,
+    0.95,
+    0.986
+  ],
+  "dur_mode_vs_minbout": [
+    0.52,
+    0.93,
+    0.993
+  ],
+  "disp_median_vs_minbout": [
+    21.58,
+    25.04,
+    0.992
+  ],
+  "disp_mode_vs_minbout": [
+    10.04,
+    26.16,
+    0.974
+  ],
+  "median_speed_ips": 25.0,
+  "predicted_disp_slope_if_scale_is_minbout_times_speed": 25.0
+}

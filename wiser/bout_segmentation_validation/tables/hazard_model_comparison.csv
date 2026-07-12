@@ -1,0 +1,6 @@
+,loglik_full,n_params,AIC,BIC,params,breakpoint_s
+exponential,-51599.6,1,103201.1,103210.3,{'lambda': 1.3521},
+weibull,-51232.3,2,102468.6,102487.1,"{'k': 1.1047, 'lambda': 0.8082}",
+gamma,-51510.9,2,103025.8,103044.2,"{'kappa': 1.5595, 'theta': 0.4993}",
+lognormal,-46148.2,2,92300.4,92318.8,"{'mu': -0.6061, 'sigma': 0.8306}",
+piecewise_hazard,-51254.8,3.0,102515.6,102543.2,,1.29

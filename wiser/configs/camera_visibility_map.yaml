@@ -1,0 +1,86 @@
+# camera_visibility_map.yaml — WISER-inch -> camera channel map (Phase B2 router).
+# Channels calibrated by scripts/place_camera_landmarks.py: a pixel->WISER homography
+# fit from landmarks marked in each channel's own frame, mapped to a WISER polygon.
+
+meta:
+  frame: WISER native inches (offset origin, UNVERIFIED vs physical field)
+  confirmed: false
+  boundary_rect_xyxy:
+  - 247.15
+  - 786.02
+  - 542.31
+  - 888.27
+  notes: "PLACEHOLDER polygons carved from the boundary rect \u2014 edit before use."
+  calibrated_utc: '2026-07-09T23:08:37.624614'
+channels:
+- name: CH01
+  priority: 1.0
+  notes: color + mic; UNCALIBRATED placeholder (left half)
+  polygon:
+  - - 65.9
+    - 860.5
+  - - 272.6
+    - 733.3
+  - - 630.2
+    - 601.9
+  - - 583.3
+    - 627.2
+  - - 386.9
+    - 744.7
+  source: convex hull of 11 mapped landmarks + 18 in margin
+  rms_in: 273.73
+- name: CH02
+  priority: 1.0
+  notes: color + mic; UNCALIBRATED placeholder (right half)
+  polygon:
+  - - 513.0
+    - 542.3
+  - - 786.0
+    - 542.3
+  - - 786.0
+    - 888.3
+  - - 513.0
+    - 888.3
+  source: "placeholder (uncalibrated) \u2014 add examples to configs/camera_visibility_examples.csv"
+- name: CH03
+  priority: 0.9
+  notes: wide fisheye; UNCALIBRATED placeholder (lower band); edge distortion near
+    walls
+  polygon:
+  - - 247.2
+    - 542.3
+  - - 786.0
+    - 542.3
+  - - 786.0
+    - 720.0
+  - - 247.2
+    - 720.0
+  source: "placeholder (uncalibrated) \u2014 add examples to configs/camera_visibility_examples.csv"
+- name: CH04
+  priority: 0.9
+  notes: wide fisheye; UNCALIBRATED placeholder (upper band)
+  polygon:
+  - - 247.2
+    - 710.0
+  - - 786.0
+    - 710.0
+  - - 786.0
+    - 888.3
+  - - 247.2
+    - 888.3
+  source: "placeholder (uncalibrated) \u2014 add examples to configs/camera_visibility_examples.csv"
+- name: CH05
+  priority: 1.3
+  notes: shelter overhead through IR glass; good for house entrances; night IR poor
+  polygon:
+  - - 377.0
+    - 724.9
+  - - 387.1
+    - 710.5
+  - - 617.9
+    - 708.5
+  - - 643.0
+    - 724.6
+  - - 402.1
+    - 727.8
+  source: convex hull of 5 example points + margin

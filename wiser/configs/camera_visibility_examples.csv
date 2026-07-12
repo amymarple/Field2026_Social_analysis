@@ -1,0 +1,13 @@
+channel,wiser_x,wiser_y,notes
+# HOW TO FILL THIS: for each channel, log a handful of WISER (x,y) points you can
+# identify in that channel's video (open a clip + the WISER hourly occupancy plot for
+# the same time; when you can see a rat in CHxx, read its WISER x/y and add a row).
+# 3+ points per channel -> calibrate_camera_visibility.py builds a convex-hull polygon
+# (+ margin) into configs/camera_visibility_map.yaml. More points = tighter polygon.
+# Lines starting with # are ignored. The rows below are ILLUSTRATIVE DEMO POINTS
+# (near the two houses, whose WISER coords are known) — REPLACE with your own.
+CH05,405,712,"DEMO — near house_1 (~411,719); replace with real CH05 sightings"
+CH05,420,726,"DEMO"
+CH05,395,724,"DEMO"
+CH05,600,710,"DEMO — near house_2 (~614,717)"
+CH05,625,724,"DEMO"

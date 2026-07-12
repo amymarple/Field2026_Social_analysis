@@ -1,0 +1,92 @@
+# environment_map/2026-06-28_to_2026-07-08.yaml
+# Versioned physical-layout map for the WISER agent-policy study — EXTENDED to 11 nights
+# (06-28 -> 07-08), i.e. up to the Hypnos (12380) implant drop 2026-07-09 03:35:41 EDT (the
+# 12380 tag position != animal after that instant; handled by apply_tag_cutoffs). Supersedes
+# the 8-night map (2026-06-28_to_2026-07-05.yaml) for the extended run; the 8-night map is kept.
+#
+# Frame: WISER native inches, offset origin, UNVERIFIED vs the physical field frame. Only
+# topology + coarse (jitter-bounded) distances are usable.
+
+meta:
+  units: inches
+  frame: WISER native (offset origin, UNVERIFIED)
+  roi_source: configs/wiser_rois.json
+  structures_source: data_manifests/2026-06-29-wiser-pilot.yaml#time_varying_structures
+  window: {first_night: "2026-06-28", last_night: "2026-07-08"}   # 11 analyzable nights
+  tz_offset_hours: -4
+  note: >
+    Extended past 07-05: refuge_4 ('shelter 4') was a below-plane BURROW dropout 07-03->07-07 13:00
+    and was then REMOVED (07-07 13:00), so it is present + dropout through night 07-06 and ABSENT for
+    nights 07-07/07-08. Barn light (22:00 07-09) and the paddock chair (12:15 07-09) fall AFTER this
+    window, so no new in-window covariate. Hypnos (12380) valid_until 07-09 03:35:41 (cut mid the
+    07-08 night by apply_tag_cutoffs); Sova (12409) cut 06-29 15:00.
+
+resource_types:
+  house_1: house
+  house_2: house
+  food_1: food
+  food_2: food
+  water_1: water
+  water_2: water
+  refuge_1: refuge
+  refuge_2: refuge
+  refuge_3: refuge
+  refuge_4: refuge    # 'shelter 4' — burrow entrance 07-03..07-07 13:00 (below-plane dropout), then REMOVED
+  tunnel_1: tunnel    # present night 06-28 only
+
+symmetric_groups:
+  houses: [house_1, house_2]
+  foods: [food_1, food_2]
+  waters: [water_1, water_2]
+  refuges_all: [refuge_1, refuge_2, refuge_3, refuge_4]
+  refuges_left: [refuge_1, refuge_3]
+  refuges_right: [refuge_2, refuge_4]
+
+availability:
+  default: always
+  changes: []
+
+structures:
+  - name: tunnel_1
+    present_from: "2026-06-28T00:00:00-04:00"
+    present_until: "2026-06-29T07:00:00-04:00"
+    nights_present: ["2026-06-28"]
+    note: tunnel; removed 06-29 07:00 EDT.
+  - name: refuge_4
+    present_from: "2026-06-28T00:00:00-04:00"
+    present_until: "2026-07-07T13:00:00-04:00"   # REMOVED 07-07 13:00 (anti-digging)
+    nights_present: ["2026-06-28","2026-06-29","2026-06-30","2026-07-01","2026-07-02",
+                     "2026-07-03","2026-07-04","2026-07-05","2026-07-06"]   # NOT 07-07/07-08 (removed)
+    note: >
+      'shelter 4' refuge; a BURROW ENTRANCE 07-03->07-07 13:00 (below-plane UWB dropout; see
+      dropout_regions), then physically REMOVED 07-07 13:00 -> absent for nights 07-07 and 07-08.
+
+dropout_regions:
+  - roi: refuge_4
+    from: "2026-07-03T01:00:00-04:00"
+    until: "2026-07-07T13:00:00-04:00"
+    nights_affected: ["2026-07-03","2026-07-04","2026-07-05","2026-07-06"]   # night 07-06 fully within
+    cause: burrow (below-plane), weather-independent
+    effect: refuge_4 occupancy under-counts; time-outside over-counts
+
+# Per-night regime flags (covariates + strata; NOT causal). AWN weather (per-decision) is the
+# authoritative rain signal; 'wet' is a coarse night flag (07-06 rain confirmed in AWN; 07-07/07-08 dry).
+night_regime:
+  "2026-06-28": {phase: release,        wet: false, fireworks: false, truncated: false, burrow: false, n_rats: 6}
+  "2026-06-29": {phase: early,          wet: false, fireworks: false, truncated: false, burrow: false, n_rats: 5}
+  "2026-06-30": {phase: early,          wet: true,  fireworks: false, truncated: false, burrow: false, n_rats: 5}
+  "2026-07-01": {phase: mid,            wet: true,  fireworks: false, truncated: false, burrow: false, n_rats: 5}
+  "2026-07-02": {phase: mid,            wet: false, fireworks: false, truncated: false, burrow: false, n_rats: 5}
+  "2026-07-03": {phase: mid,            wet: false, fireworks: false, truncated: false, burrow: true,  n_rats: 5}
+  "2026-07-04": {phase: late,           wet: true,  fireworks: true,  truncated: false, burrow: true,  n_rats: 5}
+  "2026-07-05": {phase: late,           wet: false, fireworks: false, truncated: true,  burrow: true,  n_rats: 5}
+  "2026-07-06": {phase: late,           wet: true,  fireworks: false, truncated: false, burrow: true,  n_rats: 5}
+  "2026-07-07": {phase: late,           wet: false, fireworks: false, truncated: false, burrow: false, n_rats: 5}
+  "2026-07-08": {phase: late,           wet: false, fireworks: false, truncated: false, burrow: false, n_rats: 5}
+
+registration:
+  physical_transform: absent
+  status: UNVERIFIED
+  roi_placement_confirmed: true
+  jitter_floor_in: 7.0
+  min_resolvable_distance_in: 14.0

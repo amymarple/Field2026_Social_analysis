@@ -1,0 +1,47 @@
+{
+  "future_error_median_by_kind": {
+    "pause": {
+      "err_0.5_median": 4.3,
+      "err_1.0_median": 8.0,
+      "err_2.0_median": 14.9,
+      "err_3.0_median": 22.9,
+      "err_5.0_median": 37.3,
+      "n": 11859
+    },
+    "continuous": {
+      "err_0.5_median": 8.5,
+      "err_1.0_median": 14.7,
+      "err_2.0_median": 28.3,
+      "err_3.0_median": 48.8,
+      "err_5.0_median": 91.3,
+      "n": 11981
+    },
+    "heading_cp": {
+      "err_0.5_median": 15.9,
+      "err_1.0_median": 26.4,
+      "err_2.0_median": 44.5,
+      "err_3.0_median": 67.9,
+      "err_5.0_median": 111.3,
+      "n": 4575
+    }
+  },
+  "pause_over_continuous_ratio": {
+    "err_0.5_pause/cont": 0.51,
+    "err_1.0_pause/cont": 0.54,
+    "err_2.0_pause/cont": 0.53,
+    "err_3.0_pause/cont": 0.47,
+    "err_5.0_pause/cont": 0.41
+  },
+  "heading_cp_over_continuous_ratio": {
+    "err_0.5_hcp/cont": 1.87,
+    "err_1.0_hcp/cont": 1.8,
+    "err_2.0_hcp/cont": 1.57,
+    "err_3.0_hcp/cont": 1.39,
+    "err_5.0_hcp/cont": 1.22
+  },
+  "post_heading_residual_pause": {
+    "persistence_only_rad": 1.152,
+    "plus_location_rad": 0.831,
+    "location_reduces_residual": true
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "analysis": "decision_boundary_validation",
+  "stage": "1 (verdict-critical core) — STOPPED at interim boundary verdict per staging gate",
+  "purpose": "Are pauses / kinematic changepoints control-update boundaries, and do decision-to-decision legs beat 3s-filtered bouts? Falsification-first.",
+  "generated_local": "2026-07-11",
+  "git_commit": null,
+  "seeds": {"extract": 0, "matched": 0, "predict": 1, "noise": 7},
+  "units": "inches (WISER native, UNVERIFIED offset frame); seconds",
+  "data": {"source": "cached cleaned night positions (native ~4.4 Hz, NOT route_bouts.csv)",
+           "n_positions": 5972190, "nights": 13, "night_window_local": [21, 4], "animals": 5,
+           "sampling_hz_median": 4.39, "dt_median_s": 0.228},
+  "candidate_boundaries": {"pause": 101256, "heading_cp": 4575, "continuous": 25735, "total": 131566,
+                           "turn_cp_deg": 40, "heading_windows_s": [0.5, 1.0, 2.0], "jitter_floor_in": 7.0},
+  "key_results": {
+    "matched_pause_turn_diff_deg": 17.9,
+    "matched_riskratio_gt90": 6.22,
+    "noise_null_pause_turn_diff_deg": 20.4,
+    "well_resolved_flank30_pause_turn_diff_deg": -3.1,
+    "heading_cp_false_positive_straight": 0.30,
+    "heading_cp_false_positive_speedchange": 0.77,
+    "real_turn_detection_sensitivity": 0.24,
+    "pause_predict_error_ratio_vs_continuous": 0.51,
+    "pause_predict_confound": "speed (paused=stay-put trivially predictable)",
+    "post_pause_heading_residual_persistence_rad": 1.152,
+    "post_pause_heading_residual_plus_location_rad": 0.831
+  },
+  "verdicts": {
+    "boundary": "no reliable boundary class at WISER resolution (reorientation not separable from jitter)",
+    "unit": "insufficient resolution — decision-to-decision legs cannot be validated",
+    "vocabulary": "not testable (downstream gated off)",
+    "policy": "not testable (downstream gated off)"
+  },
+  "staging_gate": "TRIGGERED — boundary interpretation failed the noise null + well-resolved test; Stages 2/3 NOT built.",
+  "coverage": {
+    "stage0_audit": "done", "A1_candidate_extraction": "done", "A2_robust_heading": "done",
+    "A3_matched_controls": "done (+sensitivity)", "A4_predictability_break": "done",
+    "A7_noise_null": "done (+well-resolved data restriction)",
+    "A5_A6_segmentation_comparison": "deferred by gate", "A8_spatial": "deferred by gate",
+    "A9_social": "deferred by gate", "A10_legs": "deferred by gate",
+    "A11_unit_comparison": "deferred by gate", "A12_leg_vocabulary": "deferred by gate",
+    "A13_policy": "deferred by gate"
+  },
+  "caveats": [
+    "scipy/statsmodels/sklearn absent -> matched CEM, bootstrap, hazard, sims in numpy",
+    "noise sim sigma ~5 in/axis (~7 in radial jitter floor); the well-resolved data test is sim-independent and agrees",
+    "pauses are intrinsically low-displacement -> headings jitter-limited by construction",
+    "inch frame UNVERIFIED; no physical/directional claims"
+  ]
+}

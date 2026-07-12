@@ -1,0 +1,16 @@
+{
+  "counts": {
+    "continuous": 25735,
+    "heading_cp": 4575,
+    "pause": 101256
+  },
+  "n_total": 131566,
+  "turn_cp_deg": 40.0,
+  "windows_s": [
+    0.5,
+    1.0,
+    2.0
+  ],
+  "head_pre_ok_frac": 0.5514494626271225,
+  "pause_dur_median_s": 2.419999837875366
+}

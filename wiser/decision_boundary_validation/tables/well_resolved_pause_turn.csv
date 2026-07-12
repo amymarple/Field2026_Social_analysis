@@ -1,0 +1,4 @@
+flank_disp_floor_in,n_pause,n_continuous,turn_pause_deg,turn_continuous_deg,matched_diff_deg,riskratio_gt90
+0,29190,25461,42.9,25.0,17.9,6.22
+15,5165,18366,29.9,21.1,8.8,7.02
+30,1890,1855,13.7,16.8,-3.1,0.51

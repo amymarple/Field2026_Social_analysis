@@ -1,0 +1,13 @@
+variant,mean_turn_diff,riskratio>90
+full_match,17.8,6.22
+drop_shortid,18.4,6.2
+drop_night,20.3,6.93
+drop_clock_hour,19.0,6.51
+drop_roi,18.4,6.15
+drop_sp_bin,33.5,13.72
+drop_db_bin,18.2,6.44
+pause_dur>=0.5s,23.1,6.93
+pause_dur>=1.0s,25.7,5.63
+pause_dur>=2.0s,34.7,4.86
+window_turn_deg_0.5,4.9,10.51
+window_turn_deg_2.0,15.6,3.98
