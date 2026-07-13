@@ -24,7 +24,11 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [N1_trajectories.png](../../results/2026a/wiser_d1_nightly/figures/nightly_habituation_vs_rain/N1_trajectories.png)
+- [N2_rate_habituation.png](../../results/2026a/wiser_d1_nightly/figures/nightly_habituation_vs_rain/N2_rate_habituation.png)
+- [N3_cumulative.png](../../results/2026a/wiser_d1_nightly/figures/nightly_habituation_vs_rain/N3_cumulative.png)
+- [N4_rain_timeline.png](../../results/2026a/wiser_d1_nightly/figures/nightly_habituation_vs_rain/N4_rain_timeline.png)
+- [N5_rain_did.png](../../results/2026a/wiser_d1_nightly/figures/nightly_habituation_vs_rain/N5_rain_did.png)
 
 ## 6. Blockers
 

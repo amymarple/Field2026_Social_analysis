@@ -24,7 +24,8 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [T1_rest_site_timeline.png](../../results/2026a/wiser_d3_sleep/figures/rest_temperature/T1_rest_site_timeline.png)
+- [T2_convergence_by_window.png](../../results/2026a/wiser_d3_sleep/figures/rest_temperature/T2_convergence_by_window.png)
 
 ## 6. Blockers
 

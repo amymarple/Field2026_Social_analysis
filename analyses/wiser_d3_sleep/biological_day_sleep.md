@@ -26,7 +26,16 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [BD1_emergence_vs_temp.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/BD1_emergence_vs_temp.png)
+- [BD2_morning_vs_day_site.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/BD2_morning_vs_day_site.png)
+- [BD3_emergence_timeline.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/BD3_emergence_timeline.png)
+- [CP1_changepoint_time_hist.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/CP1_changepoint_time_hist.png)
+- [CP2_changepoint_per_ratday.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/CP2_changepoint_per_ratday.png)
+- [E1_shelter_vs_exposed_vs_temp.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/E1_shelter_vs_exposed_vs_temp.png)
+- [fig1_emergence.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/fig1_emergence.png)
+- [fig2_changepoint_timing.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/fig2_changepoint_timing.png)
+- [fig3_dwell_composition.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/fig3_dwell_composition.png)
+- [SS1_state_dwell_and_transitions.png](../../results/2026a/wiser_d3_sleep/figures/biological_day_sleep/SS1_state_dwell_and_transitions.png)
 
 ## 6. Blockers
 

@@ -34,14 +34,12 @@ def _match_reports(base: Path, cohort: str, direction: str, report_glob: str) ->
     return sorted(Path(p) for p in _glob.glob(str(d / report_glob)))
 
 
-def _match_figures(cohort: str, direction: str, report_glob: str) -> list[Path]:
-    if not report_glob:
-        return []
-    stem = report_glob.rstrip("*")
-    d = RESULTS / cohort / direction / "figures"
+def _match_figures(cohort: str, direction: str, question_id: str) -> list[Path]:
+    """Canonical figures for a question live in results/<cohort>/<direction>/figures/<question_id>/."""
+    d = RESULTS / cohort / direction / "figures" / question_id
     if not d.exists():
         return []
-    return sorted(p for p in d.iterdir() if p.name.startswith(stem.split("_2026")[0]) or stem in p.name)
+    return sorted(p for p in d.rglob("*") if p.is_file() and p.suffix.lower() in {".png", ".pdf", ".svg"})
 
 
 def _rel_from_card(direction: str, target: Path) -> str:
@@ -54,8 +52,9 @@ def _coverage(q: dict) -> dict[str, dict]:
     for c in _cohorts():
         live = _match_reports(RESULTS, c, q["direction"], q.get("report_glob", ""))
         arch = _match_reports(ARCHIVE, c, q["direction"], q.get("report_glob", ""))
-        if live or arch or not q.get("report_glob"):
-            cov[c] = {"live": live, "archive": arch, "figures": _match_figures(c, q["direction"], q.get("report_glob", ""))}
+        figs = _match_figures(c, q["direction"], q["id"])
+        if live or arch or figs or not q.get("report_glob"):
+            cov[c] = {"live": live, "archive": arch, "figures": figs}
     return cov
 
 

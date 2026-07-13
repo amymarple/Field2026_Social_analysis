@@ -80,3 +80,15 @@ concerns and makes cohort addition a data + one-YAML + re-run operation.
   `analyses/` / `results/` for current navigation).
 - CV reconciliation with `C:\Users\Cornell\Documents\CV` is plan-only (see the CV merge plan under
   `results/2026a/cv_shelter/reports/`); the merge is a separate approved task.
+
+## Addendum (2026-07-12) — figure migration corrected
+
+The first results pass under-migrated figures: the copy only scanned run-folder **top level**, so figures in
+`plots/` / `summary_figures/` subfolders (Lineage-B: trajectory/following/route/motif/vocab) and the Lineage-A
+figures written to the **off-repo** `D:\Wiser_plot/<run>/figures/` (circadian C1–C6, heat-gated HG1–4, the D3
+sleep/temperature/hierarchy/biological-day/evening-morning sets, nightly) were missed — `results/2026a/*/figures/`
+was nearly empty. Fixed: **105 canonical figures** copied into `results/2026a/<direction>/figures/<question_id>/`
+(dense per-item dumps — `residual_individual_maps`, `nonshelter_audit_frames`, `endpoints`, `comparison` — kept
+off-repo). Report figure links rewritten to `../figures/<question_id>/<leaf>`; `analyses/_generate_analyses.py`
+now lists the per-question figure subfolder, so the cards show figures. Broken-link scan over
+analyses/summaries/results/archive = 0.

@@ -16,7 +16,7 @@ limitation is that WISER cannot tell **social following** from a **synchronized 
 both produce close, heading-aligned co-movement. So this is reported as a fireworks-associated *coordinated
 co-movement* episode, not as demonstrated social following.
 
-![Fireworks → following time-course](plots/fireworks_following_audio_psth.png)
+![Fireworks → following time-course](../figures/fireworks_following/fireworks_following_audio_psth.png)
 
 *Both camera mics (A) rise together into the shaded fireworks-active window (21:25–22:15, defined by
 sustained level); the 07-04 following rate (B, red) spikes above the other-10-nights matched-clock control

@@ -24,7 +24,11 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [following_network.png](../../results/2026a/wiser_d2_routes/figures/following_structure/following_network.png)
+- [leadership_by_night.png](../../results/2026a/wiser_d2_routes/figures/following_structure/leadership_by_night.png)
+- [pair_ranking.png](../../results/2026a/wiser_d2_routes/figures/following_structure/pair_ranking.png)
+- [pair_z_by_night.png](../../results/2026a/wiser_d2_routes/figures/following_structure/pair_z_by_night.png)
+- [specificity.png](../../results/2026a/wiser_d2_routes/figures/following_structure/specificity.png)
 
 ## 6. Blockers
 

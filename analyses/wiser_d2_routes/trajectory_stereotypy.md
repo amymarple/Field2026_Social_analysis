@@ -24,7 +24,13 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [occupancy_grid.png](../../results/2026a/wiser_d2_routes/figures/trajectory_stereotypy/occupancy_grid.png)
+- [pairwise_similarity.png](../../results/2026a/wiser_d2_routes/figures/trajectory_stereotypy/pairwise_similarity.png)
+- [pathdensity_grid.png](../../results/2026a/wiser_d2_routes/figures/trajectory_stereotypy/pathdensity_grid.png)
+- [pooled_corridor.png](../../results/2026a/wiser_d2_routes/figures/trajectory_stereotypy/pooled_corridor.png)
+- [speed_distribution.png](../../results/2026a/wiser_d2_routes/figures/trajectory_stereotypy/speed_distribution.png)
+- [stabilization.png](../../results/2026a/wiser_d2_routes/figures/trajectory_stereotypy/stabilization.png)
+- [time_coupling_controls.png](../../results/2026a/wiser_d2_routes/figures/trajectory_stereotypy/time_coupling_controls.png)
 
 ## 6. Blockers
 

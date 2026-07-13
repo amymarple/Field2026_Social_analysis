@@ -26,7 +26,7 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [temporal_effects.png](../../results/2026a/wiser_policy/figures/policy_identifiability/temporal_effects.png)
 
 ## 6. Blockers
 

@@ -24,7 +24,13 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [cumulative_novel_motifs.png](../../results/2026a/wiser_d2_routes/figures/route_vocabulary/cumulative_novel_motifs.png)
+- [dictionary_size_vs_test_error.png](../../results/2026a/wiser_d2_routes/figures/route_vocabulary/dictionary_size_vs_test_error.png)
+- [endpoint_vs_route_model.png](../../results/2026a/wiser_d2_routes/figures/route_vocabulary/endpoint_vs_route_model.png)
+- [first_night_acquisition.png](../../results/2026a/wiser_d2_routes/figures/route_vocabulary/first_night_acquisition.png)
+- [mdl_vs_dictionary_size.png](../../results/2026a/wiser_d2_routes/figures/route_vocabulary/mdl_vs_dictionary_size.png)
+- [real_vs_geometry_null.png](../../results/2026a/wiser_d2_routes/figures/route_vocabulary/real_vs_geometry_null.png)
+- [temporal_holdout_coverage.png](../../results/2026a/wiser_d2_routes/figures/route_vocabulary/temporal_holdout_coverage.png)
 
 ## 6. Blockers
 

@@ -25,7 +25,10 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [HG1_gate_curve.png](../../results/2026a/wiser_d3_sleep/figures/heat_gated_relocation/HG1_gate_curve.png)
+- [HG2_within_day_gate_contrast.png](../../results/2026a/wiser_d3_sleep/figures/heat_gated_relocation/HG2_within_day_gate_contrast.png)
+- [HG3_timing.png](../../results/2026a/wiser_d3_sleep/figures/heat_gated_relocation/HG3_timing.png)
+- [HG4_matched_hour_hot_cold.png](../../results/2026a/wiser_d3_sleep/figures/heat_gated_relocation/HG4_matched_hour_hot_cold.png)
 
 ## 6. Blockers
 

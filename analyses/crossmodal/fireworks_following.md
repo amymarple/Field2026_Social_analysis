@@ -26,7 +26,7 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [fireworks_following_audio_psth.png](../../results/2026a/crossmodal/figures/fireworks_following/fireworks_following_audio_psth.png)
 
 ## 6. Blockers
 

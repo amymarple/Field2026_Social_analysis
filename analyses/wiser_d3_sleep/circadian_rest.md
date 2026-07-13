@@ -25,7 +25,12 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [C1_circadian_rest.png](../../results/2026a/wiser_d3_sleep/figures/circadian_rest/C1_circadian_rest.png)
+- [C2_per_animal_by_day.png](../../results/2026a/wiser_d3_sleep/figures/circadian_rest/C2_per_animal_by_day.png)
+- [C3_group_by_day_drift.png](../../results/2026a/wiser_d3_sleep/figures/circadian_rest/C3_group_by_day_drift.png)
+- [C4_per_animal_activity_by_day.png](../../results/2026a/wiser_d3_sleep/figures/circadian_rest/C4_per_animal_activity_by_day.png)
+- [C5_group_activity_by_day.png](../../results/2026a/wiser_d3_sleep/figures/circadian_rest/C5_group_activity_by_day.png)
+- [C6_biological_night_activity.png](../../results/2026a/wiser_d3_sleep/figures/circadian_rest/C6_biological_night_activity.png)
 
 ## 6. Blockers
 
