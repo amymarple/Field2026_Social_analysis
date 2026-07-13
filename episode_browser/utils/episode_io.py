@@ -147,10 +147,12 @@ class EpisodeRepository:
         if not self.exists():
             return pd.DataFrame(columns=INDEX_COLUMNS)
         filters = []
+        # Half-open [t_start, t_end) overlap: episode intersects the window iff
+        # t_start < window_end AND t_end > window_start (strict on both bounds).
         if t_start_ms is not None:
-            filters.append(("t_end", ">=", int(t_start_ms)))
+            filters.append(("t_end", ">", int(t_start_ms)))
         if t_end_ms is not None:
-            filters.append(("t_start", "<=", int(t_end_ms)))
+            filters.append(("t_start", "<", int(t_end_ms)))
         available = self.available_columns()
         columns = [column for column in INDEX_COLUMNS if column in available]
         df = read_parquet(self.path, columns=columns, filters=filters or None)

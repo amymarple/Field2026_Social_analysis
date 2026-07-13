@@ -1,5 +1,11 @@
 """Build the bounded June 30 real Episode Browser integration slice.
 
+FROZEN PROTOTYPE SLICE — the analytic window, output stems (``_v2``), and Phase B2
+source range are intentionally hard-coded to give this single reproducible slice a
+deterministic identity (and the refuse-to-overwrite guard its meaning). This is NOT
+cohort-appendable production ingestion; real cohort-keyed episode ingestion is future
+work via ``analysis_exchange``. Do not parameterize this into a general loader.
+
 The app reads the generated Parquet files; it never opens a complete WISER daily
 gzip during normal rendering. Raw inputs are read-only and outputs are refused if
 they already exist unless ``--force`` is passed explicitly.

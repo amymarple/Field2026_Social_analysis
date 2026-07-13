@@ -66,6 +66,10 @@ def main() -> int:
     rep_bad = validation.validate_all(bad)
     check(not rep_bad.ok, "unregistered state_model_id -> FAIL as expected")
 
+    # zero-duration episode is rejected (half-open intervals must have positive duration)
+    zero = [dict(eps[0], episode_id="zero", t_start=5000, t_end=5000)]
+    check(not validation.validate_all(zero).ok, "zero-duration episode (t_end == t_start) -> FAIL as expected")
+
     following_ep = {
         "episode_id": "follow1", "schema_version": 1,
         "state_model_id": "wiser_lagged_path_reuse_v1", "level": "pair",
@@ -210,6 +214,17 @@ def main() -> int:
     following_df = episode_io._derive_duration(pd.DataFrame([following_ep]))
     check(len(query.filter_episodes(following_df, levels=["pair"], labels=["following"])) == 1,
           "following pair is available through level and label filters")
+
+    # half-open [t_start, t_end) overlap: edge-touching windows must NOT match (regression for the
+    # inclusive->strict fix); a 1 ms overlap must match.
+    ho = pd.DataFrame([{"episode_id": "ho1", "t_start": 1000, "t_end": 2000,
+                        "level": "per_animal", "state_model_id": "synthetic_v0"}])
+    check(len(query.filter_episodes(ho, t_start_ms=2000, t_end_ms=3000)) == 0,
+          "half-open: episode ending exactly at window start is excluded")
+    check(len(query.filter_episodes(ho, t_start_ms=0, t_end_ms=1000)) == 0,
+          "half-open: episode starting exactly at window end is excluded")
+    check(len(query.filter_episodes(ho, t_start_ms=1999, t_end_ms=3000)) == 1,
+          "half-open: a 1 ms overlap is included")
 
     print("[8] annotations — append-only, timestamped, no overwrite")
     p1 = annotations.write_annotation("t1", "tester", "interesting", ["rest_like"], "n1", session="_selftest")

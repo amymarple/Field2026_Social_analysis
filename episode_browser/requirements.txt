@@ -4,7 +4,11 @@ pandas>=2.0
 numpy>=1.24
 pyyaml>=6.0
 
-# Primary columnar store. Optional: without it the store falls back to JSONL.
+# Primary columnar store — REQUIRED to run the app. app.py (EpisodeRepository +
+# load_wiser_evidence) and build_real_slice.py read/write Parquet only; there is NO
+# JSONL fallback in the running app. JSONL is a lossless alternative *format* in
+# episode_io and the demo synthetic generator, not an automatic fallback for
+# `streamlit run app.py`.
 pyarrow>=14.0
 
 # UI only (app.py). Streamlit bundles altair, which the charts use.

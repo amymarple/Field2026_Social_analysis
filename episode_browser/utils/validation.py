@@ -100,10 +100,15 @@ def validate_episodes(episodes: list[dict], schema: dict, registry: dict) -> Val
             if s not in enums.get("source_streams", []):
                 rep.warn(f"{tag}: source_stream '{s}' not in the known vocabulary.")
 
-        # Time sanity.
+        # Time sanity: episodes are half-open [t_start, t_end) intervals — a
+        # "stretch of being-in-a-state" — so duration must be strictly positive.
         ts, te = ep.get("t_start"), ep.get("t_end")
-        if ts is not None and te is not None and te < ts:
-            rep.error(f"{tag}: t_end < t_start.")
+        if ts is not None and te is not None:
+            if te < ts:
+                rep.error(f"{tag}: t_end < t_start.")
+            elif te == ts:
+                rep.error(f"{tag}: t_end == t_start (zero-duration episode; intervals are "
+                          f"half-open [t_start, t_end) and must have positive duration).")
 
         # Confidence range (0..1) — warn, don't fail; real data is messy.
         for cf in ("boundary_confidence", "identity_confidence", "tracking_quality"):

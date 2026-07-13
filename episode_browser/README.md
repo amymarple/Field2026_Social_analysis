@@ -109,19 +109,21 @@ retain the score-hiding regression path.
 From PowerShell:
 
 ```powershell
-Set-Location C:\Users\Cornell\Documents\GitHub\Field_2026_Social\episode_browser
-$env:EPISODE_BROWSER_FFMPEG = "C:\Users\Cornell\.conda\envs\cv\Library\bin\ffmpeg.EXE"
-& "C:\Users\Cornell\.conda\envs\cv\python.exe" build_real_slice.py
-& "C:\Users\Cornell\.conda\envs\cv\python.exe" -m streamlit run app.py
+Set-Location C:\Users\Cornell\Documents\GitHub\Field2026_Social_analysis\episode_browser
+# Optional, only for in-app video preview; point at any ffmpeg on this machine:
+# $env:EPISODE_BROWSER_FFMPEG = "C:\path\to\ffmpeg.exe"
+python build_real_slice.py
+python -m streamlit run app.py
 ```
 
 If the derived real files already exist, skip the builder command. From Windows
 Command Prompt, use `set`, not the Unix `export` command:
 
 ```bat
-cd /d C:\Users\Cornell\Documents\GitHub\Field_2026_Social\episode_browser
-set "EPISODE_BROWSER_FFMPEG=C:\Users\Cornell\.conda\envs\cv\Library\bin\ffmpeg.EXE"
-C:\Users\Cornell\.conda\envs\cv\python.exe -m streamlit run app.py
+cd /d C:\Users\Cornell\Documents\GitHub\Field2026_Social_analysis\episode_browser
+rem Optional, only for in-app video preview:
+rem set "EPISODE_BROWSER_FFMPEG=C:\path\to\ffmpeg.exe"
+python -m streamlit run app.py
 ```
 
 Open [http://localhost:8501](http://localhost:8501). Streamlit normally opens a
@@ -130,8 +132,7 @@ browser automatically; if it does not, use that URL directly.
 Run the data-layer regression checks with:
 
 ```powershell
-$env:EPISODE_BROWSER_FFMPEG = "C:\Users\Cornell\.conda\envs\cv\Library\bin\ffmpeg.EXE"
-& "C:\Users\Cornell\.conda\envs\cv\python.exe" selftest.py
+python selftest.py
 ```
 
 ## Demo Fixtures
@@ -141,8 +142,8 @@ appear in the primary real queue. To exercise them deliberately:
 
 ```powershell
 $env:EPISODE_BROWSER_DATA_MODE = "demo"
-& "C:\Users\Cornell\.conda\envs\cv\python.exe" generate_synthetic_episodes.py
-& "C:\Users\Cornell\.conda\envs\cv\python.exe" -m streamlit run app.py
+python generate_synthetic_episodes.py
+python -m streamlit run app.py
 ```
 
 Unset `EPISODE_BROWSER_DATA_MODE` to return to real mode.

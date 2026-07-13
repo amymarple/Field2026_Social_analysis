@@ -53,11 +53,12 @@ def filter_episodes(
         return df
     m = pd.Series(True, index=df.index)
 
-    # Time overlap (episode intersects the window), not strict containment.
+    # Half-open [t_start, t_end) overlap (episode intersects the window), not strict
+    # containment: intersects iff t_start < window_end AND t_end > window_start.
     if t_start_ms is not None:
-        m &= df["t_end"] >= t_start_ms
+        m &= df["t_end"] > t_start_ms
     if t_end_ms is not None:
-        m &= df["t_start"] <= t_end_ms
+        m &= df["t_start"] < t_end_ms
 
     if levels:
         m &= df["level"].isin(levels)
