@@ -34,12 +34,12 @@ import matplotlib.pyplot as plt   # noqa: E402
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import wiser_analysis_utils as w        # noqa: E402
+import wiser_inputs as _wi        # noqa: E402  (per-cohort WISER snapshot resolver)
 import time_utils                       # noqa: E402
 import metrics                          # noqa: E402
 import output_paths                     # noqa: E402
 
-DEFAULT_DB = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\1stcohort_2026_2026-07-09.sqlite")
-DEFAULT_FIXED = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\tag_reports_2026-06-30.sqlite")
+# WISER db + fixed baseline resolved per-cohort by wiser_inputs.finalize() (see --db / --fixed / --canonical)
 DEFAULT_GT = PROJECT_ROOT / "configs" / "fixed_position_ground_truth.csv"
 DEFAULT_ROIS = PROJECT_ROOT / "configs" / "wiser_rois.json"
 DEFAULT_WEATHER = [
@@ -154,20 +154,23 @@ def _robust_threshold(gate_curve, level=0.12):
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Direction 3: heat-gated house-leaving.")
-    ap.add_argument("--db", type=Path, default=DEFAULT_DB)
-    ap.add_argument("--fixed", type=Path, default=DEFAULT_FIXED)
+    ap.add_argument("--db", type=Path, default=None)
+    _wi.add_snapshot_flags(ap)
+    ap.add_argument("--fixed", type=Path, default=None)
     ap.add_argument("--rois", type=Path, default=DEFAULT_ROIS)
     ap.add_argument("--weather", type=Path, nargs="*", default=DEFAULT_WEATHER)
     ap.add_argument("--n-boot", type=int, default=N_BOOT)
     ap.add_argument("--cohort", default=None,
                     help="cohort key (a cohorts/<key>.yaml); default FIELD2026_COHORT or 2026a")
     args = ap.parse_args()
+    args.db, args.fixed, _wiser_prov = _wi.finalize(args)
     if not args.db.exists():
         raise SystemExit(f"[heat-gate] WISER DB not found: {args.db}")
 
     cohort = output_paths.resolve_cohort(args.cohort)
     direction = "wiser_d3_sleep"
     out = output_paths.run_dir("heat_gated_relocation", cohort)
+    _wi.write_input_provenance(out, _wiser_prov)
     figdir = out / "figures"
     report_dir = output_paths.report_dir(cohort, direction)
     print(f"=== Direction 3: heat-gated house-leaving ===\n  DB: {args.db}\n  out: {out}\n")

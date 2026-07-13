@@ -53,11 +53,11 @@ import matplotlib.pyplot as plt   # noqa: E402
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import wiser_analysis_utils as w        # noqa: E402
+import wiser_inputs as _wi        # noqa: E402  (per-cohort WISER snapshot resolver)
 import time_utils                       # noqa: E402
 import metrics                          # noqa: E402
 
-DEFAULT_DB = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\1stcohort_2026_2026-07-09.sqlite")
-DEFAULT_FIXED = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\tag_reports_2026-06-30.sqlite")
+# WISER db + fixed baseline resolved per-cohort by wiser_inputs.finalize() (see --db / --fixed / --canonical)
 DEFAULT_GT = PROJECT_ROOT / "configs" / "fixed_position_ground_truth.csv"
 DEFAULT_ROIS = PROJECT_ROOT / "configs" / "wiser_rois.json"
 DEFAULT_WEATHER = [
@@ -366,17 +366,20 @@ def _fig_state_dwell_matrix(state_dwell, trans_mat, tags, out_path):
 # ---------------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser(description="Direction 3: biological-day sleep model (core rebuild).")
-    ap.add_argument("--db", type=Path, default=DEFAULT_DB)
-    ap.add_argument("--fixed", type=Path, default=DEFAULT_FIXED)
+    ap.add_argument("--db", type=Path, default=None)
+    _wi.add_snapshot_flags(ap)
+    ap.add_argument("--fixed", type=Path, default=None)
     ap.add_argument("--rois", type=Path, default=DEFAULT_ROIS)
     ap.add_argument("--weather", type=Path, nargs="*", default=DEFAULT_WEATHER)
     ap.add_argument("--output", type=Path, default=DEFAULT_OUT_ROOT)
     args = ap.parse_args()
+    args.db, args.fixed, _wiser_prov = _wi.finalize(args)
     if not args.db.exists():
         raise SystemExit(f"[bio-day] WISER DB not found: {args.db}")
 
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M")
     out = args.output / f"biological_day_sleep_{ts}"
+    _wi.write_input_provenance(out, _wiser_prov)
     figdir = out / "figures"
     figdir.mkdir(parents=True, exist_ok=True)
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
