@@ -24,7 +24,18 @@
 
 ## 5. Figures
 
-- _Dense figure dumps stay off-repo under `$FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/`; the run_manifest points at them._
+- [RS0_all_rats_scatter.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS0_all_rats_scatter.png)
+- [RS10_self_route_reuse.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS10_self_route_reuse.png)
+- [RS11_edge_effect.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS11_edge_effect.png)
+- [RS1_corridor_map.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS1_corridor_map.png)
+- [RS2_per_rat_occupancy.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS2_per_rat_occupancy.png)
+- [RS3_route_reuse.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS3_route_reuse.png)
+- [RS4_occupancy_similarity.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS4_occupancy_similarity.png)
+- [RS5_straightness.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS5_straightness.png)
+- [RS6_shared_edges.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS6_shared_edges.png)
+- [RS7_edge_usage.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS7_edge_usage.png)
+- [RS8_baseline_compare.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS8_baseline_compare.png)
+- [RS9_straightness_vs_disp.png](../../results/2026a/wiser_d2_routes/figures/route_corridor_structure/RS9_straightness_vs_disp.png)
 
 ## 6. Blockers
 
