@@ -18,6 +18,16 @@ timezone_wallclock: "America/New_York"   # NVR/AWN local (EDT/EST). WISER timest
 
 identities: wiser/configs/rat_identities.csv   # shortid -> animal; resolve here, a tag is not an animal
 
+# WISER raw snapshot inputs for this cohort (read by common/wiser_inputs.py). Cumulative daily snapshots
+# live in raw_data_roots.<machine>.wiser_snapshots (local preferred over the Q: network master). Two modes:
+#   - exploratory / default: newest file matching snapshot_glob (cumulative => superset; never goes stale);
+#   - canonical / reproducible (--canonical): the pinned_snapshot exactly; null => fall back to latest.
+# A new cohort declares its OWN glob/pin here — no code change (appendability).
+wiser:
+  snapshot_glob:   "1stcohort_2026_*.sqlite"
+  pinned_snapshot: "1stcohort_2026_2026-07-12.sqlite"   # canonical pin for 2026a; null => use latest
+  fixed_baseline:  "tag_reports_2026-06-30.sqlite"       # stationary jitter-floor baseline db
+
 # Membership / caveats that shape every result over this cohort (not exclusion rules — covariates).
 notes: >
   Cohort size 6 -> 5 (Sova / tag 12409 removed 2026-06-29 15:00) -> 4 (Hypnos / tag 12380 implant dropped
@@ -38,3 +48,11 @@ raw_data_roots:
     reolink:           "E:/Reolink_record"
     thermal:           "E:/thermal_record"
     weather:           null
+  biohpc:               # Cornell BioHPC permanent storage (cbsuruizfs1), mounted Q:\hc997 on the analysis PC;
+                        # server-side path /fs/cbsuruizfs1/storage/hc997. This is the canonical off-site backup
+                        # MASTER (also holds wiser-analysis-clean.bundle, a code backup). Access kit: D:\FastenPC
+                        # (BioHPC-server.md + gpu-job.ps1 + the gpu-cv skill). NOTE: driver DEFAULT_DB literals
+                        # still point at the analysis_pc D: copy above — pass --db Q:/... to reproduce from here.
+    wiser_snapshots:   "Q:/hc997/SocialFieldRat2026/Wiser_backup/snapshots"
+    wiser_incremental: "Q:/hc997/SocialFieldRat2026/Wiser_backup/incremental"
+    reolink:           "Q:/hc997/SocialFieldRat2026"   # raw video: <date>/CH0x/

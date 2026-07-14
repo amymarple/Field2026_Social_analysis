@@ -34,7 +34,7 @@ Read-only on the WISER snapshot + CV CSVs. Outputs to
 D:\Field2026_analysis_out\sleep_site_cv_crossval_YYYYMMDD_HHMM\.
 
     python scripts/analyze_sleep_site_cv_crossval.py \
-        --db D:\Reolink_record\audio_in\Wiser_backup\snapshots\1stcohort_2026_2026-07-01.sqlite \
+        --db D:\Reolink_record\audio_in\Wiser_backup\snapshots\1stcohort_2026_2026-07-12.sqlite \
         --fixed D:\Reolink_record\audio_in\Wiser_backup\snapshots\tag_reports_2026-06-30.sqlite
 """
 
@@ -55,11 +55,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = PROJECT_ROOT.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import wiser_analysis_utils as w        # noqa: E402
+import wiser_inputs as _wi        # noqa: E402  (per-cohort WISER snapshot resolver)
 import time_utils                       # noqa: E402
 import metrics                          # noqa: E402
 
-DEFAULT_DB = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\1stcohort_2026_2026-07-01.sqlite")
-DEFAULT_FIXED = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\tag_reports_2026-06-30.sqlite")
+# WISER db + fixed baseline resolved per-cohort by wiser_inputs.finalize() (see --db / --fixed / --canonical)
 DEFAULT_GT = PROJECT_ROOT / "configs" / "fixed_position_ground_truth.csv"
 DEFAULT_ROIS = PROJECT_ROOT / "configs" / "wiser_rois.json"
 DEFAULT_CV_DIR = REPO_ROOT / "preprocessing" / "computer_vision" / "outputs"
@@ -233,8 +233,9 @@ def _fig_recall_precision(det, out_path):
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="CV shelter detection vs WISER shelter state.")
-    ap.add_argument("--db", type=Path, default=DEFAULT_DB)
-    ap.add_argument("--fixed", type=Path, default=DEFAULT_FIXED)
+    ap.add_argument("--db", type=Path, default=None)
+    _wi.add_snapshot_flags(ap)
+    ap.add_argument("--fixed", type=Path, default=None)
     ap.add_argument("--rois", type=Path, default=DEFAULT_ROIS)
     ap.add_argument("--cv-dir", type=Path, default=DEFAULT_CV_DIR)
     ap.add_argument("--output", type=Path, default=DEFAULT_OUT_ROOT)
@@ -249,12 +250,14 @@ def main() -> None:
                          "run manifest. Use on the analysis PC, where the headless matplotlib/MKL "
                          "stack can abort natively at savefig (the figures are diagnostics only).")
     args = ap.parse_args()
+    args.db, args.fixed, _wiser_prov = _wi.finalize(args)
     if not args.db.exists():
         raise SystemExit(f"[cv-crossval] WISER DB not found: {args.db}")
     state_kw = {**STATE_KW, "buffer_in": args.buffer_in,
                 "enter_s": args.enter_s, "exit_s": args.exit_s}
 
     out = w.make_output_dir(args.output, prefix="sleep_site_cv_crossval")
+    _wi.write_input_provenance(out, _wiser_prov)
     fig = out / "figures"
     print(f"=== CV shelter detection vs WISER shelter STATE ===\n  DB:  {args.db}\n"
           f"  CV:  {args.cv_dir}\n  out: {out}\n")

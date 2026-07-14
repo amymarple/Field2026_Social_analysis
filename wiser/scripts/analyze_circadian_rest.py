@@ -39,12 +39,12 @@ import matplotlib.pyplot as plt   # noqa: E402
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import wiser_analysis_utils as w        # noqa: E402
+import wiser_inputs as _wi        # noqa: E402  (per-cohort WISER snapshot resolver)
 import time_utils                       # noqa: E402
 import metrics                          # noqa: E402
 
 # Newest snapshot on the analysis PC -> full days 2026-06-28 → 07-08.
-DEFAULT_DB = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\1stcohort_2026_2026-07-09.sqlite")
-DEFAULT_FIXED = Path(r"D:\Reolink_record\audio_in\Wiser_backup\snapshots\tag_reports_2026-06-30.sqlite")
+# WISER db + fixed baseline resolved per-cohort by wiser_inputs.finalize() (see --db / --fixed / --canonical)
 DEFAULT_GT = PROJECT_ROOT / "configs" / "fixed_position_ground_truth.csv"
 from output_paths import OUT_ROOT as DEFAULT_OUT_ROOT   # single source of truth (env FIELD2026_ANALYSIS_OUT_ROOT)
 import output_paths as _op                               # cohort-aware run/report/figure dirs
@@ -536,19 +536,22 @@ def _build_report(per_tag, grp, nights, tags, jitter, moving_thr, out,
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Circadian / diel REST profile (Direction 3 companion).")
-    ap.add_argument("--db", type=Path, default=DEFAULT_DB)
-    ap.add_argument("--fixed", type=Path, default=DEFAULT_FIXED)
+    ap.add_argument("--db", type=Path, default=None)
+    _wi.add_snapshot_flags(ap)
+    ap.add_argument("--fixed", type=Path, default=None)
     ap.add_argument("--output", type=Path, default=None,
                     help="artifact-root override (default: FIELD2026_ANALYSIS_OUT_ROOT)")
     ap.add_argument("--cohort", default=None,
                     help="cohort key (a cohorts/<key>.yaml); default FIELD2026_COHORT or 2026a")
     args = ap.parse_args()
+    args.db, args.fixed, _wiser_prov = _wi.finalize(args)
     if not args.db.exists():
         raise SystemExit(f"[circadian] WISER DB not found: {args.db}")
 
     cohort = _op.resolve_cohort(args.cohort)
     direction = "wiser_d3_sleep"
     out = _op.run_dir("circadian_rest", cohort, root=args.output)   # bulk -> <OUT_ROOT>/<cohort>/...
+    _wi.write_input_provenance(out, _wiser_prov)
     fig = out / "figures"
     report_dir = _op.report_dir(cohort, direction)                 # canonical -> results/<cohort>/<dir>/reports
     print(f"=== Circadian REST profile (Direction 3 companion) ===\n  DB: {args.db}\n  out: {out}\n")
