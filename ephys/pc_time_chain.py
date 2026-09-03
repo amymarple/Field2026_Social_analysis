@@ -350,7 +350,11 @@ def write_pc_time_files(rows: list[dict], per_animal: dict, out_root: Path, fs_d
             (out / "pc_time_fit.json").write_text(json.dumps({
                 "animal": animal, "session": sdir.name, "n_samples": int(ns), "fs": fs, "rtc_start_ms_of_day": base, "offset_ms": off,
                 "drift_ppm": drift, "drift_source": src, "verdict": r["verdict"], "n_anchors": r["n_anchors"], "native_residual_ms": r["native_residual_ms"],
-                "model": "pc_ms(i) = (rtc_start_ms_of_day + offset_ms + (1 + drift_ppm*1e-6) * i / fs * 1000) mod 86400000",
+                "formula": "pc_ms(i) = (rtc_start_ms_of_day + offset_ms + (1 + drift_ppm*1e-6) * i / fs * 1000) mod 86400000",
+                # schema consumed by field2026-sync from-field/2026-09-03_led_sync_pipeline.py (stage join):
+                #   pc_unwrapped_ms = model.slope * device_ms + model.intercept_ms, device_ms = sample * 1000 / sample_rate_hz
+                "model": {"slope": 1.0 + drift * 1e-6, "intercept_ms": base + off, "recording_start_ms": int(round(base))},
+                "sample_rate_hz": fs, "common_start_master_sample": 0,
                 "note": "field-PC ms-of-day of the day the session started; a session crossing midnight wraps to 0 at the field-PC midnight",
                 "written_utc": utc_now_iso(), "script": "ephys/pc_time_chain.py --write-pc-time", "git": git_commit(),
             }, indent=2), encoding="utf-8")
