@@ -1,0 +1,85 @@
+# Per-animal probe definitions for cohort 2026c (WILD CE64 loggers, 64 amplifier channels @ 20 kHz).
+#
+# *** STATUS: channel -> shank mapping is UNVERIFIED (2026-09-02). ***
+# The Notion cohort page gives only the probe FORM FACTOR (SF07/08/10/11/12 = "4*16", SF09 = "5*12"); no
+# logger-channel -> probe-site table exists in the repos or on disk (every existing amplifier.xml is one
+# 64-channel group). The groups below are a PLACEHOLDER: sequential 16-channel blocks (SF09: Buzsaki 5x12
+# = [12,12,16,12,12]). Kilosort4 units are still valid per unit, but any shank / depth / geometry claim is
+# blocked until this file is confirmed against the headstage-adapter pinout or ephys/probe_group_check.py.
+# Set `verified: true` (and record the source) once confirmed.
+#
+# Schema per animal:
+#   layout:   PreprocessPipeline chanMap layout — staggered | linear | poly2 | poly3 | double_sided | "Buzsaki 5x12"
+#   groups:   list of channel lists (0-based logger channels), one per shank, in shank order
+#   reject_channels: 0-based channels always excluded (dead / broken). Data-driven candidates are listed in the
+#             session index (ephys_spikes_session_index_<cohort>.csv, column bad_channel_candidates) — copy the
+#             stable ones here; stage_session.py --auto-reject adds per-session candidates on top.
+#   notes:    free text (field notes that shape interpretation)
+
+verified: false
+mapping_source: "PLACEHOLDER sequential blocks — no pinout table found (2026-09-02); confirm with the probe adapter map"
+n_channels: 64
+sampling_rate_hz: 20000
+
+animals:
+  SF07:
+    form_factor: "4x16"
+    layout: staggered
+    groups:
+      - [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      - [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+      - [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47]
+      - [48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    reject_channels: []
+    notes: "not offloaded yet (2026-09-02); 125 GB card"
+  SF08:
+    form_factor: "4x16"
+    layout: staggered
+    groups:
+      - [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      - [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+      - [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47]
+      - [48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    reject_channels: [32]     # flat channel: HP noise 1.5 uV vs ~10 uV elsewhere on 0_20260831_190133.486 (Notion: '63 channels')
+    notes: "Notion 'Logger Channels Count' 63; glitch load highest of the fleet (~1,350 ticks/s on FM64)"
+  SF09:
+    form_factor: "5x12"
+    layout: "Buzsaki 5x12"    # PreprocessPipeline requires group sizes [12,12,16,12,12] for this layout
+    groups:
+      - [0,1,2,3,4,5,6,7,8,9,10,11]
+      - [12,13,14,15,16,17,18,19,20,21,22,23]
+      - [24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
+      - [40,41,42,43,44,45,46,47,48,49,50,51]
+      - [52,53,54,55,56,57,58,59,60,61,62,63]
+    reject_channels: []       # index 2026-09-02 candidates on EVERY SF9 session: 2 4 32 36 54 56 58 62 (+52 60 on short records) — review, then move here
+    notes: "Notion 'Logger Channels Count' 50 -> ~14 channels expected dead/unused; stage_session --auto-reject skips the per-session candidates meanwhile"
+  SF10:
+    form_factor: "4x16"
+    layout: staggered
+    groups:
+      - [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      - [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+      - [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47]
+      - [48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    reject_channels: []       # index 2026-09-02 candidates on every SF10 session: 32 34 (+2 6 56 60 62 63 on some) — review, then move here
+    notes: "8/25 note: '1 shank super noisy' after wire fix; night-1 brownout 03:27 (session lost regardless)"
+  SF11:
+    form_factor: "4x16"
+    layout: staggered
+    groups:
+      - [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      - [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+      - [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47]
+      - [48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    reject_channels: []       # index 2026-09-02 candidates on the 09-01 SF11 records: 32 56 60; the 08-31 07:24 record had ch 32-63 flat (regime, not probe)
+    notes: ""
+  SF12:
+    form_factor: "4x16"
+    layout: staggered
+    groups:
+      - [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      - [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+      - [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47]
+      - [48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    reject_channels: []
+    notes: ""

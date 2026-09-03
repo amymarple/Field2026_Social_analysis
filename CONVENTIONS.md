@@ -44,7 +44,8 @@ active analysis work happens here.
 
 Results/summaries/analyses are keyed by **research direction**:
 `wiser_baseline` (precision, occupancy, QC) · `wiser_d1_nightly` · `wiser_d2_routes` · `wiser_d3_sleep` ·
-`wiser_policy` (14-module behavioral policy) · `cv_shelter` · `audio_soundscape` · `crossmodal`.
+`wiser_policy` (14-module behavioral policy) · `cv_shelter` · `audio_soundscape` · `crossmodal` ·
+`ephys_spikes` (WILD neurologger spike sorting, from cohort `2026c`; code in `ephys/`).
 
 ### Two index layers (regenerated, never hand-edited into drift)
 

@@ -5,6 +5,7 @@ verification.
 
 | Date | Change | Scope |
 |---|---|---|
+| 2026-09-02 | [Ephys spike-sorting pipeline (WILD, cohort 3)](2026-09-02-ephys-spike-sorting-pipeline.md) | New `ephys/` + cohort `2026c`: firmware-aware session index (39 sessions, all measured glitchy; FM62/64), exact port of the field de-glitch (SF10 validation reproduced), staged clean copies, PreprocessPipeline+Kilosort4 driver with two pipeline bug workarounds; probe map UNVERIFIED (ARI≈0); FM62 daytime wide-impulse regime flagged. |
 | 2026-07-12 | [Migration to the cohort-appendable analysis repo](2026-07-12-migration-to-cohort-appendable-repo.md) | Migrated analysis out of the Field_2026_Social monolith into this cohort-keyed repo; renames, cohort schema, analyses/ + summaries/ layers, reclassifications, parked/excluded items. |
 | 2026-06-28 | [Hourly WISER Occupancy / Position Maps](2026-06-28-hourly-occupancy-maps.md) | Live-DB-safe hourly per-tag scatter/occupancy maps from WISER UWB. |
 | 2026-06-29 | [WISER UWB Pilot Analysis Pipeline](2026-06-29-wiser-pilot-analysis.md) | QC-first pilot: usability/jitter/dropouts/jumps + spatial/social/refuge/acclimation + weather; notebook + utils module + ROI GUI. |

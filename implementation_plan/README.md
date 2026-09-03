@@ -4,6 +4,7 @@ This directory records non-trivial implementation plans before source changes.
 
 | Date | Plan | Scope |
 |---|---|---|
+| 2026-09-02 | [Ephys spike-sorting pipeline (WILD, cohort 3)](2026-09-02-ephys-spike-sorting-pipeline.md) | New `ephys/`: firmware-aware session index, vendored de-glitch (FM≤64 artificial spikes), staged clean copies, PreprocessPipeline + Kilosort4 driver; cohort `2026c`. |
 | 2026-07-12 | [Cohort-parameterize the remaining drivers](2026-07-12-cohort-parameterize-remaining-drivers.md) | Recipe + per-driver direction map to finish wiring --cohort into the remaining Lineage-A and Lineage-B drivers. |
 | 2026-06-28 | [Hourly WISER Occupancy Maps](2026-06-28-hourly-occupancy-maps.md) | Live-DB-safe hourly per-tag occupancy heatmaps from WISER UWB tracking. |
 | 2026-06-29 | [WISER UWB Pilot Analysis Pipeline](2026-06-29-wiser-pilot-analysis.md) | QC-first pilot pipeline: usability, jitter, dropouts/jumps, spatial/social/refuge/acclimation + weather. |

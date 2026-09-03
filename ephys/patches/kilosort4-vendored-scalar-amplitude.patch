@@ -1,0 +1,23 @@
+Proposed upstream fix for PreprocessPipeline's vendored Kilosort4 (sorter/Kilosort4, lab customization
+"amplitude-aware clustering feature", observed at commit cb89e24, 2026-09-02).
+NOT applied to the local checkout; ephys/run_sort_session.py applies it to an off-repo copy
+(<OUT_ROOT>/<cohort>/ephys_tools/Kilosort4_field2026, see KS4_TEXT_PATCHES) that it passes as sorter_path.
+
+Symptom (SF10 5_20260901_054403.494, 100 s, per-shank partition):
+    File ".../sorter/Kilosort4/kilosort/clustering_qr.py", line 23, in _scaled_log_amplitude_feature
+        amp = torch.from_numpy(amp)
+    TypeError: expected np.ndarray (got numpy.float64)
+
+Cause: when a clustering group holds a single spike, spike_amplitudes is 0-d; np.maximum(amp, 1e-6) on a 0-d
+array returns a NumPy scalar, which torch.from_numpy rejects. np.atleast_1d keeps the (1,) shape.
+
+--- a/sorter/Kilosort4/kilosort/clustering_qr.py
++++ b/sorter/Kilosort4/kilosort/clustering_qr.py
+@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
+
+ def _scaled_log_amplitude_feature(spike_amplitudes, scale=1.0):
+-    amp = np.asarray(spike_amplitudes, dtype=np.float32)
++    amp = np.atleast_1d(np.asarray(spike_amplitudes, dtype=np.float32))
+     amp = np.log10(np.maximum(amp, 1e-6))
+     amp = torch.from_numpy(amp)
+     std = torch.std(amp, unbiased=False)

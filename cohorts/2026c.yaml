@@ -1,0 +1,83 @@
+# Cohort descriptor — the ONLY file you add/edit to register a cohort (see cohorts/2026a.yaml for the schema).
+
+cohort: 2026c
+label: "3rd rat cohort (SF07–SF12, 6 animals, WILD neurologger implants; released 2026-08-30 ~19:00 ET)"
+description: >
+  Third Field_2026_Social outdoor rat cohort in the 20x40 ft paddock, first cohort with head-mounted WILD CE64
+  neurologgers (64 ch @ 20 kHz on SD, BLE sync) on every animal. Multimodal as before: WISER/UWB, Reolink video
+  (8 ch), thermal, camera mics, Ambient Weather, plus the new ephys modality (ephys/).
+  Field notes: Notion "4-Rat 3rd cohort — full (SF07–SF12)".
+
+date_range:
+  start: "2026-08-30"
+  end: null            # open — cohort running; extend when it closes
+timezone_wallclock: "America/New_York"   # logger RTC is set from the field-PC local clock at Resync (EDT)
+
+identities: wiser/configs/rat_identities.csv   # WISER shortid -> animal (cohort-3 tags: see notes)
+
+# ---------------------------------------------------------------------------------------------------------
+# Ephys (WILD neurologger) — read by ephys/*.py
+# ---------------------------------------------------------------------------------------------------------
+ephys:
+  direction: ephys_spikes
+  # Raw offload layout: <root>/<animal>/<logger_mac>/<slot>_<YYYYMMDD>_<HHMMSS>.<ms>/{amplifier.dat,...}
+  # <animal>/recovery.bin = raw 512 GB card image kept for a FUTURE forensic recovery of the FM59-62
+  # uncommitted (stop-only-commit) sessions. Never parsed by the pipeline; never delete.
+  session_glob: "[0-9]*_[0-9]*_[0-9]*"
+  n_channels: 64
+  sampling_rate_hz: 20000
+  dtype: int16
+  gain_to_uV: 0.195          # Intan RHD default; the WILD header carries no scale -> RELATIVE, unverified
+  # Animal -> logger MAC (last 4 hex = the Notion "Probename" column). SF07 offloaded 2026-09-02 (17 sessions,
+  # 08-31 18:58 -> 09-02 18:12; sessions 0-7 FM64, 8-16 FM65).
+  loggers:
+    SF07: {mac_suffix: "3111", mac: "D0DBEFEF3111"}
+    SF08: {mac_suffix: "E131", mac: "128C2F27E131"}
+    SF09: {mac_suffix: "62DB", mac: "68BDFFFF62DB"}
+    SF10: {mac_suffix: "0151", mac: "CACB6D600151"}
+    SF11: {mac_suffix: "721C", mac: "1DFE7F77721C"}
+    SF12: {mac_suffix: "21B1", mac: "FBED2F2321B1"}
+  # Firmware provenance (field history, confirmed from CE_params.bin firmware_version @ byte 328):
+  #   FM59-62  stop-only file commit (night-1 loss on all six) AND single-sample glitch defects
+  #   FM64     glitch defects ("artificial spikes": channel-substitution ticks + 15-s housekeeping spikes)
+  #   FM65     maker fix for both (2026-09-01 ~19:30 round) — UNEVALUATED until offloaded data is indexed
+  firmware_history:
+    62: "stop-only commit (session exists only after a clean Record Stop) + glitch defects A/B"
+    64: "glitch defects A/B (~100-1400 ticks/s summed over 64 ch); stop-only commit"
+    65: "maker fix: defects absent on bench; power-cut-safe commit; field data unevaluated"
+  clean_firmware_min: 65     # sessions with firmware_version < this MUST be de-glitched before any analysis
+  deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
+  probe_config: ephys/configs/probes_2026c.yaml
+  preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT
+  # Per-cohort derived-data root on the data drive (user decision 2026-09-03; the G: artifact root dropped off the PC on
+  # 09-02). ephys/ scripts write stage/, sort/, pc_time/, tools/, index/ under it and NEVER into a raw session folder.
+  analysis_root: "E:/3rd_rat_spikes/analysis"
+
+notes: >
+  Night 1 (08-30 18:39 -> 08-31 ~04:30) neural data LOST on all six (FM59-62 stop-only commit; batteries pulled
+  without Stop) — recovery.bin images are the only remaining trace. Daytime 08-31 ~11:00-18:00 = troubleshooting
+  window (logger LFP blank, reflashes) -> analysis exclusion. Every session started before 2026-09-01 19:00
+  carries glitch noise -> de-glitch first (ephys/stage_session.py does this by firmware gate). SF10: one shank
+  "super noisy" (8/25 note). WISER: SF12 tag 3058 dropped 08-31 (3059 alone after); 3058 remounted on SF11
+  2026-09-02 ~08:00 after 305a's battery died (SF11 gap 09-02 00:03 -> ~08:00). Probe channel->shank mapping
+  UNVERIFIED (placeholder sequential blocks in ephys/configs/probes_2026c.yaml). Measured 2026-09-02: the FM62
+  08-31 daytime sessions of SF8/SF9 and the 07:0x-07:2x morning-round records sit in a wide-impulse / broadband
+  noise regime the single-sample de-glitch cannot fix (index columns regime + tick_removal_frac); night FM64
+  sessions are the well-behaved single-sample-defect case.
+
+raw_data_roots:
+  analysis_pc:
+    ephys:             "E:/3rd_rat_spikes"          # offloaded WILD sessions + recovery.bin per animal
+    ephys_duplicates:  ["G:/3rd", "D:/SF10"]        # partial earlier copies (G:/3rd/SF10/.../5_20260901_054403.494 holds the field de-glitch validation)
+    wiser_snapshots:   null
+    reolink:           null
+    thermal:           null
+    weather:           null
+  field_pc:
+    reolink:           "E:/Reolink_record"
+    thermal:           "E:/thermal_record"
+    wiser_live:        null
+    weather:           null
+  biohpc:
+    wiser_snapshots:   null
+    reolink:           null
