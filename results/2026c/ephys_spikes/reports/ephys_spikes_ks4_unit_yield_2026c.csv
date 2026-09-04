@@ -1,0 +1,9 @@
+animal,session,duration_h,firmware,status,post_mode,shank,stage,ks4_units,final_clusters,good,mua,unsorted,noise,candidate_units,lt3hz_units,lt3hz_well_isolated,ge3hz_units,well_isolated,spikes_total,median_rate_hz_candidates,median_amp_uV_candidates,median_snr_candidates
+SF07,15_20260902_082418.755,8.51,65,done (full),,1,post,47,63,0,0,27,36,27,22,2,5,5,1513790,0.398,44.7,4.24
+SF07,15_20260902_082418.755,8.51,65,done (full),,2,post,44,60,0,0,13,47,13,13,1,0,1,199708,0.1,30.0,3.25
+SF07,15_20260902_082418.755,8.51,65,done (full),,3,post,69,55,0,0,19,36,19,19,2,0,2,173220,0.178,32.6,3.33
+SF07,15_20260902_082418.755,8.51,65,done (full),,4,post,67,39,0,0,11,28,11,11,1,0,1,115620,0.079,32.4,3.3
+SF08,13_20260902_082748.094,9.88,65,done (fast),fast,1,post,69,67,0,0,45,22,45,43,0,2,0,1411199,0.225,21.4,2.26
+SF08,13_20260902_082748.094,9.88,65,done (fast),fast,2,post,49,48,0,0,31,17,31,26,2,5,2,1875650,0.09,30.0,3.32
+SF08,13_20260902_082748.094,9.88,65,done (fast),fast,3,post,92,56,0,0,42,14,42,39,2,3,2,1238487,0.0,28.3,2.98
+SF08,13_20260902_082748.094,9.88,65,done (fast),fast,4,post,75,56,0,0,42,14,42,38,0,4,0,1661764,0.149,25.2,2.5
