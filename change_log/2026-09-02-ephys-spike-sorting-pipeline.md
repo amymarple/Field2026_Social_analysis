@@ -458,3 +458,16 @@ of battery (16:30-18:20) before the evening round. That removes both remaining h
 and, as a bonus for sorting, makes each night a single continuous epoch. Restarting anyway is harmless: it does NOT
 disturb the timestamps (no Resync is pressed, and 79 of 97 short restart boundaries show |start_vs_prev| <= 2 s, median
 6 ms, i.e. the RTC runs straight through); it only costs ~12-58 ms on the tail of the post-restart session.
+
+## Addendum 2026-09-04 (IV) — timing precision vs what the analyses need
+
+Report: `results/2026c/ephys_spikes/reports/ephys_spikes_timing_precision_vs_requirements_2026c.md` (mirrored to
+`E:rd_rat_spikesnalysis\index\`). Headline: the ephys -> field-PC chain is 8-22 ms typical, <= 60 ms worst
+(08-31 FM62 block excluded, no PC time there); place fields tolerate 100-300 ms, behaviour events one 50 ms frame, so
+the chain is not the bottleneck by 5-10x - the position side is (WISER 0.26 s fix interval, 10-18 cm jitter; 50 ms
+video frame). Not supported: ms-scale spike synchrony between animals (15-30 ms combined + a <= 50 ms constant BLE
+latency, ESTIMATE) - needs a shared hardware TTL. Headline definitions (full set in the report):
+- timing error as position error: $e_x = v\,\delta t$ (cm; $v$ cm/s, $\delta t$ s) - compare with sensor noise;
+- end error of an assumed-drift session: $\delta_{	ext{end}}(T) = |\Delta b| 	imes 10^{-6} 	imes T 	imes 1000$ ms,
+  with $\Delta b$ = a session's drift minus its logger's median (0.8 ppm median, 2.0 ppm sd);
+- parabolic bow $eta = |c_2|/4$ (ms) on $	au=(t-ar t)/T$: 6 ms median, 13 ms worst over 6-11 h = linear.
