@@ -45,6 +45,7 @@ import argparse
 import csv
 import os
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -63,8 +64,11 @@ MAD_SCALE = 6.0 * 1.4826
 RESID_FLOOR_MS = 150.0
 CORRUPT_FACTOR = 10.0
 CADENCE_S = 5.0
-MIN_CLUSTER = 3
+MIN_CLUSTER = 3          # start cluster (a 10-s touch is 2 anchors; a real Start touch is >= 3)
+MIN_END_CLUSTER = 2      # a Stop touch is often only 2 anchors (~10 s); two agreeing anchors still fix the end
 MIN_NATIVE_KEPT = 10
+STEP_DEVIATION_PPM = 80.0   # drift deviating this much from the logger's other sessions, with both ends consistent
+                            # with the neighbours, = a field-PC clock step INSIDE the session
 
 
 def decode_anchors(session_dir: Path, fs: float, add_delay: bool) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -91,13 +95,15 @@ def unwrap_to_continuous(t: np.ndarray, pc: np.ndarray, base_ms: float) -> np.nd
     return nominal + resid
 
 
-def robust_line(t: np.ndarray, y_ms: np.ndarray) -> dict | None:
-    """Robust least squares y = a + b*t*1000 with MAD gating (150-ms floor). y is continuous PC ms minus base."""
+def robust_line(t: np.ndarray, y_ms: np.ndarray, a0: float | None = None, b0: float | None = None) -> dict | None:
+    """Robust least squares y = a + b*t*1000 with MAD gating (150-ms floor). y is continuous PC ms minus base.
+    a0/b0 seed the line (default: slope 1 through the median offset); pass the two-cluster estimate for long sessions."""
     n = t.size
     if n < 2:
         return None
     keep = np.ones(n, dtype=bool)
-    a = float(np.median(y_ms - t * 1000.0)); b = 1.0
+    a = float(np.median(y_ms - t * 1000.0)) if a0 is None else float(a0)
+    b = 1.0 if b0 is None else float(b0)
     for _ in range(8):
         resid = y_ms - (a + b * t * 1000.0)
         mad = float(np.median(np.abs(resid[keep] - np.median(resid[keep])))) if keep.sum() > 2 else 0.0
@@ -125,7 +131,23 @@ def folder_ms_of_day(name: str) -> float:
     return ((s.hour * 60 + s.minute) * 60 + s.second) * 1000.0 + s.microsecond / 1000.0
 
 
-def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, add_delay: bool, verbose: bool = True) -> list[dict]:
+def step_correction_ms(start, t: np.ndarray, steps: list[dict]) -> tuple[np.ndarray, list[dict]]:
+    """Known field-PC clock steps inside a session: returns (ms to SUBTRACT from anchors after each step so the fit is
+    continuous, steps that fall inside the session with their device time). Session wallclock = RTC start + t (the
+    PC-vs-RTC offset is a few s, far below the spacing of steps)."""
+    corr = np.zeros(t.size)
+    inside = []
+    for s in steps or []:
+        ts = datetime.strptime(str(s["time"]), "%Y-%m-%d %H:%M:%S")
+        t_step = (ts - start).total_seconds()
+        if 0 < t_step < (t.max() if t.size else 0):
+            corr[t >= t_step] += float(s["jump_s"]) * 1000.0
+            inside.append({"time": str(s["time"]), "t_s": t_step, "jump_s": float(s["jump_s"])})
+    return corr, inside
+
+
+def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, add_delay: bool, verbose: bool = True,
+                   pc_steps: list[dict] | None = None) -> list[dict]:
     sessions = sorted(sessions, key=lambda s: s[1]["start"])
     dec = []
     for sdir, meta in sessions:
@@ -135,7 +157,13 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
         corrupt = t.size > CORRUPT_FACTOR * max(1.0, dur / CADENCE_S)
         base = folder_ms_of_day(sdir.name)
         y = unwrap_to_continuous(t, pc, base) - base if (t.size and not corrupt) else np.zeros(0)   # continuous PC ms minus RTC start
-        dec.append({"name": sdir.name, "start": meta["start"], "dur": dur, "t": t, "y": y, "delay": delay, "corrupt": corrupt})
+        steps_inside: list[dict] = []
+        if y.size:
+            dur_steps = [dict(s) for s in (pc_steps or [])]
+            corr, steps_inside = step_correction_ms(meta["start"], np.append(t, dur), dur_steps)
+            y = y - corr[:-1]
+        dec.append({"name": sdir.name, "start": meta["start"], "dur": dur, "t": t, "y": y, "delay": delay, "corrupt": corrupt,
+                    "pc_steps_inside": steps_inside})
         if verbose:
             print(f"  {animal} {sdir.name}: {t.size} anchors, {dur / 3600:.2f} h{'  CORRUPT' if corrupt else ''}", flush=True)
 
@@ -147,6 +175,8 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
         n_start, n_end = int(sel_s.sum()), int(sel_e.sum())
         off_start = float(np.median(y[sel_s] - t[sel_s] * 1000.0)) if (n_start and not s["corrupt"]) else float("nan")
         off_end = float(np.median(y[sel_e] - t[sel_e] * 1000.0)) if (n_end and not s["corrupt"]) else float("nan")
+        scat_s = float(1.4826 * np.median(np.abs((y[sel_s] - t[sel_s] * 1000.0) - off_start))) if n_start and not s["corrupt"] else float("nan")
+        scat_e = float(1.4826 * np.median(np.abs((y[sel_e] - t[sel_e] * 1000.0) - off_end))) if n_end and not s["corrupt"] else float("nan")
         delay_start = float(np.median(delay[sel_s])) if n_start else float("nan")
         nxt = dec[i + 1] if i + 1 < len(dec) else None
         prv = dec[i - 1] if i > 0 else None
@@ -174,27 +204,36 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
 
         end_vs_next = start_vs_prev = ""
         mn, mp = mapped_next(), mapped_prev()
-        if mn is not None and n_end >= MIN_CLUSTER and not s["corrupt"]:
+        if mn is not None and n_end >= MIN_END_CLUSTER and not s["corrupt"]:
             end_vs_next = f"{float(np.median(mn[1] - mn[0] * 1000.0)) - off_end:+.0f}"
         if mp is not None and n_start >= MIN_CLUSTER and not s["corrupt"]:
             start_vs_prev = f"{off_start - float(np.median(mp[1] - mp[0] * 1000.0)):+.0f}"
 
-        # native fit
+        # native fit: two-cluster estimate (offset from the start cluster, slope from the end cluster), then a robust
+        # line seeded on it so mid-session anchors refine the slope without a slope-1 gate rejecting a drifted end cluster
         fit_native = None
-        if not s["corrupt"] and n_start >= MIN_CLUSTER and n_end >= MIN_CLUSTER:
-            f = robust_line(t, y)
-            if f is not None and f["n_kept"] >= MIN_NATIVE_KEPT and (t[f["keep"]].max() - t[f["keep"]].min()) >= 0.8 * dur:
-                fit_native = f
+        if not s["corrupt"] and n_start >= MIN_CLUSTER and n_end >= MIN_END_CLUSTER and np.isfinite(off_start) and np.isfinite(off_end):
+            t_s, t_e = float(np.median(t[sel_s])), float(np.median(t[sel_e]))
+            if t_e - t_s > 60.0:
+                b0 = 1.0 + (off_end - off_start) / ((t_e - t_s) * 1000.0)
+                a0 = off_start + (1.0 - b0) * t_s * 1000.0 + 0.0
+                f = robust_line(t, y, a0=off_start - (b0 - 1.0) * t_s * 1000.0, b0=b0)
+                if f is not None and f["n_kept"] >= min(MIN_NATIVE_KEPT, n_start + n_end) and (t[f["keep"]].max() - t[f["keep"]].min()) >= 0.8 * dur:
+                    fit_native = f
+                    fit_native["cluster_scatter_ms"] = max(scat_s, scat_e) if np.isfinite(scat_s) and np.isfinite(scat_e) else float("nan")
 
-        # chained fit
+        # chained fit (also used when both clusters exist but the native fit could not be established)
         borrowed_from, drift_chain, chain_unc, span = "", "", "", 0.0
         if not s["corrupt"] and fit_native is None:
-            if n_end < MIN_CLUSTER and n_start >= MIN_CLUSTER and mn is not None and gap_next is not None and 0 <= gap_next <= BORROW_MAX_GAP_S:
+            if n_start >= MIN_CLUSTER and mn is not None and gap_next is not None and 0 <= gap_next <= BORROW_MAX_GAP_S:
                 tb, yb = mn
+                # a field-PC step inside THIS session also separates its start cluster from the borrowed (later) cluster
+                for st_ in s["pc_steps_inside"]:
+                    yb = yb - np.where(tb >= st_["t_s"], st_["jump_s"] * 1000.0, 0.0)
                 span = float(np.median(tb))
                 b = float(np.median((yb - off_start) / (tb * 1000.0)))
                 borrowed_from = f"next:{tb.size}"
-            elif n_start < MIN_CLUSTER and n_end >= MIN_CLUSTER and mp is not None and gap_prev is not None and 0 <= gap_prev <= BORROW_MAX_GAP_S:
+            elif n_start < MIN_CLUSTER and n_end >= MIN_END_CLUSTER and mp is not None and gap_prev is not None and 0 <= gap_prev <= BORROW_MAX_GAP_S:
                 tb, yb = mp
                 a_b = float(np.median(yb - tb * 1000.0))
                 span = float(np.median(t[sel_e]) - np.median(tb))
@@ -211,15 +250,31 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
         elif t.size < 2:
             verdict = "no-anchors"
         elif fit_native is not None:
-            verdict = "OK-native" if (abs(fit_native["drift_ppm"]) <= 200 and fit_native["rms_ms"] <= 150) else "inconsistent"
+            # the two end clusters decide; mid-session anchors with larger residuals (a different BLE link / host at a
+            # spot check) are reported through native_residual_ms but do not fail a session whose ends are tight
+            ends_ok = fit_native.get("cluster_scatter_ms", 0.0) <= 150 or not np.isfinite(fit_native.get("cluster_scatter_ms", float("nan")))
+            verdict = "OK-native" if (abs(fit_native["drift_ppm"]) <= 200 and ends_ok) else "inconsistent"
+            if verdict == "OK-native" and fit_native["rms_ms"] > 150:
+                verdict = "OK-native (mid outliers)"
         elif drift_chain != "":
             verdict = "OK-chained" if abs(float(drift_chain)) <= 200 + float(chain_unc) else "inconsistent"
         else:
             verdict = "one-end-only"
 
+        # mid-session anchors (outside both end windows) vs the fitted line: brackets a field-PC clock step inside the session
+        mid_resid = ""
+        if fit_native is not None:
+            sel_m = ~sel_s & ~sel_e
+            if sel_m.any():
+                res = y[sel_m] - (fit_native["a"] + fit_native["b"] * t[sel_m] * 1000.0)
+                mid_resid = " ".join(f"{tt / 3600:.2f}h:{rr:+.0f}" for tt, rr in zip(t[sel_m], res))
+        if s["pc_steps_inside"] and verdict.startswith("OK-native"):
+            verdict = "OK-native (PC step modelled)"
         rows.append({
             "animal": animal, "session": s["name"], "start": s["start"].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], "duration_s": round(dur, 3),
             "crosses_midnight": bool(folder_ms_of_day(s["name"]) + dur * 1000.0 >= DAY_MS),
+            "pc_steps_inside": ";".join(f"{x['time']}:{x['jump_s']:+.3f}s@{x['t_s']:.0f}s" for x in s["pc_steps_inside"]),
+            "mid_anchor_resid_ms": mid_resid,
             "n_anchors": int(t.size), "n_native_start": n_start, "n_native_end": n_end,
             "start_delay_ms": round(delay_start) if np.isfinite(delay_start) else "",
             "off_start_ms": round(off_start) if np.isfinite(off_start) else "",
@@ -232,6 +287,27 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
             "drift_chained_ppm": drift_chain, "chain_unc_ppm": chain_unc, "chain_span_s": round(span, 1),
             "start_vs_prev_ms": start_vs_prev, "end_vs_next_ms": end_vs_next, "verdict": verdict,
         })
+    # second pass: a session whose drift deviates from this logger's other OK sessions by > STEP_DEVIATION_PPM while its
+    # two ends agree with the neighbours (|start_vs_prev|, |end_vs_next| <= NEIGHBOUR_AGREE_MS) carries a field-PC clock
+    # step INSIDE the session (seen on several loggers at once); its line is right at the ends but off by the step in between
+    ok = [float(r["drift_native_ppm"]) for r in rows if r["verdict"].startswith("OK-native") and r["duration_s"] >= 3600]
+    ok += [float(r["drift_chained_ppm"]) for r in rows if r["verdict"] == "OK-chained" and r["duration_s"] >= 3600]
+    if len(ok) >= 3:
+        med = float(np.median(ok))
+        for r in rows:
+            d = r["drift_native_ppm"] if r["verdict"].startswith("OK-native") else (r["drift_chained_ppm"] if r["verdict"] == "OK-chained" else "")
+            if d == "" or r["duration_s"] < 3600:
+                continue
+            if abs(float(d) - med) > STEP_DEVIATION_PPM:
+                ends = [abs(float(v)) for v in (r["start_vs_prev_ms"], r["end_vs_next_ms"]) if v != ""]
+                jump_s = (float(d) - med) * r["duration_s"] / 1e6
+                r["verdict"] = ("DISCONTINUITY-inside (ends OK)" if ends and max(ends) <= NEIGHBOUR_AGREE_MS else "inconsistent")
+                r["step_note"] = (f"drift {float(d):+.0f} ppm vs logger median {med:+.0f} ppm = device time "
+                                  f"{'lags' if jump_s > 0 else 'leads'} field-PC time by {abs(jump_s):.1f} s after an event inside the session "
+                                  f"({'samples lost on the card' if jump_s > 0 else 'field-PC clock set forward'} OR "
+                                  f"{'field-PC clock set forward' if jump_s > 0 else 'samples duplicated'}; the card-duration-vs-PC-span check in the QC report decides)")
+    for r in rows:
+        r.setdefault("step_note", "")
     return rows
 
 
@@ -243,14 +319,17 @@ def render_md(rows: list[dict], cohort: str, add_delay: bool) -> str:
          "(round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). "
          "`start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; "
          "larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.\n",
-         "| animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict |",
-         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+         "| animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |",
+         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         nat = f"{r['drift_native_ppm']} ± {r['drift_native_sem_ppm']}" if r["drift_native_ppm"] != "" else ""
         ch = f"{r['drift_chained_ppm']} ± {r['chain_unc_ppm']}" if r["drift_chained_ppm"] != "" else ""
+        note = r.get("step_note", "")
+        if r["verdict"].startswith("DISCONTINUITY") and r.get("mid_anchor_resid_ms"):
+            note += f"; mid anchors (h:ms) {r['mid_anchor_resid_ms']}"
         L.append(f"| {r['animal']} | `{r['session']}` | {r['duration_s'] / 3600:.2f} | {'yes' if r['crosses_midnight'] else ''} | {r['n_anchors']} | {r['n_native_start']}/{r['n_native_end']} | "
                  f"{r['start_delay_ms']} | {r['off_start_ms']} | {r['n_kept']} | {nat} | {r['native_residual_ms']} | {r['n_borrowed']} {r['borrowed_from']} | {r['gap_to_next_s']} | {ch} | "
-                 f"{r['start_vs_prev_ms']} | {r['end_vs_next_ms']} | {r['verdict']} |")
+                 f"{r['start_vs_prev_ms']} | {r['end_vs_next_ms']} | {r['verdict']} | {note} |")
     long = [r for r in rows if r["duration_s"] >= 3600]
     cnt = defaultdict(lambda: [0, 0.0])
     for r in long:
@@ -279,15 +358,16 @@ def main() -> None:
     raw = raw_ephys_root(a.cohort, a.raw_root)
     fs = float(cfg.get("sampling_rate_hz", 20000))
     per_animal: dict[str, list[tuple[Path, dict]]] = defaultdict(list)
-    for animal, mac, sdir in iter_raw_sessions(raw, cfg.get("session_glob", "*")):
+    for animal, mac, sdir in iter_raw_sessions(raw, cfg.get("session_glob", "*"), cohort=a.cohort):
         key = f"SF{int(animal[2:]):02d}" if animal.upper().startswith("SF") and animal[2:].isdigit() else animal
         if a.animals and key not in {x.upper() for x in a.animals}:
             continue
         per_animal[key].append((sdir, parse_session_name(sdir.name)))
     rows: list[dict] = []
+    pc_steps = cfg.get("field_pc_clock_steps") or []
     for animal in sorted(per_animal):
         cp = parse_ce_params(per_animal[animal][0][0])
-        rows.extend(analyse_animal(animal, per_animal[animal], float(cp.fs or fs), a.add_delay))
+        rows.extend(analyse_animal(animal, per_animal[animal], float(cp.fs or fs), a.add_delay, pc_steps=pc_steps))
     rd = report_dir(a.cohort)
     csv_path = rd / f"ephys_spikes_pc_time_chain_{a.cohort}{a.suffix}.csv"
     md_path = rd / f"ephys_spikes_pc_time_chain_{a.cohort}{a.suffix}.md"
@@ -298,11 +378,12 @@ def main() -> None:
     md_path.write_text(render_md(rows, a.cohort, a.add_delay), encoding="utf-8")
     print(f"csv -> {csv_path}\nmd  -> {md_path}")
     if a.write_pc_time:
-        n = write_pc_time_files(rows, per_animal, Path(a.write_pc_time), fs, a.default_drift_ppm)
+        n = write_pc_time_files(rows, per_animal, Path(a.write_pc_time), fs, a.default_drift_ppm, pc_steps)
         print(f"pc_time.dat written for {n} sessions under {a.write_pc_time}")
 
 
-def write_pc_time_files(rows: list[dict], per_animal: dict, out_root: Path, fs_default: float, default_drift_ppm: float | None) -> int:
+def write_pc_time_files(rows: list[dict], per_animal: dict, out_root: Path, fs_default: float, default_drift_ppm: float | None,
+                        pc_steps: list[dict] | None = None) -> int:
     """Write pc_time.dat (uint32 ms-of-day per amplifier sample) + pc_time_fit.json per usable session.
 
     Model: pc_ms(sample i) = (base_ms + off_ms + (1 + drift) * i / fs * 1000) mod 86,400,000, where base_ms is the RTC
@@ -312,7 +393,7 @@ def write_pc_time_files(rows: list[dict], per_animal: dict, out_root: Path, fs_d
     by = {(r["animal"], r["session"]): r for r in rows}
     ok_drift = defaultdict(list)
     for r in rows:
-        if r["verdict"] == "OK-native":
+        if r["verdict"].startswith("OK-native"):
             ok_drift[r["animal"]].append(float(r["drift_native_ppm"]))
         elif r["verdict"] == "OK-chained":
             ok_drift[r["animal"]].append(float(r["drift_chained_ppm"]))
@@ -320,9 +401,9 @@ def write_pc_time_files(rows: list[dict], per_animal: dict, out_root: Path, fs_d
     for animal, sess in per_animal.items():
         for sdir, meta in sess:
             r = by.get((animal, sdir.name))
-            if r is None or r["verdict"] not in ("OK-native", "OK-chained", "one-end-only") or r["off_start_ms"] == "":
+            if r is None or not (r["verdict"].startswith(("OK-native", "DISCONTINUITY")) or r["verdict"] in ("OK-chained", "one-end-only")) or r["off_start_ms"] == "":
                 continue
-            if r["verdict"] == "OK-native":
+            if r["verdict"].startswith("OK-native") or (r["verdict"].startswith("DISCONTINUITY") and r["drift_native_ppm"] != ""):
                 drift, src = float(r["drift_native_ppm"]), "native fit"
             elif r["verdict"] == "OK-chained":
                 drift, src = float(r["drift_chained_ppm"]), f"chained fit ({r['borrowed_from']})"
@@ -339,18 +420,29 @@ def write_pc_time_files(rows: list[dict], per_animal: dict, out_root: Path, fs_d
             ns = os.path.getsize(sdir / "amplifier.dat") // (2 * (cp.n_channels or 64))
             base = folder_ms_of_day(sdir.name)
             off = float(r["off_start_ms"])
+            # known field-PC clock steps inside this session are ADDED back (the PC clock really jumped; video/WISER/LED share it)
+            meta = parse_session_name(sdir.name)
+            _, inside = step_correction_ms(meta["start"], np.asarray([0.0, ns / fs]), [dict(s) for s in (pc_steps or [])])
             out = out_root / animal / sdir.name
             out.mkdir(parents=True, exist_ok=True)
             with open(out / "pc_time.dat", "wb") as f:
                 step = 5_000_000
                 for a0 in range(0, ns, step):
                     i = np.arange(a0, min(ns, a0 + step), dtype=np.float64)
-                    ms = np.mod(base + off + (1.0 + drift * 1e-6) * i / fs * 1000.0, DAY_MS)
-                    np.floor(ms).astype(np.uint32).tofile(f)
+                    ms = base + off + (1.0 + drift * 1e-6) * i / fs * 1000.0
+                    for st in inside:
+                        ms = ms + np.where(i / fs >= st["t_s"], st["jump_s"] * 1000.0, 0.0)
+                    np.floor(np.mod(ms, DAY_MS)).astype(np.uint32).tofile(f)
             (out / "pc_time_fit.json").write_text(json.dumps({
                 "animal": animal, "session": sdir.name, "n_samples": int(ns), "fs": fs, "rtc_start_ms_of_day": base, "offset_ms": off,
                 "drift_ppm": drift, "drift_source": src, "verdict": r["verdict"], "n_anchors": r["n_anchors"], "native_residual_ms": r["native_residual_ms"],
-                "formula": "pc_ms(i) = (rtc_start_ms_of_day + offset_ms + (1 + drift_ppm*1e-6) * i / fs * 1000) mod 86400000",
+                "warning": (r.get("step_note", "") + "; the line is exact at both ends but off by up to the jump size in between; split at the event once located")
+                if r["verdict"].startswith("DISCONTINUITY") else "",
+                "mid_anchor_resid_ms": r.get("mid_anchor_resid_ms", ""),
+                "formula": "pc_ms(i) = (rtc_start_ms_of_day + offset_ms + (1 + drift_ppm*1e-6) * i / fs * 1000 + sum(jump_s*1000 for steps with i/fs >= t_s)) mod 86400000",
+                # field-PC clock steps inside this session (w32time set the PC forward; video/WISER/LED share that clock).
+                # A consumer using only model.slope/intercept_ms must add jump_s*1000 to pc_unwrapped_ms for device_ms >= t_s*1000.
+                "field_pc_clock_steps_inside": inside,
                 # schema consumed by field2026-sync from-field/2026-09-03_led_sync_pipeline.py (stage join):
                 #   pc_unwrapped_ms = model.slope * device_ms + model.intercept_ms, device_ms = sample * 1000 / sample_rate_hz
                 "model": {"slope": 1.0 + drift * 1e-6, "intercept_ms": base + off, "recording_start_ms": int(round(base))},

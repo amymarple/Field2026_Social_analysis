@@ -7,16 +7,22 @@ or $PREPROCESS_PIPELINE_ROOT; run inside its ``preprocess`` conda env). Mirrors 
                     ->  bandpass 500-8000 Hz + local CMR + per-shank high-amplitude artifact removal
                     ->  <basename>.dat / .lfp (1250 Hz) / .session.mat / MergePoints
                     ->  Kilosort4 (per shank by default; vendored sorter/Kilosort4, GPU)
-                    ->  postprocess (duplicates, merge, autosplit, quality metrics, noise labels) -> Phy folder
+                    ->  postprocess (duplicates, merge, [autosplit], quality metrics, noise labels) -> Phy folder
 
 Everything is written under <OUT_ROOT>/<cohort>/ephys_sort/<animal>/<session>/ (PreprocessPipeline's local
 working dir); a ``sort_manifest.json`` records provenance, and one summary row is appended to
 results/<cohort>/ephys_spikes/reports/ephys_spikes_sort_runs_<cohort>.csv.
 
+Postprocess modes (``post_mode`` in the manifest):
+  fast (default since 2026-09-04) — waveform/template/PC features on <= --post-max-spikes spikes per unit, PCA
+       autosplit skipped, no per-spike locations, Phy export without pc_features. Multi-hour sessions: ~minutes per
+       shank instead of ~2.7 h (see _install_fast_postprocess_shim).
+  full (--post-full) — the pipeline's own behaviour: every spike in every feature pass + Phy pc_features.
+
 Usage (from the `preprocess` env):
   python ephys/run_sort_session.py --cohort 2026c --animal SF8 --session 0_20260831_070148.859
-        [--partition shank|all] [--no-sort] [--no-post] [--reference local|global|none] [--highamp shank|none]
-        [--state-score] [--overwrite] [--n-jobs N]
+        [--partition shank|all] [--no-sort] [--no-post] [--post-full] [--post-max-spikes N]
+        [--reference local|global|none] [--highamp shank|none] [--state-score] [--overwrite] [--n-jobs N]
 """
 from __future__ import annotations
 
@@ -101,6 +107,49 @@ def _install_ks4_partition_shim() -> None:
     ss.run_sorter = run_sorter_shim
 
 
+def _install_fast_postprocess_shim(max_spikes_per_unit: int) -> None:
+    """Fast postprocess for multi-hour sessions (2026-09-04; the pipeline checkout is left untouched).
+
+    PreprocessPipeline's postprocess hardcodes ``random_spikes method="all"`` in BOTH feature passes and exports Phy
+    ``pc_features`` for every spike, so on an 8.5-h session (~1.5 M spikes per shank; SF07 15_20260902_082418.755) one
+    shank took ~2.7 h: waveforms + PCs for all spikes twice, then ``run_for_all_spikes`` at export, each a full pass
+    over the 78 GB .dat. This shim monkeypatches the module-level names the pipeline calls:
+      (a) ``random_spikes`` -> uniform, ``max_spikes_per_unit`` spikes per unit for waveforms/templates (templates,
+          similarity, correlograms, template metrics, SNR keep their meaning);
+      (b) ``autosplit_outliers_pca`` -> passthrough (its per-spike PCA projections need all spikes; contamination is
+          left to manual curation in Phy);
+      (c) final features without ``spike_locations``/``principal_components`` (another all-spike pass each);
+      (d) ``export_to_phy(compute_pc_features=False)`` -> Phy's FeatureView is empty for these folders (use
+          --post-full, or ``open_phy.py --raw`` on the Kilosort4 folder, which has Kilosort's own pc_features).
+    Unchanged: duplicate removal, redundant-unit removal, automerge, spike amplitudes (all spikes), quality
+    metrics (skip_pc_metrics=True already), noise labels, cluster_info/metrics CSV."""
+    import src.postprocess.pipeline as pp
+    rs = {"method": "uniform", "max_spikes_per_unit": int(max_spikes_per_unit), "seed": 0}
+
+    def merge_split_features(analyzer, *, n_components, pc_mode, job_kwargs):
+        analyzer.compute({"random_spikes": rs, "waveforms": {}, "templates": {}, "template_similarity": {}, "correlograms": {}}, **job_kwargs)
+
+    def final_features(analyzer, *, n_components, pc_mode, job_kwargs):
+        analyzer.compute({"random_spikes": rs, "waveforms": {}, "templates": {}, "noise_levels": {}, "spike_amplitudes": {},
+                          "template_metrics": {}, "template_similarity": {}, "correlograms": {}, "unit_locations": {}}, **job_kwargs)
+
+    def autosplit_passthrough(analyzer, **kwargs):
+        print("[shim] fast postprocess: PCA autosplit skipped (passthrough)")
+        return analyzer.sorting
+
+    _orig_export = pp.export_to_phy
+
+    def export_no_pc(*args, **kwargs):
+        kwargs["compute_pc_features"] = False
+        return _orig_export(*args, **kwargs)
+
+    pp._compute_merge_split_features = merge_split_features
+    pp._compute_final_features = final_features
+    pp.autosplit_outliers_pca = autosplit_passthrough
+    pp.export_to_phy = export_no_pc
+    print(f"[shim] fast postprocess: {max_spikes_per_unit} spikes/unit for features, autosplit off, no spike_locations, no Phy pc_features")
+
+
 # Text patches applied to an OFF-REPO copy of the vendored Kilosort4 (the lab checkout is never modified).
 # Each entry: (relative file, exact old text, new text, why). Proposed upstream diffs live in ephys/patches/.
 KS4_TEXT_PATCHES = [
@@ -168,6 +217,9 @@ def main() -> None:
     ap.add_argument("--state-score", action="store_true")
     ap.add_argument("--no-sort", action="store_true", help="preprocess only")
     ap.add_argument("--no-post", action="store_true", help="skip postprocess")
+    ap.add_argument("--post-full", action="store_true",
+                    help="full postprocess (all spikes in every feature pass, PCA autosplit, Phy pc_features); default is the fast mode")
+    ap.add_argument("--post-max-spikes", type=int, default=500, help="fast mode: spikes per unit for waveform/template/PC features")
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--n-jobs", type=int, default=None, help="default min(cpu-2, 16)")
     a = ap.parse_args()
@@ -191,7 +243,12 @@ def main() -> None:
     probe_cfg_path = PROJECT_ROOT / cfg.get("probe_config", f"ephys/configs/probes_{a.cohort}.yaml")
     probe_cfg = yaml.safe_load(probe_cfg_path.read_text(encoding="utf-8"))
     probe = probe_cfg["animals"][animal]
-    n_groups_xml = len(probe["groups"]) + (1 if len({c for g in probe["groups"] for c in g}) < int(probe_cfg.get("n_channels", 64)) else 0)
+    # shank count from the STAGED XML (the probe config may define the map via an `xml:` file instead of `groups`)
+    import xml.etree.ElementTree as ET
+    xml_root = ET.parse(staged / f"{basename}.xml").getroot()
+    n_groups_xml = len(xml_root.findall("anatomicalDescription/channelGroups/group"))
+    if n_groups_xml == 0:
+        raise SystemExit(f"no anatomical channel groups in {staged / (basename + '.xml')}")
     probe_assignments = [{"type": str(probe["layout"]), "groups": list(range(n_groups_xml)), "x_offset": 0}]
 
     local_parent = sort_root(a.cohort, a.sort_root) / animal
@@ -234,7 +291,10 @@ def main() -> None:
     print(f"[run] preprocess done: dat={result.dat_path} lfp={result.lfp_path} bad={result.bad_channels_0based} sorter_dirs={result.sorter_output_dirs}")
 
     post_dirs: list[str] = []
+    post_mode = "skipped" if (a.no_post or not pre.sorter) else ("full" if a.post_full else "fast")
     if pre.sorter and not a.no_post:
+        if post_mode == "fast":
+            _install_fast_postprocess_shim(a.post_max_spikes)
         post = PostprocessConfig(
             sorting_phy_folder=None, sorting_search_root=result.local_output_dir, recording=None,
             dat_path=result.dat_path, sampling_frequency=result.sr, num_channels=result.n_channels,
@@ -266,6 +326,7 @@ def main() -> None:
         "preprocess_config": {k: (str(v) if isinstance(v, Path) else v) for k, v in asdict(pre).items()},
         "sorter_config_path": str(sorter_config), "kilosort4_path": str(ks4_path), "kilosort4_patches_applied": ks4_patches,
         "probe_assignments": probe_assignments, "probe_verified": bool(probe_cfg.get("verified", False)),
+        "post_mode": post_mode, "post_max_spikes_per_unit": (a.post_max_spikes if post_mode == "fast" else None),
         "result": {"dat_path": str(result.dat_path), "lfp_path": str(result.lfp_path), "n_channels": result.n_channels, "sr": result.sr,
                    "bad_channels_0based": result.bad_channels_0based, "sorter": result.sorter,
                    "sorter_output_dirs": [str(p) for p in result.sorter_output_dirs], "postprocess_dirs": post_dirs,

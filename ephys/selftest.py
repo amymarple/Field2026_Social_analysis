@@ -105,8 +105,14 @@ def test_deglitch(tmp: Path) -> tuple[Path, np.ndarray]:
 def test_xml(tmp: Path) -> Path:
     import xml.etree.ElementTree as ET
     probe_cfg = PROJECT_ROOT / "ephys" / "configs" / "probes_2026c.yaml"
-    p = load_probe(probe_cfg, "SF09")
-    rec("probe config SF09 = Buzsaki 5x12 sizes", [len(g) for g in p["groups"]] == [12, 12, 16, 12, 12] and p["layout"] == "Buzsaki 5x12")
+    p7 = load_probe(probe_cfg, "SF07")
+    flat7 = sorted(c for g in p7["groups"] for c in g)
+    rec("probe config SF07 = 4 x 16 exported columns from its verified XML", [len(g) for g in p7["groups"]] == [16, 16, 16, 16] and flat7 == list(range(64)) and p7["verified"] is True,
+        f"groups {[len(g) for g in p7['groups']]}")
+    p9 = load_probe(probe_cfg, "SF09")
+    flat9 = sorted(c for g in p9["groups"] for c in g)
+    rec("probe config SF09 = data-derived XML covering all 64 columns with skips", flat9 == list(range(64)) and len(p9["reject_channels"]) >= 20 and p9["verified"] is False,
+        f"groups {[len(g) for g in p9['groups']]} reject {len(p9['reject_channels'])}")
     root = build_session_xml(n_channels=64, fs=20000, groups=[list(range(16 * i, 16 * (i + 1))) for i in range(4)], reject=[32], layout="staggered")
     out = write_xml(root, tmp / "t.xml")
     r = ET.parse(out).getroot()
@@ -137,6 +143,17 @@ def test_index_and_stage(raw: Path, tmp: Path) -> None:
         f"ticks/s={r8['ticks_per_s']}")
     rec("index: FM65 flagged clean + measured clean", r9["deglitch_required"] is False and r9["measured_verdict"] == "clean", f"ticks/s={r9['ticks_per_s']}")
     rec("index: durations + recovery.bin + MAC", r8["duration_s"] == 20.0 and animals["SF8"]["recovery_bin_gb"] != "" and r8["logger_mac"] == "128C2F27E131" and r8["time_dat_ok"] is True)
+    from _common import iter_raw_sessions, FOREIGN
+    foreign = raw / "SF8" / "AAAAAAAAAAAA" / "9_20260902_120000.000"; foreign.mkdir(parents=True, exist_ok=True)
+    seen_all = {(a, s.name) for a, _, s in iter_raw_sessions(raw)}
+    seen_2026c = {(a, s.name) for a, _, s in iter_raw_sessions(raw, cohort="2026c")}
+    skipped = [(a, m, s.name) for a, m, s in FOREIGN]
+    rec("index: foreign logger MAC skipped when the cohort registers one",
+        ("SF8", foreign.name) in seen_all and ("SF8", foreign.name) not in seen_2026c
+        and skipped == [("SF8", "AAAAAAAAAAAA", foreign.name)] and len(seen_all) - len(seen_2026c) == 1, f"skipped={skipped}")
+    rec("index: unknown cohort key filters nothing (no crash)",
+        {(a, s.name) for a, _, s in iter_raw_sessions(raw, cohort="selftest")} == seen_all)
+    import shutil; shutil.rmtree(foreign.parent)
     out = write_outputs(rows, details, animals, cohort="selftest", cfg=cfg, raw_root=raw, out_dir=tmp / "reports", mirror_dir=tmp / "mirror", probe_seconds=5.0)
     rec("index: csv/md/json + mirror written", all(Path(v).exists() for v in out.values()) and (tmp / "mirror" / "SESSION_INDEX.md").exists())
     probe_cfg = PROJECT_ROOT / "ephys" / "configs" / "probes_2026c.yaml"

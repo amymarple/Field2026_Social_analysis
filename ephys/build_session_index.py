@@ -130,13 +130,28 @@ def index_session(animal: str, mac: str | None, sdir: Path, cfg: dict, *, probe_
     return row, detail
 
 
-def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe_windows: int = 5, verbose: bool = True) -> tuple[list[dict], list[dict], dict]:
+def _index_one(args):
+    animal, mac, sdir, cfg, probe_seconds, probe_windows = args
+    return index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows)
+
+
+def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe_windows: int = 5, verbose: bool = True,
+                workers: int = 1) -> tuple[list[dict], list[dict], dict]:
     rows, details = [], []
     animals: dict[str, dict] = {}
-    for animal, mac, sdir in iter_raw_sessions(raw_root, cfg.get("session_glob", "*")):
-        if verbose:
-            print(f"  {animal} {mac or '-'} {sdir.name} ...", flush=True)
-        row, det = index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows)
+    sessions = list(iter_raw_sessions(raw_root, cfg.get("session_glob", "*"), cohort=(cfg.get("_cohort_yaml") or {}).get("cohort")))
+    cfg_plain = {k: v for k, v in cfg.items() if k != "_cohort_yaml"}   # picklable subset for worker processes
+    if workers > 1 and len(sessions) > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            results = list(ex.map(_index_one, [(a, m, s, cfg_plain, probe_seconds, probe_windows) for a, m, s in sessions]))
+    else:
+        results = []
+        for animal, mac, sdir in sessions:
+            if verbose:
+                print(f"  {animal} {mac or '-'} {sdir.name} ...", flush=True)
+            results.append(index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows))
+    for (animal, mac, sdir), (row, det) in zip(sessions, results):
         rows.append(row)
         details.append(det)
         a = animals.setdefault(animal, {"animal": animal, "logger_mac": mac or "", "n_sessions": 0, "hours": 0.0, "firmware": set(), "recovery_bin_gb": ""})
@@ -204,6 +219,14 @@ def render_markdown(rows: list[dict], animals: dict, *, cohort: str, cfg: dict, 
     L.append("| `noise_uV_median` | median over channels of `1.4826·median\\|hp\\|·0.195 µV/ADC`, hp = 500–5000 Hz of the de-glitched window | robust spike-band noise floor (µV, RELATIVE: the 0.195 µV/ADC Intan default is unverified for WILD) |")
     L.append("| `bad_channel_candidates` | `noise_uV < 3` or `noise_uV > 4·median` or `raw_std < 0.25·median` | advisory dead/broken channels for `probes_<cohort>.yaml` `reject_channels` |")
     L.append("| `time_dat_ok` / `analogin_ok` | `bytes(time.dat) = 4·n_samples`; `bytes(analogin.dat) = 2·n_samples` (16 lanes @ fs/16) | sidecar sizes consistent with the amplifier stream |\n")
+    from _common import FOREIGN
+    if FOREIGN:
+        L.append("## Foreign logger folders (ignored)\n")
+        L.append("Session folders under a MAC folder that is NOT the animal's registered logger (a spare logger's card downloaded into the wrong animal folder). "
+                 "They are excluded from every table until moved out of the raw tree (e.g. to `<root>/_other_loggers/<MAC>/`).\n")
+        for a, mac, s in FOREIGN:
+            L.append(f"- `{a}/{mac}/{s.name}`")
+        L.append("")
     L.append("## Per-animal summary\n")
     L.append("| animal | logger MAC | sessions | hours offloaded | firmware seen | recovery.bin (GB) |\n|---|---|---|---|---|---|")
     for a in sorted(animals):
@@ -238,13 +261,14 @@ def main() -> None:
     ap.add_argument("--probe-windows", type=int, default=5, help="number of probe windows spread over each file (worst case is reported)")
     ap.add_argument("--no-mirror", action="store_true", help="do not write SESSION_INDEX.{csv,md} next to the data")
     ap.add_argument("--out-dir", default=None, help="override results/<cohort>/ephys_spikes/reports")
+    ap.add_argument("--workers", type=int, default=1, help="parallel session probes (CPU-bound filtering; 8 is a good value on this PC)")
     a = ap.parse_args()
     cfg = ephys_block(a.cohort)
     raw = raw_ephys_root(a.cohort, a.raw_root)
     if not raw.is_dir():
         raise SystemExit(f"raw root not found: {raw}")
     print(f"indexing {raw} (probe {a.probe_windows} x {a.probe_seconds:g} s per session)")
-    rows, details, animals = build_index(raw, cfg, probe_seconds=a.probe_seconds, probe_windows=a.probe_windows)
+    rows, details, animals = build_index(raw, cfg, probe_seconds=a.probe_seconds, probe_windows=a.probe_windows, workers=a.workers)
     out_dir = Path(a.out_dir) if a.out_dir else report_dir(a.cohort, cfg.get("direction", "ephys_spikes"))
     mirror = None
     if not a.no_mirror:

@@ -8,6 +8,8 @@ on them. Raw data are **never modified**; every derived file carries a manifest.
 
 ```
 raw offload (E:\3rd_rat_spikes\<SFxx>\<MAC>\<slot>_<date>_<time>.<ms>\)          <- read-only
+   (a <MAC> folder that is NOT the animal's registered logger in cohorts/<cohort>.yaml ephys.loggers = a FOREIGN logger's
+    card: skipped by every script, listed in the index MD; move it to <root>\_other_loggers\<MAC>\)
    |  build_session_index.py   firmware + duration + MEASURED glitch probe per session
    v
 results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.{csv,md,json}   (+ SESSION_INDEX.* mirrored at the data root)
@@ -59,6 +61,8 @@ python ephys/stage_session.py --cohort 2026c --animal SF10 --session 5_20260901_
 
 # 3. sort (run inside the PreprocessPipeline `preprocess` conda env: conda activate preprocess)
 python ephys/run_sort_session.py --cohort 2026c --animal SF10 --session 5_20260901_054403.494 --partition shank
+#   postprocess mode (manifest key post_mode): default `fast` since 2026-09-04 = features on <= 500 spikes/unit (--post-max-spikes),
+#   no PCA autosplit, no Phy pc_features -> minutes per shank on an 8-h session; `--post-full` = the pipeline's all-spike passes (~2.7 h per shank)
 
 # QC: does the assumed shank grouping match the data? (LFP correlation blocks, ARI)
 python ephys/probe_group_check.py --cohort 2026c --animal SF8 --session 0_20260831_190133.486
@@ -72,6 +76,19 @@ python C:/Users/Cornell/Documents/GitHub/Neurologger/Code/WILD_generate_pc_time.
 
 # Offload QC report (timeline continuity, RTC/folder agreement, sidecars, FM64-vs-FM65 measured glitch stats, PC-time fits)
 python ephys/offload_qc_report.py --cohort 2026c      # -> results/2026c/ephys_spikes/reports/ephys_spikes_offload_qc_2026c.{md,csv}
+
+# 4. unit yield over every sorted session (< 3 Hz hippocampal count, candidates, well-isolated, per shank; runs still in progress are
+#    included — shanks without a _spi folder are read from the raw Kilosort4 output, stage `ks4-raw`)
+python ephys/unit_yield_report.py --cohort 2026c      # -> results/2026c/ephys_spikes/reports/ephys_spikes_ks4_unit_yield_2026c.{md,csv} + figure
+
+# 5. MANUAL INSPECTION in Phy (conda env phy2, phy 2.0b6): opens the postprocessed _spi folder (or --raw for the KS4 folder)
+python ephys/open_phy.py --cohort 2026c --list
+python ephys/open_phy.py --cohort 2026c --animal SF07 --session 15_20260902_082418.755 --shank 1
+#   Phy needs the filtered 64-ch .dat next to the shank folders (params.py: dat_path = ../<session>.dat) — keep the
+#   session folder under <analysis_root>/sort/ intact. Curation (good/mua/noise, merges) is saved in that folder's
+#   cluster_group.tsv / cluster_info.tsv; re-run unit_yield_report.py afterwards to count curated units.
+#   Sessions postprocessed in `fast` mode have no pc_features.npy (FeatureView empty); use --raw (Kilosort's own features)
+#   or re-run run_sort_session.py --post-full for the sessions you curate in depth.
 ```
 
 Small example sessions (all pre-FM65, so all go through de-glitching; staged 2026-09-02):
@@ -103,7 +120,10 @@ FM64 sessions (raw std ≈ 550–1000 ADC, 340–840 ticks/s, single-sample) are
 | `stage_session.py` | raw → clean staged working copy + `stage_manifest.json` |
 | `run_sort_session.py` | PreprocessPipeline driver (preprocess → Kilosort4 → postprocess) + `sort_manifest.json` |
 | `probe_group_check.py` | data-driven check of the assumed channel→shank grouping |
-| `offload_qc_report.py` | per-offload QC report: per-animal session timeline + gaps/overlaps, RTC-vs-folder, sidecar sizes, measured FM64-vs-FM65 glitch statistics, BLE PC-time fit verdicts (from `pc_time_chain.py` when present) |
+| `footprint_map_check.py` | channel-map test #2: unit-footprint compactness over 1,296 connector matings × bank rotations (needs a sorted session; validated on SF07 — its verified map ranks 1/1296). `--trigger` (raw channel-triggered) failed validation, do not use |
+| `offload_qc_report.py` | per-offload QC report: per-animal session timeline + gaps/overlaps, RTC-vs-folder, sidecar sizes, measured FM64-vs-FM65 glitch statistics (per-logger relative rule), BLE PC-time fit verdicts (from `pc_time_chain.py`), card-duration-vs-field-PC-span check with known clock steps |
+| `coverage_tables.py` | hourly minutes per logger per day, per-second coverage CSV per day (firmware code per logger per local second), raster figure; mirrored to `<analysis_root>/index/` |
+| `integrity_scan.py` | repeated/overlaid-data test (blake2b of every 64 KiB block, within a session and across neighbours) + per-channel corruption tests (rail, flat, stuck, duplicate, identity drift) on sampled windows; `--firmware 65 --full-hash` |
 | `pc_time_chain.py` | **the timestamp fit to use**: decodes the BLE field-PC anchors from `analogin.dat` lanes 14/15, models the 86,400,000-ms day wrap and the 2^20 packing, does NOT add the delay word, chains a session's missing end to the next session's start through the RTC (round protocol), reports per-session drift/offset/verdict, and with `--write-pc-time <root>` regenerates `pc_time.dat` (console format) + `pc_time_fit.json` per session. Supersedes the reference generator's output for this cohort. |
 | `configs/probes_2026c.yaml` | per-animal probe groups / layout / reject channels — **UNVERIFIED placeholder mapping** |
 | `configs/kilosort4_wild.yaml` | Kilosort4 parameters (upstream lab defaults, `n_jobs` sized for this PC) |
@@ -140,12 +160,35 @@ Every `sort_manifest.json` records the Kilosort4 path used and the patches appli
 Sorting-stage definitions (bandpass, local CMR radius, high-amplitude artifact σ, Kilosort4 thresholds) are those
 of PreprocessPipeline and are recorded verbatim in each `sort_manifest.json` (`preprocess_config`, sorter YAML).
 
+## Channel map (which exported column is which probe site)
+
+Established 2026-09-03 with `ephys/probe_map_check.py` (spike-footprint co-activation, map-independent) —
+see the change log for the numbers:
+
+- WILD Console applies its CE64 export map on download (`configs/wild_ce64_channel_map_v57.csv`), so bank 1
+  (exported columns 32–63) is in Intan-headstage order and the ProbeMaps XML applies to it directly.
+- **Bank 0 (columns 0–31) is rotated by one raw slot on FM64 AND FM65** (SF07 sessions 10 and 15 verified:
+  agreement 1.00 on bank 0 with the correction vs 0.29 without). FM65 did not fix the channel order. The
+  correction is the conjugated permutation in `vendor/correct_intan_dat_channel_order.py` (FM57 "+1" fault).
+- Do not repair the data; use an XML in exported-column numbering instead: `ephys/make_probe_xml.py`
+  writes it from the ProbeMaps XML + orientation + per-bank rotation, and `probes_<cohort>.yaml` points each
+  animal at its XML (`xml:`). The vendor tool and an exported-column XML must never be combined.
+- Verified: **SF07 = A4x16-Lin-5mm-50s-300, orientation v1_raw (the ProbeMaps "version1"), rot bank0 +1, bank1 0**
+  (`configs/xml/SF07_A4x16-Lin_v1raw_rot+1_0.xml`). SF08/SF10/SF11/SF12 use the same file PROVISIONALLY (same
+  firmware fault; the connector orientation is per implant and their FM64 data are too glitchy to confirm —
+  re-run the scan on their first FM65 sessions). **SF09 (5×12)** matches none of the 4 orientations × bank
+  rotations of the ProbeMaps A5x12 XML (74 strong pairs, best 0.61 same-shank); it uses a DATA-DERIVED XML
+  (`configs/xml/SF09_data_derived_3_20260831_190834.640.xml`: co-activation clusters as shanks, ordered along
+  each shank spectrally, 35 channels in 7 groups + 29 unassigned/skipped) — valid for per-shank sorting only,
+  no geometry claims.
+- Re-check: `python ephys/probe_map_check.py --cohort 2026c --animal SFxx --session <s> --probe <probe> --seconds 600 --rotation-scan --cache-dir E:/3rd_rat_spikes/analysis/index/probe_map_cache`
+- Re-check #2 (after sorting; decisive when co-activation has < 100 strong pairs): `python ephys/footprint_map_check.py --cohort 2026c --animal SFxx --session <s> --cache-dir E:/3rd_rat_spikes/analysis/index/footprint_cache` — ranks the 16 connector matings (per-connector 180° rotation, swap, mirror; `probe_map_check.py --connector-scan` tests the same set) × bank rotations by how compact the sorted units' 64-column footprints are. 2026-09-04: SF10 = SF07's map (co-activation); SF08 = SF07's map ranks first but all candidates stay broad; SF11/SF12 pending their sorts.
+
 ## Known limits (read before interpreting units)
 
-- **Channel → shank mapping is a placeholder** (sequential 16-channel blocks; SF09 5×12 = [12,12,16,12,12]).
-  No pinout table exists in the repos or on disk; every earlier `amplifier.xml` is a single 64-ch group. Units
-  are valid per unit; shank/depth claims are blocked until `probes_2026c.yaml` is confirmed
-  (`verified: true` + source). `probe_group_check.py` is the data-side test.
+- **Channel → shank mapping**: verified for SF07 only (see "Channel map" above); provisional for the other 4×16
+  loggers; data-derived (no geometry) for SF09. Shank/depth claims are blocked until each animal's entry in
+  `probes_2026c.yaml` says `verified: true`.
 - Staged folders omit `analogin.dat`/`digitalin.dat`/`supply.dat`: PreprocessPipeline's Intan ADC check
   would reject the 1250 Hz WILD lanes. PC-time anchors come from the raw folder via
   `Neurologger/Code/WILD_generate_pc_time.py` (BLE anchors live in `analogin.dat` lanes 14/15).

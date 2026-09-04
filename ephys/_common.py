@@ -130,16 +130,43 @@ def parse_session_name(name: str) -> dict | None:
     return {"slot": int(m.group("slot")), "start": start, "ms": ms}
 
 
-def iter_raw_sessions(raw_root: Path, session_glob: str = "*"):
-    """Yield (animal, logger_mac_or_None, session_dir) for every session folder under <raw_root>/<animal>[/<mac>]/."""
+FOREIGN: list[tuple[str, str, Path]] = []   # (animal folder, MAC folder, session) skipped because the MAC is not the animal's registered logger
+
+
+def registered_macs(cohort: str | None) -> dict[str, str]:
+    """{normalised animal (SF07): MAC} from the cohort YAML ``ephys.loggers`` (only entries with a MAC)."""
+    if not cohort:
+        return {}
+    try:
+        lg = (load_cohort(cohort).get("ephys") or {}).get("loggers") or {}
+    except FileNotFoundError:   # unregistered cohort key (selftest's synthetic cohort): no MAC filter
+        return {}
+    return {a.upper(): str(v.get("mac")).upper() for a, v in lg.items() if isinstance(v, dict) and v.get("mac")}
+
+
+def iter_raw_sessions(raw_root: Path, session_glob: str = "*", cohort: str | None = None):
+    """Yield (animal, logger_mac_or_None, session_dir) for every session folder under <raw_root>/<animal>[/<mac>]/.
+
+    When ``cohort`` is given and the cohort YAML registers a logger MAC for the animal, session folders under a DIFFERENT
+    MAC folder are skipped and recorded in ``FOREIGN`` (e.g. a spare logger's card downloaded into the wrong animal folder).
+    """
     raw_root = Path(raw_root)
-    for animal_dir in sorted(p for p in raw_root.iterdir() if p.is_dir() and not p.name.startswith(("$", "."))):
+    macs = registered_macs(cohort)
+    FOREIGN.clear()
+    for animal_dir in sorted(p for p in raw_root.iterdir() if p.is_dir() and not p.name.startswith(("$", ".", "_", "analysis"))):
+        a = animal_dir.name.upper()
+        a_norm = f"SF{int(a[2:]):02d}" if a.startswith("SF") and a[2:].isdigit() else a
         for child in sorted(animal_dir.iterdir()):
             if not child.is_dir():
                 continue
             if parse_session_name(child.name):
                 yield animal_dir.name, None, child
             elif MAC_RE.match(child.name):
+                if a_norm in macs and child.name.upper() != macs[a_norm]:
+                    for s in sorted(child.iterdir()):
+                        if s.is_dir() and parse_session_name(s.name):
+                            FOREIGN.append((animal_dir.name, child.name.upper(), s))
+                    continue
                 for s in sorted(child.iterdir()):
                     if s.is_dir() and parse_session_name(s.name):
                         yield animal_dir.name, child.name.upper(), s

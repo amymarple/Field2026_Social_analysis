@@ -46,6 +46,28 @@ ephys:
     64: "glitch defects A/B (~100-1400 ticks/s summed over 64 ch); stop-only commit"
     65: "maker fix: defects absent on bench; power-cut-safe commit; field data unevaluated"
   clean_firmware_min: 65     # sessions with firmware_version < this MUST be de-glitched before any analysis
+  # Field-PC clock steps (w32time stepping the PC FORWARD; the PC free-runs ~2.1 s/day SLOW, the loggers' uniform
+  # -21..-27 ppm apparent drift is that rate). Measured 2026-09-03 from the field PC's 1-Hz LED-sync log
+  # (from-field/2026-09-03_ledsync_*.txt: a pulse sent late by the step size and the following seconds skipped) and
+  # confirmed by the BLE anchors + card-vs-PC spans of every session spanning them. Video, WISER and LED timestamps
+  # carry the same clock, so pc_time.dat must INCLUDE the step; the fit subtracts it, then adds it back.
+  # time = field-PC local wallclock (EDT) just before the jump; jump_s = new minus old clock.
+  field_pc_clock_steps:
+    - {time: "2026-08-31 09:00:17", jump_s: 2.386, source: "LED log offset_ms=+2385.6 at sched 09:00:17, sched 18-19 skipped"}
+    - {time: "2026-09-01 13:09:11", jump_s: 2.6, source: "LED log sched 13:09:11-13 skipped; anchors of SF07/SF09/SF10 give +2.5..+2.7 s"}
+    - {time: "2026-09-03 13:56:01", jump_s: 1.28, source: "MEASURED (was provisional 1.35). PC bugcheck reboot 13:56:01-13:59:05 (LED pulses stop 13:55:58, resume 13:59:05; a boot-time clock set from the RTC is not a w32time event, which is why the field side saw none). Field drift log (NTP minus PC): clean samples fit +92.4 ms/h before and +91.0 ms/h after, residuals 10/4 ms, lines differing by 1.263 s at the reboot. Free-step fits of the BLE anchors: SF08 2_ 1.265, SF11 3_ 1.281, SF12 3_ 1.319 s (step and slope are 0.96-0.99 anti-correlated, so the 54 ms spread, not the 8-38 ms formal errors, is the real uncertainty). Adopted 1.28 +- 0.04 s. A 40 ms error tilts those sessions drift by ~1.5 ppm, inside each loggers own session-to-session spread, and leaves <= 40 ms of PC-time error after the step. Windows Kernel-General Id 1 export still requested to settle it"}
+  # Field-PC outages (PC-side modalities only; the loggers record on their own). Not clock steps: the LED log resumes
+  # with sched == timestamp after each reboot. From from-field notes / System log.
+  field_pc_outages:
+    - {start: "2026-09-01 04:20:14", end: "2026-09-01 04:22:40", cause: "bugcheck 0x1E (BSOD), auto-logon"}
+    - {start: "2026-09-03 13:56:01", end: "2026-09-03 13:59:05", cause: "bugcheck 0x1E (same ntoskrnl fault); video/thermal/mic/LED/WISER gap ~3 min"}
+  # Probe advances (turns of the microdrive). The move sits inside a Stop -> Start gap, so no session needs splitting,
+  # but the sites sit in DIFFERENT TISSUE before and after: sort the epochs separately and NEVER merge unit identities
+  # across a move. settle_h = the post-move window to treat as unstable (drifting / appearing / disappearing units).
+  # Source: field2026-sync from-field/2026-09-04_probe-move-sf07-sf11.md (operator HC, console log + incident log).
+  probe_moves:
+    - {animal: SF07, time: "2026-09-04 14:00:54", turns: 0.25, direction: advance, prev_session_stop: "2026-09-04 13:40:27", settle_h: 4}
+    - {animal: SF11, time: "2026-09-04 13:56:50", turns: 0.25, direction: advance, prev_session_stop: "2026-09-04 13:41:26", settle_h: 4}
   deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
   probe_config: ephys/configs/probes_2026c.yaml
   preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT

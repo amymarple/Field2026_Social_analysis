@@ -19,16 +19,34 @@ from xml.dom import minidom
 import yaml
 
 
+def _groups_from_xml(xml_path: Path) -> tuple[list[list[int]], list[int]]:
+    r = ET.parse(xml_path).getroot()
+    cg = r.find("anatomicalDescription/channelGroups")
+    groups = [[int(c.text) for c in g.findall("channel")] for g in cg.findall("group")]
+    skipped = [int(c.text) for g in cg.findall("group") for c in g.findall("channel") if c.get("skip") == "1"]
+    return groups, skipped
+
+
 def load_probe(probe_config: Path, animal: str) -> dict:
     cfg = yaml.safe_load(Path(probe_config).read_text(encoding="utf-8"))
     animals = cfg.get("animals") or {}
     if animal not in animals:
         raise KeyError(f"{probe_config}: no probe entry for animal {animal!r} (have {sorted(animals)})")
     probe = dict(animals[animal])
+    # A per-animal XML (exported-column numbering, e.g. from make_probe_xml.py or a data-derived one) overrides
+    # inline groups; its skip="1" channels are merged into reject_channels.
+    if probe.get("xml"):
+        xml_path = Path(probe["xml"])
+        if not xml_path.is_absolute():
+            xml_path = Path(probe_config).resolve().parent.parent.parent / xml_path   # repo-relative
+        groups, skipped = _groups_from_xml(xml_path)
+        probe["groups"] = groups
+        probe["reject_channels"] = sorted(set(int(c) for c in (probe.get("reject_channels") or [])) | set(skipped))
+        probe["xml_resolved"] = str(xml_path)
     probe["n_channels"] = int(probe.get("n_channels", cfg.get("n_channels", 64)))
     probe["sampling_rate_hz"] = float(probe.get("sampling_rate_hz", cfg.get("sampling_rate_hz", 20000)))
-    probe["verified"] = bool(cfg.get("verified", False))
-    probe["mapping_source"] = cfg.get("mapping_source", "")
+    probe["verified"] = bool(probe.get("verified", cfg.get("verified", False)))
+    probe["mapping_source"] = probe.get("mapping_source", cfg.get("mapping_source", ""))
     probe["reject_channels"] = [int(c) for c in (probe.get("reject_channels") or [])]
     probe["groups"] = [[int(c) for c in g] for g in probe["groups"]]
     flat = [c for g in probe["groups"] for c in g]

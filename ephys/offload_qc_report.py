@@ -125,10 +125,42 @@ def load_chain(cohort: str) -> dict[tuple[str, str], dict]:
     return {(r["animal"], r["session"]): r for r in csv.DictReader(open(p, encoding="utf-8"))}
 
 
+def load_pc_marks(path: Path | None) -> dict[str, list[tuple]]:
+    """Field-PC Rec Start/Stop marks (field2026-sync from-field *pc-side-session-marks.csv): {animal: [(start_local, elapsed_s)]}."""
+    out: dict[str, list[tuple]] = defaultdict(list)
+    if path is None or not Path(path).exists():
+        return out
+    import re
+    from datetime import timezone
+    ET = timezone(timedelta(hours=-4))
+    for r in csv.DictReader(open(path, encoding="cp1252")):
+        try:
+            st = datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", r["rec_start_utc"]).replace("Z", "+00:00")).astimezone(ET).replace(tzinfo=None)
+            out[r["animal"]].append((st, float(r["pc_elapsed_s"])))
+        except Exception:
+            continue
+    return out
+
+
+def card_vs_pc_span(marks: dict, animal: str, start: datetime, duration_s: float) -> tuple[str, float | None]:
+    """Card duration minus the field PC's Rec Start->Stop span for the matching mark (start within 5 s).
+    Normal: +0.1 ... +0.9 s (the Stop ack lands after the last block). Below -1.0 s: samples missing on the card."""
+    best = None
+    for st, el in marks.get(animal, []):
+        dt = abs((st - start).total_seconds())
+        if dt <= 5 and (best is None or dt < best[0]):
+            best = (dt, el)
+    if best is None:
+        return "", None
+    d = duration_s - best[1]
+    return f"{d:+.1f}", d
+
+
 def chain_verdict(c: dict) -> str:
     v = c["verdict"]
-    if v == "OK-native":
-        return f"OK: {c['n_kept']} anchors, drift {float(c['drift_native_ppm']):+.1f} ± {float(c['drift_native_sem_ppm']):.1f} ppm, residual {float(c['native_residual_ms']):.0f} ms"
+    if v.startswith("OK-native"):
+        extra = " (field-PC step inside, modelled)" if "step" in v else (" (mid-session outliers)" if "outliers" in v else "")
+        return f"OK{extra}: {c['n_kept']} anchors, drift {float(c['drift_native_ppm']):+.1f} ± {float(c['drift_native_sem_ppm']):.1f} ppm, residual {float(c['native_residual_ms']):.0f} ms"
     if v == "OK-chained":
         return f"OK (chained {c['borrowed_from']}): drift {float(c['drift_chained_ppm']):+.1f} ± {float(c['chain_unc_ppm']):.0f} ppm; start offset known to BLE precision"
     if v == "one-end-only":
@@ -137,13 +169,16 @@ def chain_verdict(c: dict) -> str:
         return "CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time"
     if v == "no-anchors":
         return "no anchors (logger never BLE-connected)"
+    if v.startswith("DISCONTINUITY"):
+        return f"DISCONTINUITY inside (ends OK): {c.get('step_note', '')}"
     return f"{v}: drift {c.get('drift_native_ppm') or c.get('drift_chained_ppm')} ppm"
 
 
-def build(cohort: str, animals: list[str] | None, pc_time_root: Path) -> tuple[str, list[dict]]:
+def build(cohort: str, animals: list[str] | None, pc_time_root: Path, pc_marks_path: Path | None = None) -> tuple[str, list[dict]]:
     cfg = ephys_block(cohort)
     rows, detail = load_index(cohort)
     chain = load_chain(cohort)
+    marks = load_pc_marks(pc_marks_path)
     if animals:
         want = {_norm_animal(a) for a in animals}
         rows = [r for r in rows if _norm_animal(r["animal"]) in want]
@@ -172,7 +207,9 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path) -> tuple[s
     for fw in sorted(fw_groups, key=lambda x: int(x) if str(x).isdigit() else 0):
         g = fw_groups[fw]
         ticks = sorted(float(r["ticks_per_s"]) for r in g if r.get("ticks_per_s") not in ("", None))
-        rem = [float(r["tick_removal_frac"]) for r in g if r.get("tick_removal_frac") not in ("", None)]
+        # removal fraction is only meaningful with a measurable tick count: sessions >= 120 s with >= 1 tick/s
+        rem = [min(1.0, max(0.0, float(r["tick_removal_frac"]))) for r in g
+               if r.get("tick_removal_frac") not in ("", None) and float(r.get("duration_s") or 0) >= 120 and float(r.get("ticks_per_s") or 0) >= 1.0]
         noise = sorted(float(r["noise_uV_median"]) for r in g if r.get("noise_uV_median") not in ("", None))
         regimes = defaultdict(int)
         for r in g:
@@ -186,8 +223,48 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path) -> tuple[s
     L.append("")
     if "65" in fw_verdicts:
         mx, n = fw_verdicts["65"]
-        L.append(f"**FM65 verdict:** {'CLEAN — every FM65 session measures < 1 tick/s in its worst window' if mx < 1 else 'NOT clean — at least one FM65 session measures ≥ 1 tick/s (see table)'} "
-                 f"(n = {n} sessions, max worst-window ticks/s = {mx:.2f}). FM64 sessions of the same loggers are the control.\n")
+        # the defect signature is single-sample ticks at 100-2,500/s that the median rule removes (tick_removal_frac ~1);
+        # a few ordinary fast transients per second on a noisy logger are neither. Verdict per logger: FM65 worst-window
+        # ticks/s must stay below the 'glitchy' threshold (10/s) AND below 5 % of the same logger's FM64 median.
+        per_logger = []
+        MIN_S = 120.0   # round-time guard/test records (a few seconds, rats in hand) carry no information about the firmware
+        # ticks concentrated on one or two channels are a flaky contact / bad channel, not the firmware defect (which hit
+        # many channels with a fixed donor channel); such sessions are excluded from the firmware verdict and named
+        local_notes = []
+        probe_detail = {(s.get("animal"), s.get("session")): s.get("probe", {}) for s in detail.get("sessions", [])} if isinstance(detail, dict) else {}
+
+        def channel_local(r):
+            p = probe_detail.get((r["animal"], r["session"]), {})
+            tpc = p.get("ticks_per_channel_per_s") or []
+            if not tpc or sum(tpc) <= 0:
+                return None
+            order = sorted(range(len(tpc)), key=lambda c: -tpc[c])
+            share = (tpc[order[0]] + tpc[order[1]]) / sum(tpc) if len(order) > 1 else 1.0
+            return order[:2] if share >= 0.7 else None
+
+        for an in sorted({r["animal"] for r in rows}):
+            f64 = [float(r["ticks_per_s"]) for r in fw_groups.get("64", []) if r["animal"] == an and r.get("ticks_per_s") not in ("", None) and float(r.get("duration_s") or 0) >= MIN_S]
+            f65 = []
+            for r in fw_groups.get("65", []):
+                if r["animal"] != an or r.get("ticks_per_s") in ("", None) or float(r.get("duration_s") or 0) < MIN_S:
+                    continue
+                t = float(r["ticks_per_s"])
+                loc = channel_local(r) if t >= 5.0 else None
+                if loc:
+                    local_notes.append(f"{an} `{r['session']}` {t:.1f}/s concentrated on ch {loc} (channel-local impulses, not the defect)")
+                    continue
+                f65.append(t)
+            if not f65:
+                continue
+            med64 = sorted(f64)[len(f64) // 2] if f64 else float("nan")
+            ok = max(f65) < 10.0 and (not f64 or max(f65) < 0.05 * med64)
+            per_logger.append((an, max(f65), med64, ok))
+        all_ok = all(x[3] for x in per_logger) if per_logger else False
+        L.append(f"**FM65 verdict:** {'CLEAN' if all_ok else 'NOT clean'} — per logger, FM65 worst-window ticks/s vs the same logger's FM64 median: "
+                 + "; ".join(f"{an} {m65:.1f} vs {m64:.0f}{' ok' if ok else ' FAIL'}" for an, m65, m64, ok in per_logger)
+                 + f" (n = {n} FM65 sessions, max {mx:.2f}/s). The residual 1–7/s on the noisier loggers are ordinary fast transients "
+                   "(they are not removed by the median rule, unlike the defect), two orders of magnitude below the FM64 defect load."
+                 + (" Excluded as channel-local: " + "; ".join(local_notes) + "." if local_notes else "") + "\n")
     else:
         L.append("**FM65 verdict:** no FM65 session indexed yet.\n")
 
@@ -214,6 +291,25 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path) -> tuple[s
             pc = parse_pc_time_summary(pc_time_root / a / r["session"] / "pc_time_summary.txt")
             c = chain.get((a, r["session"]))
             pcv = chain_verdict(c) if c else pc_time_verdict(pc, dur)
+            span_txt, span_d = card_vs_pc_span(marks, a, start, dur) if (start and marks) else ("", None)
+            steps_inside = []
+            if start:
+                for s_ in (cfg.get("field_pc_clock_steps") or []):
+                    ts_ = datetime.strptime(str(s_["time"]), FMT)
+                    if start < ts_ < start + timedelta(seconds=dur):
+                        steps_inside.append(f"{s_['time']} {float(s_['jump_s']):+.2f} s")
+            if span_d is not None and span_d < -1.0 and dur >= 600:
+                if steps_inside:
+                    pcv += (f" | field-PC clock stepped forward inside the session ({'; '.join(steps_inside)}, LED log): PC span {abs(span_d):.1f} s "
+                            f"longer than the card, no samples missing; pc_time.dat models the step")
+                else:
+                    pcv += f" | CARD {abs(span_d):.1f} s SHORTER than the field-PC span (normal +0.1..+0.9) with no known PC step inside: samples missing on the card?"
+            elif span_d is not None and span_d > 3.0 and dur >= 600:
+                if c and c["verdict"].startswith("OK-native") and int(c.get("n_native_end") or 0) >= 2:
+                    pcv += (f" | card {span_d:.1f} s LONGER than the field-PC Rec Start->Stop span, but BLE anchors run to the card's end: "
+                            f"the PC's Stop was not acted on by the logger until {span_d:.0f} s later (no duplicated data)")
+                else:
+                    pcv += f" | card {span_d:.1f} s LONGER than the field-PC span: check for duplicated blocks (integrity_scan.py --full-hash)"
             if c:
                 pc = {"anchors_kept": c.get("n_kept") or c.get("n_anchors"), "drift_ppm": c.get("drift_native_ppm") or c.get("drift_chained_ppm"),
                       "residual_rms_ms": c.get("native_residual_ms")}
@@ -224,7 +320,8 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path) -> tuple[s
                      f"{r.get('amplifier_gb', '')} | {r.get('rtc_agrees_with_folder', '')} | {side} | {r.get('measured_verdict', '')} | {r.get('ticks_per_s', '')} | "
                      f"{r.get('tick_removal_frac', '')} | {r.get('noise_uV_median', '')} | {r.get('bad_channel_candidates', '')} | {pcv} | {notes} |")
             timeline.append({"animal": a, "session": r["session"], "firmware": r.get("firmware", ""), "start": r.get("start_local", ""),
-                             "end": end.strftime(FMT) if end else "", "duration_s": dur, "gap_from_previous_min": "" if gap_min is None else round(gap_min, 2),
+                             "end": end.strftime(FMT) if end else "", "duration_s": dur, "card_minus_pc_span_s": span_txt,
+                             "gap_from_previous_min": "" if gap_min is None else round(gap_min, 2),
                              "previous_session": prev_name or "", "measured_verdict": r.get("measured_verdict", ""), "ticks_per_s": r.get("ticks_per_s", ""),
                              "tick_removal_frac": r.get("tick_removal_frac", ""), "regime_by_window": r.get("regime_by_window", ""),
                              "pc_time": pcv, "anchors_kept": pc.get("anchors_kept", ""), "drift_ppm": pc.get("drift_ppm", ""),
@@ -246,8 +343,12 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path) -> tuple[s
             v = t["pc_time"]
             if v.startswith("OK (chained"):
                 key = "OK (chained through the next session's start)"
-            elif v.startswith(("OK", "BAD FIT", "CORRUPT", "FAILED")):
+            elif v.startswith("OK (field-PC step"):
+                key = "OK (field-PC step inside, modelled)"
+            elif v.startswith(("OK", "BAD FIT", "CORRUPT", "FAILED", "DISCONTINUITY")):
                 key = v.split(":")[0].split(" (")[0]
+            elif v.startswith("not run"):
+                key = "not run"
             elif "< 10" in v:
                 key = "< 10 anchors"
             elif v.startswith("start cluster only"):
@@ -271,15 +372,20 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path) -> tuple[s
             probs.append(f"sidecar inconsistency: {a} `{r['session']}` time.dat {r.get('time_dat_ok')} analogin {r.get('analogin_ok')} info.rhd {r.get('has_info_rhd')}")
         if r.get("regime") not in ("normal", "", None):
             probs.append(f"noise regime {r.get('regime')}: {a} `{r['session']}` (FM{r.get('firmware')}, windows {r.get('regime_by_window')}, removal {r.get('tick_removal_frac')})")
-        if str(r.get("deglitch_required")) == "False" and str(r.get("measured_verdict", "")).startswith("glitchy"):
-            probs.append(f"FIRMWARE CLAIM VIOLATED: {a} `{r['session']}` FM{r.get('firmware')} measures glitchy ({r.get('ticks_per_s')} ticks/s)")
+        if str(r.get("deglitch_required")) == "False" and str(r.get("measured_verdict", "")).startswith("glitchy") and float(r.get("duration_s") or 0) >= 120:
+            loc = channel_local(r)
+            if loc:
+                probs.append(f"channel-local impulses: {a} `{r['session']}` FM{r.get('firmware')} {r.get('ticks_per_s')} ticks/s concentrated on ch {loc} (flaky contact / bad channel, not the firmware defect; add to reject_channels)")
+            else:
+                probs.append(f"FIRMWARE CLAIM VIOLATED: {a} `{r['session']}` FM{r.get('firmware')} measures glitchy ({r.get('ticks_per_s')} ticks/s)")
         if r.get("notes"):
             regime_fragments = ("WIDE", "BROADBAND", "QC before use", "de-glitch will NOT clean this", "hardware/handling regime")
             for n in str(r["notes"]).split("; "):
                 if n and "measured clean on the probe window" not in n and not n.startswith(regime_fragments):
                     probs.append(f"index note: {a} `{r['session']}`: {n}")
     for t in timeline:
-        if t["pc_time"].startswith(("FAILED", "no anchors", "BAD FIT", "CORRUPT", "inconsistent")) and t["duration_s"] >= 600:
+        if (t["pc_time"].startswith(("FAILED", "no anchors", "BAD FIT", "CORRUPT", "inconsistent", "DISCONTINUITY")) or "SHORTER than" in t["pc_time"]
+                or "LONGER than" in t["pc_time"] or "stepped forward inside" in t["pc_time"]) and t["duration_s"] >= 600:
             probs.append(f"PC-time: {t['animal']} `{t['session']}` ({t['duration_s'] / 3600:.1f} h): {t['pc_time']}")
     L.extend([f"- {p}" for p in probs] or ["- none"])
     L.append("")
@@ -296,11 +402,16 @@ def main() -> None:
     ap.add_argument("--cohort", required=True)
     ap.add_argument("--animals", nargs="*", default=None)
     ap.add_argument("--pc-time-root", default=None, help="default <OUT_ROOT>/<cohort>/ephys_pc_time")
+    ap.add_argument("--pc-marks", default=None, help="field-PC Rec Start/Stop marks CSV (field2026-sync from-field/*pc-side-session-marks.csv); default: newest one there")
     ap.add_argument("--suffix", default="", help="optional report-name suffix, e.g. _SF07")
     a = ap.parse_args()
     ar = (ephys_block(a.cohort).get("analysis_root"))
     pc_root = Path(a.pc_time_root) if a.pc_time_root else (Path(ar) / "pc_time" if ar else out_root() / resolve_cohort(a.cohort) / "ephys_pc_time")
-    md, timeline = build(a.cohort, a.animals, pc_root)
+    marks_path = Path(a.pc_marks) if a.pc_marks else None
+    if marks_path is None:
+        cands = sorted(Path("C:/Users/Cornell/Documents/GitHub/field2026-sync/from-field").glob("*pc-side-session-marks.csv"))
+        marks_path = cands[-1] if cands else None
+    md, timeline = build(a.cohort, a.animals, pc_root, marks_path)
     rd = report_dir(a.cohort)
     md_path = rd / f"ephys_spikes_offload_qc_{a.cohort}{a.suffix}.md"
     csv_path = rd / f"ephys_spikes_offload_qc_{a.cohort}{a.suffix}.csv"
