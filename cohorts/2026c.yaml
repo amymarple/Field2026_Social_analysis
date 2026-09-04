@@ -44,7 +44,7 @@ ephys:
   firmware_history:
     62: "stop-only commit (session exists only after a clean Record Stop) + glitch defects A/B"
     64: "glitch defects A/B (~100-1400 ticks/s summed over 64 ch); stop-only commit"
-    65: "maker fix: defects absent on bench; power-cut-safe commit; field data unevaluated"
+    65: "maker fix, both parts now VERIFIED. Glitch defects absent: measured clean on all six loggers over 94 field sessions (240.8 h) - see the offload QC report. Power-cut-safe commit: survives a HARD power cut (battery pulled mid-recording), tested by the operator 2026-09-04; and the logger's own low-battery auto-stop closes the files byte-exact - SF09 2_20260903_075655.297 (8.713 h) and SF07 4_20260903_001558.656 (4.039 h) both have amplifier.dat a whole number of 128-byte samples, time.dat = 4 x n_samples and analogin.dat = 2 x n_samples. Consequence for the field protocol: a mid-night Stop->Start restart is no longer needed as insurance, so the midnight BLE touch can be a mid-session anchor instead of a session start - worth ~50 ms on the unanchored tail (see change_log 2026-09-04)"
   clean_firmware_min: 65     # sessions with firmware_version < this MUST be de-glitched before any analysis
   # Field-PC clock steps (w32time stepping the PC FORWARD; the PC free-runs ~2.1 s/day SLOW, the loggers' uniform
   # -21..-27 ppm apparent drift is that rate). Measured 2026-09-03 from the field PC's 1-Hz LED-sync log

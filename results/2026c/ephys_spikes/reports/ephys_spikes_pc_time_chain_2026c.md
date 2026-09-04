@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-04T19:34:37+00:00 by `ephys/pc_time_chain.py` (git 94ef5a6+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-04T21:29:55+00:00 by `ephys/pc_time_chain.py` (git 9c82df8+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -47,7 +47,7 @@ Generated 2026-09-04T19:34:37+00:00 by `ephys/pc_time_chain.py` (git 94ef5a6+dir
 | SF08 | `9_20260902_062432.012` | 1.09 |  | 7 | 6/1 | 1316 | -146 |  |  |  | 0  | 2043.1 |  | +17 |  | one-end-only |  |
 | SF08 | `11_20260902_080414.269` | 0.00 |  | 3 | 3/3 | 248 | 850 |  |  |  | 0  | 1323.1 |  | +1072 | +130 | one-end-only |  |
 | SF08 | `12_20260902_082624.125` | 0.02 |  | 16 | 16/16 | 289 | 980 |  |  |  | 10 next:10 | 8.0 | -9.7 ± 14745.5 | +131 | -1 | OK-chained |  |
-| SF08 | `13_20260902_082748.094` | 9.88 |  | 104 | 10/1 | 72 | 979 |  |  |  | 0  | 1021.4 |  | -1 |  | one-end-only |  |
+| SF08 | `13_20260902_082748.094` | 9.88 |  | 104 | 10/5 | 72 | 979 | 102 | -19.0 ± 0.1 | 7.7 | 0  | 1021.4 |  | -1 |  | OK-native [last touch 8.5 h, tail 1.4 h extrapolated] |  |
 | SF08 | `14_20260902_183725.225` | 0.00 |  | 1 | 1/1 | 45 | -524 |  |  |  | 0  | 251.5 |  |  |  | no-anchors |  |
 | SF08 | `15_20260902_184139.248` | 0.01 |  | 3 | 3/3 | 31 | 806 |  |  |  | 0  | 1188.7 |  | +1330 | -490 | one-end-only |  |
 | SF08 | `16_20260902_190202.601` | 0.01 |  | 7 | 7/7 | 1401 | 317 |  |  |  | 9 next:9 | 8.7 | -11.1 ± 28661.1 | -490 | -1 | OK-chained |  |
@@ -84,7 +84,7 @@ Generated 2026-09-04T19:34:37+00:00 by `ephys/pc_time_chain.py` (git 94ef5a6+dir
 | SF09 | `16_20260903_001828.515` | 6.47 |  | 39 | 18/21 | 1153 | 190 | 38 | -26.3 ± 0.1 | 7.3 | 0  | 2182.9 |  | +11 | -1989 | OK-native |  |
 | SF09 | `0_20260903_072302.755` | 0.00 |  | 3 | 3/3 | 1306 | -2410 |  |  |  | 0  | 1983.5 |  | -1989 | +3332 | one-end-only |  |
 | SF09 | `1_20260903_075611.131` | 0.01 |  | 8 | 8/8 | 28 | 923 |  |  |  | 15 next:15 | 10.8 | -53.5 ± 20953.8 | +3333 | -3 | OK-chained |  |
-| SF09 | `2_20260903_075655.297` | 8.71 |  | 31 | 15/0 | 1355 | 919 |  |  |  | 0  |  |  | -3 |  | one-end-only |  |
+| SF09 | `2_20260903_075655.297` | 8.71 |  | 31 | 15/16 | 1355 | 919 | 30 | -25.2 ± 0.2 | 10.9 | 0  |  |  | -3 |  | OK-native (PC step modelled) [last touch 6.7 h, tail 2.0 h extrapolated] |  |
 | SF10 | `0_20260831_070700.822` | 0.17 |  | 1001 | 21/979 | 1730 | -686 | 1001 | -2689.5 ± 124756.2 | 320576.0 | 0  | 149.3 |  |  |  | inconsistent |  |
 | SF10 | `1_20260831_071948.008` | 4.11 |  | 123390 | 13/2 | 2240 |  |  |  |  | 0  | 27796.0 |  |  |  | corrupt |  |
 | SF10 | `0_20260831_190956.580` | 0.01 |  | 8 | 8/8 | 27 | 293 |  |  |  | 10 next:10 | 13.2 | -60.8 ± 23258.5 |  | -4 | OK-chained |  |
@@ -95,7 +95,7 @@ Generated 2026-09-04T19:34:37+00:00 by `ephys/pc_time_chain.py` (git 94ef5a6+dir
 | SF10 | `5_20260901_054403.494` | 0.01 |  | 7 | 7/7 | 1309 | 7620 |  |  |  | 0  | 8167.4 |  |  | -7050 | one-end-only |  |
 | SF10 | `0_20260901_080100.926` | 0.01 |  | 9 | 9/9 | 119 | 570 |  |  |  | 10 next:10 | 6.6 | -232.4 ± 25972.9 | -7050 | -15 | OK-chained |  |
 | SF10 | `1_20260901_080143.036` | 4.95 |  | 13 | 10/2 | 119 | 556 | 12 | -23.3 ± 0.7 | 14.7 | 0  | 14.3 |  | -15 | +14 | OK-native |  |
-| SF10 | `2_20260901_125856.163` | 4.29 |  | 24 | 18/1 | 0 | 158 |  |  |  | 11 next:11 | 15.6 | -26.7 ± 97.0 | +14 |  | OK-chained |  |
+| SF10 | `2_20260901_125856.163` | 4.29 |  | 24 | 18/5 | 0 | 158 | 23 | -30.6 ± 0.8 | 16.6 | 0  | 15.6 |  | +14 |  | OK-native (PC step modelled) [last touch 2.2 h, tail 2.1 h extrapolated] |  |
 | SF10 | `3_20260901_171620.845` | 1.09 |  | 48 | 11/2 | 0 | 2345 | 48 | -23.8 ± 2.8 | 13.8 | 0  | 4398.8 |  | +2618 | -2100 | OK-native |  |
 | SF10 | `4_20260901_193512.911` | 0.01 |  | 8 | 8/8 | 85 | 150 |  |  |  | 8 next:8 | 7.3 | -7.1 ± 28338.7 | -2100 | -0 | OK-chained |  |
 | SF10 | `5_20260901_193554.435` | 4.05 |  | 59 | 8/10 | 609 | 150 | 57 | -24.0 ± 0.4 | 14.0 | 0  | 8.9 |  | -0 | -6 | OK-native |  |
@@ -174,6 +174,9 @@ Generated 2026-09-04T19:34:37+00:00 by `ephys/pc_time_chain.py` (git 94ef5a6+dir
 |---|---|---|
 | OK-native | 48 | 241.9 |
 | OK-native (PC step modelled) | 7 | 46.4 |
-| one-end-only | 12 | 43.5 |
-| OK-chained | 4 | 16.9 |
+| one-end-only | 10 | 25.0 |
 | corrupt | 5 | 16.7 |
+| OK-chained | 3 | 12.7 |
+| OK-native [last touch 8.5 h, tail 1.4 h extrapolated] | 1 | 9.9 |
+| OK-native (PC step modelled) [last touch 6.7 h, tail 2.0 h extrapolated] | 1 | 8.7 |
+| OK-native (PC step modelled) [last touch 2.2 h, tail 2.1 h extrapolated] | 1 | 4.3 |

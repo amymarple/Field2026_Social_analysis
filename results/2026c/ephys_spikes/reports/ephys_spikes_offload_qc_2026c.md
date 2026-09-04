@@ -1,6 +1,6 @@
 # WILD offload QC — cohort `2026c`
 
-Generated 2026-09-04T19:59:27+00:00 by `ephys/offload_qc_report.py` (git 94ef5a6+dirty) from the session index (`ephys_spikes_session_index_2026c.csv`) and the PC-time fits under `E:\3rd_rat_spikes\analysis\pc_time`. Regenerate; do not hand-edit.
+Generated 2026-09-04T21:57:11+00:00 by `ephys/offload_qc_report.py` (git 9c82df8+dirty) from the session index (`ephys_spikes_session_index_2026c.csv`) and the PC-time fits under `E:\3rd_rat_spikes\analysis\pc_time`. Regenerate; do not hand-edit.
 
 Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's Definitions section (`ticks_per_s`, `tick_removal_frac`, `regime`, `noise_uV`, bad-channel rule). Times are the logger wallclock (field-PC local time at Resync, EDT).
 
@@ -68,7 +68,7 @@ Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's D
 | `9_20260902_062432.012` | FM65 | 2026-09-02 06:24:32 | 2026-09-02 07:30:11 | 1:05:39 | 10.084 | True | ok | clean | 0.1 | 1.0 | 8.6 | 32 | start cluster only (6 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions |  |
 | `11_20260902_080414.269` | FM65 | 2026-09-02 08:04:14 | 2026-09-02 08:04:20 | 0:00:07 | 0.017 | True | ok | clean | 0.15 | 1.0 | 11.78 | 32 | start cluster only (3 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions | gap 34 min after previous |
 | `12_20260902_082624.125` | FM65 | 2026-09-02 08:26:24 | 2026-09-02 08:27:39 | 0:01:16 | 0.195 | True | ok | clean | 0.0 | 1.0 | 10.16 | 32 | OK (chained next:10): drift -9.7 ± 14746 ppm; start offset known to BLE precision | gap 22 min after previous |
-| `13_20260902_082748.094` | FM65 | 2026-09-02 08:27:48 | 2026-09-02 18:20:23 | 9:52:36 | 91.023 | True | ok | ambiguous | 2.5 | 1.0 | 8.63 | 32 | start cluster only (10 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions |  |
+| `13_20260902_082748.094` | FM65 | 2026-09-02 08:27:48 | 2026-09-02 18:20:23 | 9:52:36 | 91.023 | True | ok | ambiguous | 2.5 | 1.0 | 8.63 | 32 | OK: 102 anchors, drift -19.0 ± 0.1 ppm, residual 8 ms |  |
 | `14_20260902_183725.225` | FM65 | 2026-09-02 18:37:25 | 2026-09-02 18:37:27 | 0:00:03 | 0.007 | True | ok | clean | 0.78 | 1.0 | 8.16 | 32 | no anchors (logger never BLE-connected) | gap 17 min after previous |
 | `15_20260902_184139.248` | FM65 | 2026-09-02 18:41:39 | 2026-09-02 18:42:13 | 0:00:35 | 0.089 | True | ok | clean | 0.57 | 1.0 | 11.0 | 32 | start cluster only (3 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions |  |
 | `16_20260902_190202.601` | FM65 | 2026-09-02 19:02:02 | 2026-09-02 19:02:32 | 0:00:31 | 0.078 | True | ok | clean | 0.87 | 1.0 | 10.14 | 32 | OK (chained next:9): drift -11.1 ± 28661 ppm; start offset known to BLE precision | gap 20 min after previous |
@@ -110,7 +110,7 @@ Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's D
 | `16_20260903_001828.515` | FM65 | 2026-09-03 00:18:28 | 2026-09-03 06:46:39 | 6:28:11 | 59.626 | True | ok | clean | 0.1 | 0.5 | 9.85 | 2 4 32 36 52 54 56 58 60 62 | OK: 38 anchors, drift -26.3 ± 0.1 ppm, residual 7 ms |  |
 | `0_20260903_072302.755` | FM65 | 2026-09-03 07:23:02 | 2026-09-03 07:23:06 | 0:00:05 | 0.012 | True | ok | ambiguous | 6.82 | 0.061 | 11.82 | 2 4 32 36 52 54 56 58 60 62 | start cluster only (3 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions | gap 36 min after previous |
 | `1_20260903_075611.131` | FM65 | 2026-09-03 07:56:11 | 2026-09-03 07:56:44 | 0:00:33 | 0.086 | True | ok | clean | 0.33 | 1.0 | 9.67 | 2 4 32 36 52 54 56 58 60 62 | OK (chained next:15): drift -53.5 ± 20954 ppm; start offset known to BLE precision | gap 33 min after previous |
-| `2_20260903_075655.297` | FM65 | 2026-09-03 07:56:55 | 2026-09-03 16:39:43 | 8:42:48 | 80.303 | True | ok | clean | 0.07 | 1.0 | 9.6 | 2 4 32 36 52 54 56 58 60 62 | start cluster only (15 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions |  |
+| `2_20260903_075655.297` | FM65 | 2026-09-03 07:56:55 | 2026-09-03 16:39:43 | 8:42:48 | 80.303 | True | ok | clean | 0.07 | 1.0 | 9.6 | 2 4 32 36 52 54 56 58 60 62 | OK (field-PC step inside, modelled): 30 anchors, drift -25.2 ± 0.2 ppm, residual 11 ms |  |
 
 ### SF10 (logger CACB6D600151) — 27 sessions, 64.7 h
 
@@ -126,7 +126,7 @@ Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's D
 | `5_20260901_054403.494` | FM64 | 2026-09-01 05:44:03 | 2026-09-01 05:44:52 | 0:00:50 | 0.128 | True | ok | glitchy | 558.5 | 0.996 | 8.71 | 32 34 60 62 | start cluster only (7 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions | gap 157 min after previous |
 | `0_20260901_080100.926` | FM64 | 2026-09-01 08:01:00 | 2026-09-01 08:01:35 | 0:00:35 | 0.091 | True | ok | glitchy | 247.4 | 0.993 | 8.71 | 32 34 60 | OK (chained next:10): drift -232.4 ± 25973 ppm; start offset known to BLE precision | gap 136 min after previous |
 | `1_20260901_080143.036` | FM64 | 2026-09-01 08:01:43 | 2026-09-01 12:58:41 | 4:56:59 | 45.616 | True | ok | glitchy | 2239.9 | 0.999 | 8.72 | 2 32 34 56 | OK: 12 anchors, drift -23.3 ± 0.7 ppm, residual 15 ms |  |
-| `2_20260901_125856.163` | FM64 | 2026-09-01 12:58:56 | 2026-09-01 17:16:05 | 4:17:09 | 39.498 | True | ok | glitchy | 1239.67 | 0.999 | 9.01 | 2 32 34 56 | OK (chained next:11): drift -26.7 ± 97 ppm; start offset known to BLE precision | field-PC clock stepped forward inside the session (2026-09-01 13:09:11 +2.60 s, LED log): PC span 3950.9 s longer than the card, no samples missing; pc_time.dat models the step |  |
+| `2_20260901_125856.163` | FM64 | 2026-09-01 12:58:56 | 2026-09-01 17:16:05 | 4:17:09 | 39.498 | True | ok | glitchy | 1239.67 | 0.999 | 9.01 | 2 32 34 56 | OK (field-PC step inside, modelled): 23 anchors, drift -30.6 ± 0.8 ppm, residual 17 ms | field-PC clock stepped forward inside the session (2026-09-01 13:09:11 +2.60 s, LED log): PC span 3950.9 s longer than the card, no samples missing; pc_time.dat models the step |  |
 | `3_20260901_171620.845` | FM64 | 2026-09-01 17:16:20 | 2026-09-01 18:21:53 | 1:05:33 | 10.069 | True | ok | glitchy | 1402.8 | 0.999 | 8.81 | 2 32 34 56 | OK: 48 anchors, drift -23.8 ± 2.8 ppm, residual 14 ms |  |
 | `4_20260901_193512.911` | FM65 | 2026-09-01 19:35:12 | 2026-09-01 19:35:46 | 0:00:34 | 0.088 | True | ok | clean | 0.77 | 1.0 | 11.98 | 32 34 | OK (chained next:8): drift -7.1 ± 28339 ppm; start offset known to BLE precision | gap 73 min after previous |
 | `5_20260901_193554.435` | FM65 | 2026-09-01 19:35:54 | 2026-09-01 23:39:10 | 4:03:17 | 37.368 | True | ok | clean | 0.33 | 1.0 | 10.86 | 32 34 56 | OK: 57 anchors, drift -24.0 ± 0.4 ppm, residual 14 ms |  |
@@ -215,11 +215,11 @@ Source: `ephys/pc_time_chain.py` (day-wrap-aware, delay word not added, adjacent
 
 | verdict | sessions | hours |
 |---|---|---|
-| OK | 48 | 241.9 |
-| OK (field-PC step inside, modelled) | 7 | 46.4 |
-| start cluster only (offset known, drift assumed) | 12 | 43.5 |
-| OK (chained through the next session's start) | 4 | 16.9 |
+| OK | 49 | 251.8 |
+| OK (field-PC step inside, modelled) | 9 | 59.4 |
+| start cluster only (offset known, drift assumed) | 10 | 25.0 |
 | CORRUPT SYNC LANES | 5 | 16.7 |
+| OK (chained through the next session's start) | 3 | 12.7 |
 
 ## Problems and flags
 
@@ -249,7 +249,7 @@ Source: `ephys/pc_time_chain.py` (day-wrap-aware, delay word not added, adjacent
 - PC-time: SF09 `2_20260901_125743.131` (4.3 h): OK (field-PC step inside, modelled): 15 anchors, drift -31.0 ± 0.7 ppm, residual 18 ms | field-PC clock stepped forward inside the session (2026-09-01 13:09:11 +2.60 s, LED log): PC span 2.1 s longer than the card, no samples missing; pc_time.dat models the step
 - PC-time: SF10 `0_20260831_070700.822` (0.2 h): inconsistent: drift -2689.5 ppm
 - PC-time: SF10 `1_20260831_071948.008` (4.1 h): CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time | field-PC clock stepped forward inside the session (2026-08-31 09:00:17 +2.39 s, LED log): PC span 2.1 s longer than the card, no samples missing; pc_time.dat models the step
-- PC-time: SF10 `2_20260901_125856.163` (4.3 h): OK (chained next:11): drift -26.7 ± 97 ppm; start offset known to BLE precision | field-PC clock stepped forward inside the session (2026-09-01 13:09:11 +2.60 s, LED log): PC span 3950.9 s longer than the card, no samples missing; pc_time.dat models the step
+- PC-time: SF10 `2_20260901_125856.163` (4.3 h): OK (field-PC step inside, modelled): 23 anchors, drift -30.6 ± 0.8 ppm, residual 17 ms | field-PC clock stepped forward inside the session (2026-09-01 13:09:11 +2.60 s, LED log): PC span 3950.9 s longer than the card, no samples missing; pc_time.dat models the step
 - PC-time: SF11 `0_20260831_072408.414` (0.6 h): CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time
 - PC-time: SF11 `3_20260901_130404.084` (4.2 h): OK (field-PC step inside, modelled): 25 anchors, drift -28.7 ± 1.5 ppm, residual 38 ms | field-PC clock stepped forward inside the session (2026-09-01 13:09:11 +2.60 s, LED log): PC span 2.1 s longer than the card, no samples missing; pc_time.dat models the step
 - PC-time: SF12 `2_20260831_071845.540` (4.1 h): CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time | field-PC clock stepped forward inside the session (2026-08-31 09:00:17 +2.39 s, LED log): PC span 2.2 s longer than the card, no samples missing; pc_time.dat models the step

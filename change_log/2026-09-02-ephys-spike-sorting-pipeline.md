@@ -405,3 +405,56 @@ Kilosort4 with the pipeline defaults (500–8000 Hz, local CMR 20–200 µm, hig
   inside each logger's own session-to-session spread (e.g. SF11 ranges -23.8 to -30.2 ppm across its other sessions), so
   no verdict changes: overview stays OK 48 (241.9 h) / step-modelled 7 (46.4 h) / chained 4 (16.9 h) / start-only 12
   (43.5 h) / corrupt 5 (16.7 h). Worst-case residual PC-time error after the step is 40 ms, near the 33 ms video frame.
+- **SF09 `10_20260902_083015.335` (8.5 h, done 17:02, 328 min, fast):** sorted on the DATA-DERIVED 7-group XML (35 channels; 29 columns
+  unassigned → excluded, plus ch 32): 90 KS4 clusters → 87, 15 noise-labelled, 72 candidates (21 / 23 / 5 / 7 / 7 / 6 / 3 per group),
+  **66 below 3 Hz**, 6 at ≥ 3 Hz, 4 well-isolated. Groups 3–5 (5–8 channels each) carry the highest-rate candidates (median 1.2–2.4 Hz).
+  The 5×12 Buzsaki map is being re-tested with the 16 connector matings (co-activation + unit footprints) — if one fits, the
+  29 excluded columns come back and SF09 is re-sorted.
+- **SF09 channel map re-test (FM65 `10_20260902_083015.335`, 2026-09-04):** with the 16 connector matings × bank rotations, the
+  ProbeMaps A5x12_16-Buz table still fits nothing — co-activation 93 strong pairs, best same-shank 0.51; unit-footprint test on
+  60 KS4 units: best 185 µm, same-shank ≤ 0.50, no margin. So SF09's site→pin table is not the ProbeMaps one under any mating
+  (a different adapter or probe revision); its data-derived groups remain the working map.
+  Re-deriving the groups from the FM65 session (`--derive-xml`, 600 s) reproduces the FM64-derived map (core groups
+  identical: [0 16 18 20 29 31 48 50 61], [17 35 38 39 40 41 46], [19 26 27 28 30], [34 43 45 53 57], [8 9]; 34 vs 35 channels
+  assigned) — the ~30 unassigned columns are silent in both sessions (no strong co-activation), consistent with the field note
+  "Logger Channels Count 50" → dead/unconnected sites, not a mapping problem. SF09's XML is kept; no re-sort.
+
+## Addendum 2026-09-04 (III) — logger drift measured to be linear; fitter uses the last touch; FM65 fully verified
+
+**Is the logger crystal drift linear?** Measured on 8 long, well-anchored sessions (6-11 h): a straight line fits to a
+median 6 ms, worst 13 ms, and the hourly mean residuals stay inside +-14 ms with no bow. Between sessions of the same
+logger the rate varies by 0.8 ppm (median deviation from that logger's median) / 2.0 ppm (sd); day- and night-session
+medians differ by <= 1.5 ppm, so temperature is a minor term. Consequences:
+- A session anchored only at its start drifts off by ~0.8 ppm x duration: 22 ms typical / 117 ms worst over 8 h,
+  37 / 187 ms over 13 h.
+- ONE 1-minute touch (~25 anchors, cluster centroid ~3 ms) part-way through measures the drift instead: at +6 h of a
+  13 h session it pins it to 0.20 ppm, leaving ~5 ms at the end. Later is better than more.
+- Predicting a session's drift from the logger's median beats predicting it from the immediately previous session
+  (0.6 vs 1.5 ppm median error; adjacent restart pairs differ by 2.2 ppm median, 10.7 max), so the existing fallback
+  stays as it is.
+
+**Fitter change (`pc_time_chain.py`).** When there is no cluster within `END_WINDOW_S` of the end (battery auto-stop, or
+a missed round), the fit now falls back to the LAST touch that sits at least `FAR_CLUSTER_MIN_FRAC` (0.30) into the
+session, and extrapolates the remaining tail; new columns `tail_extrap_h` and `tail_extrap_unc_ms`, and the verdict
+carries `[last touch X h, tail Y h extrapolated]`. `end_vs_next_ms` and the 0.8 x duration span gate are guarded so
+they still refer to a genuine end cluster. selftest 20/20 (two new checks cover the foreign-MAC filter).
+Result: natively fitted 55 -> 58 sessions (288.3 -> 311.2 h); assumed-drift 12 -> 10 sessions (43.5 -> 25.0 h), all of
+them now 1-4 h with <= 60 ms end uncertainty. Rescued: SF08 `13_20260902_082748` (-19.0 ppm, 0.1 ppm from its logger's
+median, 1.39 h tail), SF09 `2_20260903_075655` (-25.2, 1.6 ppm, 2.04 h tail), SF10 `2_20260901_125856` (-30.6, but
+6.9 ppm from SF10's median: the 09-01 13:09:11 step lands 10 min into it, leaving a 2.2 h baseline on which an 80 ms
+step-size error is 10 ppm - its quoted 6.3 ms tail uncertainty is formal and optimistic, ~50 ms is realistic).
+
+**FM65 is now verified on both counts** (`cohorts/2026c.yaml` firmware_history updated): glitch defects absent
+(measured across 94 sessions / 240.8 h), and the power-cut-safe commit confirmed - the operator tested a hard battery
+pull mid-recording (2026-09-04) and the session survived, while the logger's own low-battery auto-stop closes files
+byte-exact (SF09 `2_20260903_075655.297` 8.713 h, SF07 `4_20260903_001558.656` 4.039 h: amplifier.dat a whole number
+of 128-byte samples, time.dat = 4 n, analogin.dat = 2 n). The earlier "sidecar inconsistency" flag on SF11
+`3_20260903_080159.850` was a stale index run taken while that folder was still being copied; it is consistent.
+
+**Field protocol consequence** (communicated to the field agent): the mid-night Stop->Start restart was insurance
+against a power-cut loss and is no longer needed, so the operator's existing midnight touch becomes a mid-session
+anchor rather than a session start, and a second 1-minute touch at 13:00-14:00 covers the daytime session, which dies
+of battery (16:30-18:20) before the evening round. That removes both remaining holes (03:30-05:00 and 16:30-18:20)
+and, as a bonus for sorting, makes each night a single continuous epoch. Restarting anyway is harmless: it does NOT
+disturb the timestamps (no Resync is pressed, and 79 of 97 short restart boundaries show |start_vs_prev| <= 2 s, median
+6 ms, i.e. the RTC runs straight through); it only costs ~12-58 ms on the tail of the post-restart session.

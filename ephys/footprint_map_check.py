@@ -52,7 +52,8 @@ from probe_map_check import PROBE_XML, PROBEMAPS, band, connector_variants, load
 from deglitch_wild import estimate_thresholds, med5  # noqa: E402
 from wild_ce_params import parse_ce_params  # noqa: E402
 
-GEOM = {"A4x16-Lin-5mm-50s-300": {"pitch_um": 50.0, "shank_um": 300.0}}
+GEOM = {"A4x16-Lin-5mm-50s-300": {"pitch_um": 50.0, "shank_um": 300.0},
+        "A5x12_16-Buz_lin-5mm-100-200-160_177": {"pitch_um": 20.0, "shank_um": 200.0}}   # Buzsaki tip: ~20 um between sites in XML order (approx.), shanks 200 um
 
 
 def read_tsv(p: Path) -> dict[int, str]:

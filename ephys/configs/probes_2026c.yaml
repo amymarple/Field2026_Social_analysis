@@ -57,7 +57,7 @@ animals:
     rot_bank1: null
     layout: linear            # data-derived groups have no geometry; per-shank sorting only
     verified: false
-    mapping_source: "DATA-DERIVED (probe_map_check --derive-xml on 3_20260831_190834.640, 600 s, FM64): 74 strong pairs fit NONE of the 4 connector orientations x bank rotations (-4..+4) of the ProbeMaps A5x12 XML (best 0.61 same-shank, expected ~0.9+). 7 co-activation clusters used as shanks (35 channels), 29 channels unassigned -> skip. Needs the true pin table or an FM65 re-check."
+    mapping_source: "DATA-DERIVED (probe_map_check --derive-xml on 3_20260831_190834.640, 600 s, FM64): 74 strong pairs fit NONE of the 4 connector orientations x bank rotations (-4..+4) of the ProbeMaps A5x12 XML (best 0.61 same-shank, expected ~0.9+). 7 co-activation clusters used as shanks (35 channels), 29 channels unassigned -> skip. Needs the true pin table or an FM65 re-check. | 2026-09-04 re-test on FM65 10_20260902_083015.335 with the 16 connector matings (per-connector 180-deg rotation, swap, mirror) x bank rotations: co-activation 93 strong pairs, best same-shank 0.51 (no winner); unit-footprint test on 60 KS4 units: best spread 185 um, same-shank <= 0.50, no margin -> the ProbeMaps A5x12 site->pin table does not describe this implant under any mating; data-derived groups stay"
     reject_channels: []       # index 2026-09-02 candidates on EVERY SF9 session: 2 4 32 36 54 56 58 62 (+52 60 on short records); the data-derived XML already skips the unassigned channels
     notes: "Notion 'Logger Channels Count' 50 -> ~14 channels expected dead/unused"
   SF10:

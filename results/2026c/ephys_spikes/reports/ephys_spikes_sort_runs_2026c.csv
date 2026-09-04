@@ -3,3 +3,4 @@ written_utc,animal,session,firmware,deglitched,partition,sorter,n_sorter_dirs,n_
 2026-09-02T23:05:26+00:00,SF08,2_20260901_002327.839__w3600s_600s,64,True,shank,kilosort4,4,4,32,1003.8,G:\Field2026_analysis_out\2026c\ephys_sort\SF08\2_20260901_002327.839__w3600s_600s,2fbb2cf+dirty
 2026-09-04T09:19:12+00:00,SF07,15_20260902_082418.755,65,False,shank,kilosort4,4,4,,32727.2,E:\3rd_rat_spikes\analysis\sort\SF07\15_20260902_082418.755,94ef5a6+dirty
 2026-09-04T15:33:52+00:00,SF08,13_20260902_082748.094,65,False,shank,kilosort4,4,4,32,22472.8,E:\3rd_rat_spikes\analysis\sort\SF08\13_20260902_082748.094,94ef5a6+dirty
+2026-09-04T21:02:00+00:00,SF09,10_20260902_083015.335,65,False,shank,kilosort4,7,7,1 2 3 4 5 6 7 11 12 13 14 15 21 22 25 32 33 36 47 49 51 52 54 55 56 58 59 60 62 63,19680.1,E:\3rd_rat_spikes\analysis\sort\SF09\10_20260902_083015.335,9c82df8

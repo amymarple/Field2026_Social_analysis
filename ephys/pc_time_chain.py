@@ -67,6 +67,10 @@ CADENCE_S = 5.0
 MIN_CLUSTER = 3          # start cluster (a 10-s touch is 2 anchors; a real Start touch is >= 3)
 MIN_END_CLUSTER = 2      # a Stop touch is often only 2 anchors (~10 s); two agreeing anchors still fix the end
 MIN_NATIVE_KEPT = 10
+CLUSTER_GAP_S = 600.0     # anchors separated by more than this belong to different touches
+FAR_CLUSTER_MIN_FRAC = 0.30   # a touch this far into the session can stand in for a missing end cluster
+                              # (the drift is linear to ~10 ms over 11 h, measured 2026-09-04, so the remaining
+                              #  tail is extrapolated at the cost of drift_sem_ppm x tail, reported per session)
 STEP_DEVIATION_PPM = 80.0   # drift deviating this much from the logger's other sessions, with both ends consistent
                             # with the neighbours, = a field-PC clock step INSIDE the session
 
@@ -172,6 +176,17 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
         t, y, delay, dur = s["t"], s["y"], s["delay"], s["dur"]
         sel_s = t <= END_WINDOW_S
         sel_e = t >= dur - END_WINDOW_S
+        true_end = int(sel_e.sum()) >= MIN_END_CLUSTER
+        tail_extrap_s = 0.0
+        if not true_end and t.size and not s["corrupt"]:
+            # no touch at the Stop (battery death, or the round was missed): fall back to the LAST touch that sits far
+            # enough into the session to measure the drift, and extrapolate the remaining tail
+            grp = np.split(np.arange(t.size), np.where(np.diff(t) > CLUSTER_GAP_S)[0] + 1)
+            far = [g for g in grp if g.size >= MIN_END_CLUSTER and float(np.median(t[g])) >= FAR_CLUSTER_MIN_FRAC * dur]
+            if far:
+                sel_e = np.zeros(t.size, dtype=bool)
+                sel_e[far[-1]] = True
+                tail_extrap_s = float(dur - np.median(t[far[-1]]))
         n_start, n_end = int(sel_s.sum()), int(sel_e.sum())
         off_start = float(np.median(y[sel_s] - t[sel_s] * 1000.0)) if (n_start and not s["corrupt"]) else float("nan")
         off_end = float(np.median(y[sel_e] - t[sel_e] * 1000.0)) if (n_end and not s["corrupt"]) else float("nan")
@@ -204,7 +219,7 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
 
         end_vs_next = start_vs_prev = ""
         mn, mp = mapped_next(), mapped_prev()
-        if mn is not None and n_end >= MIN_END_CLUSTER and not s["corrupt"]:
+        if mn is not None and n_end >= MIN_END_CLUSTER and true_end and not s["corrupt"]:
             end_vs_next = f"{float(np.median(mn[1] - mn[0] * 1000.0)) - off_end:+.0f}"
         if mp is not None and n_start >= MIN_CLUSTER and not s["corrupt"]:
             start_vs_prev = f"{off_start - float(np.median(mp[1] - mp[0] * 1000.0)):+.0f}"
@@ -218,7 +233,8 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
                 b0 = 1.0 + (off_end - off_start) / ((t_e - t_s) * 1000.0)
                 a0 = off_start + (1.0 - b0) * t_s * 1000.0 + 0.0
                 f = robust_line(t, y, a0=off_start - (b0 - 1.0) * t_s * 1000.0, b0=b0)
-                if f is not None and f["n_kept"] >= min(MIN_NATIVE_KEPT, n_start + n_end) and (t[f["keep"]].max() - t[f["keep"]].min()) >= 0.8 * dur:
+                span_needed = 0.8 * (dur if true_end else (t_e - t_s))
+                if f is not None and f["n_kept"] >= min(MIN_NATIVE_KEPT, n_start + n_end) and (t[f["keep"]].max() - t[f["keep"]].min()) >= span_needed:
                     fit_native = f
                     fit_native["cluster_scatter_ms"] = max(scat_s, scat_e) if np.isfinite(scat_s) and np.isfinite(scat_e) else float("nan")
 
@@ -270,6 +286,8 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
                 mid_resid = " ".join(f"{tt / 3600:.2f}h:{rr:+.0f}" for tt, rr in zip(t[sel_m], res))
         if s["pc_steps_inside"] and verdict.startswith("OK-native"):
             verdict = "OK-native (PC step modelled)"
+        if fit_native is not None and tail_extrap_s > END_WINDOW_S:
+            verdict += f" [last touch {(dur - tail_extrap_s) / 3600:.1f} h, tail {tail_extrap_s / 3600:.1f} h extrapolated]"
         rows.append({
             "animal": animal, "session": s["name"], "start": s["start"].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], "duration_s": round(dur, 3),
             "crosses_midnight": bool(folder_ms_of_day(s["name"]) + dur * 1000.0 >= DAY_MS),
@@ -284,6 +302,9 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
             "drift_native_ppm": "" if fit_native is None else round(fit_native["drift_ppm"], 1),
             "drift_native_sem_ppm": "" if fit_native is None else round(fit_native["drift_sem_ppm"], 1),
             "native_residual_ms": "" if fit_native is None else round(fit_native["rms_ms"], 1),
+            "tail_extrap_h": round(tail_extrap_s / 3600.0, 2) if tail_extrap_s > END_WINDOW_S else "",
+            "tail_extrap_unc_ms": ("" if (fit_native is None or tail_extrap_s <= END_WINDOW_S)
+                                   else round(fit_native["drift_sem_ppm"] * 1e-6 * tail_extrap_s * 1000.0, 1)),
             "drift_chained_ppm": drift_chain, "chain_unc_ppm": chain_unc, "chain_span_s": round(span, 1),
             "start_vs_prev_ms": start_vs_prev, "end_vs_next_ms": end_vs_next, "verdict": verdict,
         })
