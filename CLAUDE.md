@@ -12,7 +12,10 @@ Quick reminders (all detailed in CONVENTIONS.md):
   plus the Notion page "4-Rat 3rd cohort full (SF07–SF12)": https://app.notion.com/p/4-Rat-3rd-cohort-full-SF07-SF12-3c23b0530d4a8152a204cce3afa11671 .
   `git pull` it and read those before interpreting a gap, a split session, a drift verdict or a unit-yield change; keep the
   cohort registry (`cohorts/<key>.yaml`: probe_moves, field_pc_clock_steps, outages, firmware) consistent with it. The
-  `field2026-sync` repo is the message channel to the field-PC agent, not the record.
+  `field2026-sync` repo is the message channel to the field-PC agent, not the record — with one exception: the field PC's
+  **incident log** (`E:ecording_health_reports\incident_log.md` on the field PC) is mirrored there as `C:/Users/Cornell/Documents/GitHub/field2026-sync/from-field/<date>_cohort3-incident-log.md`
+  (newest date = current; one dated `## ` entry per event: outages, BSODs, clock steps, battery deaths, probe moves, anchor
+  passes). Read it together with BATTERY_LOG before explaining anything.
 - **Cohort-appendable:** code takes `--cohort`; results live at `results/<cohort>/<direction>/`; bulk
   artifacts go off-repo under `FIELD2026_ANALYSIS_OUT_ROOT`; a new cohort is a `cohorts/<key>.yaml` + a
   re-run, never a restructure.
