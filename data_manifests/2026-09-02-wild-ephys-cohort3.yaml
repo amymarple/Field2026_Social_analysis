@@ -41,6 +41,8 @@ datasets:
     role: forensic card images for a FUTURE recovery attempt; NOT parsed by any tool
     path: E:\3rd_rat_spikes\<SFxx>\recovery.bin
     size_bytes: ~512 GB each (one per animal SF7–SF12)
+    copy_2026-09-05: F:rd_rat_spikes\<SFxx>ecovery.bin (SanDisk Extreme 4 TB, exFAT); sha256 of the source stream == sha256 of the
+      re-read destination for all six (F:rd_rat_spikesecovery_images_manifest.json); E: originals untouched at the time of writing
     reason: FM59–62 firmware registered a session file only at a clean Record Stop; night 1 (2026-08-30 18:39 -> 08-31 ~04:30) was pulled without Stop on all six loggers, so those sessions exist only as unregistered card regions (partly overwritten by the morning restarts; maker verdict "not realistically recoverable")
 
 firmware_provenance:              # read per session from CE_params.bin; the rule that decides validity
