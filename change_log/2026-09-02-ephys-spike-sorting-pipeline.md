@@ -471,3 +471,25 @@ latency, ESTIMATE) - needs a shared hardware TTL. Headline definitions (full set
 - end error of an assumed-drift session: $\delta_{	ext{end}}(T) = |\Delta b| 	imes 10^{-6} 	imes T 	imes 1000$ ms,
   with $\Delta b$ = a session's drift minus its logger's median (0.8 ppm median, 2.0 ppm sd);
 - parabolic bow $eta = |c_2|/4$ (ms) on $	au=(t-ar t)/T$: 6 ms median, 13 ms worst over 6-11 h = linear.
+- **Batch paused for the 2026-09-05 07:00 card offload (user decision 00:50):** SF11 and SF12 are held by renaming their staged XMLs
+  to `<session>.xml.hold` (`E:\3rd_rat_spikes\analysis\stage\SF11\12_20260902_083534.755\`, `…\SF12\11_20260902_083748.804\`), so the
+  running batch skips them in seconds ("session is not staged", rc≠0 in its summary — expected) and ends after SF10 (~02:00).
+  Restore = rename the XMLs back and run `ephys/run_sort_session.py --partition shank --overwrite` for each (fast postprocess, ~6 h each).
+  Reason: preprocessing (read 78 GB + write 78 GB on E:) and the Kilosort4 .dat reads would slow the copies 20–40 %.
+- **SF10 `9_20260902_083247.835` (8.5 h, done 06:28 on 09-05, 806 min, fast):** preprocess 3.8 h, **Kilosort4 9 h** (shank 1 alone
+  5.6 h — SF10's "super noisy shank" of the 8/25 field note; shanks 2–4 1.8 / 0.7 / 1.0 h), postprocess 30 min. 301 KS4 clusters →
+  237, 68 noise-labelled, 169 candidates (52 / 36 / 41 / 40), **148 below 3 Hz**, 21 at ≥ 3 Hz, 10 well-isolated; channels 32, 34, 56
+  auto-rejected. Batch ended 06:28 with SF11/SF12 skipped (held). Five of six loggers sorted; SF11/SF12 after the 09-05 offload.
+
+## Addendum 2026-09-05 — recovery images duplicated to F:, offload throughput measured
+
+- The six raw card images `E:rd_rat_spikes\SFxxecovery.bin` (3.07 TB) were copied to `F:rd_rat_spikes\SFxxecovery.bin`
+  (SanDisk Extreme 4 TB) between 09-04 19:14 and 09-05 06:29, hashing the source stream during the copy and re-reading each
+  destination afterwards: all six sha256 pairs match (`F:rd_rat_spikesecovery_images_manifest.json`). Purpose: E: had
+  2.98 TB free against ~2.1 TB per offload round; deleting the E: originals (operator's decision, not done here) frees 2.9 TB.
+- E: (WD Red Pro 20 TB, 84 % full, free space on the inner tracks) reads a single stream at 103-114 MB/s there, against the
+  268-285 MB/s outer-track spec, so it absorbs about two simultaneous 50 MB/s card exports, not three. Card-copy history
+  from file timestamps: one card 50 MB/s (the WILD console's per-card ceiling), two cards on independent USB root ports
+  49 + 49 with no loss, two cards behind one extender 25 + 25. Plan adopted for the 09-05 batch: two cards to E:, two to
+  D: (SATA SSD, 217 MB/s measured), two to F:, each reader on its own root port, one console instance per card; the D:/F:
+  copies are consolidated into E: afterwards with verification.
