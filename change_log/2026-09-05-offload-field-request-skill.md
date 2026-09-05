@@ -21,3 +21,16 @@
 ## Effect on results
 The 08-31 and 09-01 steps move by +30 ms and −51 ms; sessions spanning them refit on the next chain run (the 2026-09-05
 full QC rerun picks the new values up). No verdict is expected to change; per-session drifts shift by < 0.5 ppm.
+
+## Later the same day — the six-logger QC of the 09-05 offload, two fitter/report rules
+- `pc_time_chain.py`: dense garbage-word bursts are dropped before fitting (a cluster of >= 20 words whose offsets span
+  > 30 s; a real touch scatters <= ~100 ms). SF09 `3_20260903_175840.384` carried 1,233 such words at 09-03 23:33 that
+  had outvoted its genuine anchors (fit 1,690 ppm); it now fits from the midnight touch at -26.8 ppm (rms 8.2 ms, tail
+  7.1 h +- 2.8 ms). New column `n_garbage_dropped` (also 1,001 on the corrupt FM62 record SF10 `0_20260831_070700`).
+- `offload_qc_report.py`: sessions listed in `cohorts/<key>.yaml ephys.field_flags` are excluded from the FM65 verdict
+  and reported as "field-flagged" (SF10's two 09-05 zombie restarts, 2,339/s on a dying cell); and the 5 % of-FM64-median
+  test gets a 5 ticks/s floor - SF7's FM64 median is only 13/s, so 2.6/s of ordinary transients had failed it.
+- Result (229 sessions, 603.6 h; FM65 160 / 470.7 h): FM65 CLEAN on all six; all 20 new sessions >= 1 h fit natively
+  at their loggers' usual drifts (SF7 -19..-24, SF8 -19..-20, SF9 -26..-27, SF10 -23..-25, SF11 -26, SF12 -20 ppm);
+  overview OK 69 / 471.1 h, step-modelled 10 / 68.3 h, chained 3 / 12.7 h, start-only 10 / 25.0 h (unchanged set),
+  corrupt 5 / 16.7 h. Daily logger-hours 09-03 126.7, 09-04 133.4, 09-05 51.2 (to the morning round).

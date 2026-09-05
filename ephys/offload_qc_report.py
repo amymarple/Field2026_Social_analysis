@@ -176,6 +176,15 @@ def chain_verdict(c: dict) -> str:
 
 def build(cohort: str, animals: list[str] | None, pc_time_root: Path, pc_marks_path: Path | None = None) -> tuple[str, list[dict]]:
     cfg = ephys_block(cohort)
+    # Sessions the field log marks as not-real recordings (cohorts/<key>.yaml ephys.field_flags): kept in the index, excluded
+    # from the firmware verdict and named in the problems list instead of being reported as a firmware failure
+    field_flags = {}
+    for ff in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("field_flags") or []):
+        for s in ff.get("sessions", []):
+            field_flags[(_norm_animal(str(ff.get("animal"))), s)] = str(ff.get("flag", "field-flagged"))
+
+    def flagged(r):
+        return field_flags.get((_norm_animal(str(r.get("animal"))), r.get("session")))
     rows, detail = load_index(cohort)
     chain = load_chain(cohort)
     marks = load_pc_marks(pc_marks_path)
@@ -231,6 +240,7 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path, pc_marks_p
         # ticks concentrated on one or two channels are a flaky contact / bad channel, not the firmware defect (which hit
         # many channels with a fixed donor channel); such sessions are excluded from the firmware verdict and named
         local_notes = []
+        flag_notes = []
         probe_detail = {(s.get("animal"), s.get("session")): s.get("probe", {}) for s in detail.get("sessions", [])} if isinstance(detail, dict) else {}
 
         def channel_local(r):
@@ -249,6 +259,10 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path, pc_marks_p
                 if r["animal"] != an or r.get("ticks_per_s") in ("", None) or float(r.get("duration_s") or 0) < MIN_S:
                     continue
                 t = float(r["ticks_per_s"])
+                fl = flagged(r)
+                if fl:
+                    flag_notes.append(f"{an} `{r['session']}` {t:.1f}/s ({fl})")
+                    continue
                 loc = channel_local(r) if t >= 5.0 else None
                 if loc:
                     local_notes.append(f"{an} `{r['session']}` {t:.1f}/s concentrated on ch {loc} (channel-local impulses, not the defect)")
@@ -257,14 +271,15 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path, pc_marks_p
             if not f65:
                 continue
             med64 = sorted(f64)[len(f64) // 2] if f64 else float("nan")
-            ok = max(f65) < 10.0 and (not f64 or max(f65) < 0.05 * med64)
+            ok = max(f65) < 10.0 and (not f64 or max(f65) < max(0.05 * med64, 5.0))   # 5/s floor: ordinary transients, not the defect
             per_logger.append((an, max(f65), med64, ok))
         all_ok = all(x[3] for x in per_logger) if per_logger else False
         L.append(f"**FM65 verdict:** {'CLEAN' if all_ok else 'NOT clean'} — per logger, FM65 worst-window ticks/s vs the same logger's FM64 median: "
                  + "; ".join(f"{an} {m65:.1f} vs {m64:.0f}{' ok' if ok else ' FAIL'}" for an, m65, m64, ok in per_logger)
                  + f" (n = {n} FM65 sessions, max {mx:.2f}/s). The residual 1–7/s on the noisier loggers are ordinary fast transients "
                    "(they are not removed by the median rule, unlike the defect), two orders of magnitude below the FM64 defect load."
-                 + (" Excluded as channel-local: " + "; ".join(local_notes) + "." if local_notes else "") + "\n")
+                 + (" Excluded as channel-local: " + "; ".join(local_notes) + "." if local_notes else "")
+                 + (" Excluded as field-flagged: " + "; ".join(flag_notes) + "." if flag_notes else "") + "\n")
     else:
         L.append("**FM65 verdict:** no FM65 session indexed yet.\n")
 
@@ -374,7 +389,10 @@ def build(cohort: str, animals: list[str] | None, pc_time_root: Path, pc_marks_p
             probs.append(f"noise regime {r.get('regime')}: {a} `{r['session']}` (FM{r.get('firmware')}, windows {r.get('regime_by_window')}, removal {r.get('tick_removal_frac')})")
         if str(r.get("deglitch_required")) == "False" and str(r.get("measured_verdict", "")).startswith("glitchy") and float(r.get("duration_s") or 0) >= 120:
             loc = channel_local(r)
-            if loc:
+            fl = flagged(r)
+            if fl:
+                probs.append(f"field-flagged (excluded from analysis and from the firmware verdict): {a} `{r['session']}` — {fl}")
+            elif loc:
                 probs.append(f"channel-local impulses: {a} `{r['session']}` FM{r.get('firmware')} {r.get('ticks_per_s')} ticks/s concentrated on ch {loc} (flaky contact / bad channel, not the firmware defect; add to reject_channels)")
             else:
                 probs.append(f"FIRMWARE CLAIM VIOLATED: {a} `{r['session']}` FM{r.get('firmware')} measures glitchy ({r.get('ticks_per_s')} ticks/s)")
