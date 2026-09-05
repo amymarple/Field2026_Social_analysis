@@ -113,6 +113,7 @@ FM64 sessions (raw std ≈ 550–1000 ADC, 340–840 ticks/s, single-sample) are
 |---|---|
 | `_common.py` | cohort registry (`ephys:` block of `cohorts/<key>.yaml`), output roots, session-name parsing, fingerprints |
 | `check_offload_sizes.py` | after each card export: predicted card bytes (amplifier x 65/64) vs the console's Records / Total File Size listing, sidecar sizes, still-growing check -> SAFE TO FORMAT / CHECK / WAIT per card. Selects each card's folders as the N newest on disk (slot numbers restart at 0 per format, so they are not unique); `--since` is only an override |
+| `field_request.py` | after QC: writes the request to the field-PC agent into field2026-sync/tasks (routine files needed through the newest Stop on disk, ends the lab could not anchor that the PC marks do not cover, findings, unsettled clock steps); `--push`, `--check`. Driven by the `offload-field-request` skill |
 | `wild_ce_params.py` | `CE_params.bin` parser (firmware @328, RTC start, MAC, fs, Nch); layout from `Neurologger/Code/WILD_ReadHeader.m` |
 | `signal_probe.py` | 30-s probe: glitch samples/s, ticks/s, spike-band noise (µV), dead/broken channel candidates |
 | `build_session_index.py` | the session index (CSV/MD/JSON + data-root mirror) |
