@@ -68,6 +68,15 @@ ephys:
   probe_moves:
     - {animal: SF07, time: "2026-09-04 14:00:54", turns: 0.25, direction: advance, prev_session_stop: "2026-09-04 13:40:27", settle_h: 4}
     - {animal: SF11, time: "2026-09-04 13:56:50", turns: 0.25, direction: advance, prev_session_stop: "2026-09-04 13:41:26", settle_h: 4}
+    # Second advances 2026-09-05 (recording repo BATTERY_LOG_cohort3.md 9/5 row, commits 11f6cbb / 5a76417): the session was
+    # stopped, the probe turned, and a new session started on the same battery; the turn amount is logged as "1/4" for SF11
+    # and only as "probe move" for SF07.
+    - {animal: SF07, time: "2026-09-05 13:31:19", turns: null, direction: advance, prev_session_stop: "2026-09-05 13:15:40", settle_h: 4, note: "turn amount not logged (SF11 same day = 1/4)"}
+    - {animal: SF11, time: "2026-09-05 15:11:34", turns: 0.25, direction: advance, prev_session_stop: "2026-09-05 15:02:10", settle_h: 4}
+  # Sessions the field log marks as not-real recordings (keep them in the index, exclude from analysis). Source: recording
+  # repo BATTERY_LOG_cohort3.md.
+  field_flags:
+    - {animal: SF10, sessions: ["10_20260905_070012.038", "11_20260905_080522.427"], flag: "zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude"}
   deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
   probe_config: ephys/configs/probes_2026c.yaml
   preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT
