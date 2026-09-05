@@ -71,6 +71,8 @@ CLUSTER_GAP_S = 600.0     # anchors separated by more than this belong to differ
 FAR_CLUSTER_MIN_FRAC = 0.30   # a touch this far into the session can stand in for a missing end cluster
                               # (the drift is linear to ~10 ms over 11 h, measured 2026-09-04, so the remaining
                               #  tail is extrapolated at the cost of drift_sem_ppm x tail, reported per session)
+GARBAGE_IQR_MS = 30_000.0      # a touch's offsets scatter by <= ~100 ms; a burst whose offsets span > 30 s is corrupt words
+GARBAGE_MIN_N = 20             # ... and only bursts this large can outvote the real clusters
 STEP_DEVIATION_PPM = 80.0   # drift deviating this much from the logger's other sessions, with both ends consistent
                             # with the neighbours, = a field-PC clock step INSIDE the session
 
@@ -161,15 +163,29 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
         corrupt = t.size > CORRUPT_FACTOR * max(1.0, dur / CADENCE_S)
         base = folder_ms_of_day(sdir.name)
         y = unwrap_to_continuous(t, pc, base) - base if (t.size and not corrupt) else np.zeros(0)   # continuous PC ms minus RTC start
+        # Local corruption: a burst of hundreds of garbage words within a minute (SF09 3_20260903_175840: 1,233 "anchors" at
+        # 23:33 whose offsets span the whole 2^20 range) is not a touch. Real touches have offsets scattering <= ~100 ms;
+        # drop any dense cluster whose offset IQR exceeds GARBAGE_IQR_MS so it cannot outvote the genuine clusters.
+        n_garbage = 0
+        if y.size >= GARBAGE_MIN_N:
+            keep_g = np.ones(t.size, dtype=bool)
+            for g in np.split(np.arange(t.size), np.where(np.diff(t) > CLUSTER_GAP_S)[0] + 1):
+                if g.size >= GARBAGE_MIN_N:
+                    off = y[g] - t[g] * 1000.0
+                    if float(np.subtract(*np.percentile(off, [75, 25]))) > GARBAGE_IQR_MS:
+                        keep_g[g] = False
+            n_garbage = int((~keep_g).sum())
+            if n_garbage:
+                t, pc, delay, y = t[keep_g], pc[keep_g], delay[keep_g], y[keep_g]
         steps_inside: list[dict] = []
         if y.size:
             dur_steps = [dict(s) for s in (pc_steps or [])]
             corr, steps_inside = step_correction_ms(meta["start"], np.append(t, dur), dur_steps)
             y = y - corr[:-1]
         dec.append({"name": sdir.name, "start": meta["start"], "dur": dur, "t": t, "y": y, "delay": delay, "corrupt": corrupt,
-                    "pc_steps_inside": steps_inside})
+                    "pc_steps_inside": steps_inside, "n_garbage": n_garbage})
         if verbose:
-            print(f"  {animal} {sdir.name}: {t.size} anchors, {dur / 3600:.2f} h{'  CORRUPT' if corrupt else ''}", flush=True)
+            print(f"  {animal} {sdir.name}: {t.size} anchors, {dur / 3600:.2f} h{'  CORRUPT' if corrupt else ''}{f'  ({n_garbage} garbage words dropped)' if n_garbage else ''}", flush=True)
 
     rows = []
     for i, s in enumerate(dec):
@@ -293,7 +309,7 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
             "crosses_midnight": bool(folder_ms_of_day(s["name"]) + dur * 1000.0 >= DAY_MS),
             "pc_steps_inside": ";".join(f"{x['time']}:{x['jump_s']:+.3f}s@{x['t_s']:.0f}s" for x in s["pc_steps_inside"]),
             "mid_anchor_resid_ms": mid_resid,
-            "n_anchors": int(t.size), "n_native_start": n_start, "n_native_end": n_end,
+            "n_anchors": int(t.size), "n_garbage_dropped": s["n_garbage"], "n_native_start": n_start, "n_native_end": n_end,
             "start_delay_ms": round(delay_start) if np.isfinite(delay_start) else "",
             "off_start_ms": round(off_start) if np.isfinite(off_start) else "",
             "n_borrowed": int(borrowed_from.split(":")[1]) if borrowed_from else 0, "borrowed_from": borrowed_from,
