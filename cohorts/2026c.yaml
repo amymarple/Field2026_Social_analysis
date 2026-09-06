@@ -88,6 +88,10 @@ ephys:
   probe_notes:
     - {animal: SF11, time: "2026-09-05 23:50", note: "probably still ABOVE the hippocampus, or impedance bad; drive resistance very strong, unclear whether it can be advanced tomorrow", source: operator}
     - {animal: SF07, time: "2026-09-05 23:50", note: "ripples gradually strengthening (approaching the CA1 pyramidal layer); another advance planned for the 2026-09-06 morning round", source: operator}
+    # 2026-09-06 LFP-signature assessment (ephys/hpc_signature_check.py + swr_strict_check.py, windows 09-04 21:30 / 09-05 00:30 / 09-05 10:30):
+    - {animal: SF11, time: "2026-09-06 16:30", note: "ABOVE CA1: weakest theta of the fleet (ratio 2.5 vs 7-8), strongest slow waves in every state, only 1-6 coherent SWR-like events/min with small ripple amplitude and POSITIVE sharp waves = deep cortex (L5/L6) down to the corpus callosum/alveus, ~300-600 um above the pyramidal layer. Operator decision 09-06: keep as a cortical slow-wave / exploratory dataset (sleep staging, delta), do not expect CA1 place cells; site order within shanks still unverified (no laminar claims)", source: "analysis + operator"}
+    - {animal: SF07, time: "2026-09-06 16:30", note: "just above CA1: state-locked ripple events 25-49/min at rest vs 0-4/min in theta, small amplitude, sharp waves POSITIVE on shanks 2-4 (negative on shank 1) = alveus/oriens, probably 100-200 um above the pyramidal layer; SF09/SF10/SF12 show large NEGATIVE sharp waves = inside CA1 (radiatum side)", source: analysis}
+    - {animal: SF07, time: "2026-09-06 16:00", note: "the three logged 1/4-turn advances (09-04, 09-05, 09-06) produced NO detectable displacement (fingerprint r 0.95-1.00 vs the pre-turn profile for 47 h; 1 site = 50 um would give 0.85); SF11 likewise none on 09-04/09-05 - microdrives suspected slipping, drive test 2026-09-07; see results/2026c/ephys_spikes/reports/ephys_spikes_probe_move_check_2026c.md", source: analysis}
   # Logger hardware events that explain a gap or an odd session end (not probe-related). Source: the field PC incident log
   # (field2026-sync from-field/<date>_cohort3-incident-log.md) and the task Responses.
   logger_notes:
