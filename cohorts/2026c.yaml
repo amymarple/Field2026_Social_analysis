@@ -84,6 +84,11 @@ ephys:
   probe_notes:
     - {animal: SF11, time: "2026-09-05 23:50", note: "probably still ABOVE the hippocampus, or impedance bad; drive resistance very strong, unclear whether it can be advanced tomorrow", source: operator}
     - {animal: SF07, time: "2026-09-05 23:50", note: "ripples gradually strengthening (approaching the CA1 pyramidal layer); another advance planned for the 2026-09-06 morning round", source: operator}
+  # Logger hardware events that explain a gap or an odd session end (not probe-related). Source: the field PC incident log
+  # (field2026-sync from-field/<date>_cohort3-incident-log.md) and the task Responses.
+  logger_notes:
+    - {animal: SF10, time: "2026-09-06 04:02:54", note: "night session 9_20260905_185709 (EVO card, not offloaded yet) stopped with a healthy cell (3.74 V flat, card 17 %, no dive, no console link); RTC writes 05:57:54/05:57:56 hit the IDLE logger, operator restarted it 05:58:13 on the same cell. Second anomalous stop in two nights (09-05 06:58 sag-and-rebound) -> loose battery contact suspected; expect a start cluster + midnight touch (00:29-00:32) and a ~3.5 h extrapolated tail", source: "incident log 2026-09-06 05:40 / 06:10, task Response 06:45"}
+    - {animal: SF07, time: "2026-09-06 05:32", note: "NOT a stop: the advertisement rec counter froze at 38655 s (05:36-05:56) while voltage and card % kept updating; connect at 06:02:47 showed rec = 40529 s, continuous since 18:47:32. A frozen ad counter alone is not evidence of a stop", source: "incident log 2026-09-06 06:10"}
   # Sessions the field log marks as not-real recordings (keep them in the index, exclude from analysis). Source: recording
   # repo BATTERY_LOG_cohort3.md.
   field_flags:
