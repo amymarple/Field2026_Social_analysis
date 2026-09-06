@@ -13,10 +13,12 @@ missing session. Sidecar sizes (time.dat = 4 n, analogin.dat = 2 n, amplifier a 
 
 Which folders belong to THIS card: the slot number in a folder name (<slot>_<date>_<time>) is the card's write order and
 restarts at 0 every time the card is formatted, so it is NOT unique across offloads (SF7 has a 4_20260903_001558 and a
-4_20260903_171804). The card's listing therefore corresponds to the N NEWEST session folders of that animal on disk
-(N = Records). If the operator skipped a few-second test record, those N newest would reach one folder too far back and
-the predicted bytes would exceed the listing; the tool then drops the oldest folder(s) until the prediction fits and
-reports the record(s) that were not downloaded. Raw folder names are never changed.
+4_20260903_171804), and cards are rotated between rounds without always being formatted (SF10 on 09-05: slots 0-2 were
+the 09-03 daytime records of a card reused unformatted, slots 3-7 the new ones). The card's N records are slots 0..N-1;
+for each slot the tool considers every folder on disk with that slot number and picks the combination that is physically
+possible - start times increasing with the slot number, and listing minus prediction equal to the per-record overhead
+(plus at most one undownloaded few-second test record) - preferring the newest folders. If no combination fits, it falls
+back to the N newest folders and reports the record(s) that were not downloaded. Raw folder names are never changed.
 
 Usage:
     python ephys/check_offload_sizes.py --cohort 2026c --card SF7=15:432815.446 --card SF8=8:... --card SF9=9:...
@@ -98,10 +100,41 @@ def main() -> None:
         n_card, mb_card = cards.get(an, (None, None))
         skipped_older = 0
         if n_card and since is None:
-            sess = sess[-n_card:]
-            while len(sess) > 1 and sum(r["predicted_card_bytes"] for r in sess) > mb_card * 1e6:
-                sess = sess[1:]
-                skipped_older += 1      # the card's oldest record(s) were not downloaded: an older folder had crept into the window
+            # A card holds slots 0..N-1 since its last format. Cards are rotated between rounds and are not always formatted,
+            # so a slot may have several folders on disk (SF10 on 09-05: slots 0-2 were the 09-03 daytime records of a card that
+            # was reused unformatted, slots 3-7 the new ones). Choose, per slot, the folder set whose predicted bytes best match
+            # the listing (residual = ~6.5 MB per record); brute force is cheap. Falls back to the N newest when there is no
+            # combination that fits (e.g. a record was not downloaded).
+            import itertools
+            by_slot = {}
+            for r in sess:
+                by_slot.setdefault(int(r["session"].split("_")[0]), []).append(r)
+            # candidates per slot, newest first (ties on bytes then resolve toward the newest folder); a folder that alone
+            # exceeds the listing cannot be on this card
+            cands = [sorted([r for r in by_slot.get(k, []) if r["predicted_card_bytes"] <= mb_card * 1e6],
+                            key=lambda r: r["start"], reverse=True) for k in range(n_card)]
+            # Physical constraints, not numerical coincidence: the card wrote its slots in order, so start times must increase
+            # with the slot number; and the listing must exceed the prediction by the per-record overhead plus at most one
+            # undownloaded test record. Among the combinations that satisfy both, take the NEWEST folders.
+            best = None
+            if all(cands) and __import__("math").prod(len(c) for c in cands) <= 200_000:
+                slack = OVERHEAD_PER_RECORD * n_card + TEST_RECORD_MAX_S * BYTES_PER_SAMPLE_CARD * fs
+                for combo in itertools.product(*cands):
+                    if any(combo[i]["start"] >= combo[i + 1]["start"] for i in range(len(combo) - 1)):
+                        continue
+                    resid_c = mb_card * 1e6 - sum(r["predicted_card_bytes"] for r in combo)
+                    if not (0 <= resid_c <= slack):
+                        continue
+                    newness = sum(r["start"].timestamp() for r in combo)
+                    if best is None or newness > best[0]:
+                        best = (newness, combo)
+            if best is not None:
+                sess = sorted(best[1], key=lambda r: r["start"])
+            else:
+                sess = sess[-n_card:]
+                while len(sess) > 1 and sum(r["predicted_card_bytes"] for r in sess) > mb_card * 1e6:
+                    sess = sess[1:]
+                    skipped_older += 1      # the card's oldest record(s) were not downloaded: an older folder had crept into the window
         pred = sum(r["predicted_card_bytes"] for r in sess)
         span = f" (window {sess[0]['start']:%m-%d %H:%M} -> {sess[-1]['start']:%m-%d %H:%M})" if sess else ""
         listing = f", card lists {n_card} records / {mb_card:,.3f} MB" if n_card else ", no card listing given"
