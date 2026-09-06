@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-06T04:49:34+00:00 by `ephys/pc_time_chain.py` (git 0b2fc01+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-06T18:49:21+00:00 by `ephys/pc_time_chain.py` (git 6cab06e+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -48,6 +48,8 @@ Generated 2026-09-06T04:49:34+00:00 by `ephys/pc_time_chain.py` (git 0b2fc01+dir
 | SF07 | `4_20260905_132736.589` | 0.00 |  | 2 | 2/2 | 68 | 81 |  |  |  | 0  | 175.8 |  |  | +742 | one-end-only |  |
 | SF07 | `5_20260905_133036.709` | 0.01 |  | 8 | 8/8 | 0 | 823 |  |  |  | 15 next:15 | 7.4 | -321.8 ± 21177.6 | +742 | -24 | OK-chained |  |
 | SF07 | `6_20260905_133118.469` | 4.48 |  | 45 | 15/15 | 0 | 799 | 44 | -23.7 ± 1.3 | 60.5 | 0  |  |  | -24 |  | OK-native |  |
+| SF07 | `0_20260906_123827.548` | 0.01 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) |  |
+| SF07 | `1_20260906_123931.995` | 0.36 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) |  |
 | SF08 | `0_20260831_070148.859` | 0.18 |  | 26852 | 26718/8 | 28 |  |  |  |  | 0  | 12.0 |  |  |  | corrupt |  |
 | SF08 | `1_20260831_071239.713` | 0.05 |  | 14 | 10/4 | 2497 | -3599 | 14 | 13273.1 ± 8362.1 | 1854.1 | 0  | 9.7 |  |  |  | inconsistent |  |
 | SF08 | `2_20260831_071541.642` | 1.25 |  | 1281724 | 92482/94544 | 133 |  |  |  |  | 0  | 6.5 |  |  |  | corrupt |  |
@@ -225,6 +227,7 @@ Generated 2026-09-06T04:49:34+00:00 by `ephys/pc_time_chain.py` (git 0b2fc01+dir
 | SF11 | `5_20260905_151020.899` | 0.00 |  | 2 | 2/2 | 388 | 159 |  |  |  | 1 prev:1 | 31.6 | 643897.4 ± 5557.7 |  | +281 | inconsistent |  |
 | SF11 | `6_20260905_151054.529` | 0.01 |  | 7 | 7/7 | 27 | 440 |  |  |  | 15 next:15 | 7.4 | 2.0 ± 22431.6 | +281 | +0 | OK-chained |  |
 | SF11 | `7_20260905_151133.499` | 2.95 |  | 42 | 15/13 | 1118 | 440 | 41 | -26.0 ± 0.5 | 13.2 | 0  |  |  | +0 |  | OK-native |  |
+| SF11 | `0_20260906_124136.884` | 0.56 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) |  |
 | SF12 | `0_20260831_070947.667` | 0.01 |  | 6 | 6/6 | 171 | -2830 |  |  |  | 0  | 8.2 |  |  |  | one-end-only |  |
 | SF12 | `1_20260831_071033.005` | 0.13 |  | 122029 | 20614/32791 | 56 |  |  |  |  | 0  | 16.3 |  |  |  | corrupt |  |
 | SF12 | `2_20260831_071845.540` | 4.14 |  | 5410285 | 8/5157 | 2821 |  |  |  |  | 0  | 28074.2 |  |  |  | corrupt |  |

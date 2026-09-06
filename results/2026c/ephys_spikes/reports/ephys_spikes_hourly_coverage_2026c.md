@@ -1,6 +1,13 @@
 # Hourly recording coverage, cohort `2026c`
 
-Generated 2026-09-06T05:28:46+00:00 by `ephys/coverage_tables.py` (git 0b2fc01+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
+Generated 2026-09-06T19:31:15+00:00 by `ephys/coverage_tables.py` (git 7749e39+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
+
+**5 field-flagged session(s), 2.01 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
+- SF10 `10_20260905_070012.038` 2026-09-05 07:00 (29.8 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
+- SF10 `11_20260905_080522.427` 2026-09-05 08:05 (34.9 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
+- SF11 `0_20260906_124136.884` 2026-09-06 12:41 (33.8 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
+- SF07 `0_20260906_123827.548` 2026-09-06 12:38 (0.6 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
+- SF07 `1_20260906_123931.995` 2026-09-06 12:39 (21.4 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 
 ## 2026-08-31
 
@@ -168,8 +175,8 @@ Day total 133.4 logger-hours; SF07 22.2 h, SF08 22.5 h, SF09 22.2 h, SF10 22.3 h
 | 04 | 60* | 60* | 60* | 60* | 60* | 60* | 6 |
 | 05 | 60* | 60* | 60* | 60* | 60* | 60* | 6 |
 | 06 | 60* | 60* | 60* | 57* | 60* | 60* | 6 |
-| 07 | 60* | 60* | 60* | 30* | 60* | 60* | 6 |
-| 08 | 36* | 37* | 39* | 35* | 43* | 34* | 6 |
+| 07 | 60* | 60* | 60* | - | 60* | 60* | 5 |
+| 08 | 36* | 37* | 39* | - | 43* | 34* | 5 |
 | 09 | 28* | 25* | 14* | 22* | 19* | 16* | 6 |
 | 10 | 60* | 60* | 60* | 60* | 60* | 60* | 6 |
 | 11 | 60* | 60* | 60* | 60* | 60* | 60* | 6 |
@@ -186,5 +193,5 @@ Day total 133.4 logger-hours; SF07 22.2 h, SF08 22.5 h, SF09 22.2 h, SF10 22.3 h
 | 22 | - | - | - | - | - | - | 0 |
 | 23 | - | - | - | - | - | - | 0 |
 
-Day total 101.3 logger-hours; SF07 16.8 h, SF08 17.1 h, SF09 17.0 h, SF10 16.5 h, SF11 17.0 h, SF12 16.9 h.
+Day total 100.2 logger-hours; SF07 16.8 h, SF08 17.1 h, SF09 17.0 h, SF10 15.4 h, SF11 17.0 h, SF12 16.9 h.
 
