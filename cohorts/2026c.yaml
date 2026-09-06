@@ -79,6 +79,11 @@ ephys:
     # and only as "probe move" for SF07.
     - {animal: SF07, time: "2026-09-05 13:31:19", turns: 0.25, direction: advance, prev_session_stop: "2026-09-05 13:15:40", settle_h: 4}
     - {animal: SF11, time: "2026-09-05 15:11:34", turns: 0.25, direction: advance, prev_session_stop: "2026-09-05 15:02:10", settle_h: 4}
+  # Operator observations on electrode position / signal (dated; the analysis reads them as expectations for sorting:
+  # a probe still above the hippocampus yields no CA1 units, emerging ripples mark the approach to the pyramidal layer).
+  probe_notes:
+    - {animal: SF11, time: "2026-09-05 23:50", note: "probably still ABOVE the hippocampus, or impedance bad; drive resistance very strong, unclear whether it can be advanced tomorrow", source: operator}
+    - {animal: SF07, time: "2026-09-05 23:50", note: "ripples gradually strengthening (approaching the CA1 pyramidal layer); another advance planned for the 2026-09-06 morning round", source: operator}
   # Sessions the field log marks as not-real recordings (keep them in the index, exclude from analysis). Source: recording
   # repo BATTERY_LOG_cohort3.md.
   field_flags:
