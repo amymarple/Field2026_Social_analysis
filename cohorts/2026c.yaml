@@ -79,6 +79,10 @@ ephys:
     # and only as "probe move" for SF07.
     - {animal: SF07, time: "2026-09-05 13:31:19", turns: 0.25, direction: advance, prev_session_stop: "2026-09-05 13:15:40", settle_h: 4}
     - {animal: SF11, time: "2026-09-05 15:11:34", turns: 0.25, direction: advance, prev_session_stop: "2026-09-05 15:02:10", settle_h: 4}
+    # Third advances 2026-09-06 during the operator's 12:30-13:34 signal check (recording repo BATTERY_LOG 9/6 row, incident log
+    # 13:45, Notion Sep 6 row): clean Stops 12:31:20 / 12:32:32, ~1 h idle, Resync on the idle loggers, guard files, restart.
+    - {animal: SF07, time: "2026-09-06 13:29:42", turns: 0.25, direction: advance, prev_session_stop: "2026-09-06 12:31:20", settle_h: 4}
+    - {animal: SF11, time: "2026-09-06 13:33:38", turns: 0.25, direction: advance, prev_session_stop: "2026-09-06 12:32:32", settle_h: 4}
   # Operator observations on electrode position / signal (dated; the analysis reads them as expectations for sorting:
   # a probe still above the hippocampus yields no CA1 units, emerging ripples mark the approach to the pyramidal layer).
   probe_notes:
@@ -93,6 +97,13 @@ ephys:
   # repo BATTERY_LOG_cohort3.md.
   field_flags:
     - {animal: SF10, sessions: ["10_20260905_070012.038", "11_20260905_080522.427"], flag: "zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude"}
+    # Probe-position TEST recordings 2026-09-06 (operator, 13:46): while SF07 and SF11 sat idle for the third advance, both loggers
+    # were run on separate 64 GB test cards from a DIFFERENT PC's console to check whether the probe had reached the hippocampus.
+    # Their BLE anchors carry that PC's clock, so no field-PC time exists for them (`pc_time: false` = pc_time_chain does not
+    # fit them and never chains a neighbour through them). Whether they enter any analysis is UNDECIDED - keep them indexed,
+    # keep them out of coverage and sorting until the operator decides.
+    - {animal: SF07, sessions: ["0_20260906_123827.548", "1_20260906_123931.995"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false}
+    - {animal: SF11, sessions: ["0_20260906_124136.884"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false}
   deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
   probe_config: ephys/configs/probes_2026c.yaml
   preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT

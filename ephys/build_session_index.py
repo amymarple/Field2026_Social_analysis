@@ -36,7 +36,7 @@ CSV_COLUMNS = [
     "tick_removal_frac", "raw_std_median_adc", "glitch_samples_per_s", "glitch_pct_samples", "probe_seconds", "probe_windows", "noise_uV_median",
     "bad_channel_candidates",
     "fs", "n_channels", "n_samples", "amplifier_gb", "rtc_start", "rtc_agrees_with_folder", "has_info_rhd",
-    "time_dat_ok", "analogin_ok", "sd_capacity_kb", "error_code", "notes", "path",
+    "time_dat_ok", "analogin_ok", "sd_capacity_kb", "error_code", "field_flag", "notes", "path",
 ]
 
 
@@ -130,6 +130,22 @@ def index_session(animal: str, mac: str | None, sdir: Path, cfg: dict, *, probe_
     return row, detail
 
 
+def _norm_animal(a: str) -> str:
+    a = str(a).upper()
+    return f"SF{int(a[2:]):02d}" if a.startswith("SF") and a[2:].isdigit() else a
+
+
+def field_flag_map(cfg: dict) -> dict[tuple[str, str], str]:
+    """(animal, session) -> flag text from cohorts/<key>.yaml ephys.field_flags: sessions the field record marks as not-real
+    recordings or as test recordings (kept in the index; excluded from coverage, the firmware verdict and any analysis until
+    decided). An entry with `pc_time: false` was recorded from another PC's console: its BLE anchors are not field-PC time."""
+    out = {}
+    for ff in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("field_flags") or []):
+        for s in ff.get("sessions") or []:
+            out[(_norm_animal(ff.get("animal")), str(s))] = str(ff.get("flag", "field-flagged")) + ("" if ff.get("pc_time", True) else " [no field-PC time]")
+    return out
+
+
 def _index_one(args):
     animal, mac, sdir, cfg, probe_seconds, probe_windows = args
     return index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows)
@@ -139,6 +155,7 @@ def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe
                 workers: int = 1) -> tuple[list[dict], list[dict], dict]:
     rows, details = [], []
     animals: dict[str, dict] = {}
+    flags = field_flag_map(cfg)
     sessions = list(iter_raw_sessions(raw_root, cfg.get("session_glob", "*"), cohort=(cfg.get("_cohort_yaml") or {}).get("cohort")))
     cfg_plain = {k: v for k, v in cfg.items() if k != "_cohort_yaml"}   # picklable subset for worker processes
     if workers > 1 and len(sessions) > 1:
@@ -152,6 +169,7 @@ def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe
                 print(f"  {animal} {mac or '-'} {sdir.name} ...", flush=True)
             results.append(index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows))
     for (animal, mac, sdir), (row, det) in zip(sessions, results):
+        row["field_flag"] = flags.get((_norm_animal(animal), sdir.name), "")
         rows.append(row)
         details.append(det)
         a = animals.setdefault(animal, {"animal": animal, "logger_mac": mac or "", "n_sessions": 0, "hours": 0.0, "firmware": set(), "recovery_bin_gb": ""})
@@ -218,7 +236,8 @@ def render_markdown(rows: list[dict], animals: dict, *, cohort: str, cfg: dict, 
     L.append("| `raw_std_median_adc` | median over channels of `std(x)` on the probe window | broadband level; clean night sessions ≈ 550–1000 ADC |")
     L.append("| `noise_uV_median` | median over channels of `1.4826·median\\|hp\\|·0.195 µV/ADC`, hp = 500–5000 Hz of the de-glitched window | robust spike-band noise floor (µV, RELATIVE: the 0.195 µV/ADC Intan default is unverified for WILD) |")
     L.append("| `bad_channel_candidates` | `noise_uV < 3` or `noise_uV > 4·median` or `raw_std < 0.25·median` | advisory dead/broken channels for `probes_<cohort>.yaml` `reject_channels` |")
-    L.append("| `time_dat_ok` / `analogin_ok` | `bytes(time.dat) = 4·n_samples`; `bytes(analogin.dat) = 2·n_samples` (16 lanes @ fs/16) | sidecar sizes consistent with the amplifier stream |\n")
+    L.append("| `time_dat_ok` / `analogin_ok` | `bytes(time.dat) = 4·n_samples`; `bytes(analogin.dat) = 2·n_samples` (16 lanes @ fs/16) | sidecar sizes consistent with the amplifier stream |")
+    L.append("| `field_flag` | text from `cohorts/<key>.yaml` `ephys.field_flags` (empty = none) | the field record marks the session as not a real recording (zombie restart of a dying cell) or as a TEST recording; kept in this inventory, excluded from coverage, the firmware verdict and any analysis until decided. `[no field-PC time]` = recorded from another PC's console: its BLE anchors are not field-PC time and `pc_time_chain` does not fit it |\n")
     from _common import FOREIGN
     if FOREIGN:
         L.append("## Foreign logger folders (ignored)\n")
@@ -226,6 +245,12 @@ def render_markdown(rows: list[dict], animals: dict, *, cohort: str, cfg: dict, 
                  "They are excluded from every table until moved out of the raw tree (e.g. to `<root>/_other_loggers/<MAC>/`).\n")
         for a, mac, s in FOREIGN:
             L.append(f"- `{a}/{mac}/{s.name}`")
+        L.append("")
+    flagged = [r for r in rows if r.get("field_flag")]
+    if flagged:
+        L.append("## Field-flagged sessions (indexed, excluded from coverage and analysis)\n")
+        for r in flagged:
+            L.append(f"- {r['animal']} `{r['session']}` ({r.get('duration_hms', '')}): {r['field_flag']}")
         L.append("")
     L.append("## Per-animal summary\n")
     L.append("| animal | logger MAC | sessions | hours offloaded | firmware seen | recovery.bin (GB) |\n|---|---|---|---|---|---|")

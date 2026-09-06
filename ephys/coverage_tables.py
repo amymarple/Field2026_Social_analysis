@@ -2,6 +2,8 @@
 
 Inputs: results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.csv (start_local, duration_s, firmware).
 Coverage is defined on the logger wallclock (RTC start + sample count / fs); a session covers [start, start + duration).
+Sessions carrying a `field_flag` in the index (zombie restarts, test recordings from another PC - cohorts/<key>.yaml
+ephys.field_flags) are NOT counted; they are listed in the hourly md header instead.
 
 Outputs (results/<cohort>/ephys_spikes/reports and figures; mirrored under <analysis_root>/index/ when declared):
   ephys_spikes_hourly_coverage_<cohort>.csv / .md   minutes recorded per local hour per logger, every day in range
@@ -24,18 +26,21 @@ import numpy as np
 from _common import analysis_root, figure_dir, git_commit, report_dir, utc_now_iso
 
 
-def load_sessions(cohort: str) -> list[dict]:
+def load_sessions(cohort: str) -> tuple[list[dict], list[dict]]:
+    """(counted sessions, field-flagged sessions left out of the coverage)."""
     p = report_dir(cohort) / f"ephys_spikes_session_index_{cohort}.csv"
-    rows = []
+    rows, flagged = [], []
     for r in csv.DictReader(open(p, encoding="utf-8")):
         if not r.get("start_local") or not r.get("duration_s"):
             continue
         a = r["animal"].upper()
         a = f"SF{int(a[2:]):02d}" if a.startswith("SF") and a[2:].isdigit() else a
         s = datetime.strptime(r["start_local"][:19], "%Y-%m-%d %H:%M:%S")
-        rows.append({"animal": a, "session": r["session"], "start": s, "end": s + timedelta(seconds=float(r["duration_s"])),
-                     "firmware": int(r["firmware"]) if r.get("firmware") else 0, "duration_s": float(r["duration_s"])})
-    return rows
+        row = {"animal": a, "session": r["session"], "start": s, "end": s + timedelta(seconds=float(r["duration_s"])),
+               "firmware": int(r["firmware"]) if r.get("firmware") else 0, "duration_s": float(r["duration_s"]),
+               "field_flag": (r.get("field_flag") or "").strip()}
+        (flagged if row["field_flag"] else rows).append(row)
+    return rows, flagged
 
 
 def per_second(rows: list[dict], animals: list[str], day: datetime) -> np.ndarray:
@@ -58,7 +63,7 @@ def main() -> None:
     ap.add_argument("--days", nargs="*", default=None, help="YYYY-MM-DD ... (default: every day touched by a session)")
     ap.add_argument("--no-1s", action="store_true")
     a = ap.parse_args()
-    rows = load_sessions(a.cohort)
+    rows, flagged = load_sessions(a.cohort)
     animals = sorted({r["animal"] for r in rows})
     if a.days:
         days = [datetime.strptime(d, "%Y-%m-%d") for d in a.days]
@@ -79,6 +84,11 @@ def main() -> None:
     L = [f"# Hourly recording coverage, cohort `{a.cohort}`\n",
          f"Generated {utc_now_iso()} by `ephys/coverage_tables.py` (git {git_commit()}) from the session index. Minutes recorded per local hour per logger "
          "(60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.\n"]
+    if flagged:
+        L.append(f"**{len(flagged)} field-flagged session(s), {sum(r['duration_s'] for r in flagged) / 3600:.2f} h, are NOT counted** "
+                 "(`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):")
+        L += [f"- {r['animal']} `{r['session']}` {r['start']:%Y-%m-%d %H:%M} ({r['duration_s'] / 60:.1f} min): {r['field_flag']}" for r in flagged]
+        L.append("")
     per_day_arrays = {}
     with open(hourly_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)

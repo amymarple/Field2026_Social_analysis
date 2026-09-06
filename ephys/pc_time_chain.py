@@ -152,9 +152,23 @@ def step_correction_ms(start, t: np.ndarray, steps: list[dict]) -> tuple[np.ndar
     return corr, inside
 
 
+ROW_KEYS = ["animal", "session", "start", "duration_s", "crosses_midnight", "pc_steps_inside", "mid_anchor_resid_ms", "n_anchors",
+            "n_garbage_dropped", "n_native_start", "n_native_end", "start_delay_ms", "off_start_ms", "n_borrowed", "borrowed_from",
+            "gap_to_next_s", "n_kept", "drift_native_ppm", "drift_native_sem_ppm", "native_residual_ms", "tail_extrap_h",
+            "tail_extrap_unc_ms", "drift_chained_ppm", "chain_unc_ppm", "chain_span_s", "start_vs_prev_ms", "end_vs_next_ms",
+            "verdict", "step_note"]
+
+
 def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, add_delay: bool, verbose: bool = True,
-                   pc_steps: list[dict] | None = None) -> list[dict]:
-    sessions = sorted(sessions, key=lambda s: s[1]["start"])
+                   pc_steps: list[dict] | None = None, exclude: dict[str, str] | None = None) -> list[dict]:
+    # Sessions recorded from ANOTHER PC's console (cohorts/<key>.yaml ephys.field_flags with pc_time: false) carry that PC's
+    # clock in their anchors: they are not fitted, never lend a cluster to a neighbour, and are reported as "excluded".
+    exclude = exclude or {}
+    skipped = [s for s in sessions if s[0].name in exclude]
+    sessions = sorted([s for s in sessions if s[0].name not in exclude], key=lambda s: s[1]["start"])
+    for sdir, _ in skipped:
+        if verbose:
+            print(f"  {animal} {sdir.name}: EXCLUDED, not fitted ({exclude[sdir.name]})", flush=True)
     dec = []
     for sdir, meta in sessions:
         ns = os.path.getsize(sdir / "amplifier.dat") // 128
@@ -345,6 +359,13 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
                                   f"{'field-PC clock set forward' if jump_s > 0 else 'samples duplicated'}; the card-duration-vs-PC-span check in the QC report decides)")
     for r in rows:
         r.setdefault("step_note", "")
+    for sdir, meta in skipped:
+        ns = os.path.getsize(sdir / "amplifier.dat") // 128 if (sdir / "amplifier.dat").exists() else 0
+        rows.append({**{k: "" for k in ROW_KEYS}, "animal": animal, "session": sdir.name,
+                     "start": meta["start"].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], "duration_s": round(ns / fs, 3),
+                     "crosses_midnight": False, "n_anchors": 0, "n_garbage_dropped": 0, "n_native_start": 0, "n_native_end": 0,
+                     "n_borrowed": 0, "chain_span_s": 0.0, "verdict": f"excluded: {exclude[sdir.name]}", "step_note": ""})
+    rows.sort(key=lambda r: r["start"])
     return rows
 
 
@@ -402,9 +423,17 @@ def main() -> None:
         per_animal[key].append((sdir, parse_session_name(sdir.name)))
     rows: list[dict] = []
     pc_steps = cfg.get("field_pc_clock_steps") or []
+    excluded: dict[str, dict[str, str]] = defaultdict(dict)     # animal -> {session: flag} for field_flags with pc_time: false
+    for ff in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("field_flags") or []):
+        if ff.get("pc_time", True) is False:
+            an = str(ff.get("animal", "")).upper()
+            an = f"SF{int(an[2:]):02d}" if an.startswith("SF") and an[2:].isdigit() else an
+            for s in ff.get("sessions") or []:
+                excluded[an][str(s)] = str(ff.get("flag", "recorded from another PC; anchors are not field-PC time"))
     for animal in sorted(per_animal):
         cp = parse_ce_params(per_animal[animal][0][0])
-        rows.extend(analyse_animal(animal, per_animal[animal], float(cp.fs or fs), a.add_delay, pc_steps=pc_steps))
+        rows.extend(analyse_animal(animal, per_animal[animal], float(cp.fs or fs), a.add_delay, pc_steps=pc_steps,
+                                   exclude=excluded.get(animal)))
     rd = report_dir(a.cohort)
     csv_path = rd / f"ephys_spikes_pc_time_chain_{a.cohort}{a.suffix}.csv"
     md_path = rd / f"ephys_spikes_pc_time_chain_{a.cohort}{a.suffix}.md"
