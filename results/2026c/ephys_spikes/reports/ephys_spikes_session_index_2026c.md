@@ -1,6 +1,6 @@
 # WILD neurologger session index — cohort `2026c`
 
-Generated 2026-09-05T20:11:42+00:00 by `ephys/build_session_index.py` (git 5ff5a82+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
+Generated 2026-09-06T00:38:31+00:00 by `ephys/build_session_index.py` (git 4fbe933+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
 
 ## Firmware provenance (the rule that decides what may be analysed)
 
@@ -29,15 +29,15 @@ Generated 2026-09-05T20:11:42+00:00 by `ephys/build_session_index.py` (git 5ff5a
 
 | animal | logger MAC | sessions | hours offloaded | firmware seen | recovery.bin (GB) |
 |---|---|---|---|---|---|
-| SF10 | CACB6D600151 | 39 | 101.01 | FM62, FM64, FM65 | 512.7 |
+| SF10 | CACB6D600151 | 39 | 93.27 | FM62, FM64, FM65 | 512.7 |
 | SF11 | 1DFE7F77721C | 42 | 97.61 | FM62, FM64, FM65 | 512.1 |
 | SF12 | FBED2F2321B1 | 35 | 102.36 | FM62, FM64, FM65 | 512.1 |
-| SF7 | D0DBEFEF3111 | 37 | 99.56 | FM64, FM65 | 512.1 |
-| SF8 | 128C2F27E131 | 39 | 100.78 | FM62, FM64, FM65 | 512.1 |
-| SF9 | 68BDFFFF62DB | 37 | 102.32 | FM62, FM64, FM65 | 512.1 |
+| SF7 | D0DBEFEF3111 | 44 | 107.78 | FM64, FM65 | 512.1 |
+| SF8 | 128C2F27E131 | 42 | 109.26 | FM62, FM64, FM65 | 512.1 |
+| SF9 | 68BDFFFF62DB | 41 | 110.63 | FM62, FM64, FM65 | 512.1 |
 | analysis | — | 0 | 0.00 | — | — |
 
-**229 sessions indexed: 69 require de-glitching (firmware < FM65), 160 flagged clean by firmware.**
+**243 sessions indexed: 69 require de-glitching (firmware < FM65), 174 flagged clean by firmware.**
 
 ## Sessions
 
@@ -69,7 +69,7 @@ Generated 2026-09-05T20:11:42+00:00 by `ephys/build_session_index.py` (git 5ff5a
 | SF10 | `15_20260903_055614.833` | 2026-09-03 05:56:14.833 | 2026-09-03 06:47:59 | 0:51:45 | 7.948 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 2.33 | 0.978 | 1578.0 | 8.16 | 2 32 34 56 63 |  |
 | SF10 | `0_20260903_072345.895` | 2026-09-03 07:23:45.895 | 2026-09-03 07:23:52 | 0:00:06 | 0.017 | FM65 | no | glitchy+broadband | broadband | 28549.73 | 0.102 | 9664.0 | 13.68 |  | MEASURED GLITCHY although firmware >= clean_firmware_min; BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF10 | `1_20260903_075838.181` | 2026-09-03 07:58:38.181 | 2026-09-03 07:59:10 | 0:00:33 | 0.083 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.1 | 1.0 | 1253.0 | 8.26 | 2 32 34 |  |
-| SF10 | `2_20260903_075920.109` | 2026-09-03 07:59:20.109 | 2026-09-03 16:53:08 | 8:53:49 | 81.994 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.47 | 1.0 | 1218.0 | 8.55 | 2 32 34 56 63 |  |
+| SF10 | `2_20260903_075920.109` | 2026-09-03 07:59:20.109 | 2026-09-03 09:08:47 | 1:09:27 | 10.669 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.3 | 1.0 | 1249.0 | 8.61 | 2 32 34 56 | analogin.dat 163577856 B, expected 166699008 (misc_ratio 16) |
 | SF10 | `0_20260903_173135.541` | 2026-09-03 17:31:35.541 | 2026-09-03 17:31:40 | 0:00:05 | 0.012 | FM65 | no | glitchy | normal | 28.32 | 0.964 | 699.0 | 9.91 | 2 32 34 60 | MEASURED GLITCHY although firmware >= clean_firmware_min |
 | SF10 | `1_20260903_180043.639` | 2026-09-03 18:00:43.639 | 2026-09-03 18:02:14 | 0:01:31 | 0.232 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.2 | 0.0 | 973.0 | 8.75 | 2 32 34 60 |  |
 | SF10 | `2_20260903_180222.843` | 2026-09-03 18:02:22.843 | 2026-09-04 07:23:58 | 13:21:36 | 123.125 | FM65 | no | ambiguous+broadband | normal,normal,normal,broadband,normal | 1.63 | 0.959 | 2789.0 | 9.4 | 2 32 34 56 60 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
@@ -196,6 +196,13 @@ Generated 2026-09-05T20:11:42+00:00 by `ephys/build_session_index.py` (git 5ff5a
 | SF7 | `12_20260904_195148.989` | 2026-09-04 19:51:48.989 | 2026-09-04 19:51:56 | 0:00:08 | 0.02 | FM65 | no | clean | normal | 0.0 | 1.0 | 578.0 | 12.22 |  |  |
 | SF7 | `13_20260904_201742.999` | 2026-09-04 20:17:42.999 | 2026-09-04 20:18:15 | 0:00:33 | 0.084 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.13 | 1.0 | 677.0 | 14.35 |  |  |
 | SF7 | `14_20260904_201825.406` | 2026-09-04 20:18:25.406 | 2026-09-05 08:35:37 | 12:17:13 | 113.235 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 2.57 | 0.636 | 1425.0 | 8.41 |  |  |
+| SF7 | `0_20260905_085618.431` | 2026-09-05 08:56:18.431 | 2026-09-05 08:56:36 | 0:00:18 | 0.045 | FM65 | no | glitchy+wide-impulse | wide-impulse | 276.82 | 0.349 | 1074.0 | 13.25 |  | MEASURED GLITCHY although firmware >= clean_firmware_min; WIDE (>=3-sample) impulses dominate: not the FM62/64 single-sample defect; de-glitch will NOT clean this; QC before use |
+| SF7 | `1_20260905_093210.807` | 2026-09-05 09:32:10.807 | 2026-09-05 09:33:02 | 0:00:52 | 0.133 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 684.0 | 13.18 |  |  |
+| SF7 | `2_20260905_093310.289` | 2026-09-05 09:33:10.289 | 2026-09-05 13:15:40 | 3:42:30 | 34.176 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 947.0 | 8.63 |  |  |
+| SF7 | `3_20260905_132229.331` | 2026-09-05 13:22:29.331 | 2026-09-05 13:22:34 | 0:00:05 | 0.012 | FM65 | no | clean | normal | 0.0 | 1.0 | 498.0 | 13.36 |  |  |
+| SF7 | `4_20260905_132736.589` | 2026-09-05 13:27:36.589 | 2026-09-05 13:27:40 | 0:00:04 | 0.011 | FM65 | no | clean | normal | 0.0 | 1.0 | 716.0 | 15.35 |  |  |
+| SF7 | `5_20260905_133036.709` | 2026-09-05 13:30:36.709 | 2026-09-05 13:31:11 | 0:00:34 | 0.088 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 673.0 | 13.03 |  |  |
+| SF7 | `6_20260905_133118.469` | 2026-09-05 13:31:18.469 | 2026-09-05 18:00:13 | 4:28:55 | 41.307 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.2 | 0.0 | 945.0 | 8.45 |  |  |
 | SF8 | `0_20260831_070148.859` | 2026-08-31 07:01:48.859 | 2026-08-31 07:12:27 | 0:10:39 | 1.635 | FM62 | YES | glitchy+broadband | broadband,wide-impulse,wide-impulse,wide-impulse,normal | 34988.23 | 0.183 | 5178.0 | 12.9 |  | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF8 | `1_20260831_071239.713` | 2026-08-31 07:12:39.713 | 2026-08-31 07:15:31 | 0:02:52 | 0.441 | FM62 | YES | glitchy | normal,normal,normal,normal,normal | 2012.73 | 1.0 | 1395.0 | 8.49 | 32 |  |
 | SF8 | `2_20260831_071541.642` | 2026-08-31 07:15:41.642 | 2026-08-31 08:30:55 | 1:15:14 | 11.556 | FM62 | YES | glitchy+broadband | wide-impulse,broadband,broadband,broadband,broadband | 15120.33 | 0.399 | 3685.0 | 14.32 | 32 52 53 61 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
@@ -235,6 +242,9 @@ Generated 2026-09-05T20:11:42+00:00 by `ephys/build_session_index.py` (git 5ff5a
 | SF8 | `5_20260904_195428.533` | 2026-09-04 19:54:28.533 | 2026-09-04 19:54:32 | 0:00:04 | 0.01 | FM65 | no | clean | normal | 0.26 | 1.0 | 472.0 | 9.7 | 32 |  |
 | SF8 | `6_20260904_202001.469` | 2026-09-04 20:20:01.469 | 2026-09-04 20:20:49 | 0:00:48 | 0.122 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 776.0 | 8.52 | 32 |  |
 | SF8 | `7_20260904_202056.765` | 2026-09-04 20:20:56.765 | 2026-09-05 08:37:14 | 12:16:18 | 113.095 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.83 | 1.0 | 1170.0 | 10.81 | 32 |  |
+| SF8 | `0_20260905_090305.847` | 2026-09-05 09:03:05.847 | 2026-09-05 09:03:09 | 0:00:03 | 0.008 | FM65 | no | clean | normal | 0.0 | 1.0 | 601.0 | 9.83 | 32 |  |
+| SF8 | `1_20260905_093454.761` | 2026-09-05 09:34:54.761 | 2026-09-05 09:35:27 | 0:00:32 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 594.0 | 8.99 | 32 |  |
+| SF8 | `2_20260905_093534.819` | 2026-09-05 09:35:34.819 | 2026-09-05 18:03:42 | 8:28:07 | 78.048 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 9.1 | 1.0 | 1366.0 | 8.02 | 32 |  |
 | SF9 | `0_20260831_070319.133` | 2026-08-31 07:03:19.133 | 2026-08-31 07:13:46 | 0:10:28 | 1.606 | FM62 | YES | glitchy+broadband | wide-impulse,broadband,wide-impulse,wide-impulse,wide-impulse | 14983.0 | 0.22 | 2757.0 | 12.85 | 2 4 32 54 56 58 62 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF9 | `1_20260831_071357.350` | 2026-08-31 07:13:57.350 | 2026-08-31 11:29:22 | 4:15:25 | 39.232 | FM62 | YES | glitchy+wide-impulse | normal,wide-impulse,normal,wide-impulse,wide-impulse | 10061.67 | 0.237 | 1310.0 | 13.48 | 2 4 32 36 54 56 58 62 | WIDE (>=3-sample) impulses dominate: not the FM62/64 single-sample defect; de-glitch will NOT clean this; QC before use |
 | SF9 | `0_20260831_190404.508` | 2026-08-31 19:04:04.508 | 2026-08-31 19:05:10 | 0:01:06 | 0.169 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 314.97 | 0.958 | 1364.0 | 8.26 | 2 4 32 36 52 54 56 58 60 62 |  |
@@ -272,6 +282,10 @@ Generated 2026-09-05T20:11:42+00:00 by `ephys/build_session_index.py` (git 5ff5a
 | SF9 | `6_20260904_200457.699` | 2026-09-04 20:04:57.699 | 2026-09-04 20:05:02 | 0:00:05 | 0.013 | FM65 | no | ambiguous | normal | 1.38 | 1.0 | 670.0 | 10.29 | 2 4 32 36 52 54 56 58 60 62 |  |
 | SF9 | `7_20260904_202245.030` | 2026-09-04 20:22:45.030 | 2026-09-04 20:23:17 | 0:00:32 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.4 | 1.0 | 722.0 | 12.22 | 2 4 32 36 52 54 56 58 60 62 |  |
 | SF9 | `8_20260904_202324.405` | 2026-09-04 20:23:24.405 | 2026-09-05 08:38:41 | 12:15:17 | 112.941 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.37 | 1.0 | 1566.0 | 9.56 | 0 2 4 14 32 36 48 52 54 56 58 60 62 |  |
+| SF9 | `0_20260905_090533.177` | 2026-09-05 09:05:33.177 | 2026-09-05 09:05:39 | 0:00:06 | 0.017 | FM65 | no | clean | normal | 0.93 | 0.667 | 706.0 | 10.4 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `1_20260905_090827.360` | 2026-09-05 09:08:27.360 | 2026-09-05 09:08:33 | 0:00:06 | 0.015 | FM65 | no | clean | normal | 0.17 | 1.0 | 654.0 | 10.46 | 2 4 32 36 48 52 54 56 58 60 62 |  |
+| SF9 | `2_20260905_094626.859` | 2026-09-05 09:46:26.859 | 2026-09-05 09:46:58 | 0:00:32 | 0.081 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.5 | 1.0 | 779.0 | 7.3 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `3_20260905_094705.608` | 2026-09-05 09:47:05.608 | 2026-09-05 18:05:04 | 8:17:59 | 76.49 | FM65 | no | glitchy | normal,normal,normal,normal,normal | 17.27 | 1.0 | 908.0 | 9.5 | 2 4 32 36 52 54 56 58 62 | MEASURED GLITCHY although firmware >= clean_firmware_min |
 
 ## How to use
 
