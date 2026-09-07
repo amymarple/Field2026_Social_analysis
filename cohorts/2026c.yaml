@@ -106,8 +106,8 @@ ephys:
     # Their BLE anchors carry that PC's clock, so no field-PC time exists for them (`pc_time: false` = pc_time_chain does not
     # fit them and never chains a neighbour through them). Whether they enter any analysis is UNDECIDED - keep them indexed,
     # keep them out of coverage and sorting until the operator decides.
-    - {animal: SF07, sessions: ["0_20260906_123827.548", "1_20260906_123931.995"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false}
-    - {animal: SF11, sessions: ["0_20260906_124136.884"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false}
+    - {animal: SF07, sessions: ["0_20260906_123827.548", "1_20260906_123931.995"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
+    - {animal: SF11, sessions: ["0_20260906_124136.884"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
   deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
   probe_config: ephys/configs/probes_2026c.yaml
   preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT

@@ -17,7 +17,8 @@ restarts at 0 every time the card is formatted, so it is NOT unique across offlo
 the 09-03 daytime records of a card reused unformatted, slots 3-7 the new ones). The card's N records are slots 0..N-1;
 for each slot the tool considers every folder on disk with that slot number and picks the combination that is physically
 possible - start times increasing with the slot number, and listing minus prediction equal to the per-record overhead
-(plus at most one undownloaded few-second test record) - preferring the newest folders. If no combination fits, it falls
+(plus at most one undownloaded few-second test record) - preferring the newest folders (depth-first with byte-sum pruning).
+Sessions the registry marks as test-card recordings (field_flags with `card: test`) are never candidates. If no combination fits, it falls
 back to the N newest folders and reports the record(s) that were not downloaded. Raw folder names are never changed.
 
 Usage:
@@ -71,11 +72,17 @@ def main() -> None:
     cards = {an: (n, mb) for an, n, mb in (parse_card(c) for c in a.card)}
     roots = [raw_ephys_root(a.cohort, a.raw_root)] + [Path(r) for r in a.roots]
 
+    test_card = set()      # (animal, session) recorded on a separate test card (cohorts/<key>.yaml field_flags with card: test)
+    for ff in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("field_flags") or []):
+        if str(ff.get("card", "")).lower() == "test":
+            test_card.update((norm(str(ff.get("animal"))), str(s)) for s in ff.get("sessions") or [])
     per_animal: dict[str, list[dict]] = {}
     for root in roots:
         for animal, mac, sdir in iter_raw_sessions(root, cfg.get("session_glob", "*"), cohort=a.cohort):
             meta = parse_session_name(sdir.name)
             if meta is None or (since is not None and meta["start"] < since):
+                continue
+            if (norm(animal), sdir.name) in test_card:
                 continue
             amp = sdir / "amplifier.dat"
             if not amp.exists():
@@ -117,17 +124,40 @@ def main() -> None:
             # with the slot number; and the listing must exceed the prediction by the per-record overhead plus at most one
             # undownloaded test record. Among the combinations that satisfy both, take the NEWEST folders.
             best = None
-            if all(cands) and __import__("math").prod(len(c) for c in cands) <= 200_000:
+            if all(cands):
+                # Depth-first over the slots with two prunings: starts must increase with the slot, and the running sum plus
+                # the smallest/largest bytes the remaining slots can still add must stay inside [listing - slack, listing].
+                # The old brute-force product blew past its cap once a logger had ~6 folders per slot (SF7 09-07: 1.9 M combos).
                 slack = OVERHEAD_PER_RECORD * n_card + TEST_RECORD_MAX_S * BYTES_PER_SAMPLE_CARD * fs
-                for combo in itertools.product(*cands):
-                    if any(combo[i]["start"] >= combo[i + 1]["start"] for i in range(len(combo) - 1)):
-                        continue
-                    resid_c = mb_card * 1e6 - sum(r["predicted_card_bytes"] for r in combo)
-                    if not (0 <= resid_c <= slack):
-                        continue
-                    newness = sum(r["start"].timestamp() for r in combo)
-                    if best is None or newness > best[0]:
-                        best = (newness, combo)
+                target = mb_card * 1e6
+                min_rest = [0.0] * (n_card + 1); max_rest = [0.0] * (n_card + 1)
+                for k in range(n_card - 1, -1, -1):
+                    min_rest[k] = min_rest[k + 1] + min(r["predicted_card_bytes"] for r in cands[k])
+                    max_rest[k] = max_rest[k + 1] + max(r["predicted_card_bytes"] for r in cands[k])
+                budget = [2_000_000]
+
+                def dfs(k, prev_start, acc, chosen):
+                    nonlocal best
+                    if budget[0] <= 0:
+                        return
+                    budget[0] -= 1
+                    if k == n_card:
+                        if 0 <= target - acc <= slack:
+                            newness = sum(r["start"].timestamp() for r in chosen)
+                            if best is None or newness > best[0]:
+                                best = (newness, list(chosen))
+                        return
+                    for r in cands[k]:
+                        if prev_start is not None and r["start"] <= prev_start:
+                            continue
+                        b = acc + r["predicted_card_bytes"]
+                        if b + min_rest[k + 1] > target or b + max_rest[k + 1] < target - slack:
+                            continue
+                        chosen.append(r)
+                        dfs(k + 1, r["start"], b, chosen)
+                        chosen.pop()
+
+                dfs(0, None, 0.0, [])
             if best is not None:
                 sess = sorted(best[1], key=lambda r: r["start"])
             else:
