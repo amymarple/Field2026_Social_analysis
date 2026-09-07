@@ -37,3 +37,19 @@ the two test cards against the console listing: SF7 2 records / 3,447.257 MB →
 
 **Open.** Whether the test recordings are ever analysed is the operator's call; until then they carry the flag. If they are
 included, their only time coordinate is the logger RTC (folder name) - no alignment to video / WISER is possible for them.
+
+## Addendum 2026-09-07 — `valid_until`: a session whose neural signal ended before its Stop
+
+SF11's implant detached during the night session `13_20260906_195234.827` (measured: intact to 06:10:00, torn off
+06:10:30–06:15:00, open circuit from 06:15:10, Stop 08:12:41). A field flag would have excluded the whole 12.3-h session;
+instead a new registry list `ephys.valid_until` (`cohorts/2026c.yaml`) records `{animal, session, valid_until}` and
+
+- `ephys/build_session_index.py` writes a `valid_until` column, notes the tail, and passes `max_samples` to
+  `ephys/signal_probe.py::probe_window_stats` so the 5 probe windows lie inside the valid part (the open-circuit tail
+  cannot set the session's firmware verdict; checked: verdict `ambiguous`, 3.07 ticks/s, all windows `normal`);
+- `ephys/coverage_tables.py` counts the session only up to `valid_until` and lists the truncation in the hourly header
+  (10.29 h counted, 2.04 h tail not counted).
+
+`pc_time_chain.py` is untouched: the BLE anchors continued to the Stop, so the fit covers the whole file and the boundary is a
+plain time on that axis. Sorting/staging of that session must clip at `valid_until` (not automated; the index column is
+the source).

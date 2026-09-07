@@ -66,8 +66,12 @@ REGIME_RANK = {"normal": 0, "wide-impulse": 1, "broadband": 2}
 
 
 def probe_window_stats(amplifier: Path, *, nch: int = 64, fs: float = 20000.0, seconds: float = 30.0,
-                       k: float = DEFAULT_K, floor: float = DEFAULT_FLOOR, gain_uV: float = 0.195, n_windows: int = 5) -> dict:
+                       k: float = DEFAULT_K, floor: float = DEFAULT_FLOOR, gain_uV: float = 0.195, n_windows: int = 5,
+                       max_samples: "int | None" = None) -> dict:
     """Probe ``n_windows`` windows of ``seconds`` spread evenly over the file (1 = the middle window only).
+    ``max_samples`` limits the probed span to the first ``max_samples`` samples: a session whose recording continues past a
+    registered validity boundary (cohorts/<key>.yaml ``ephys.valid_until``, e.g. an implant that detached mid-session) is
+    probed only on its valid part, so the open-circuit tail cannot set the session's verdict.
 
     Sessions are non-stationary (handling, daytime troubleshooting), so the session-level numbers are the
     WORST case over windows: regime = worst regime, tick_removal_frac = min, raw_std_median_adc = max,
@@ -78,12 +82,13 @@ def probe_window_stats(amplifier: Path, *, nch: int = 64, fs: float = 20000.0, s
     ns = nbytes // (2 * nch)
     if ns < 16:
         return {"probe_seconds": 0.0, "verdict": "too-short"}
-    win = int(min(ns, round(seconds * fs)))
+    ns_probe = ns if not max_samples else max(16, min(ns, int(max_samples)))
+    win = int(min(ns_probe, round(seconds * fs)))
     n_windows = max(1, int(n_windows))
-    if ns <= win or n_windows == 1:
-        starts = [max(0, (ns - win) // 2)]
+    if ns_probe <= win or n_windows == 1:
+        starts = [max(0, (ns_probe - win) // 2)]
     else:
-        starts = sorted({int(round((ns - win) * (i + 0.5) / n_windows)) for i in range(n_windows)})
+        starts = sorted({int(round((ns_probe - win) * (i + 0.5) / n_windows)) for i in range(n_windows)})
     d = np.memmap(amplifier, dtype=np.int16, mode="r", shape=(ns, nch))
     per = [_one_window(np.asarray(d[a:a + win]).astype(np.float32), a, fs=fs, k=k, floor=floor, gain_uV=gain_uV, nch=nch) for a in starts]
     if len(per) == 1:

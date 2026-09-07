@@ -26,10 +26,12 @@ import numpy as np
 from _common import analysis_root, figure_dir, git_commit, report_dir, utc_now_iso
 
 
-def load_sessions(cohort: str) -> tuple[list[dict], list[dict]]:
-    """(counted sessions, field-flagged sessions left out of the coverage)."""
+def load_sessions(cohort: str) -> tuple[list[dict], list[dict], list[dict]]:
+    """(counted sessions, field-flagged sessions left out of the coverage, sessions truncated at their `valid_until`).
+    A `valid_until` (index column from cohorts/<key>.yaml ephys.valid_until) clips the counted span: the recording continued
+    after the neural signal ended (implant detached mid-session); `duration_s` becomes the valid span, `tail_s` the rest."""
     p = report_dir(cohort) / f"ephys_spikes_session_index_{cohort}.csv"
-    rows, flagged = [], []
+    rows, flagged, truncated = [], [], []
     for r in csv.DictReader(open(p, encoding="utf-8")):
         if not r.get("start_local") or not r.get("duration_s"):
             continue
@@ -38,9 +40,17 @@ def load_sessions(cohort: str) -> tuple[list[dict], list[dict]]:
         s = datetime.strptime(r["start_local"][:19], "%Y-%m-%d %H:%M:%S")
         row = {"animal": a, "session": r["session"], "start": s, "end": s + timedelta(seconds=float(r["duration_s"])),
                "firmware": int(r["firmware"]) if r.get("firmware") else 0, "duration_s": float(r["duration_s"]),
-               "field_flag": (r.get("field_flag") or "").strip()}
+               "field_flag": (r.get("field_flag") or "").strip(), "tail_s": 0.0}
+        vu = (r.get("valid_until") or "").strip()
+        if vu and not row["field_flag"]:
+            v = datetime.strptime(vu[:19], "%Y-%m-%d %H:%M:%S")
+            if s < v < row["end"]:
+                row["tail_s"] = (row["end"] - v).total_seconds()
+                row["end"] = v
+                row["duration_s"] = (v - s).total_seconds()
+                truncated.append(row)
         (flagged if row["field_flag"] else rows).append(row)
-    return rows, flagged
+    return rows, flagged, truncated
 
 
 def per_second(rows: list[dict], animals: list[str], day: datetime) -> np.ndarray:
@@ -63,7 +73,7 @@ def main() -> None:
     ap.add_argument("--days", nargs="*", default=None, help="YYYY-MM-DD ... (default: every day touched by a session)")
     ap.add_argument("--no-1s", action="store_true")
     a = ap.parse_args()
-    rows, flagged = load_sessions(a.cohort)
+    rows, flagged, truncated = load_sessions(a.cohort)
     animals = sorted({r["animal"] for r in rows})
     if a.days:
         days = [datetime.strptime(d, "%Y-%m-%d") for d in a.days]
@@ -88,6 +98,12 @@ def main() -> None:
         L.append(f"**{len(flagged)} field-flagged session(s), {sum(r['duration_s'] for r in flagged) / 3600:.2f} h, are NOT counted** "
                  "(`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):")
         L += [f"- {r['animal']} `{r['session']}` {r['start']:%Y-%m-%d %H:%M} ({r['duration_s'] / 60:.1f} min): {r['field_flag']}" for r in flagged]
+        L.append("")
+    if truncated:
+        L.append(f"**{len(truncated)} session(s) counted only up to their `valid_until`** (cohorts/<key>.yaml `ephys.valid_until`: the neural "
+                 "signal ended before the Stop; the open-circuit tail is not coverage):")
+        L += [f"- {r['animal']} `{r['session']}` {r['start']:%Y-%m-%d %H:%M} -> valid until {r['end']:%Y-%m-%d %H:%M:%S} "
+              f"({r['duration_s'] / 3600:.2f} h counted, {r['tail_s'] / 3600:.2f} h tail not counted)" for r in truncated]
         L.append("")
     per_day_arrays = {}
     with open(hourly_csv, "w", newline="", encoding="utf-8") as f:

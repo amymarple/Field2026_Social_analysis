@@ -36,7 +36,7 @@ CSV_COLUMNS = [
     "tick_removal_frac", "raw_std_median_adc", "glitch_samples_per_s", "glitch_pct_samples", "probe_seconds", "probe_windows", "noise_uV_median",
     "bad_channel_candidates",
     "fs", "n_channels", "n_samples", "amplifier_gb", "rtc_start", "rtc_agrees_with_folder", "has_info_rhd",
-    "time_dat_ok", "analogin_ok", "sd_capacity_kb", "error_code", "field_flag", "notes", "path",
+    "time_dat_ok", "analogin_ok", "sd_capacity_kb", "error_code", "valid_until", "field_flag", "notes", "path",
 ]
 
 
@@ -54,7 +54,8 @@ def provenance_for(fw: int, cfg: dict) -> tuple[str, bool, str]:
     return f"FM{fw}: {label}", False, "power-cut-safe commit (maker, FM65+)"
 
 
-def index_session(animal: str, mac: str | None, sdir: Path, cfg: dict, *, probe_seconds: float, probe_windows: int = 5) -> tuple[dict, dict]:
+def index_session(animal: str, mac: str | None, sdir: Path, cfg: dict, *, probe_seconds: float, probe_windows: int = 5,
+                  valid_until: str = "") -> tuple[dict, dict]:
     nch = int(cfg.get("n_channels", 64))
     fs = float(cfg.get("sampling_rate_hz", 20000))
     gain = float(cfg.get("gain_to_uV", 0.195))
@@ -104,9 +105,20 @@ def index_session(animal: str, mac: str | None, sdir: Path, cfg: dict, *, probe_
         row["analogin_ok"] = (an.exists() and os.path.getsize(an) == 2 * ns)  # misc_ratio lanes at fs/misc_ratio == 2*ns bytes
         if an.exists() and not row["analogin_ok"]:
             notes.append(f"analogin.dat {os.path.getsize(an)} B, expected {2 * ns} (misc_ratio {misc_ratio})")
+        max_samples = None
+        if valid_until and meta:
+            vu = datetime.strptime(valid_until[:19], "%Y-%m-%d %H:%M:%S")
+            n_valid = int((vu - meta["start"]).total_seconds() * fs)
+            if 0 < n_valid < ns:
+                max_samples = n_valid
+                row["valid_until"] = vu.strftime("%Y-%m-%d %H:%M:%S")
+                notes.append(f"recording continues {(ns - n_valid) / fs / 3600:.2f} h past valid_until {row['valid_until']} "
+                             "(cohorts/<key>.yaml ephys.valid_until): probe windows and coverage limited to the valid part")
+            else:
+                notes.append(f"valid_until {valid_until} is outside the session; ignored")
         if probe_seconds > 0 and ns >= 16:
             st = probe_window_stats(amp, nch=nch, fs=fs, seconds=probe_seconds, k=float(dg.get("k_mad", 10.0)),
-                                    floor=float(dg.get("floor_adc", 500.0)), gain_uV=gain, n_windows=probe_windows)
+                                    floor=float(dg.get("floor_adc", 500.0)), gain_uV=gain, n_windows=probe_windows, max_samples=max_samples)
             detail["probe"] = st
             row.update({"measured_verdict": st["verdict"], "regime": st.get("regime", ""), "regime_by_window": st.get("regime_by_window", st.get("regime", "")),
                         "probe_windows": st.get("n_windows", 1), "ticks_per_s": round(st.get("ticks_per_s", float("nan")), 2),
@@ -146,9 +158,19 @@ def field_flag_map(cfg: dict) -> dict[tuple[str, str], str]:
     return out
 
 
+def valid_until_map(cfg: dict) -> dict[tuple[str, str], str]:
+    """(animal, session) -> 'YYYY-MM-DD HH:MM:SS' from cohorts/<key>.yaml ephys.valid_until: sessions whose recording continues
+    after the neural signal ended (an implant that detached mid-session). The session stays a normal session up to that time
+    (fitted, counted, sortable); the probe windows and the coverage tables stop there. Logger wallclock, like start_local."""
+    out = {}
+    for vu in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("valid_until") or []):
+        out[(_norm_animal(vu.get("animal")), str(vu.get("session")))] = str(vu.get("valid_until", ""))
+    return out
+
+
 def _index_one(args):
-    animal, mac, sdir, cfg, probe_seconds, probe_windows = args
-    return index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows)
+    animal, mac, sdir, cfg, probe_seconds, probe_windows, valid_until = args
+    return index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows, valid_until=valid_until)
 
 
 def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe_windows: int = 5, verbose: bool = True,
@@ -156,18 +178,21 @@ def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe
     rows, details = [], []
     animals: dict[str, dict] = {}
     flags = field_flag_map(cfg)
+    valid_until = valid_until_map(cfg)
     sessions = list(iter_raw_sessions(raw_root, cfg.get("session_glob", "*"), cohort=(cfg.get("_cohort_yaml") or {}).get("cohort")))
     cfg_plain = {k: v for k, v in cfg.items() if k != "_cohort_yaml"}   # picklable subset for worker processes
     if workers > 1 and len(sessions) > 1:
         from concurrent.futures import ProcessPoolExecutor
         with ProcessPoolExecutor(max_workers=workers) as ex:
-            results = list(ex.map(_index_one, [(a, m, s, cfg_plain, probe_seconds, probe_windows) for a, m, s in sessions]))
+            results = list(ex.map(_index_one, [(a, m, s, cfg_plain, probe_seconds, probe_windows, valid_until.get((_norm_animal(a), s.name), ""))
+                                               for a, m, s in sessions]))
     else:
         results = []
         for animal, mac, sdir in sessions:
             if verbose:
                 print(f"  {animal} {mac or '-'} {sdir.name} ...", flush=True)
-            results.append(index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows))
+            results.append(index_session(animal, mac, sdir, cfg, probe_seconds=probe_seconds, probe_windows=probe_windows,
+                                         valid_until=valid_until.get((_norm_animal(animal), sdir.name), "")))
     for (animal, mac, sdir), (row, det) in zip(sessions, results):
         row["field_flag"] = flags.get((_norm_animal(animal), sdir.name), "")
         rows.append(row)
@@ -237,7 +262,8 @@ def render_markdown(rows: list[dict], animals: dict, *, cohort: str, cfg: dict, 
     L.append("| `noise_uV_median` | median over channels of `1.4826·median\\|hp\\|·0.195 µV/ADC`, hp = 500–5000 Hz of the de-glitched window | robust spike-band noise floor (µV, RELATIVE: the 0.195 µV/ADC Intan default is unverified for WILD) |")
     L.append("| `bad_channel_candidates` | `noise_uV < 3` or `noise_uV > 4·median` or `raw_std < 0.25·median` | advisory dead/broken channels for `probes_<cohort>.yaml` `reject_channels` |")
     L.append("| `time_dat_ok` / `analogin_ok` | `bytes(time.dat) = 4·n_samples`; `bytes(analogin.dat) = 2·n_samples` (16 lanes @ fs/16) | sidecar sizes consistent with the amplifier stream |")
-    L.append("| `field_flag` | text from `cohorts/<key>.yaml` `ephys.field_flags` (empty = none) | the field record marks the session as not a real recording (zombie restart of a dying cell) or as a TEST recording; kept in this inventory, excluded from coverage, the firmware verdict and any analysis until decided. `[no field-PC time]` = recorded from another PC's console: its BLE anchors are not field-PC time and `pc_time_chain` does not fit it |\n")
+    L.append("| `field_flag` | text from `cohorts/<key>.yaml` `ephys.field_flags` (empty = none) | the field record marks the session as not a real recording (zombie restart of a dying cell) or as a TEST recording; kept in this inventory, excluded from coverage, the firmware verdict and any analysis until decided. `[no field-PC time]` = recorded from another PC's console: its BLE anchors are not field-PC time and `pc_time_chain` does not fit it |")
+    L.append("| `valid_until` | 'YYYY-MM-DD HH:MM:SS' from `cohorts/<key>.yaml` `ephys.valid_until` (empty = whole session valid), logger wallclock | the neural signal ended before the Stop (implant detached mid-session): the session is a normal session up to this time (fitted, counted, sortable) and open-circuit noise after it; the probe windows and the coverage tables stop here |\n")
     from _common import FOREIGN
     if FOREIGN:
         L.append("## Foreign logger folders (ignored)\n")
@@ -251,6 +277,12 @@ def render_markdown(rows: list[dict], animals: dict, *, cohort: str, cfg: dict, 
         L.append("## Field-flagged sessions (indexed, excluded from coverage and analysis)\n")
         for r in flagged:
             L.append(f"- {r['animal']} `{r['session']}` ({r.get('duration_hms', '')}): {r['field_flag']}")
+        L.append("")
+    bounded = [r for r in rows if r.get("valid_until")]
+    if bounded:
+        L.append("## Sessions with a validity boundary (neural signal ended before the Stop)\n")
+        for r in bounded:
+            L.append(f"- {r['animal']} `{r['session']}` ({r.get('duration_hms', '')}): valid until {r['valid_until']}; {r.get('notes', '')}")
         L.append("")
     L.append("## Per-animal summary\n")
     L.append("| animal | logger MAC | sessions | hours offloaded | firmware seen | recovery.bin (GB) |\n|---|---|---|---|---|---|")

@@ -35,11 +35,15 @@ ephys:
     SF08: {mac_suffix: "E131", mac: "128C2F27E131"}
     SF09: {mac_suffix: "62DB", mac: "68BDFFFF62DB"}
     SF10: {mac_suffix: "0151", mac: "CACB6D600151"}
-    # SF11: implant fell off 2026-09-07 ~07:40 (operator sighting 07:43); the logger kept recording open-circuit noise until the
-    # round's clean Stop 08:12:41 and was retired (not restarted). ephys_end = last valid neural data = the detachment time,
-    # to be located in the 09-06 19:52:35 night session's amplifier.dat (signal -> open-circuit noise on all channels) once
-    # that card is offloaded; until then the whole night session is suspect. The rat stays in the group (WISER 3058, video).
-    SF11: {mac_suffix: "721C", mac: "1DFE7F77721C", ephys_end: "2026-09-07 08:12:41", implant_lost: "2026-09-07 ~07:40", last_valid_ephys: null}
+    # SF11: implant fell off in the night of 09-06/07 (operator sighting 07:43); the logger kept recording open-circuit noise until
+    # the round's clean Stop 08:12:41 and was retired (not restarted). MEASURED 2026-09-07 in 13_20260906_195234.827 (5-s windows,
+    # 1250 Hz LFP, 64-ch median inter-channel correlation, theta 6-10 Hz power, raw MAD, 60-Hz fraction): in tissue up to 06:10:00
+    # (corr 0.95, theta normal, rest state); 06:10:30-06:15:00 large decorrelated transients (MAD to 4200 ADC, corr <= 0.5: the
+    # implant being torn off); from 06:15:10 open circuit on >= 59 of 64 channels (MAD 80-110 ADC, theta gone, corr ~0.1-0.2,
+    # 60-Hz fraction up to 0.57), later big handling bursts (06:44, 06:54, 07:24-08:09). Times = logger wallclock; field-PC time
+    # is ~1 s later (SF11 runs -27 ppm vs the field PC, 10.3 h into the session). ephys_end = the retired logger's last Stop;
+    # last_valid_ephys = the measured boundary (registered below in ephys.valid_until). The rat stays in the group (WISER 3058, video).
+    SF11: {mac_suffix: "721C", mac: "1DFE7F77721C", ephys_end: "2026-09-07 08:12:41", implant_lost: "2026-09-07 06:10-06:15", last_valid_ephys: "2026-09-07 06:10:00"}
     SF12: {mac_suffix: "21B1", mac: "FBED2F2321B1"}
   # Firmware provenance (field history, confirmed from CE_params.bin firmware_version @ byte 328):
   #   FM59-62  stop-only file commit (night-1 loss on all six) AND single-sample glitch defects
@@ -103,6 +107,12 @@ ephys:
     - {animal: SF07, time: "2026-09-06 05:32", note: "NOT a stop: the advertisement rec counter froze at 38655 s (05:36-05:56) while voltage and card % kept updating; connect at 06:02:47 showed rec = 40529 s, continuous since 18:47:32. A frozen ad counter alone is not evidence of a stop", source: "incident log 2026-09-06 06:10"}
     - {animal: SF11, time: "2026-09-07 07:40", note: "IMPLANT FELL OFF (operator 07:43); logger recorded open-circuit noise until the clean Stop 08:12:41, retired, not restarted. Last valid ephys = detachment time, TBD from the 09-06 19:52:35 night session (not offloaded yet); the 09-05 evening shank-2 x4 attenuation and the no-effect advances read as a loosening headcap rather than a moved probe", source: "incident log 2026-09-07 07:44 / 09:45, from-field/2026-09-07_sf11-implant-loss.md"}
     - {animal: SF07, time: "2026-09-07 09:15", note: "battery-path series resistance ~1-2 ohm suspected (holder spring / plug): first-minute sag after Rec Start 3-7x the fleet on three of four installs (65 / 62 / 144 mV) while the steady drain is the fleet lowest; the logger reads low under load, so it auto-stops earlier than its cell would - a weak cell was pulled after a 15-min stub session 08:52:49-09:07:34, second cell from 09:15:12", source: "incident log 2026-09-07 09:45"}
+    - {animal: SF11, time: "2026-09-07 06:10:00", note: "DETACHMENT MEASURED in 13_20260906_195234.827: neural signal intact to 06:10:00 (rest state, inter-channel corr 0.95); 06:10:30-06:15:00 violent decorrelated transients (implant torn off); open circuit from 06:15:10 (>= 59/64 channels at MAD 80-110 ADC, theta gone, corr ~0.1-0.2, 60 Hz up); handling bursts 06:44, 06:54, 07:24-08:09; Stop 08:12:41. 1.5 h before the operator's 07:43 sighting - video around 06:08-06:16 (field-PC time ~ logger + 1 s) should show the event. Valid data on this card: 19:52:34 -> 06:10:00 (10.29 h); 2.04 h tail excluded via ephys.valid_until", source: "lab measurement 2026-09-07 (5-s windows: 1250 Hz LFP correlation, theta power, raw MAD, 60 Hz fraction)"}
+  # Sessions whose recording continued after the neural signal ended (implant detached mid-session): the session stays a
+  # normal session (fitted, counted, sortable) up to valid_until (logger wallclock); the index limits its probe windows to
+  # the valid part and the coverage tables stop there. Not a field_flag: the session is real up to that time.
+  valid_until:
+    - {animal: SF11, session: "13_20260906_195234.827", valid_until: "2026-09-07 06:10:00", note: "implant detached 06:10:30-06:15:00; open circuit from 06:15:10 to the 08:12:41 Stop (see loggers.SF11 and logger_notes)"}
   # Sessions the field log marks as not-real recordings (keep them in the index, exclude from analysis). Source: recording
   # repo BATTERY_LOG_cohort3.md.
   field_flags:
