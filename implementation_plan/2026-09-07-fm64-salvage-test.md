@@ -1,13 +1,15 @@
-# FM64 salvage test (2026-09-07) — QUEUED, not started
+# FM64 salvage test (2026-09-07) — DONE 2026-09-09, FM64 usable with a template-shape filter
 
-**Status.** RUNNING since 2026-09-07 23:45 (operator: "que 一个 FM64 noise 对 spike sorting 影响"; 2026-09-08 is a free day,
-no card offload). 2026-09-08 update: SF10 `1_20260901_080143.036` (FM64 day) staged + sorted (queue v6, 10:12 → 12:33, 55/59/58 units
-on the three live shanks) and step 2 run on it: **39 % of its accepted units have one-sample-wide templates vs 3–8 % on the FM65
-sessions (`ephys/template_width_check.py`, `results/2026c/ephys_spikes/reports/ephys_spikes_template_width_2026c.csv`) → the
-de-glitched FM64 day FAILS the step-3 criterion for SF10.** SF07 `2_20260901_002100.939` (FM64 night): staged 12:33 → 13:20
-(`stage_manifest.json` deglitch_applied = true, 156,221 ticks → 343; the conda wrapper printed rc=127 AFTER the stage's own
-done line — a wrapper artefact, the copy is complete), Kilosort4 on the staged copy from 13:20 (four shanks sorted by 16:04,
-postprocess in progress). Steps 2–3 on SF07 and the final comparison follow when it lands; step 4 (donor-match rule) is not started.
+**Status. DONE 2026-09-09 01:23 — VERDICT: de-glitched FM64 is sortable ONLY WITH a template-shape filter.** The decisive test ran on SF12 with the
+channel map settled on 2026-09-08 (the operator's earlier attempts used superseded XMLs and were discarded together with those sorts): matched 3-h morning
+windows of `0_20260901_080334.683` (FM64, 908 ticks/s, de-glitched: 11,684,684 ticks -> 225) and `11_20260902_083748.804` (FM65, untouched), the same XML,
+the same settings, one after the other. Result: the de-glitch leaves a residue that Kilosort4 sorts into extra 'units' whose templates are a band-pass-filtered
+single-sample impulse (a sharp peak with symmetric ringing, no real repolarisation). They are 36-38 % of accepted units on FM64 against 5 % on FM65, and the
+measure separates them cleanly: the neighbour/peak ratio of the peak-channel template is bimodal on FM64 (quartiles 0.23 / 0.92) and unimodal on FM65
+(0.79 / 0.91). Removing them leaves 77 normal-shaped accepted units on FM64 against 59 on FM65 for the same 3 h, with matching SNR (4.5 vs 4.3) and amplitude
+(46 vs 41 uV) — i.e. the real units survive the de-glitch. Step 3's literal criterion fails (accepted one-sample units exist) while the yield criterion passes
+(well-isolated 26 vs 20 = 130 %). Practical rule adopted: FM64 sessions may be sorted, but every unit with neighbour/peak ratio < 0.4 must be rejected before
+any analysis; `ephys/template_width_check.py` computes it. Step 4 (donor-match rule) is not needed for this decision and stays unstarted.
 
 **Question.** Can the pre-FM65 sessions (FM64, 2026-08-31 19:00 → 2026-09-01 18:20, 17–22 h per logger, the earliest
 surviving night after release with all six loggers) be used after de-glitching — for LFP certainly, for spike sorting

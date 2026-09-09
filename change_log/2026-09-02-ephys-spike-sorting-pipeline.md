@@ -838,3 +838,31 @@ membership depends on the mating and cannot be read off the hardware. SF09's gro
 **Discrepancy to keep in mind:** the console table `ephys/configs/wild_ce64_channel_map_v57.csv` (`WILDIntanmapped`) agrees with the figure's
 column→Intan map on 32 of 64 columns and differs by pairwise swaps on columns 0–15 and 48–63. Our XMLs do not use that table (they use the vendor
 rotation script), but the two documents are not the same map and only the figure is corroborated by the netlist.
+
+## Addendum 2026-09-09 (01:23) — FM64 salvage answered on SF12 with the settled map: sortable only with a template-shape filter
+
+Operator's instruction (2026-09-08 21:30): delete the Kilosort output made with the superseded XMLs, then run ONE animal to find out whether de-glitched
+FM64 can be spike-sorted, finishing before the 06:00 card offload.
+
+- **Deleted** (analysis folder only, raw folders and `recovery.bin` untouched): `sort/SF08/13_20260902_082748.094`, `sort/SF09/10_20260902_083015.335`,
+  `sort/SF09/_superseded`, `sort/SF11/12_20260902_083534.755`, `sort/SF12/11_20260902_083748.804` — 434 GB. SF07 (map never changed) and SF10 (today's edit
+  moved only skip channels) were kept. The numbers of the deleted runs live on in commit 2a6c47c.
+- **Design.** SF12, matched 3-h morning windows, same XML (`SF12_A4x16-Lin_dataorder_20260908.xml`, spike groups 16/11/11/15), same settings, sequential:
+  FM64 `0_20260901_080334.683` (08:03, 908 ticks/s; de-glitch removed 11,684,684 ticks, 225 left; staged 29 min, sorted 88 min) and FM65
+  `11_20260902_083748.804` (08:37, untouched; staged 20 min, sorted 81 min).
+- **Result.**
+
+  | | accepted templates | one-sample | impulse-shaped (ratio < 0.4) | FWHM median | candidates | < 3 Hz | well-isolated |
+  |---|---|---|---|---|---|---|---|
+  | FM64 de-glitched | 125 | 45 (36 %) | 48 (38 %) | 3.0 | 183 | 144 | 26 |
+  | FM65 control | 62 | 3 (5 %) | 3 (5 %) | 4.0 | 101 | 85 | 20 |
+
+  The artefacts are a band-pass-filtered single-sample impulse — e.g. `-4.7 -6.1 +7.2 -11.0 +22.5 +76.0 +18.6 -17.6 -2.3` against a real spike's
+  `+55.6 +56.4 +45.2 -23.4 -118.9 -154.9 -137.9 -108.0`. The neighbour/peak ratio of the peak-channel template separates them: bimodal on FM64
+  (quartiles 0.23 / 0.92, deciles 0.20 / 0.96), unimodal on FM65 (0.79 / 0.91). On FM64 the impulse population fires faster (1.5 vs 0.8 Hz) with lower SNR
+  (3.2 vs 4.5) and smaller amplitude (31 vs 46 uV) than the normal-shaped population, which itself matches FM65's (SNR 4.3, 41 uV).
+- **Verdict.** De-glitched FM64 is usable for spike sorting **provided units with neighbour/peak ratio < 0.4 are rejected**; the real units survive the
+  de-glitch (77 normal-shaped units on FM64 vs 59 on FM65 in the same 3 h). Without that filter roughly two units in five would be defect residue.
+  This also answers the SF07 puzzle only partly: SF07's FM64 gave 55 % one-sample at 13 ticks/s, far more than SF12 at 908 ticks/s, so on SF07 the residue is
+  not the whole story — its 51-59 % common-mode component is the likelier cause and its FM64 sort should not be used.
+- Not tested here: whether the surviving units' waveforms are subtly distorted by the 0.3-0.55 % of samples the de-glitch replaces.
