@@ -866,3 +866,29 @@ FM64 can be spike-sorted, finishing before the 06:00 card offload.
   This also answers the SF07 puzzle only partly: SF07's FM64 gave 55 % one-sample at 13 ticks/s, far more than SF12 at 908 ticks/s, so on SF07 the residue is
   not the whole story — its 51-59 % common-mode component is the likelier cause and its FM64 sort should not be used.
 - Not tested here: whether the surviving units' waveforms are subtly distorted by the 0.3-0.55 % of samples the de-glitch replaces.
+
+## Addendum 2026-09-09 (02:35) — correction: Kilosort1 CAN run on this PC; KS4 was not a speed choice
+
+Operator: "其实 KS4 不适合海马，这个我们对比过了。所以我们依然在用 KS1。KS4 是更快么？" — no, speed was never the reason. The record since
+2026-09-02 said MATLAB R2021b cannot drive the Blackwell GPU, so Kilosort1/2.5 were unusable and Kilosort4 was the only sorter. **That record was wrong,
+and is corrected here.** Tested tonight on this machine:
+
+- `gpuDevice` on R2021b Update 2 fails with `parallel:gpu:device:DeviceTooNew` (compute capability 12.0 against the bundled CUDA 11.0) **but the error
+  itself points at the way out**: `parallel.gpu.enableCUDAForwardCompatibility(true)`. With it, MATLAB recompiles its GPU libraries once (521 s here) and
+  then reports `NVIDIA GeForce RTX 5070 Ti | CC 12.0 | supported 1 | toolkit 11.0`; a 2000×2000 single matmul matches the CPU to 1.8e-4 and a 2^20 FFT runs.
+- Visual Studio Community 2019 is installed and is a supported compiler for R2021b. From a copy of the lab checkout at
+  `E:rd_rat_spikesnalysis	ools\KiloSort1_field2026` (the lab checkout stays untouched), all three KiloSort1 CUDA MEX files compile with
+  `mexcuda -largeArrayDims <f>.cu NVCC_FLAGS='-allow-unsupported-compiler -gencode=arch=compute_80,code=compute_80'` — PTX only, JIT'd by the driver —
+  and `mexWtW2` then executes on the GPU (output 32×32×121 for nt0 = 61, all finite).
+- The pipeline already supports KS1: `sorter/Kilosort1_config.yaml` (the lab's parameters: Th 6/10/10, lam 12/40/40, full whitening, 500–8000 Hz) and a
+  MATLAB launcher in `src/preprocess/sorter_runner.py`.
+
+**Consequences for what is on record.** The channel-map / XML work is sorter-independent and stands. Everything at the unit level — the yield tables in
+`results/2026c/ephys_spikes/`, and tonight's FM64 verdict (38 % of accepted units are de-glitch residue with an impulse-shaped template) — was measured with
+Kilosort4 and has to be re-measured with KS1 if KS1 is the lab's sorter: the residue is a property of the data, but the fraction a sorter turns into units,
+and the 0.4 neighbour/peak cut that separates them, are KS4-specific.
+
+**Not yet done:** a full KS1 run. Three things need settling first — pointing the pipeline at the compiled copy, making sure the MATLAB session the pipeline
+launches has forward compatibility enabled (it is a session setting), and sanity-checking a KS1 output under forward compatibility, which MathWorks warns
+"might show unexpected behavior". The natural test is the SF12 3-h FM64/FM65 windows already staged, so KS1 and KS4 can be compared on identical data.
+Not started tonight: it would still be running during the 06:00 card offload.

@@ -214,7 +214,14 @@ see the change log for the numbers:
 - Staged folders omit `analogin.dat`/`digitalin.dat`/`supply.dat`: PreprocessPipeline's Intan ADC check
   would reject the 1250 Hz WILD lanes. PC-time anchors come from the raw folder via
   `Neurologger/Code/WILD_generate_pc_time.py` (BLE anchors live in `analogin.dat` lanes 14/15).
-- MATLAB R2021b cannot run Kilosort1/2.5 on the RTX 5070 Ti (Blackwell needs CUDA ≥ 12.8) → Kilosort4 only.
+- **Kilosort1 DOES run here (2026-09-09, corrected).** MATLAB R2021b refuses the RTX 5070 Ti natively (`parallel:gpu:device:DeviceTooNew`,
+  compute capability 12.0 vs the bundled CUDA 11.0), but `parallel.gpu.enableCUDAForwardCompatibility(true)` recompiles the GPU libraries once
+  (~9 min) and then works: matmul and FFT match the CPU. With Visual Studio 2019 the three KiloSort1 CUDA MEX files compile from a copy of the
+  lab checkout at `E:rd_rat_spikesnalysis	ools\KiloSort1_field2026` using
+  `mexcuda -largeArrayDims <f>.cu NVCC_FLAGS='-allow-unsupported-compiler -gencode=arch=compute_80,code=compute_80'` (PTX only, the driver JITs it),
+  and `mexWtW2` executes on the GPU with finite output. The pipeline already carries `sorter/Kilosort1_config.yaml` and a MATLAB launcher, so KS1 is
+  a real option; Kilosort4 was used so far because this was believed impossible. MathWorks warns that forward compatibility can behave unexpectedly,
+  so a KS1 run must be sanity-checked (no NaNs, yield in the expected range) before its units are trusted.
 - Sessions are treated one at a time (no multi-session concatenation yet); a 12-h session is ~50 GB raw and
   the same again for the staged copy and the filtered `.dat`.
 - Time alignment to video/WISER is **unverified** until the per-session PC-time fit passes its gates.
