@@ -1,0 +1,3 @@
+written_utc,animal,session,firmware,n_templates,n_accepted,fwhm_median,fwhm_p5,fwhm_min,frac_with_repolarisation,n_one_sample_accepted,repo_git
+2026-09-08T16:38:57+00:00,SF10,1_20260901_080143.036,64,172,110,3.0,1.0,1,1.0,43,60f3478+dirty
+2026-09-08T16:38:59+00:00,SF10,9_20260902_083247.835,65,98,73,4.0,1.0,1,0.9863,6,60f3478+dirty

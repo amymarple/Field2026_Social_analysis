@@ -167,8 +167,30 @@ def main() -> None:
     sessions = []
     # every <animal>/<session> dir that has a sort_manifest.json OR at least one Kilosort4 sorter folder (run in progress)
     for sdir in sorted(p for p in root.glob("*/*") if p.is_dir() and not p.name.startswith((".", "_"))):
-        raw_dirs = sorted(p for p in sdir.glob("Kilosort4_*_probe*_shank*") if p.is_dir() and not p.name.endswith("_spi") and not p.name.startswith("."))
+        skip = lambda n: n.startswith(".") or ".preserved-" in n or ".attempt-" in n   # pipeline backups, not sorter runs
+        raw_dirs = sorted(p for p in sdir.glob("Kilosort4_*_probe*_shank*")
+                          if p.is_dir() and not p.name.endswith("_spi") and not skip(p.name))
         mf = sdir / "sort_manifest.json"
+        # A re-sort writes a NEW timestamped folder set and leaves the previous one in place (run_sort_session --overwrite does
+        # not delete it), so a session can hold several runs. Keep only the current one: the folders the manifest lists (plus
+        # anything a resort added), else the newest timestamp present. Seen on SF09 2026-09-08 (7-group + 5-shank runs = 12 rows).
+        if mf.exists() and raw_dirs:
+            man0 = json.loads(mf.read_text(encoding="utf-8"))
+            current = {Path(d).name for d in ((man0.get("result") or {}).get("sorter_output_dirs") or [])}
+            for r in man0.get("resorts") or []:
+                current |= {Path(d).name for d in (r.get("kilosort4_dirs") or [])}
+            keep = [d for d in raw_dirs if d.name in current] if current else []
+            if not keep:                      # no manifest paths (or none survive): fall back to the newest timestamp
+                stamps = sorted({re.match(r"Kilosort4_(\d{4}-\d{2}-\d{2}_\d{6})_", d.name).group(1)
+                                 for d in raw_dirs if re.match(r"Kilosort4_(\d{4}-\d{2}-\d{2}_\d{6})_", d.name)})
+                keep = [d for d in raw_dirs if stamps and d.name.startswith(f"Kilosort4_{stamps[-1]}_")] or raw_dirs
+            elif (man0.get("resorts") or []) and len(keep) < len(raw_dirs):
+                # ONLY after a partial re-sort (resort_shanks.py): the shanks it did not touch come from the earlier run.
+                # A full re-run's sorter_output_dirs is complete on its own — SF09's 5-shank run must not inherit the
+                # superseded 7-group run's shanks 6 and 7.
+                have = {re.search(r"_shank(\d+)$", d.name).group(1) for d in keep if re.search(r"_shank(\d+)$", d.name)}
+                keep += [d for d in raw_dirs if d not in keep and (m2 := re.search(r"_shank(\d+)$", d.name)) and m2.group(1) not in have]
+            raw_dirs = sorted(keep, key=lambda d: d.name)
         if not raw_dirs and not mf.exists():
             continue
         man = json.loads(mf.read_text(encoding="utf-8")) if mf.exists() else {}
@@ -191,7 +213,8 @@ def main() -> None:
             r["shank"] = sh; r["ks4_units"] = ks4_units_from_log(sdir, raw.name + "_spi")
             shanks.append(r); seen.add(raw.name + "_spi")
         for spi in sorted(sdir.glob("Kilosort4_*_spi")):   # Phy folders whose sorter folder is gone
-            if spi.name in seen or spi.name.startswith("."):
+            # not "gone" if the raw folder is still on disk: then this _spi belongs to a superseded run filtered out above
+            if spi.name in seen or skip(spi.name) or (sdir / spi.name[:-4]).is_dir():
                 continue
             m = re.search(r"_probe(\d+)_shank(\d+)_spi$", spi.name)
             r = scan_shank(spi, dur); r["stage"] = "post"; r["folder"] = spi.name; r["shank"] = int(m.group(2)) if m else 0; r["ks4_units"] = None

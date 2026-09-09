@@ -426,6 +426,65 @@ def connector_variants(groups_v1: list[list[int]]) -> dict[str, list[list[int]]]
     return out
 
 
+def physical_variants(groups_v1: list[list[int]], max_shift: int = 2) -> dict[str, dict]:
+    """Physically possible matings of the two 2x16 Omnetics connectors, INCLUDING partial matings (2026-09-08, user's
+    reference (3): a candidate order must be a describable way of plugging the probe in).
+
+    Connector A = pin-grid rows 0-1 (Intan 16-47), connector B = rows 2-3 (Intan 0-15 + 48-63). Per connector: rotated 180 deg
+    in its socket or not, and SHIFTED by k pin columns along the long axis (k = -max_shift..+max_shift; k = 0 is a full mating).
+    A shift leaves |k| probe sites per row unconnected (they fall off the socket: no data column, dropped from the group) and
+    |k| logger pins per row open (their channels record nothing: predicted DEAD columns). The two connectors may be swapped
+    and the whole probe mirrored, as in connector_variants(). Returns name -> {"groups": Intan ids per shank in site order
+    (unconnected sites removed), "dead_intan": Intan channels of the open logger pins, "desc": human description}.
+    The 16 full matings of connector_variants() are the k_A = k_B = 0 members."""
+    raw = INTAN64_PINS
+    pos = {ch: raw.index(ch) for g in groups_v1 for ch in g}
+
+    def mate(mirror: bool, swap: bool, a180: bool, b180: bool, ka: int, kb: int):
+        """probe site position p -> logger pin position (or None if it falls off the socket)"""
+        f = {}
+        for p in range(64):
+            r, c = divmod(p, 16)
+            if mirror:
+                c = 15 - c
+            if swap:
+                r = (r + 2) % 4
+            if a180 and r in (0, 1):
+                r, c = 1 - r, 15 - c
+            if b180 and r in (2, 3):
+                r, c = 5 - r, 15 - c
+            k = ka if r in (0, 1) else kb
+            c2 = c + k
+            f[p] = None if not (0 <= c2 <= 15) else r * 16 + c2
+        return f
+
+    out = {}
+    for mirror in (False, True):
+        for swap in (False, True):
+            for a180 in (False, True):
+                for b180 in (False, True):
+                    for ka in range(-max_shift, max_shift + 1):
+                        for kb in range(-max_shift, max_shift + 1):
+                            f = mate(mirror, swap, a180, b180, ka, kb)
+                            groups = [[raw[f[pos[ch]]] for ch in g if f[pos[ch]] is not None] for g in groups_v1]
+                            used = {f[pos[ch]] for g in groups_v1 for ch in g if f[pos[ch]] is not None}
+                            dead_intan = sorted(raw[q] for q in range(64) if q not in used)
+                            parts = [t for t, on in (("m", mirror), ("swap", swap), ("A180", a180), ("B180", b180)) if on]
+                            if ka:
+                                parts.append(f"A{ka:+d}")
+                            if kb:
+                                parts.append(f"B{kb:+d}")
+                            name = "+".join(parts) if parts else "v1_raw"
+                            if not ka and not kb:   # the four whole-grid orientations keep their connector_variants() names
+                                name = {(False, True, True, True): "v2_rot180", (True, False, False, False): "v3_fliplr",
+                                        (True, True, True, True): "v4_flipud"}.get((mirror, swap, a180, b180), name)
+                            desc = ("probe mirrored; " if mirror else "") + ("connectors swapped; " if swap else "") + \
+                                   ("A rotated 180; " if a180 else "") + ("B rotated 180; " if b180 else "") + \
+                                   (f"A shifted {ka:+d} pin(s); " if ka else "") + (f"B shifted {kb:+d} pin(s); " if kb else "")
+                            out[name] = {"groups": groups, "dead_intan": dead_intan, "desc": desc.strip("; ") or "standard full mating"}
+    return out
+
+
 def pair_agreement(A: np.ndarray, P: np.ndarray, groups: list[list[int]], dead: set[int], thr: float = 2.5) -> tuple[float, int]:
     """Fraction of strong symmetric pairs (>= thr sigma) that land on the same shank under the candidate map."""
     S = np.where(np.isfinite(A), A, 0.0); S = 0.5 * (S + S.T)

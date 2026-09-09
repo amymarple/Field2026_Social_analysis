@@ -3,7 +3,8 @@ connector orientation and the per-bank raw rotations of that logger's firmware f
 
 Chain (see ephys/probe_map_check.py for the evidence):
     probe site -> Intan channel        ProbeMaps XML (version1 = raw Intan pin grid) + connector orientation
-                                        (v1_raw | v2_rot180 | v3_fliplr | v4_flipud)
+                                        (v1_raw | v2_rot180 | v3_fliplr | v4_flipud, or a connector mating such as A180 —
+                                         one 2x16 Omnetics connector rotated 180 deg in its socket; SF10, 2026-09-05)
     Intan channel i -> exported column P[i]   P = rotation_permutation(rot_bank0, rot_bank1): the WILD Console CE64
                                         export map already applied on download, with the firmware's raw-bank slot
                                         rotation conjugated through it (vendor/correct_intan_dat_channel_order.py)
@@ -20,7 +21,7 @@ import argparse
 from pathlib import Path
 
 from make_session_xml import build_session_xml, write_xml
-from probe_map_check import PROBEMAPS, PROBE_XML, load_groups, orientation_variants, rotation_permutation
+from probe_map_check import PROBEMAPS, PROBE_XML, connector_variants, load_groups, rotation_permutation
 
 LAYOUT_FOR_PROBE = {"A4x16-Lin-5mm-50s-300": "linear", "A5x12_16-Buz_lin-5mm-100-200-160_177": "Buzsaki 5x12"}
 
@@ -28,7 +29,7 @@ LAYOUT_FOR_PROBE = {"A4x16-Lin-5mm-50s-300": "linear", "A5x12_16-Buz_lin-5mm-100
 def exported_groups(probe: str, orientation: str, rot0: int, rot1: int) -> tuple[list[list[int]], list[list[int]]]:
     """Return (groups in exported-column numbering, groups in Intan numbering) for the probe/orientation/rotations."""
     v1 = load_groups(PROBEMAPS / PROBE_XML[probe][0])
-    intan_groups = orientation_variants(v1)[orientation]
+    intan_groups = connector_variants(v1)[orientation]     # 16 matings; v1_raw/v2_rot180/v3_fliplr/v4_flipud = whole-grid orientations
     P = rotation_permutation(rot0, rot1)           # Intan channel i lives in exported column P[i]
     return [[int(P[ch]) for ch in g] for g in intan_groups], intan_groups
 
@@ -36,7 +37,10 @@ def exported_groups(probe: str, orientation: str, rot0: int, rot1: int) -> tuple
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--probe", required=True, choices=list(PROBE_XML))
-    ap.add_argument("--orientation", default="v1_raw", choices=["v1_raw", "v2_rot180", "v3_fliplr", "v4_flipud"])
+    ap.add_argument("--orientation", default="v1_raw",
+                    choices=["v1_raw", "v2_rot180", "v3_fliplr", "v4_flipud", "A180", "B180", "A180+B180", "swap", "swap+A180", "swap+B180",
+                             "m+A180", "m+B180", "m+A180+B180", "m+swap", "m+swap+A180", "m+swap+B180"],
+                    help="connector mating (probe_map_check.connector_variants): A180/B180 = that 2x16 connector rotated 180 deg in its socket, swap = connectors exchanged, m = probe mirrored")
     ap.add_argument("--rot0", type=int, default=0, help="raw bank-0 slot rotation of the logger (SF07 FM64/FM65: +1)")
     ap.add_argument("--rot1", type=int, default=0, help="raw bank-1 slot rotation of the logger")
     ap.add_argument("--reject", type=int, nargs="*", default=[], help="exported columns to mark skip=1")

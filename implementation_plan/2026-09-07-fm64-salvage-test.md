@@ -1,7 +1,13 @@
 # FM64 salvage test (2026-09-07) — QUEUED, not started
 
-**Status.** Queued behind the daily offload QC (operator decision 2026-09-07: "先以QC为主"). Nothing below has been run.
-Pick it up when a GPU day is free; no field action depends on it.
+**Status.** RUNNING since 2026-09-07 23:45 (operator: "que 一个 FM64 noise 对 spike sorting 影响"; 2026-09-08 is a free day,
+no card offload). 2026-09-08 update: SF10 `1_20260901_080143.036` (FM64 day) staged + sorted (queue v6, 10:12 → 12:33, 55/59/58 units
+on the three live shanks) and step 2 run on it: **39 % of its accepted units have one-sample-wide templates vs 3–8 % on the FM65
+sessions (`ephys/template_width_check.py`, `results/2026c/ephys_spikes/reports/ephys_spikes_template_width_2026c.csv`) → the
+de-glitched FM64 day FAILS the step-3 criterion for SF10.** SF07 `2_20260901_002100.939` (FM64 night): staged 12:33 → 13:20
+(`stage_manifest.json` deglitch_applied = true, 156,221 ticks → 343; the conda wrapper printed rc=127 AFTER the stage's own
+done line — a wrapper artefact, the copy is complete), Kilosort4 on the staged copy from 13:20 (four shanks sorted by 16:04,
+postprocess in progress). Steps 2–3 on SF07 and the final comparison follow when it lands; step 4 (donor-match rule) is not started.
 
 **Question.** Can the pre-FM65 sessions (FM64, 2026-08-31 19:00 → 2026-09-01 18:20, 17–22 h per logger, the earliest
 surviving night after release with all six loggers) be used after de-glitching — for LFP certainly, for spike sorting

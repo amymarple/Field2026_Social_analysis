@@ -111,7 +111,7 @@ def test_xml(tmp: Path) -> Path:
         f"groups {[len(g) for g in p7['groups']]}")
     p9 = load_probe(probe_cfg, "SF09")
     flat9 = sorted(c for g in p9["groups"] for c in g)
-    rec("probe config SF09 = data-derived XML covering all 64 columns with skips", flat9 == list(range(64)) and len(p9["reject_channels"]) >= 20 and p9["verified"] is False,
+    rec("probe config SF09 = data-derived XML covering all 64 columns with skips", flat9 == list(range(64)) and len([g for g in p9["groups"] if not set(g) <= set(p9["reject_channels"])]) == 5 and len(p9["reject_channels"]) >= 4 and p9["verified"] is False,
         f"groups {[len(g) for g in p9['groups']]} reject {len(p9['reject_channels'])}")
     root = build_session_xml(n_channels=64, fs=20000, groups=[list(range(16 * i, 16 * (i + 1))) for i in range(4)], reject=[32], layout="staggered")
     out = write_xml(root, tmp / "t.xml")

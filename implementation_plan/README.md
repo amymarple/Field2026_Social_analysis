@@ -4,7 +4,7 @@ This directory records non-trivial implementation plans before source changes.
 
 | Date | Plan | Scope |
 |---|---|---|
-| 2026-09-07 | [FM64 salvage test](2026-09-07-fm64-salvage-test.md) — **QUEUED** | Can the de-glitched FM64 sessions (08-31 19:00 → 09-01 18:20, 17–22 h/logger) be spike-sorted? LFP use needs no test. Same-logger FM64-vs-FM65 sort comparison (SF10, then SF07) with a decision rule; donor-match de-glitch variant as the fallback. Parked behind the daily offload QC. |
+| 2026-09-07 | [FM64 salvage test](2026-09-07-fm64-salvage-test.md) — **RUNNING (queued 09-08)** | Can the de-glitched FM64 sessions (08-31 19:00 → 09-01 18:20, 17–22 h/logger) be spike-sorted? LFP use needs no test. Same-logger FM64-vs-FM65 sort comparison (SF10, then SF07) with a decision rule; donor-match de-glitch variant as the fallback. Parked behind the daily offload QC. |
 | 2026-09-02 | [Ephys spike-sorting pipeline (WILD, cohort 3)](2026-09-02-ephys-spike-sorting-pipeline.md) | New `ephys/`: firmware-aware session index, vendored de-glitch (FM≤64 artificial spikes), staged clean copies, PreprocessPipeline + Kilosort4 driver; cohort `2026c`. |
 | 2026-07-12 | [Cohort-parameterize the remaining drivers](2026-07-12-cohort-parameterize-remaining-drivers.md) | Recipe + per-driver direction map to finish wiring --cohort into the remaining Lineage-A and Lineage-B drivers. |
 | 2026-06-28 | [Hourly WISER Occupancy Maps](2026-06-28-hourly-occupancy-maps.md) | Live-DB-safe hourly per-tag occupancy heatmaps from WISER UWB tracking. |

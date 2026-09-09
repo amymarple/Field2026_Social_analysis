@@ -190,6 +190,9 @@ def main() -> None:
     ap.add_argument("--seconds", type=float, default=300.0, help="trigger mode: window length from the middle of the session")
     ap.add_argument("--events-per-channel", type=int, default=300)
     ap.add_argument("--staged-dir", default=None)
+    ap.add_argument("--peak-cols", default=None,
+                    help="keep only units whose peak column is in this list, e.g. 1-17,32-47 (the columns whose site order differs between candidates)")
+    ap.add_argument("--min-amp", type=float, default=0.0, help="keep only units whose peak footprint amplitude (ptp, ADC) is >= this")
     ap.add_argument("--no-write", action="store_true")
     a = ap.parse_args()
     animal = a.animal.upper()
@@ -242,8 +245,19 @@ def main() -> None:
             np.savez(cache, F=F, n_folders=n_folders, units=np.array([f"{u[0]}:{u[1]}" for u in units]))
     F = F.copy(); F[:, sorted(excluded)] = 0.0
     keep = F.sum(1) > 0
+    if a.peak_cols:
+        cols = set()
+        for tok in a.peak_cols.split(","):
+            lo, _, hi = tok.partition("-")
+            cols.update(range(int(lo), int(hi or lo) + 1))
+        keep &= np.isin(F.argmax(1), sorted(cols))
+    if a.min_amp > 0:
+        keep &= F.max(1) >= a.min_amp
     F = F[keep]
     n_units = int(F.shape[0])
+    if n_units == 0:
+        raise SystemExit("no units left after the peak-column / amplitude filters")
+    print(f"   scoring {n_units} units" + (f" (peak column in {a.peak_cols})" if a.peak_cols else "") + (f" (peak ptp >= {a.min_amp:g})" if a.min_amp > 0 else ""))
     Fn = F / F.sum(1, keepdims=True)
     peak = F.argmax(1)
     if a.top_k and a.top_k < 64:      # keep each unit's k strongest columns only (sharper than the full 64-column spread)

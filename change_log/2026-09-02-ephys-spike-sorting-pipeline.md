@@ -483,9 +483,12 @@ latency, ESTIMATE) - needs a shared hardware TTL. Headline definitions (full set
 
 ## Addendum 2026-09-05 — recovery images duplicated to F:, offload throughput measured
 
-- The six raw card images `E:rd_rat_spikes\SFxxecovery.bin` (3.07 TB) were copied to `F:rd_rat_spikes\SFxxecovery.bin`
+- The six raw card images `E:rd_rat_spikes\SFxx
+ecovery.bin` (3.07 TB) were copied to `F:rd_rat_spikes\SFxx
+ecovery.bin`
   (SanDisk Extreme 4 TB) between 09-04 19:14 and 09-05 06:29, hashing the source stream during the copy and re-reading each
-  destination afterwards: all six sha256 pairs match (`F:rd_rat_spikesecovery_images_manifest.json`). Purpose: E: had
+  destination afterwards: all six sha256 pairs match (`F:rd_rat_spikes
+ecovery_images_manifest.json`). Purpose: E: had
   2.98 TB free against ~2.1 TB per offload round; deleting the E: originals (operator's decision, not done here) frees 2.9 TB.
 - E: (WD Red Pro 20 TB, 84 % full, free space on the inner tracks) reads a single stream at 103-114 MB/s there, against the
   268-285 MB/s outer-track spec, so it absorbs about two simultaneous 50 MB/s card exports, not three. Card-copy history
@@ -493,3 +496,313 @@ latency, ESTIMATE) - needs a shared hardware TTL. Headline definitions (full set
   49 + 49 with no loss, two cards behind one extender 25 + 25. Plan adopted for the 09-05 batch: two cards to E:, two to
   D: (SATA SSD, 217 MB/s measured), two to F:, each reader on its own root port, one console instance per card; the D:/F:
   copies are consolidated into E: afterwards with verification.
+- **SF10 connector mating = A180 (2026-09-05 06:40).** Unit-footprint test on SF10's 150 Kilosort4 units: `A180 +1/0` (the 2×16 Omnetics
+  connector on RHD2164 rows 0–1, Intan ch 16–47, rotated 180° in its socket) 171.9 µm vs 180.5 µm (2nd, m+A180) vs 198.4 µm for SF07's
+  map (rank 9/1296); the co-activation `--connector-scan` had already put A180 first on SF10 (NN 0.51 vs 0.40). This is the user's
+  "plugged in differently" case. Consequence: the four column SETS per shank are the same as under SF07's map (shank labels 2↔3
+  swap), so the 09-04 SF10 sort used the right grouping; only the site ORDER inside shanks 2 and 3 was wrong (spatial templates,
+  Phy waveform layout, depth). New XML `ephys/configs/xml/SF10_A4x16-Lin_A180_rot+1_0.xml` (`make_probe_xml.py --orientation A180`,
+  16 matings now supported), `probes_2026c.yaml` SF10 → A180 (verified), staged XML replaced (old copy kept as `.xml.sf07map`);
+  SF10 re-sort queued after SF11/SF12 (its noisy shank makes Kilosort4 take ~9 h).
+- **Audit of `correct_intan_dat_channel_order.py` (user request 2026-09-05; file `D:\Downloads\…`):** byte-identical to the vendored
+  copy `ephys/vendor/correct_intan_dat_channel_order.py` (md5 809899d3…, committed d465cc5 on 09-03); its `--self-test` passes; its
+  embedded CE64 map equals `configs/wild_ce64_channel_map_v57.csv`; `probe_map_check.v57_source_columns(r)` and
+  `rotation_permutation(+1, 0)` reproduce `restored_source_columns(bank=0, rotation=r)` exactly for r = −1, +1, +2 (first source
+  columns 30, 0, 28, 31, 26, 29, …); an independent re-derivation (slot r holds logical channel r+1 → console map → repair) restores
+  the fault-free export. Direction convention confirmed: "Intan channel i lives in exported column P[i]", which the SF07 footprint
+  validation (rank 1/1296) already tested empirically. No change needed.
+- **Queue restarted 2026-09-06 18:10 (user: "run; I copy cards again ~06:00–07:00 tomorrow, schedule around it"):** `batch_sort_queue.sh`
+  runs SF11 `12_20260902_083534.755` → SF12 `11_20260902_083748.804` → SF10 re-sort with the A180 XML, each followed by the
+  unit-footprint connector test and the yield report. A job is started only if its estimate (7.5 h / 7.5 h / 15 h) ends before
+  the daily 05:30–07:30 blackout, otherwise the queue sleeps until 07:30. Expected: SF11 done ~01:40 on 09-07, SF12 held to
+  07:30 → ~15:00, SF10 ~15:00 → ~06:00 on 09-08 is too close to the window, so it also waits (starts 07:30 on 09-08).
+- **Offload window corrected (user 18:30: the copies run ~06:00–16:00, not 06:00–07:00):** the running queue (05:30–07:30 rule) is
+  allowed to finish SF11 only (SF12/SF10 XMLs held → skipped); `batch_sort_queue_v2.sh` (blackout 05:30–16:30, waits for
+  queue v1 to end) then runs SF12 from 16:30 on 09-07 (~00:00) and the SF10 re-sort right after. Because a full SF10 re-run
+  (~15 h) never fits the 16:30→05:30 gap, the re-sort uses the new `ephys/resort_shanks.py`: Kilosort4 only on the two shanks
+  whose site order changed under A180 (partitions 2 and 3 = columns 1–17 and 32–47), re-using the preprocessed .dat, old
+  folders moved to `<sort_root>/SF10/_superseded/<session>/A180_<ts>/`, then one fast postprocess over all four shanks
+  (~4 h; caveat recorded in the manifest: the .dat's local CMR neighbourhoods on those shanks follow the old site order).
+- **SF11 `12_20260902_083534.755` (8.5 h, done 22:45 on 09-06, 276 min, fast, sorted with SF07's grouping):** 233 KS4 clusters → 206,
+  81 noise-labelled, 125 candidates (28 / 29 / 28 / 40), **115 below 3 Hz**, 10 at ≥ 3 Hz, 3 well-isolated; candidate median amplitude
+  20 µV, SNR ≈ 2 — the weakest signals of the cohort (consistent with the LFP verdict that SF11 sits above the pyramidal layer).
+  Footprint mating test (146 units): no winner — v1_raw +3/0 164.7 µm, m+A180 +1/0 165.3, SF07's map 175.0 (rank 18); all 16
+  matings within 6 %. Like SF08, SF11's small, broad units do not decide the within-shank order; the shank grouping is the same
+  under every candidate that scores well (column sets identical to SF07's map), so the sort stands with "order unverified".
+  Sharper variant (`footprint_map_check.py --peak-cols 1-17,32-47`, i.e. only units whose peak lies on the two shanks whose site
+  order differs between the matings; `--top-k 3`): SF07 keeps v1_raw (58.6 vs 64.1 µm), SF10 keeps A180 (123.8 vs 130.9, SF07's map
+  rank 17) — the test discriminates when footprints are compact. SF11 (73 such units, 200 or 1000 spikes each): every top candidate
+  is a MIRRORED mating (m+A180, m+A180+B180, v3_fliplr; 128–175 µm) and SF07's map ranks 6–21, but the leaders differ by 1–2 %, so
+  SF11 is recorded as "probably mirrored (flipped over), exact mating undecided"; its shank column sets are the same under all of
+  them, so the sort stands.
+- **SF10 shank 1 is dead (user Phy inspection 2026-09-07, confirmed in the data):** columns 48–63 show 0.0–0.5 threshold crossings/s
+  per channel on the preprocessed .dat (other shanks up to 13–35/s), noise alternating 12 / 7 µV by pin row, column 56 flat; its 97
+  Kilosort4 clusters have median ContamPct 47 % and Kilosort4 spent 5.6 h on them. The A180 verdict does not rest on it: with
+  only units peaking on the two changed shanks, A180 still leads (169.8 vs 179.1 µm; SF07's map rank 16), and an interpretable
+  check — the fraction of units whose 2nd-strongest column is an adjacent site — goes from 0.15 (SF07 order) to 0.60 (A180 order)
+  on columns 32–47, close to the untouched shank 4 (0.68). Changes: `SF10_A4x16-Lin_A180_rot+1_0.xml` regenerated with columns
+  48–63 as skip, `probes_2026c.yaml` SF10 `reject_channels` = 48–63, staged XML updated; `resort_shanks.py` now also supersedes the
+  Kilosort4 folders of a shank that has no partition left (shank 1 → `_superseded/`), so the re-sort yields shanks 2, 3 (new) + 4.
+  The yield report's SF10 "shank 1: 52 candidates" row is junk until the re-sort lands.
+- **SF09 map rebuilt as 5 shanks (user 2026-09-07: "SF9 is wrong, this is 8 shanks, it has only 5"):** the 7 co-activation clusters +
+  a 29-column skip group were fragments, not shanks. Average-linkage clustering of the 500–5000 Hz inter-channel correlation of the
+  54 live columns (FM65 `10_20260902_083015.335`, 600 s; LFP correlation is useless here, r > 0.9 across the whole probe) gives five
+  groups of 12 / 8 / 11 / 11 / 12 sites that contain the co-activation clusters intact (A = clusters 2+6, B = 4, C = 1, D = 5,
+  E = 3+7) and absorb the 19 silent live columns; within-shank site order = Fiedler order of the within-shank correlation
+  (consecutive-site r 0.20–0.39; approximate depth, no geometry). 10 dead columns [2 4 32 36 52 54 56 58 60 62] skipped (Notion:
+  50 live channels). New XML `SF09_data_derived5_10_20260902_083015.335.xml`, config + staged copy updated, old 7-group XML
+  superseded; SF09 full re-sort queued (`batch_sort_queue_v3.sh`, after queue v2 and outside 05:30–16:30, ~7 h).
+- **Start pushed to 18:00 on 09-07 (user 16:00: copies done, offload QC running on E:):** the three staged XMLs are parked as `.hold2`
+  so queues v2/v3 fail fast at 16:30 and end; `batch_sort_queue_v4.sh` (not before 18:00, then the 05:30–16:30 rule) runs
+  SF12 sort (~6.5 h) → SF10 shank 2+3 re-sort (~3.5 h) → SF09 5-shank re-sort (~7 h, expected to be deferred to 16:30 on 09-08),
+  each followed by the footprint test (SF12, SF10) and the yield report.
+- **Paused 2026-09-07 18:15 (user "先暂停"):** SF10 and SF09 staged XMLs parked as `.xml.paused` (queue v4 will fail fast on them and
+  end); the running SF12 sort (started 18:00, preprocessing) cannot be stopped from this session (process kills are denied) —
+  PIDs handed to the user. Resume = rename `.paused` → `.xml` and launch a new queue; SF12 must be re-run with `--overwrite` if
+  it was killed mid-way.
+- **Resumed 2026-09-07 23:25; queue v5 (SF10 re-sort tonight) + v6 (free day 09-08).** The 18:00 SF12 run had been killed
+  mid-preprocess and left no output, so it is re-run from scratch. Order changed to use the ~6 h before the offload window
+  for the short job: v5 = SF10 shanks 2+3 re-sort (A180 XML, dead shank 1 dropped), started 23:24. The user then said
+  2026-09-08 is a free day (no card copying), so `batch_sort_queue_v6.sh` waits for the re-sort's `resorts[]` marker and
+  runs with NO blackout on 09-08 (05:30–16:30 rule resumes 09-09): SF12 full sort → SF09 5-shank re-sort →
+  **FM64 salvage test** (implementation_plan/2026-09-07-fm64-salvage-test.md step 1/3, user request): stage + sort
+  SF10 `1_20260901_080143.036` (FM64 day, de-glitched, 2,240 ticks/s) and SF07 `2_20260901_002100.939` (FM64 night, the
+  low-defect logger), each with the same probe config / reject list / post_mode as that logger's already-sorted FM65 session,
+  for the per-shank comparison (candidates < 3 Hz, well-isolated, amplitude/SNR, ISI, template width on victim channels;
+  decision rule: FM64 sortable if well-isolated ≥ 70 % of FM65 and no one-sample-wide templates). Each finished job parks its
+  staged XML as `.xml.done` so the still-sleeping queue v5 fails fast instead of repeating a job.
+- **SF10 A180 re-sort done (2026-09-08 00:23, 58 min) + two bugs fixed.**
+  (a) *Stale partition manifest*: PreprocessPipeline's postprocess prefers `sorter_partition_manifest.json` over a directory
+  scan (`_find_sorting_output_dirs_from_manifest`), and the file still listed the 09-04 folders — three of which had just been
+  moved to `_superseded/`, so only the untouched shank 4 was postprocessed and the two re-sorted shanks got no Phy folder.
+  `resort_shanks.py` now rewrites that manifest from the folders on disk before the postprocess (old copy kept as
+  `.pre-<tag>-<ts>`) and has `--post-only` to repair a session without re-running Kilosort4; SF10 repaired with it (11 min).
+  (b) *Backup folders counted as shanks*: `unit_yield_report.py` globbed `Kilosort4_*_probe*_shank*`, which also matches the
+  pipeline's `*_spi.preserved-<ts>` / `*.attempt-<ts>` copies — they appeared as two bogus "shank 0" rows and doubled SF10's
+  spike total. Both suffixes are now skipped.
+  **SF10 after A180 (3 live shanks; shank 1 dead and dropped):** 175 KS4 clusters → 139, 25 noise-labelled, 114 candidates
+  (45 / 29 / 40), **96 below 3 Hz**, 18 at ≥ 3 Hz, 7 well-isolated; candidate median amplitude 36 µV, SNR 3.1–4.8.
+  Versus the 09-04 sort with SF07's map (4 shanks incl. the dead one): 169 candidates / 148 < 3 Hz / 10 well-isolated —
+  not comparable head-on because the dead shank's 52 junk candidates are gone; on the two changed shanks alone the counts
+  went 36 + 41 = 77 candidates (SF07 map) → 45 + 29 = 74 (A180), i.e. the map change did not cost units.
+- **SF12 `11_20260902_083748.804` (9.7 h, done 05:53 on 09-08, 329 min, fast):** 296 KS4 clusters → 211, 41 noise-labelled,
+  170 candidates (28 / 56 / 42 / 44), **146 below 3 Hz**, 24 at ≥ 3 Hz, **23 well-isolated** — the best isolation of the cohort
+  (shank 3 alone: 13 well-isolated, median amplitude 62 µV, SNR 6.0). No channels rejected. With this, all six loggers have one
+  sorted ~8.5-h FM65 session; SF09's 5-shank re-sort started 05:53.
+- **SF09 5-shank re-sort done (2026-09-08 10:12, 259 min, fast).** With the corrected map (5 shanks, 54 live columns; the old
+  XML had 7 co-activation fragments + 29 unassigned): 267 KS4 clusters → 195, 49 noise-labelled, 146 candidates
+  (45 / 14 / 28 / 20 / 39), **136 below 3 Hz**, 10 at ≥ 3 Hz, 10 well-isolated; candidate median amplitude 30 µV, SNR 2.4–3.2.
+  Versus the superseded 7-group sort (72 candidates, 66 < 3 Hz, 4 well-isolated): **+74 candidates, +70 units < 3 Hz,
+  +6 well-isolated** — the 19 live columns the old map discarded were carrying units. The old folders are archived under
+  `sort/SF09/_superseded/10_20260902_083015.335/7groups_2026-09-04_131239/`.
+- **`unit_yield_report.py`: only the CURRENT run of a session is counted.** `run_sort_session.py --overwrite` writes a new
+  timestamped folder set and leaves the previous one in place, so SF09 briefly reported 12 shanks (7 old + 5 new) and doubled
+  totals. The report now takes the folders listed in `sort_manifest.json` (`result.sorter_output_dirs` + any `resorts[].kilosort4_dirs`),
+  falls back to the newest timestamp when no manifest paths survive, inherits untouched shanks from an earlier run ONLY after a
+  partial re-sort (`resorts` present, the SF10 case), and ignores `_spi` folders whose sorter folder still exists (superseded run).
+- **SF12 mating test (2026-09-08, 150 KS4 units):** A180-family candidates lead the footprint ranking (m+A180 193 µm, A180 199,
+  SF07's map 210 / rank 15), but the interpretable adjacency check — fraction of units whose 2nd-strongest column is an adjacent
+  site — is 0.03–0.15 under every candidate, including the shank that A180 does not touch (SF10's untouched shank scores 0.41,
+  SF07 0.78). So none of the 16 matings × rotations describes SF12's within-shank order; like SF08 and SF11 its shank grouping is
+  valid (column sets identical under all leaders) and its site order stays open. **XML status: SF07 verified, SF10 = A180 (re-sorted),
+  SF09 = 5 data-derived shanks (re-sorted); SF08 / SF11 / SF12 grouping-only.** Nothing further to run on the map question
+  without new information (probe photos, which physical shank is where, or a pin table for these implants).
+- **Channel-map test #3 — LFP depth profile (`ephys/lfp_profile_check.py`, 2026-09-08; user: "the sharp wave must go smoothly from
+  positive to negative along the shank, match the LFP, not units").** Ripple-triggered average of the 1–50 Hz LFP (30 min of the
+  daytime session, 870–1,450 ripples per logger) gives a per-column sharp-wave (SPW) amplitude; a within-shank order is scored by the
+  total variation of that profile (1.0 = monotonic). Validation: on SF07 its verified map ranks 1/144 and shank 4 reads +31 → +71 µV
+  monotonically; the profiles are all positive there (shanks above / in the pyramidal layer, no reversal). **SF10 (user-marked broken
+  columns 2, 32, 34 + dead shank 1):** the connector-B shank (columns 0, 16, 18–31; untouched by A180) shows the textbook profile
+  +22 … +127 (pyramidale) → −311 / −123 / −197 (radiatum), tv 1.95, so its order is right; on the two connector-A shanks the A180 order
+  is jagged (tv 2.58 / 3.44, the radiatum sites 11, 15 and 43, 47 scattered among oriens sites) and **no mating × rotation in the
+  family fixes them** (brute force over 16 × 81). The large negative "sharp waves" I had first excluded as broken contacts are the
+  radiatum signal the user described. Resolution: **data-derived within-shank order** for those two shanks — positive-SPW sites by
+  ripple power ascending (oriens → pyramidale), then negative-SPW sites by SPW descending (radiatum); the rule reproduces the verified
+  connector-B order (Spearman 0.97, tv 1.40) and yields tv 1.19 / 1.38 with one reversal each on the connector-A shanks. New XML
+  `SF10_A4x16-Lin_dataorder_20260908.xml` (`lfp_profile_check.py --derive-xml --keep-groups 1 4`; grouping = A180/SF07 sets, shank 1
+  dead, broken 2/32/34 skip at the end of their group); config updated; SF10 shanks 2+3 queued for another re-sort after the FM64 job.
+  Caveat: a data-derived order is a depth ORDER, not a pin table — 50 µm pitch assumed, and sites with similar ripple power can swap.
+  On SF08 / SF11 the SPW profiles are too small (median 20–28 µV) for the test; SF12 pending the user's broken-channel list.
+
+## Addendum 2026-09-08 (evening) — within-shank order by LFP only: SF10 cross-session check, shank-4 impedance, dead-column placement
+
+User's method statement (2026-09-08, verbatim in spirit): do NOT order sites by matching units; use the LFP — the sharp wave goes
+gradually positive → negative from oriens/pyramidale into radiatum, ripple power peaks in the pyramidal layer, the theta phase
+gradient is a third handle; three references for a candidate order: ① the author's XML rotation (`vendor/correct_intan_dat_channel_order.py`,
+`configs/v57_channel_mapping.csv`), ② LFP polarity, ③ a physically possible way of plugging the probe in. Ten-minute windows are
+enough; no Kilosort. Everything below reads a **10-min COPY** made with `stage_session.py --window-s` into
+`E:\3rd_rat_spikes\analysis\stage\<animal>\<session>__w<start>s_600s` (raw session folders opened read-only, never written).
+
+- **`lfp_profile_check.py` v2** (theta phase + ripple-power profiles, `--physical` candidate family from `probe_map_check.physical_variants`
+  = the 16 matings × per-connector pin shifts −2…+2 with their predicted dead columns, `--permute-tail`, `--raw` mode reading the copy
+  at 20 kHz with an IIR anti-alias + stride to 1250 Hz, `--offset-min` negative = from the end, spike-band 300–3000 Hz correlation of the
+  first 2 min for the spacing estimate). SF07 on its first 10 min: its own verified map ranks 1 by SPW, 2 combined — a self-check of the tool only; the user
+  set SF07 aside as a control ("only positive ripple channels") and its mating differs from the other animals, so its map is never a reference for them.
+- **SF10, last 10 min of `15_20260903_055614.833` (496 ripples), under `SF10_A4x16-Lin_dataorder_20260908.xml`:** the order derived on
+  09-02 reproduces on this independent window — shank 2 `+12 … +41 → +66 → +130 (ripple 71) → −241 → −606`, tv 1.24, one reversal;
+  shank 3 `+17 … +40 → +104 → +116 (55) → +1 (59) → −52 (61) → −170`, tv 1.37; theta phase −13° → +50° along shank 2.
+- **Shank 4 "puzzle" resolved as IMPEDANCE, not order (user's diagnosis, confirmed by the data).** Under the standard order the profile
+  alternates in pairs; the two families are exactly the two connector-B pin rows: the eight odd-Intan sites (row 2; cols 27 25 29 23 31 21 0 19)
+  read SPW +30 +27 +44 +38 +68 +57 −170 −127, the eight even-Intan sites (row 3; cols 22 24 20 26 18 28 16 30) read +9 +7 +16 +11 +17 +17 +13 −53:
+  4× smaller, LFP rms (1–100 Hz) 967 vs 1199, theta phase offset +3° vs −5°, and the even sites correlate with EACH OTHER in the spike band
+  at r 0.47 regardless of distance (odd–even 0.26, odd–odd 0.21, between shanks 0.11) — attenuated signal plus shared noise = poor contact /
+  high impedance on one connector row. Scaling the even sites ×3.5 makes the shank monotone. Brute force over the deep five sites (120 orders)
+  finds nothing that smooths all three profiles (best 6.58 vs current 7.59, rank 17/120), consistent with an amplitude problem. Order kept.
+  Side observation for the field: the dead shank 1 is exactly connector-B pin columns 0–7 and the attenuated set is exactly connector-B row 3
+  — both fit a poorly seated connector B rather than a dead probe shank.
+- **Spike-band spacing / gap estimate WITHDRAWN as a distance measure** (caveat now in the tool's docstring): high-impedance sites look
+  isolated (SF10 cols 3, 17, 15, 47 correlate with nothing), the reference scale from shank 4 was inflated by the even-site shared noise,
+  and the four "≈2-site gaps" it flagged in shank 2's flat oriens region are sites whose data-derived order is arbitrary there (similar ripple
+  power), not missing sites. It stays printed as a prompt to look at a site's amplitude, never as evidence for placing a dead column.
+- **Dead columns must sit at their physical position, not at the end of the group (user).** Agreed in principle; on SF10 it cannot be done
+  yet: connector A's wiring is unknown — the 3600 physical matings × rotations all leave the connector-A shanks jagged (best spw tv 2.2 vs the
+  data order's 1.24/1.37). What the pins do say: the three broken connector-A channels 34 / 32 / 2 are three ADJACENT
+  pins of one row (row 0, c6 c7 c8) straddling the two shank blocks — a contact patch on the connector, not three dead electrode sites; and on
+  both connector-A shanks every live row-0 site is shallow (shank 2: 7/7 at +20…+41; shank 3: 5/6, one at +104) while the pyramidale →
+  radiatum sequence sits on the odd-position row-1 pins, mirror-symmetric between the two shanks (shank 2 c11 c13 c15 = +130 −241 −606;
+  shank 3 c4 c2 c0 = +116 −170 −52). So col 2 is most likely shallow, not between 7 and 11, and shank 2's +130 → −241 → −606 over two
+  consecutive pins is the same steepness as shank 4's +13 → −170 over one pitch: no missing site is needed. The dead columns therefore stay
+  `skip=1` at the end of their group until the wiring is identified; the XML is unchanged and still awaits the user's Neuroscope check.
+- **SF08** first 10 min of `18_20260903_060030.122` (440 ripples, col 32 flat). SF07's XML enters ONLY as the shank column sets (identical under
+  all 16 matings, and confirmed for SF08 by co-activation on 09-04 and by today's spike-band partners) — its ORDER is SF07's own mating and is
+  no reference for any other animal (user, 2026-09-08: "SF7 和其他 animal 接法不同你不能比"). Under the ProbeMaps standard order all four
+  shanks are jagged (spw tv 2.7–4.6, 1–4 reversals) and none of the 3600 physical matings × rotations is smooth (best spw tv 3.0) — SF08's deep sites sit on
+  different pins than SF10's (row-1 c8–c10 and row-0 c14–c15 on connector A; row-2 c0–c3 on connector B), i.e. a different wiring, consistent
+  with the user's note that only SF07/10/11/12 share a probe. **Candidate LFP-derived XML `SF08_A4x16-Lin_dataorder_20260908.xml`**
+  (all four groups re-ordered: positive-SPW sites by ripple power asc, then negative-SPW sites by SPW desc; col 32 skip at the end of group 2;
+  spw tv 1.20 / 1.18 / 1.23 / 2.48): shank 1 `+9 … +54 → +73 (rip 36) → +30 (38) → −63 −63 −182 −270`, shank 2 `+15 … +83 → +53 (43) → −175 → −308`,
+  shank 3 `+7 … +55 → +32 (38) → −56 −114 −274`, shank 4 `+6 … +59 +75 → +23 (39) +73 (39) → −47` (shank 4 barely reaches the reversal). Copy
+  placed as `stage/SF08/18_20260903_060030.122__w0s_600s/amplifier.xml` so the analysed 10 min open directly in Neuroscope; `probes_2026c.yaml`
+  still points SF08 at SF07's XML until the user's check. Spike-band correlation check on the same copy (no impedance split by connector row
+  here): the bank-0 grouping of the +1 rotation is confirmed by partners (col 1 ↔ 14/5, col 0 ↔ 29/16/28, col 16 ↔ 18/22/31); the top halves
+  of the shanks have ripple power at the noise floor (21–23), so their LFP order is unconstrained — the correlation chain (57 52 54 50 56 61 48
+  on shank 1; 18 22 20 27 on shank 4) is offered as a tie-breaker, not used in the XML. **Flags for the user:** cols 53 and 55 carry the same
+  signal (r 0.97, identical SPW / ripple / theta / rms) — a duplicated channel, one should become skip; col 47 correlates with nothing (≤ 0.12)
+  and has an outlying theta phase (−17° among −2…−3°) — suspect site; on shank 3 the correlation puts col 1 (−114) right next to the ripple peak
+  col 14 (r 0.34) while the SPW order inserts col 17 (−56, isolated) between them — undecidable from 10 min, left in SPW order.
+  **Physical-wiring support for SF08's order (user's question after approving it in Neuroscope): NONE found.** Besides the 3600 pinout-family
+  candidates, `ephys/wiring_pattern_check.py` (test #4) tried 64 regular routings of each shank's 2 × 8 pin block (zigzag, serpentine,
+  row-major, centre-outward fan-out, the four ProbeMaps shank routings × reverse / row swap / mirror): the data order ranks 1 on every shank
+  (score 3.8–5.7 vs best regular 6.0–9.9, all with ≥ 1 extra reversal), and consecutive data-order sites sit on neighbouring pins at chance
+  level (1–3 of 15; 0–2 of 5 among the deepest six). So SF08's order is supported by the LFP only; a real (possibly irregular) vendor pinout
+  could still explain it, but that needs the probe design + package site-map table, which is not on this PC.
+- **SF12**, last 10 min of `15_20260903_002228.142` (22752–23352 s, 561 ripples, copied with `stage_session.py --window-s`; the user had asked
+  for this session, all channels good): candidate LFP-derived XML `SF12_A4x16-Lin_dataorder_20260908.xml` (copy as `amplifier.xml` in the staged folder;
+  spw tv 1.41 / 1.08 / 1.33 / 1.58; profiles reach −301 / −839 / −245 / −673 µV in radiatum — a deep, clean recording). **Its order is SF08's**: Spearman
+  +0.94 / +0.66 / +0.95 / +0.91 per shank between the two data-derived orders (same exported-column numbering), deepest-five overlap 4/5 on three shanks;
+  against SF10 only +0.25 / +0.25 / +0.49 (deepest-five overlap 1–2/5). So SF08 and SF12 share one wiring and SF10 another; the user's statement that
+  SF07/10/11/12 carry the same probe with different plugs is not what the LFP shows for SF10 vs SF12: the physical-mating scan on SF12 (3600
+  candidates of the ProbeMaps pinout × matings × pin shifts × rotations) leaves every shank jagged (best spw tv 3.05–3.25, 2–3 reversals, vs the
+  data order's 1.08–1.58), exactly as on SF08 — SF08/SF12 follow one pinout that is not the ProbeMaps one under any plug.
+  **Data-quality flag — bridged connector pins.** Eight clusters of SF12 columns carry one signal each (spike-band r 0.90–0.95 with independent
+  amplifier noise, identical SPW / ripple / theta / rms): {33,37} {43,45} {34,36,38} {44,46} {8,10} {12,14,17} {1,3,5} {21,23} — 19 columns, 11 redundant.
+  Seven of the eight clusters are ADJACENT pins of one connector row (e.g. 12/14/17 = row-0 c13 c14 c15; 1/3/5 = row-1 c8 c9 c10; 21/23 = row-2 c13 c14),
+  so these are bridged pins (solder / debris / moisture in the Omnetics), not electrode sites — invisible in Neuroscope because each column shows real
+  signal. SF08's 53/55 pair (r 0.97) is the same thing (connector-B r2c2/r2c3). For sorting, all but one member of each cluster should become skip;
+  which member is the electrode's own pin cannot be told from the data (the bridged pins see the same potential). Left for the user's decision;
+  the candidate XML keeps all 64 live.
+  **Bridged, not high-density (user's objection "未必是重复可能是更 high density", tested with `ephys/bridged_pins_check.py`).** A correlation cannot
+  separate one electrode node seen by two amplifiers from two sites 20 µm apart; the difference a−b can: bridged pins differ only by the amplifiers'
+  own noise. All 11 SF12 cluster pairs: spike-band rms of a−b 2.3–2.7 µV (0.33–0.43 of a channel's 6–7.6 µV, ≈ √2 × the 1.7 µV input noise), LFP
+  residual 1.4–3 %, excess kurtosis 0.1–0.6 (two pairs 2–4), threshold events in a−b 0.00–0.16 /s while the channels themselves fire 1–12 spikes/s.
+  Eight neighbouring distinct-site controls on the same copy: rms ratio 0.8–1.6, LFP residual 32–97 %, kurtosis 3–67, events 3.7–11.7 /s; even the two
+  quietest shallow neighbours (57/52) keep a 7 % LFP residual. Two electrodes cannot lose every spike difference and 97 % of the LFP gradient, so the
+  clusters are single nodes. SF08's 53/55: ratio 0.23, LFP 1.3 %, kurtosis 0.0, events 0.00 /s vs 8.4 /s on the channel — bridged as well.
+  **User's Neuroscope reading of SF12 (candidate XML):** "shank 2's impedance looks bad overall" — the 32–47 block has 9 of 16 columns inside four
+  bridged clusters (11 distinct nodes), which is what makes it look dead-ish; its spike-band rms (median 7.3 µV, 6.2–11.0) and LFP rms (163 µV) are
+  the same as the other blocks'. **Physical shank order set by the user: blocks 48–63, 0/16/18–31, 1–15+17, 32–47 (ProbeMaps shanks 1, 4, 3, 2)** —
+  the XML's groups were re-ordered accordingly (repo file + staged `amplifier.xml`); the ProbeMaps block → shank assignment does not hold for the
+  SF08/SF12 wiring, and SF08's XML (same wiring) still has the old 1-2-3-4 order pending the user's word.
+- **Adopted (user, 2026-09-08 evening).** `probes_2026c.yaml` now points SF08 and SF12 at their data-order XMLs (`verified: true` = user-inspected
+  in Neuroscope; SF08 approved as is; SF12's group order was briefly set to the user's Neuroscope reading 1,4,3,2 and then put BACK to SF08's
+  1,2,3,4 at the user's request — "估计是碰到 hippocampus curvature 了": the apparent shank re-ordering is the hippocampus curving under the
+  four shanks, not the wiring, so both animals keep the same block → group order); staged `amplifier.xml` copies refreshed; the sort folders of the
+  already-sorted SF08/SF12 sessions are untouched (re-sort is a separate decision; today = XML only, FM64 test parked). **Bridged pins: documented,
+  NOT skipped.** I had first marked the duplicates `skip=1` ("Mark 吧"), the user then corrected: "短接不要标 skip，在 doc 上标注即可，不要改 XML" —
+  hardware fault, LFP / ripple features unaffected. The skip marks were removed again (spike groups rebuilt = anatomical order minus skipped), the
+  XML notes and the yaml `reject_channels` (SF08 [32] flat only, SF12 []) carry the cluster lists as documentation, and the clusters are listed here:
+  SF12 {33,37} {43,45} {34,36,38} {44,46} {8,10} {12,14,17} {1,3,5} {21,23}; SF08 {53,55}. Consequence for sorting: a spike near a bridged node appears
+  identically on 2–3 columns — Kilosort will fit one template spanning them, which is harmless for unit counts; bear it in mind when reading
+  footprints. `ephys/selftest.py` 20/20 after the config change.
+- **SF09 (A5x12_16-Buz_lin-5mm-100-200-160_177), last 10 min of `16_20260903_001828.515` (22691–23291 s, 455 ripples; dead 2 4 32 36 52 54 56 58 60 62).**
+  User's instruction: take the shank GROUPING from the ProbeMaps `version2` XML (the 16-site middle shank = "middle finger") and order the sites of each
+  of the five shanks by the LFP. `version2` = `version1` with the probe connector rotated 180° on the pin grid (checked: 64/64 channels map exactly);
+  which one applies depends on how the connector was plugged. Grouping XMLs in exported columns (bank-0 +1 rotation): `SF09_A5x12-Buz_v2grouping_rot+1_0.xml`
+  (v2 shanks = cols 14 7 13 8 17 5 15 6 11 10 12 9 / 2 29 1 24 4 22 3 25 30 26 0 28 / 61 31 57 27 53 23 49 19 48 16 51 21 50 18 52 20 / 59 32 56 33 54 34
+  55 35 58 62 60 63 / 39 44 38 45 37 46 36 47 40 43 41 42) and `SF09_A5x12-Buz_v1grouping_rot+1_0.xml`. **Candidate `SF09_A5x12-Buz_v2grouping_dataorder_20260908.xml`**
+  (LFP order inside the v2 groups, dead columns skip at the end; copy as `amplifier.xml` in the staged folder) — NOT adopted, `probes_2026c.yaml` still points
+  at the 5-shank co-activation XML. Caveats from the same copy: (1) under the v2 grouping only shank 1 (11 positive-SPW sites + col 17) and shank 5 (10 radiatum
+  sites + col 47) read as one population each; shanks 2, 3, 4 interleave pyramidal (+150…+350 µV) and radiatum (−60…−730 µV) columns, so their LFP order is a
+  sort of two populations, not a depth sequence; v1 is worse (spw tv 2.5–7.0, up to 10 reversals). (2) The spike-band correlation splits SF09 into a
+  pyramidal population (32 cols, bank 0 plus 47 48 50 59 61 63) and a radiatum population (18 cols, bank 1 plus 3 and 17) with 4 isolated columns (21 25 51 55);
+  inside them the partner structure shows blocks {16 18 20 31 0 29 (+48 50 59 61 63)}, {19 26 27 28 30 22 24 23 15 47}, {5–14 + 1}, {39 46 40 35 41 38 17 3 42 37 33 44},
+  {34 45 53 57 43 49}. The v2 grouping puts 42/54 live columns into their block, v1 38/54, the 09-07 co-activation XML 50/54 — i.e. neither plug of the
+  ProbeMaps map reproduces the blocks the spikes define. Whole blocks being pyramidal or radiatum fits a Buzsaki-tip design (8 clustered tip sites + linear
+  sites above) sitting at different depths per shank, but that is an interpretation for the user's Neuroscope check, not a result.
+- **SF09 geometry decides the question, and it favours `version1` (user: "我觉得 47-36 更像是 middle finger 呢因为更深" → "所以或许是 ver1 按照 v1
+  reorder 吧").** `ProbeMaps/Neuronexus/A5x12-16-Buz-lin-5mm-100-200-160-177_electrodes_coordinates.csv`: the four 12-site shanks carry all their sites
+  within **110 µm** (staggered, 10 µm steps — Buzsaki tip clusters, one depth each), while the middle 16-site shank spans **2700 µm** (13 sites at
+  100 µm pitch from the tip plane down to −1200 µm, plus 3 sites at 500 µm steps up to +1500 µm). Consequences: (1) only the middle shank has a
+  within-shank DEPTH order at all — ordering the 12-site tip clusters by LFP is meaningless (110 µm cannot resolve layers), it only changes the display
+  order; (2) only the middle group may contain both SPW polarities, every tip cluster must be sign-uniform (a sign flip cannot come from impedance,
+  unlike amplitude — see SF10). Scored on the staged copy (446 ripples): **version1** gives a textbook middle shank — 16 live sites reading
+  `+272 +202 +200 +172 +155 +147 +127 → −153 −213 −220 −378 −479 −490 −619 −681 −857 µV` (spw tv 1.13), i.e. pyramidale → radiatum → deep, and two of
+  its tip clusters are sign-uniform (group 4: nine positives + one −62; group 5: eleven positives + one −187). **version2** violates the criterion in
+  four of its five groups. version1's remaining problem: groups 1 and 2 (cols 55 51 48 50 53 59 57 49 and 61 34 63 40 41 38 33 37, each with four dead
+  columns) mix +136 with −733 and +149 with −784 — impossible for 110 µm clusters, so part of those columns belongs elsewhere; bank 1 carries 8 of the
+  10 dead columns, which leaves those two clusters half-blind. **Candidate `SF09_A5x12-Buz_v1grouping_dataorder_20260908.xml`** (staged as
+  `amplifier.xml`, the version2 candidate kept beside it as `v2grouping_order.xml`) — not adopted, awaiting the user's Neuroscope check. The user's
+  reading is confirmed in substance: seven of the twelve columns of the 36–47 block (39 42 43 44 45 46 47) sit in version1's middle shank, and they are
+  its deep half; the shallow half is bank 0 (14 12 11 13 7 15 + 47).
+- **SF09 re-run after the user's datasheet reading ("middle finger 应该有三个 cortical channel，51 肯定是 21 肯定是，那这么说现在的 shank 依然
+  不能确定，SF9 需要重跑").** The A5x12-16-Buz datasheet: the centre shank carries 3 sites at 500 µm steps (1500 µm above the dense part, i.e. in cortex)
+  plus 13 sites at 100 µm over 1200 µm; the four side shanks are tip clusters (12 sites, 20 µm spacing, 110 µm total). **The three cortical sites are
+  columns 21, 51, 55** — the only columns whose ripple power is at the floor (13.3 / 15.6 / 17.4 vs 29–110 elsewhere) and which correlate with nothing
+  (max r to any other column 0.12 / 0.09 / 0.18); the user had identified 21 and 51, the data adds 55 and rules out 25 (ripple 28.7, max r 0.20).
+  Because a tip cluster's sites are 20 µm apart they must correlate strongly and read one depth, so the grouping was rebuilt from the spike-band
+  correlation instead of any ProbeMaps mating: **`ephys/configs/xml/SF09_reconstructed_20260908.xml`** (staged as `amplifier.xml`; the version1 and
+  version2 candidates kept beside it as `v1grouping_order.xml` / `v2grouping_order.xml`). Centre shank = 21 51 55 + the ladder −62 −187 −313 −377 −423
+  −479 −490 −538 −619 −681 −733 −744 −784 −857 µV (cols 0 29 59 57 41 43 17 38 3 42 49 33 37 44): steps median 56 µV, ripple power falling monotonically
+  80 → 29, and neighbour correlation 0.27 against 0.15 for sites ≥ 4 apart — a chain, as a 100 µm array should be. Side shanks: A = 15 19 22 23 24 25 26
+  27 28 30 47 (r 0.37, SPW +156…+355), B = 1 5 6 7 8 9 10 11 12 13 14 (r 0.25, +127…+260), C = 16 18 20 31 48 50 61 63 (r 0.42, +209…−158),
+  D = 34 35 39 40 45 46 53 (r 0.32, −10…−378). **Corrected after the user asked why there was a sixth group** ("不对不应该有组 6 吧"): columns 0, 29
+  and 59, which I had put at the shallow end of the centre ladder, correlate far better with side shank C (0.39 / 0.40 / 0.36) than with the centre
+  (0.15 / 0.16 / 0.17) and belong to C; the centre keeps 11 live ladder sites (−377 … −857 µV, steps median 51 µV) plus the 3 cortical columns. With
+  that correction the **counts close exactly on the design 12/12/16/12/12**: side A 11 live + 1, side B 11 + 1, side C 11 + 1, side D 7 + 5,
+  centre 14 + 2 = the ten dead columns, with the two bank-0 dead (2, 4) in the two all-bank-0 side shanks and the eight bank-1 dead split 1/5/2 over
+  C, D and the centre. So there is no sixth group any more: every dead column sits INSIDE a shank with `skip=1` (the user's standing rule), and the
+  centre shank's dense part being entirely negative is what the geometry predicts — it hangs 1200 µm BELOW the side-shank tips, while its three
+  cortical sites are 500–1500 µm above them. Groups are written in the physical row order side, side, CENTRE, side, side, the side shanks sorted by
+  depth (+355…+156, +260…+127, +209…−313 straddling the reversal, −10…−378), which assumes the depth gradient across the 800 µm row is monotone
+  (hippocampal curvature). **Not determined:** which particular bank-1 dead column belongs to which of C / D / centre — flat channels carry no
+  correlation (group spread 0.03–0.05), only the counts are fixed; and side C spans 522 µV, which needs the tip cluster to straddle the sharp-wave
+  reversal (possible over 110 µm, since the gradient is steepest there).
+- **Dead columns are PACE MAKERS, not tail padding (user, 2026-09-08: "dead channel 不能在最后，因为这样会影响对 channel 物理位置的判断，dead
+  channel 的归属可以根据 LFP 梯度 difference 给出，我知道到底是谁未知但我们需要这样的 pace maker").** Each dead column is now inserted where its shank's
+  sharp-wave gradient shows the largest gap (greedy, recomputed after each insertion), `skip=1`, so every live site keeps its physical position; the identity
+  of the dead site stays unknown and the XML says so. Applied to SF09 (2 → side 1 between 47 and 25, gap 46 µV vs median step 13; 4 → side 2 between 9 and 10;
+  36 and 52 → the centre ladder between 38/3 (81 µV) and 37/44 (73 µV); 32 → side 4 between 29 and 59, 127 µV vs median 43; 54 56 58 60 62 → side 5, which has
+  5 dead of 12 and takes one in nearly every gap), to **SF08** (32 between 36 and 45, gap 228 µV vs median step 5) and to **SF10** (2 between 7 and 11,
+  372 µV vs median 9; 34 between 39 and 45, 115 µV; 32 between 47 and 43, 118 µV; the all-dead shank 1 left as it is). The rule replaces the withdrawn
+  correlation-gap estimator inside `lfp_profile_check.py --derive-xml`; staged `amplifier.xml` copies refreshed; `ephys/selftest.py` 20/20.
+- **Bridged duplicates now skipped IN PLACE (user, 2026-09-08: "SF12 将重复连接点放到 skip 里但注意要占位").** The earlier decision (document only)
+  is superseded: on SF12 the eleven redundant columns of the eight bridged clusters (37 45 36 38 46 10 14 17 3 5 23 — the lowest column of each cluster
+  stays live) carry `skip=1` while keeping their position in the depth order, so the remaining sites are not shifted; SF08's 55 likewise (53 stays live).
+  Sorting now runs on 16/11/11/15 channels per shank for SF12 and 15/15/16/16 for SF08. Which member of a bridged cluster is the electrode's own pin is
+  unknown — bridged pins see the same potential — so the choice of the surviving column is arbitrary and recorded as such. `probes_2026c.yaml`
+  `reject_channels` updated (SF12 eleven columns, SF08 [32, 55]); SF10 needed nothing new here (no bridged clusters; its three broken columns were already
+  placed as gradient pace makers). Staged `amplifier.xml` copies refreshed, selftest 20/20.
+- **Is SF07's probe denser? No — SF07 carries a large COMMON-MODE signal (user's impression "感觉 SF7 density 更高", tested with LFP only;
+  unit footprints from the existing sorts are not admissible because those sorts used the older XMLs — user, 2026-09-08).** Measured on the staged
+  10-min copies: ripple extent (channels whose ripple-band power, baseline of the shank removed, reaches 50 % of that shank's peak) is 4.8 of 16 on
+  SF07 against 4.5 (SF08), 3.8 (SF12), 2.7 (SF10) and 5.2 of 10.8 (SF09) — no clear difference. What IS different is that SF07's profiles are almost
+  flat: sharp-wave range per shank 31–60 µV (second session 67–144) against 122–938 µV elsewhere, and ripple power peak/floor 1.1–1.4 (second session
+  1.9–2.8) against 1.8–7.6. Density cannot explain that, for two reasons. (1) The flatness holds BETWEEN shanks 300 µm apart: the 300–3000 Hz
+  correlation between different shanks is 0.50 / 0.58 on SF07's two sessions against 0.08–0.18 on the others, and the first principal component takes
+  51 % / 59 % of the variance against 12–23 % — a common signal on all 64 channels, not proximity. (2) A 20 µm pitch instead of 50 µm would compress the
+  depth coverage 2.5×, so the sharp-wave range could shrink 2.5×; observed is 5–15×. Both SF07 sessions behave the same, so this is a property of that
+  implant/logger (reference or ground path), not of one window; together with "only positive sharp waves" it is why SF07 is unusable as a control for
+  the LFP method. Its shank GROUPING (verified twice) is unaffected — the common mode is shared by all channels and cancels in the depth profile.
+- Artefacts: `results/2026c/ephys_spikes/reports/ephys_spikes_lfp_profile_check_2026c.csv` (candidate rankings, 09-02 runs); the 09-08
+  profile / permutation / physical / parity outputs are in the session scratchpad (`sf10_last10_profile.txt`, `sf10_last10_physical.txt`,
+  `sf10_parity_seriation.txt`).
