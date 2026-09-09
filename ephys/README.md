@@ -196,6 +196,12 @@ see the change log for the numbers:
   16-site middle shank spans 2700 µm (the "middle finger"). A tip cluster must be SPW-sign-uniform, the middle shank must cross the reversal; the
   criterion picks `version1` over `version2` for SF09 (`version2` = `version1` with the connector rotated 180° on the pin grid, 64/64 channels).
   Amplitude can be scaled by impedance (SF10) but a sign flip cannot — use signs, not amplitudes, to judge a grouping.
+- **Hardware evidence (2026-09-08, `Neurologger` repo).** `PCB/Datalogger/WILD64_HDI.sch` (Eagle XML netlist) fixes Omnetics pin ↔ RHD2164 input;
+  `docs/images/WIrelessEphys_Github_8_connectors.jpg` panel 1 fixes amplifier.dat column ↔ connector pin and is exactly `INTAN64_PINS` here, so the
+  firmware's intended export order is the standard Intan headstage numbering and ProbeMaps ids can be read as columns (the +1 bank-0 rotation is the
+  measured firmware deviation). On the A4x16-Lin each shank is one 2×8 pin block and the four column sets {48–63}, {32–47}, {1–15,17}, {0,16,18–31}
+  are the same under all 16 matings → **shank membership is certain**; the shank identity and the within-shank order are not. On the A5x12-Buz (SF09)
+  three shanks straddle two pin blocks, so its grouping rests on the data reconstruction instead.
 - Re-check: `python ephys/probe_map_check.py --cohort 2026c --animal SFxx --session <s> --probe <probe> --seconds 600 --rotation-scan --cache-dir E:/3rd_rat_spikes/analysis/index/probe_map_cache`
 - Re-check #2 (after sorting; decisive when co-activation has < 100 strong pairs): `python ephys/footprint_map_check.py --cohort 2026c --animal SFxx --session <s> --cache-dir E:/3rd_rat_spikes/analysis/index/footprint_cache` — ranks the 16 connector matings (per-connector 180° rotation, swap, mirror; `probe_map_check.py --connector-scan` tests the same set) × bank rotations by how compact the sorted units' 64-column footprints are. 2026-09-04: SF10 = SF07's map (co-activation); SF08 = SF07's map ranks first but all candidates stay broad; SF11 (sorted 09-06) and SF12 (sorted 09-08) undecided — no mating in the family makes their footprints compact (adjacent-site fraction ≤ 0.15 under every candidate, vs 0.41–0.78 where the map is right); sorts valid, within-shank order open.
 

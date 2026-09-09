@@ -16,7 +16,8 @@ Definitions:
                        postprocess 0.01-Hz floor); ge3hz = candidates at >= 3 Hz (putative interneurons / multi-unit)
     well-isolated      candidate units with isi_violations_ratio < 0.5 and snr >= 5 (isolation only, no rate gate)
     rate (Hz)          spikes / recording duration; amplitude in uV uses the pipeline's 0.195 uV/count (relative)
-All counts depend on the placeholder channel map for SF08/10/11/12 (provisional) and SF09 (data-derived groups).
+Channel maps (2026-09-08): SF07 verified; SF08 / SF10 / SF12 use LFP-derived within-shank orders the operator checked in Neuroscope;
+SF09 is reconstructed from the probe datasheet; SF11 still has SF07's grouping only, so its within-shank order is undecided.
 
 Usage: python ephys/unit_yield_report.py --cohort 2026c
 Writes results/<cohort>/ephys_spikes/reports/ephys_spikes_ks4_unit_yield_<cohort>.{md,csv} + figures/..._unit_yield_<cohort>.png
@@ -255,7 +256,7 @@ def main() -> None:
          "**Counts are pre-curation**: `candidate` = everything not auto-labelled noise; **`< 3 Hz` = the hippocampal count** (pyramidal cells fire sparsely, "
          "so cells are counted by rate < 3 Hz, no minimum-rate gate beyond the 0.01-Hz postprocess floor); `≥ 3 Hz` = fast-firing candidates (putative interneurons / multi-unit); "
          "`well-isolated` = ISI-violation ratio < 0.5 and SNR ≥ 5 (isolation only). "
-         "Channel maps: SF07 verified; SF08/10/11/12 provisional (SF07's map); SF09 data-derived groups without geometry. "
+         "Channel maps (2026-09-08): SF07 verified; SF08/SF10/SF12 LFP-derived within-shank order (test #3, operator-inspected), SF09 reconstructed from the A5x12-16-Buz datasheet, SF11 grouping only (SF07's column sets). Dead columns are skip=1 pace makers at their shank's largest sharp-wave gradient gap; SF12's and SF08's bridged connector pins are skip=1 in place. "
          "Rows with stage `ks4-raw` are Kilosort4 output whose postprocess has not run yet: labels = Kilosort's KSLabel (+ the sorter runner's low-rate "
          "relabel), `well-isolated` there = KSLabel good & ContamPct < 10, amplitude/SNR medians unavailable. `post_mode` fast = features on ≤ 500 spikes per unit, "
          "no PCA autosplit, no Phy pc_features (see ephys/run_sort_session.py); full = the pipeline's all-spike passes.\n",
@@ -285,7 +286,7 @@ def main() -> None:
                      f"{sh['spikes_total']:,} | {med('rate_hz'):.2f} | {med('amp_uV'):.0f} | {med('snr'):.1f} |")
     L.append("\n## Caveats\n")
     L.append("- Pre-curation numbers from one session per logger; Phy curation (merges/splits, the 'good' label) is still to be done, so treat `candidate` as an upper bound and `well-isolated` as a conservative lower bound.")
-    L.append("- SF09's channel groups are data-derived (no geometry); SF08/10/11/12 use SF07's map provisionally; a wrong map lowers yield rather than inflating it.")
+    L.append("- Channel maps: SF07 verified, SF08/SF10/SF12 LFP-derived order (operator-inspected 2026-09-08), SF09 reconstructed from the datasheet, SF11 grouping only; a wrong map lowers yield rather than inflating it.")
     L.append("- Amplitudes assume the Intan 0.195 µV/count scale (WILD gain not verified).")
     md_path.write_text("\n".join(L) + "\n", encoding="utf-8")
 

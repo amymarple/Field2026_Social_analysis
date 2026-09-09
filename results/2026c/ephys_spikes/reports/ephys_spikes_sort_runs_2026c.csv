@@ -12,3 +12,4 @@ written_utc,animal,session,firmware,deglitched,partition,sorter,n_sorter_dirs,n_
 2026-09-08T14:12:11+00:00,SF09,10_20260902_083015.335,65,False,shank,kilosort4,5,5,2 4 32 36 52 54 56 58 60 62,15525.4,E:\3rd_rat_spikes\analysis\sort\SF09\10_20260902_083015.335,60f3478+dirty
 2026-09-08T16:33:07+00:00,SF10,1_20260901_080143.036,64,True,shank,kilosort4,3,3,2 32 34 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63,5827.4,E:\3rd_rat_spikes\analysis\sort\SF10\1_20260901_080143.036,60f3478+dirty
 2026-09-08T20:24:16+00:00,SF07,2_20260901_002100.939,64,True,shank,kilosort4,4,4,,11005.9,E:\3rd_rat_spikes\analysis\sort\SF07\2_20260901_002100.939,60f3478+dirty
+2026-09-09T03:42:05+00:00,SF12,0_20260901_080334.683__w0s_10800s,64,True,shank,kilosort4,4,4,3 5 10 14 17 23 36 37 38 45 46,5284.2,E:\3rd_rat_spikes\analysis\sort\SF12\0_20260901_080334.683__w0s_10800s,2a6c47c+dirty

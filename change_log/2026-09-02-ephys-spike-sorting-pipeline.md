@@ -806,3 +806,35 @@ enough; no Kilosort. Everything below reads a **10-min COPY** made with `stage_s
 - Artefacts: `results/2026c/ephys_spikes/reports/ephys_spikes_lfp_profile_check_2026c.csv` (candidate rankings, 09-02 runs); the 09-08
   profile / permutation / physical / parity outputs are in the session scratchpad (`sf10_last10_profile.txt`, `sf10_last10_physical.txt`,
   `sf10_parity_seriation.txt`).
+
+## Addendum 2026-09-08 (night) — the Neurologger repo settles the shank membership on hardware grounds
+
+Operator's question: "读一下 datalogger repo 可以确定 shank member 是一定的么 …这个必须要准". Answer: **yes for the four-shank animals**, and the
+evidence is hardware, not inference. Three independent pieces, all checked in this session rather than taken on trust:
+
+- **`PCB/Datalogger/WILD64_HDI.sch` (Autodesk Eagle XML) is a real netlist** and fixes Omnetics pin ↔ RHD2164 input for all 64 inputs
+  (parsed here: 64 `IN*` nets, each with one `S1`/`S3` pin and one `U$1` pin; `S1` = front / Intan-chip side, `S3` = back / microSD side;
+  GND = T18 & B1, REF = T1 & B18). There is no firmware source in the repo (`Firmware/` holds only .hex/.bin), so the export reorder itself
+  cannot be audited there.
+- **`docs/images/WIrelessEphys_Github_8_connectors.jpg` is the only statement of the export order** — panel 1 "Channel order in Amplifier.dat
+  (Reordered)" prints, at each connector pin, the amplifier.dat column; panel 2 "Original channel order" prints the Intan input at the same pin.
+  Read directly from the image here and checked three ways: panel 2 reproduces the schematic netlist 64/64 (mirrored on S1, as drawn on S3);
+  the 20 green "same definition" pins all satisfy column == Intan under the composition; and the composition matches an independent transcription.
+- **Panel 1 is byte-for-byte the pin grid this repo already uses** (`probe_map_check.INTAN64_PINS`): rows 46 44 … 16 / 47 45 … 17 /
+  49 51 … 15 / 48 50 … 14. So the firmware's INTENDED export order puts at every pin the column number a standard Intan headstage would give
+  that pin — which is exactly why ProbeMaps Intan numbers can be read as exported columns. The one-slot bank-0 rotation we correct with
+  `rotation_permutation(+1, 0)` is the measured deviation from that intent (the FM57-type fault, validated on SF07: agreement 1.00 vs 0.29).
+
+**Consequence — the grouping is mating-invariant.** On the A4x16-Lin each shank occupies exactly one 2×8 pin block, and the four column sets
+`{48–63}`, `{32–47}`, `{1–15, 17}`, `{0, 16, 18–31}` are identical under all 16 possible matings (checked by enumeration). However the probe was
+plugged in — either connector, either orientation, mirrored or not — those four sets are the four shanks. They are the sets our XMLs already use,
+so **SF07 / SF08 / SF10 / SF11 / SF12 shank membership is certain**. What the hardware does NOT fix, and what the LFP work had to settle, is which
+physical shank each set is and the site order inside it.
+
+**SF09 is the exception.** On the A5x12-16-Buz only shanks 1 and 5 sit in a single pin block; shanks 2, 3 and 4 straddle two blocks, so their
+membership depends on the mating and cannot be read off the hardware. SF09's grouping therefore still rests on the data reconstruction
+(`SF09_reconstructed_20260908.xml`), not on the netlist.
+
+**Discrepancy to keep in mind:** the console table `ephys/configs/wild_ce64_channel_map_v57.csv` (`WILDIntanmapped`) agrees with the figure's
+column→Intan map on 32 of 64 columns and differs by pairwise swaps on columns 0–15 and 48–63. Our XMLs do not use that table (they use the vendor
+rotation script), but the two documents are not the same map and only the figure is corroborated by the netlist.
