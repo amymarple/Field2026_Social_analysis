@@ -15,6 +15,13 @@ timezone_wallclock: "America/New_York"   # logger RTC is set from the field-PC l
 
 identities: wiser/configs/rat_identities.csv   # WISER shortid -> animal (cohort-3 tags: see notes)
 
+# Field disturbance windows (from the field incident log, field2026-sync from-field/<date>_cohort3-incident-log.md): flag these
+# in any behaviour / sleep / ephys-state analysis until quantified from the mic audio (per-minute broadband level vs a quiet day).
+# Times = field-PC local (EDT); end: null = the crew's departure was not logged yet.
+field_events:
+  - {start: "2026-09-08 07:50", end: null, kind: acoustic, note: "construction with heavy machinery near the paddock (operator, incident log 09-08); magnitude unknown, start ~07:5x"}
+  - {start: "2026-09-09 09:41", end: null, kind: acoustic, note: "mowing / landscaping crew cutting near the paddock (operator, incident log 09-09 09:41)"}
+
 # ---------------------------------------------------------------------------------------------------------
 # Ephys (WILD neurologger) — read by ephys/*.py
 # ---------------------------------------------------------------------------------------------------------
