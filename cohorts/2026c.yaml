@@ -158,7 +158,9 @@ ephys:
   preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT
   # Per-cohort derived-data root on the data drive (user decision 2026-09-03; the G: artifact root dropped off the PC on
   # 09-02). ephys/ scripts write stage/, sort/, pc_time/, tools/, index/ under it and NEVER into a raw session folder.
-  analysis_root: "E:/3rd_rat_spikes/analysis"
+  # 2026-09-10: moved from E:/3rd_rat_spikes/analysis to D: (operator decision 2026-09-09: E: stays raw-only so the last cohort days fit;
+  # robocopy 2857 files / 1.33 TB, 0 failed, verified by count/size + head/mid/tail hashes; the E: copy was then deleted).
+  analysis_root: "D:/3rd_rat_spikes/analysis"
 
 notes: >
   Night 1 (08-30 18:39 -> 08-31 ~04:30) neural data LOST on all six (FM59-62 stop-only commit; batteries pulled
