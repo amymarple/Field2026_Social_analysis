@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-09T18:45:10+00:00 by `ephys/pc_time_chain.py` (git ab11956+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-10T03:55:11+00:00 by `ephys/pc_time_chain.py` (git 94ba51a+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -73,7 +73,10 @@ Generated 2026-09-09T18:45:10+00:00 by `ephys/pc_time_chain.py` (git ab11956+dir
 | SF07 | `5_20260908_071513.175` | 11.68 |  | 225 | 15/16 | 1309 | 273 | 224 | -22.1 ± 0.6 | 64.7 | 0  | 807.2 |  | +19 | +1643 | OK-native |  |
 | SF07 | `6_20260908_190921.663` | 0.00 |  | 2 | 2/2 | 60 | 990 |  |  |  | 0  | 1641.4 |  |  | -714 | one-end-only |  |
 | SF07 | `7_20260908_193646.481` | 0.01 |  | 8 | 8/8 | 80 | 277 |  |  |  | 15 next:15 | 14.6 | -215.4 ± 19634.4 | -714 | -14 | OK-chained |  |
-| SF07 | `8_20260908_193733.435` | 12.64 | yes | 68 | 15/17 | 389 | 263 | 67 | -22.4 ± 0.5 | 60.8 | 0  |  |  | -14 |  | OK-native |  |
+| SF07 | `8_20260908_193733.435` | 12.64 | yes | 68 | 15/17 | 389 | 263 | 67 | -22.4 ± 0.5 | 60.8 | 0  | 952.9 |  | -14 | +622 | OK-native |  |
+| SF07 | `1_20260909_083201.648` | 0.00 |  | 1 | 1/1 | 0 | -99 |  |  |  | 0  | 1839.4 |  |  |  | no-anchors |  |
+| SF07 | `2_20260909_090244.932` | 0.01 |  | 8 | 8/8 | 1101 | 922 |  |  |  | 16 next:16 | 11.0 | -154.6 ± 18625.3 | +1021 | -10 | OK-chained |  |
+| SF07 | `3_20260909_090331.016` | 8.87 |  | 68 | 16/21 | 0 | 912 | 68 | -22.4 ± 0.5 | 55.1 | 0  |  |  | -10 |  | OK-native |  |
 | SF08 | `0_20260831_070148.859` | 0.18 |  | 26852 | 26718/8 | 28 |  |  |  |  | 0  | 12.0 |  |  |  | corrupt |  |
 | SF08 | `1_20260831_071239.713` | 0.05 |  | 14 | 10/4 | 2497 | -3599 | 14 | 13273.1 ± 8362.1 | 1854.1 | 0  | 9.7 |  |  |  | inconsistent |  |
 | SF08 | `2_20260831_071541.642` | 1.25 |  | 1281724 | 92482/94544 | 133 |  |  |  |  | 0  | 6.5 |  |  |  | corrupt |  |
@@ -137,7 +140,10 @@ Generated 2026-09-09T18:45:10+00:00 by `ephys/pc_time_chain.py` (git ab11956+dir
 | SF08 | `5_20260908_071754.325` | 11.61 |  | 69 | 22/15 | 2011 | 247 | 68 | -18.8 ± 0.1 | 8.4 | 0  | 1297.7 |  | -0 | +956 | OK-native |  |
 | SF08 | `6_20260908_191553.671` | 0.00 |  | 4 | 4/4 | 1285 | 416 |  |  |  | 0  | 1392.9 |  | +956 | +69 | one-end-only |  |
 | SF08 | `7_20260908_193914.721` | 0.01 |  | 8 | 8/8 | 24 | 485 |  |  |  | 17 next:17 | 9.8 | -58.8 ± 19839.5 | +69 | -5 | OK-chained |  |
-| SF08 | `8_20260908_193958.035` | 12.63 | yes | 61 | 17/17 | 1416 | 480 | 51 | -20.4 ± 0.2 | 24.4 | 0  |  |  | -5 |  | OK-native |  |
+| SF08 | `8_20260908_193958.035` | 12.63 | yes | 61 | 17/17 | 1416 | 480 | 51 | -20.4 ± 0.2 | 24.4 | 0  | 1158.2 |  | -5 | +1387 | OK-native |  |
+| SF08 | `0_20260909_083708.518` | 0.00 |  | 2 | 2/2 | 30 | 945 |  |  |  | 0  | 1692.8 |  |  | -736 | one-end-only |  |
+| SF08 | `1_20260909_090526.132` | 0.01 |  | 7 | 7/7 | 176 | 209 |  |  |  | 15 next:15 | 9.4 | 0.0 ± 21550.4 | -736 | +0 | OK-chained |  |
+| SF08 | `2_20260909_090608.006` | 8.86 |  | 51 | 15/21 | 1206 | 209 | 50 | -18.8 ± 0.1 | 10.3 | 0  |  |  | -0 |  | OK-native |  |
 | SF09 | `0_20260831_070319.133` | 0.17 |  | 69565 | 28/34901 | 65 |  |  |  |  | 0  | 10.7 |  |  |  | corrupt |  |
 | SF09 | `1_20260831_071357.350` | 4.26 |  | 137457 | 11/70 | 1830 |  |  |  |  | 0  | 27282.3 |  |  |  | corrupt |  |
 | SF09 | `0_20260831_190404.508` | 0.02 |  | 15 | 15/15 | 343 | 834 |  |  |  | 9 next:9 | 12.1 | -8.1 ± 15943.8 |  | -1 | OK-chained |  |
@@ -203,7 +209,10 @@ Generated 2026-09-09T18:45:10+00:00 by `ephys/pc_time_chain.py` (git ab11956+dir
 | SF09 | `6_20260908_072057.385` | 11.61 |  | 53 | 16/14 | 0 | 168 | 53 | -25.8 ± 0.1 | 9.4 | 0  | 1376.9 |  | -1 | +1666 | OK-native |  |
 | SF09 | `7_20260908_192020.964` | 0.00 |  | 4 | 4/4 | 29 | 757 |  |  |  | 0  | 1314.5 |  | +1667 | -65 | one-end-only |  |
 | SF09 | `8_20260908_194228.662` | 0.01 |  | 8 | 8/8 | 26 | 693 |  |  |  | 15 next:15 | 11.4 | 11.3 ± 19763.7 | -65 | +1 | OK-chained |  |
-| SF09 | `9_20260908_194312.545` | 12.60 | yes | 48 | 15/14 | 0 | 694 | 47 | -26.6 ± 0.1 | 8.9 | 0  |  |  | +1 |  | OK-native |  |
+| SF09 | `9_20260908_194312.545` | 12.60 | yes | 48 | 15/14 | 0 | 694 | 47 | -26.6 ± 0.1 | 8.9 | 0  | 1556.6 |  | +1 | +272 | OK-native |  |
+| SF09 | `0_20260909_084505.692` | 0.00 |  | 2 | 2/2 | 478 | -249 |  |  |  | 0  | 1357.8 |  |  | +621 | one-end-only |  |
+| SF09 | `1_20260909_090751.518` | 0.01 |  | 8 | 8/8 | 1137 | 372 |  |  |  | 14 next:14 | 11.0 | -32.1 ± 21309.7 | +621 | -2 | OK-chained |  |
+| SF09 | `2_20260909_090835.027` | 8.84 |  | 50 | 14/15 | 382 | 370 | 49 | -25.5 ± 0.2 | 16.7 | 0  |  |  | -2 |  | OK-native |  |
 | SF10 | `0_20260831_070700.822` | 0.17 |  | 0 | 0/0 |  |  |  |  |  | 0  | 149.3 |  |  |  | no-anchors |  |
 | SF10 | `1_20260831_071948.008` | 4.11 |  | 123390 | 13/2 | 2240 |  |  |  |  | 0  | 27796.0 |  |  |  | corrupt |  |
 | SF10 | `0_20260831_190956.580` | 0.01 |  | 8 | 8/8 | 27 | 293 |  |  |  | 10 next:10 | 13.2 | -60.8 ± 23258.5 |  | -4 | OK-chained |  |
@@ -272,7 +281,10 @@ Generated 2026-09-09T18:45:10+00:00 by `ephys/pc_time_chain.py` (git ab11956+dir
 | SF10 | `9_20260908_192609.401` | 0.00 |  | 2 | 2/2 | 552 | -437 |  |  |  | 0  | 165.7 |  |  | +1040 | one-end-only |  |
 | SF10 | `10_20260908_192858.415` | 0.00 |  | 4 | 4/4 | 0 | 603 |  |  |  | 0  | 957.4 |  | +1040 | -347 | one-end-only |  |
 | SF10 | `11_20260908_194504.649` | 0.01 |  | 8 | 8/8 | 952 | 257 |  |  |  | 16 next:16 | 9.8 | 10.9 ± 19805.5 | -347 | +0 | OK-chained |  |
-| SF10 | `12_20260908_194550.363` | 12.58 | yes | 45 | 16/15 | 1303 | 257 | 44 | -23.5 ± 0.1 | 11.4 | 0  |  |  | +1 |  | OK-native |  |
+| SF10 | `12_20260908_194550.363` | 12.58 | yes | 45 | 16/15 | 1303 | 257 | 44 | -23.5 ± 0.1 | 11.4 | 0  | 1745.7 |  | +1 | +1119 | OK-native |  |
+| SF10 | `0_20260909_084938.378` | 0.00 |  | 2 | 2/2 | 26 | 315 |  |  |  | 0  | 1234.9 |  |  | +15 | one-end-only |  |
+| SF10 | `1_20260909_091016.538` | 0.01 |  | 9 | 9/9 | 149 | 330 |  |  |  | 15 next:15 | 12.5 | -42.7 ± 18684.5 | +15 | -2 | OK-chained |  |
+| SF10 | `2_20260909_091105.736` | 8.82 |  | 47 | 15/16 | 0 | 328 | 47 | -22.5 ± 0.1 | 12.0 | 0  |  |  | -2 |  | OK-native |  |
 | SF11 | `0_20260831_072408.414` | 0.56 |  | 390640 | 8/11302 | 1046 |  |  |  |  | 0  | 40516.1 |  |  |  | corrupt |  |
 | SF11 | `0_20260831_191252.932` | 0.01 |  | 8 | 8/8 | 163 | 690 |  |  |  | 12 next:12 | 10.0 | -51.7 ± 20520.8 |  | -5 | OK-chained |  |
 | SF11 | `1_20260831_191341.611` | 5.25 | yes | 630 | 12/2 | 163 | 685 | 568 | -23.8 ± 0.7 | 31.5 | 0  | 15.2 |  | -5 | +18 | OK-native |  |
@@ -398,13 +410,16 @@ Generated 2026-09-09T18:45:10+00:00 by `ephys/pc_time_chain.py` (git ab11956+dir
 | SF12 | `5_20260908_072624.615` | 11.57 |  | 59 | 26/14 | 454 | 97 | 55 | -19.2 ± 0.1 | 13.8 | 0  | 1856.0 |  | +0 | +355 | OK-native |  |
 | SF12 | `6_20260908_193131.395` | 0.00 |  | 2 | 2/2 | 545 | -353 |  |  |  | 0  | 961.9 |  |  | +781 | one-end-only |  |
 | SF12 | `7_20260908_194739.984` | 0.01 |  | 8 | 8/8 | 128 | 428 |  |  |  | 16 next:16 | 11.2 | -14.3 ± 19271.7 | +781 | -1 | OK-chained |  |
-| SF12 | `8_20260908_194824.915` | 12.56 | yes | 51 | 16/15 | 0 | 427 | 46 | -20.4 ± 0.2 | 24.7 | 0  |  |  | -1 |  | OK-native |  |
+| SF12 | `8_20260908_194824.915` | 12.56 | yes | 51 | 16/15 | 0 | 427 | 46 | -20.4 ± 0.2 | 24.7 | 0  | 2039.2 |  | -1 | +1321 | OK-native |  |
+| SF12 | `0_20260909_085559.729` | 0.00 |  | 2 | 2/2 | 25 | 838 |  |  |  | 0  | 1023.9 |  |  | -266 | one-end-only |  |
+| SF12 | `1_20260909_091306.837` | 0.01 |  | 8 | 8/8 | 1322 | 572 |  |  |  | 15 next:15 | 11.7 | 19.1 ± 19349.9 | -266 | +1 | OK-chained |  |
+| SF12 | `2_20260909_091353.804` | 8.80 |  | 54 | 15/15 | 0 | 573 | 54 | -19.2 ± 0.2 | 17.7 | 0  |  |  | +1 |  | OK-native |  |
 
 ## Sessions >= 1 h by verdict
 
 | verdict | sessions | hours |
 |---|---|---|
-| OK-native | 108 | 847.1 |
+| OK-native | 113 | 891.3 |
 | OK-native (PC step modelled) | 8 | 55.3 |
 | one-end-only | 10 | 25.0 |
 | corrupt | 5 | 16.7 |

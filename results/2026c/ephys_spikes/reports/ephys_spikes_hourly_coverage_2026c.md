@@ -1,6 +1,6 @@
 # Hourly recording coverage, cohort `2026c`
 
-Generated 2026-09-09T19:51:38+00:00 by `ephys/coverage_tables.py` (git ab11956+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
+Generated 2026-09-10T05:03:13+00:00 by `ephys/coverage_tables.py` (git 94ba51a+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
 
 **5 field-flagged session(s), 2.01 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
 - SF10 `10_20260905_070012.038` 2026-09-05 07:00 (29.8 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
@@ -304,21 +304,21 @@ Day total 111.8 logger-hours; SF07 22.4 h, SF08 22.5 h, SF09 22.3 h, SF10 22.3 h
 | 06 | 60* | 60* | 60* | 60* | - | 60* | 5 |
 | 07 | 60* | 60* | 60* | 60* | - | 60* | 5 |
 | 08 | 16* | 18* | 19* | 21* | - | 22* | 5 |
-| 09 | - | - | - | - | - | - | 0 |
-| 10 | - | - | - | - | - | - | 0 |
-| 11 | - | - | - | - | - | - | 0 |
-| 12 | - | - | - | - | - | - | 0 |
-| 13 | - | - | - | - | - | - | 0 |
-| 14 | - | - | - | - | - | - | 0 |
-| 15 | - | - | - | - | - | - | 0 |
-| 16 | - | - | - | - | - | - | 0 |
-| 17 | - | - | - | - | - | - | 0 |
-| 18 | - | - | - | - | - | - | 0 |
+| 09 | 57* | 54* | 52* | 50* | - | 47* | 5 |
+| 10 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 11 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 12 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 13 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 14 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 15 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 16 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 17 | 56* | 58* | 59* | 60* | - | 60* | 5 |
+| 18 | - | - | - | 1* | - | 2* | 2 |
 | 19 | - | - | - | - | - | - | 0 |
 | 20 | - | - | - | - | - | - | 0 |
 | 21 | - | - | - | - | - | - | 0 |
 | 22 | - | - | - | - | - | - | 0 |
 | 23 | - | - | - | - | - | - | 0 |
 
-Day total 41.6 logger-hours; SF07 8.3 h, SF08 8.3 h, SF09 8.3 h, SF10 8.3 h, SF11 0.0 h, SF12 8.4 h.
+Day total 85.8 logger-hours; SF07 17.1 h, SF08 17.2 h, SF09 17.2 h, SF10 17.2 h, SF11 0.0 h, SF12 17.2 h.
 

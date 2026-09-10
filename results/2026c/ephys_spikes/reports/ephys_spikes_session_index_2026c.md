@@ -1,6 +1,6 @@
 # WILD neurologger session index — cohort `2026c`
 
-Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab11956+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
+Generated 2026-09-10T03:42:34+00:00 by `ephys/build_session_index.py` (git 94ba51a+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
 
 ## Firmware provenance (the rule that decides what may be analysed)
 
@@ -27,6 +27,12 @@ Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab119
 | `field_flag` | text from `cohorts/<key>.yaml` `ephys.field_flags` (empty = none) | the field record marks the session as not a real recording (zombie restart of a dying cell) or as a TEST recording; kept in this inventory, excluded from coverage, the firmware verdict and any analysis until decided. `[no field-PC time]` = recorded from another PC's console: its BLE anchors are not field-PC time and `pc_time_chain` does not fit it |
 | `valid_until` | 'YYYY-MM-DD HH:MM:SS' from `cohorts/<key>.yaml` `ephys.valid_until` (empty = whole session valid), logger wallclock | the neural signal ended before the Stop (implant detached mid-session): the session is a normal session up to this time (fitted, counted, sortable) and open-circuit noise after it; the probe windows and the coverage tables stop here |
 
+## Foreign logger folders (ignored)
+
+Session folders under a MAC folder that is NOT the animal's registered logger (a spare logger's card downloaded into the wrong animal folder). They are excluded from every table until moved out of the raw tree (e.g. to `<root>/_other_loggers/<MAC>/`).
+
+- `SF7/2AD87D50B0FA/0_20260908_180103.769`
+
 ## Field-flagged sessions (indexed, excluded from coverage and analysis)
 
 - SF10 `10_20260905_070012.038` (0:29:47): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
@@ -43,15 +49,15 @@ Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab119
 
 | animal | logger MAC | sessions | hours offloaded | firmware seen | recovery.bin (GB) |
 |---|---|---|---|---|---|
-| SF10 | CACB6D600151 | 69 | 187.74 | FM62, FM64, FM65 | 512.7 |
+| SF10 | CACB6D600151 | 72 | 196.57 | FM62, FM64, FM65 | 512.7 |
 | SF11 | 1DFE7F77721C | 65 | 140.95 | FM62, FM64, FM65 | 512.1 |
-| SF12 | FBED2F2321B1 | 61 | 190.53 | FM62, FM64, FM65 | 512.1 |
-| SF7 | D0DBEFEF3111 | 70 | 187.69 | FM64, FM65 | 512.1 |
-| SF8 | 128C2F27E131 | 64 | 189.78 | FM62, FM64, FM65 | 512.1 |
-| SF9 | 68BDFFFF62DB | 66 | 190.95 | FM62, FM64, FM65 | 512.1 |
+| SF12 | FBED2F2321B1 | 64 | 199.34 | FM62, FM64, FM65 | 512.1 |
+| SF7 | D0DBEFEF3111 | 73 | 196.56 | FM64, FM65 | 512.1 |
+| SF8 | 128C2F27E131 | 67 | 198.65 | FM62, FM64, FM65 | 512.1 |
+| SF9 | 68BDFFFF62DB | 69 | 199.80 | FM62, FM64, FM65 | 512.1 |
 | analysis | — | 0 | 0.00 | — | — |
 
-**395 sessions indexed: 69 require de-glitching (firmware < FM65), 326 flagged clean by firmware.**
+**410 sessions indexed: 69 require de-glitching (firmware < FM65), 341 flagged clean by firmware.**
 
 ## Sessions
 
@@ -126,6 +132,9 @@ Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab119
 | SF10 | `10_20260908_192858.415` | 2026-09-08 19:28:58.415 | 2026-09-08 19:29:07 | 0:00:09 | 0.023 | FM65 | no | ambiguous | normal | 4.78 | 1.0 | 1005.0 | 10.49 |  |  |
 | SF10 | `11_20260908_194504.649` | 2026-09-08 19:45:04.649 | 2026-09-08 19:45:40 | 0:00:36 | 0.092 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.07 | 0.5 | 1037.0 | 8.61 | 2 32 34 56 60 |  |
 | SF10 | `12_20260908_194550.363` | 2026-09-08 19:45:50.363 | 2026-09-09 08:20:32 | 12:34:42 | 115.923 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.97 | 0.538 | 1478.0 | 10.23 | 2 32 34 56 60 |  |
+| SF10 | `0_20260909_084938.378` | 2026-09-09 08:49:38.378 | 2026-09-09 08:49:41 | 0:00:03 | 0.008 | FM65 | no | clean | normal | 0.62 | 0.5 | 609.0 | 10.07 | 2 32 34 56 60 |  |
+| SF10 | `1_20260909_091016.538` | 2026-09-09 09:10:16.538 | 2026-09-09 09:10:53 | 0:00:37 | 0.094 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.1 | 1.0 | 1263.0 | 8.43 | 2 32 34 60 63 |  |
+| SF10 | `2_20260909_091105.736` | 2026-09-09 09:11:05.736 | 2026-09-09 18:00:31 | 8:49:26 | 81.321 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.63 | 0.959 | 1527.0 | 8.35 | 2 32 34 56 63 |  |
 | SF11 | `0_20260831_072408.414` | 2026-08-31 07:24:08.414 | 2026-08-31 07:57:36 | 0:33:28 | 5.142 | FM62 | YES | glitchy+broadband | broadband,normal,wide-impulse,wide-impulse,normal | 54897.97 | 0.245 | 5302.0 | 8.67 | 38 39 43 52 54 56 58 59 61 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF11 | `0_20260831_191252.932` | 2026-08-31 19:12:52.932 | 2026-08-31 19:13:31 | 0:00:39 | 0.099 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 204.07 | 1.0 | 1394.0 | 8.18 |  |  |
 | SF11 | `1_20260831_191341.611` | 2026-08-31 19:13:41.611 | 2026-09-01 00:28:51 | 5:15:10 | 48.41 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 319.2 | 1.0 | 1472.0 | 11.14 |  |  |
@@ -252,6 +261,9 @@ Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab119
 | SF12 | `6_20260908_193131.395` | 2026-09-08 19:31:31.395 | 2026-09-08 19:31:38 | 0:00:07 | 0.017 | FM65 | no | clean | normal | 0.15 | 0.0 | 799.0 | 10.67 |  |  |
 | SF12 | `7_20260908_194739.984` | 2026-09-08 19:47:39.984 | 2026-09-08 19:48:13 | 0:00:34 | 0.086 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 862.0 | 6.69 | 58 60 |  |
 | SF12 | `8_20260908_194824.915` | 2026-09-08 19:48:24.915 | 2026-09-09 08:22:00 | 12:33:36 | 115.752 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 827.0 | 11.41 |  |  |
+| SF12 | `0_20260909_085559.729` | 2026-09-09 08:55:59.729 | 2026-09-09 08:56:02 | 0:00:03 | 0.008 | FM65 | no | clean | normal | 0.0 | 1.0 | 600.0 | 8.02 | 58 60 |  |
+| SF12 | `1_20260909_091306.837` | 2026-09-09 09:13:06.837 | 2026-09-09 09:13:42 | 0:00:35 | 0.09 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 716.0 | 7.16 | 58 |  |
+| SF12 | `2_20260909_091353.804` | 2026-09-09 09:13:53.804 | 2026-09-09 18:01:55 | 8:48:02 | 81.105 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 1085.0 | 7.51 | 63 |  |
 | SF7 | `0_20260831_185816.804` | 2026-08-31 18:58:16.804 | 2026-08-31 18:58:50 | 0:00:34 | 0.087 | FM64 | YES | clean | normal,normal,normal,normal,normal | 0.5 | 1.0 | 619.0 | 11.99 |  | measured clean on the probe window despite pre-FM65 firmware (de-glitch anyway) |
 | SF7 | `1_20260831_185904.795` | 2026-08-31 18:59:04.795 | 2026-09-01 00:20:35 | 5:21:31 | 49.385 | FM64 | YES | ambiguous | normal,normal,normal,normal,normal | 6.23 | 1.0 | 788.0 | 12.95 |  |  |
 | SF7 | `2_20260901_002100.939` | 2026-09-01 00:21:00.939 | 2026-09-01 05:41:08 | 5:20:07 | 49.17 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 13.0 | 0.975 | 983.0 | 12.43 |  |  |
@@ -322,6 +334,9 @@ Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab119
 | SF7 | `6_20260908_190921.663` | 2026-09-08 19:09:21.663 | 2026-09-08 19:09:25 | 0:00:03 | 0.009 | FM65 | no | clean | normal | 0.0 | 1.0 | 571.0 | 16.48 |  |  |
 | SF7 | `7_20260908_193646.481` | 2026-09-08 19:36:46.481 | 2026-09-08 19:37:18 | 0:00:32 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 753.0 | 10.26 |  |  |
 | SF7 | `8_20260908_193733.435` | 2026-09-08 19:37:33.435 | 2026-09-09 08:16:08 | 12:38:35 | 116.519 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.43 | 0.651 | 1484.0 | 15.28 |  |  |
+| SF7 | `1_20260909_083201.648` | 2026-09-09 08:32:01.648 | 2026-09-09 08:32:05 | 0:00:04 | 0.01 | FM65 | no | clean | normal | 0.0 | 1.0 | 538.0 | 12.7 |  |  |
+| SF7 | `2_20260909_090244.932` | 2026-09-09 09:02:44.932 | 2026-09-09 09:03:20 | 0:00:35 | 0.09 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 620.0 | 9.97 |  |  |
+| SF7 | `3_20260909_090331.016` | 2026-09-09 09:03:31.016 | 2026-09-09 17:55:29 | 8:51:58 | 81.711 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 992.0 | 8.83 |  |  |
 | SF8 | `0_20260831_070148.859` | 2026-08-31 07:01:48.859 | 2026-08-31 07:12:27 | 0:10:39 | 1.635 | FM62 | YES | glitchy+broadband | broadband,wide-impulse,wide-impulse,wide-impulse,normal | 34988.23 | 0.183 | 5178.0 | 12.9 |  | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF8 | `1_20260831_071239.713` | 2026-08-31 07:12:39.713 | 2026-08-31 07:15:31 | 0:02:52 | 0.441 | FM62 | YES | glitchy | normal,normal,normal,normal,normal | 2012.73 | 1.0 | 1395.0 | 8.49 | 32 |  |
 | SF8 | `2_20260831_071541.642` | 2026-08-31 07:15:41.642 | 2026-08-31 08:30:55 | 1:15:14 | 11.556 | FM62 | YES | glitchy+broadband | wide-impulse,broadband,broadband,broadband,broadband | 15120.33 | 0.399 | 3685.0 | 14.32 | 32 52 53 61 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
@@ -386,6 +401,9 @@ Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab119
 | SF8 | `6_20260908_191553.671` | 2026-09-08 19:15:53.671 | 2026-09-08 19:16:01 | 0:00:08 | 0.021 | FM65 | no | clean | normal | 0.25 | 1.0 | 478.0 | 9.21 | 32 |  |
 | SF8 | `7_20260908_193914.721` | 2026-09-08 19:39:14.721 | 2026-09-08 19:39:48 | 0:00:34 | 0.086 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 604.0 | 10.64 | 32 |  |
 | SF8 | `8_20260908_193958.035` | 2026-09-08 19:39:58.035 | 2026-09-09 08:17:50 | 12:37:52 | 116.409 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 1332.0 | 9.92 | 32 |  |
+| SF8 | `0_20260909_083708.518` | 2026-09-09 08:37:08.518 | 2026-09-09 08:37:13 | 0:00:05 | 0.012 | FM65 | no | clean | normal | 0.21 | 1.0 | 521.0 | 9.46 | 32 |  |
+| SF8 | `1_20260909_090526.132` | 2026-09-09 09:05:26.132 | 2026-09-09 09:05:58 | 0:00:33 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 554.0 | 9.68 | 32 |  |
+| SF8 | `2_20260909_090608.006` | 2026-09-09 09:06:08.006 | 2026-09-09 17:57:34 | 8:51:26 | 81.629 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.23 | 1.0 | 1594.0 | 8.55 | 32 |  |
 | SF9 | `0_20260831_070319.133` | 2026-08-31 07:03:19.133 | 2026-08-31 07:13:46 | 0:10:28 | 1.606 | FM62 | YES | glitchy+broadband | wide-impulse,broadband,wide-impulse,wide-impulse,wide-impulse | 14983.0 | 0.22 | 2757.0 | 12.85 | 2 4 32 54 56 58 62 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF9 | `1_20260831_071357.350` | 2026-08-31 07:13:57.350 | 2026-08-31 11:29:22 | 4:15:25 | 39.232 | FM62 | YES | glitchy+wide-impulse | normal,wide-impulse,normal,wide-impulse,wide-impulse | 10061.67 | 0.237 | 1310.0 | 13.48 | 2 4 32 36 54 56 58 62 | WIDE (>=3-sample) impulses dominate: not the FM62/64 single-sample defect; de-glitch will NOT clean this; QC before use |
 | SF9 | `0_20260831_190404.508` | 2026-08-31 19:04:04.508 | 2026-08-31 19:05:10 | 0:01:06 | 0.169 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 314.97 | 0.958 | 1364.0 | 8.26 | 2 4 32 36 52 54 56 58 60 62 |  |
@@ -452,6 +470,9 @@ Generated 2026-09-09T18:33:03+00:00 by `ephys/build_session_index.py` (git ab119
 | SF9 | `7_20260908_192020.964` | 2026-09-08 19:20:20.964 | 2026-09-08 19:20:34 | 0:00:13 | 0.034 | FM65 | no | clean | normal | 0.83 | 0.182 | 692.0 | 11.49 | 2 4 32 36 52 54 56 58 60 62 |  |
 | SF9 | `8_20260908_194228.662` | 2026-09-08 19:42:28.662 | 2026-09-08 19:43:01 | 0:00:32 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.37 | 1.0 | 826.0 | 9.63 | 2 4 32 36 52 54 56 58 60 62 |  |
 | SF9 | `9_20260908_194312.545` | 2026-09-08 19:43:12.545 | 2026-09-09 08:19:09 | 12:35:57 | 116.113 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.8 | 1.0 | 1577.0 | 13.41 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `0_20260909_084505.692` | 2026-09-09 08:45:05.692 | 2026-09-09 08:45:13 | 0:00:08 | 0.021 | FM65 | no | clean | normal | 0.12 | 1.0 | 637.0 | 10.13 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `1_20260909_090751.518` | 2026-09-09 09:07:51.518 | 2026-09-09 09:08:24 | 0:00:32 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 941.0 | 9.73 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `2_20260909_090835.027` | 2026-09-09 09:08:35.027 | 2026-09-09 17:59:04 | 8:50:30 | 81.485 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.47 | 1.0 | 1266.0 | 9.59 | 2 4 32 36 52 54 56 58 60 62 |  |
 
 ## How to use
 
