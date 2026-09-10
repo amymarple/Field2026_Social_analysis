@@ -5,6 +5,7 @@ verification.
 
 | Date | Change | Scope |
 |---|---|---|
+| 2026-09-10 | [Derived-data root moved from E: to D:](2026-09-10-analysis-root-moved-to-D.md) | `ephys.analysis_root` (index, pc_time, stage, sort, tools; 2857 files / 1.33 TB) moved to `D:/3rd_rat_spikes/analysis` so the raw offloads fit on E: to the end of cohort 3; verified copy, E: copy deleted. |
 | 2026-09-02 | [Ephys spike-sorting pipeline (WILD, cohort 3)](2026-09-02-ephys-spike-sorting-pipeline.md) | New `ephys/` + cohort `2026c`: firmware-aware session index (39 sessions, all measured glitchy; FM62/64), exact port of the field de-glitch (SF10 validation reproduced), staged clean copies, PreprocessPipeline+Kilosort4 driver with two pipeline bug workarounds; probe map UNVERIFIED (ARI≈0); FM62 daytime wide-impulse regime flagged. |
 | 2026-07-12 | [Migration to the cohort-appendable analysis repo](2026-07-12-migration-to-cohort-appendable-repo.md) | Migrated analysis out of the Field_2026_Social monolith into this cohort-keyed repo; renames, cohort schema, analyses/ + summaries/ layers, reclassifications, parked/excluded items. |
 | 2026-06-28 | [Hourly WISER Occupancy / Position Maps](2026-06-28-hourly-occupancy-maps.md) | Live-DB-safe hourly per-tag scatter/occupancy maps from WISER UWB. |
