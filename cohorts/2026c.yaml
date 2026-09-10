@@ -19,8 +19,14 @@ identities: wiser/configs/rat_identities.csv   # WISER shortid -> animal (cohort
 # in any behaviour / sleep / ephys-state analysis until quantified from the mic audio (per-minute broadband level vs a quiet day).
 # Times = field-PC local (EDT); end: null = the crew's departure was not logged yet.
 field_events:
-  - {start: "2026-09-08 07:50", end: null, kind: acoustic, note: "construction with heavy machinery near the paddock (operator, incident log 09-08); magnitude unknown, start ~07:5x"}
-  - {start: "2026-09-09 09:41", end: null, kind: acoustic, note: "mowing / landscaping crew cutting near the paddock (operator, incident log 09-09 09:41)"}
+  - {start: "2026-09-08 07:50", end: null, kind: acoustic, note: "construction with heavy machinery near the paddock (operator, incident log 09-08); magnitude unknown, start ~07:5x; nobody saw the crew leave - the end is to be dated from the MIC01/MIC02 hourly wavs at the lab"}
+  - {start: "2026-09-09 09:41", end: "2026-09-09 14:00", kind: acoustic, note: "mowing / landscaping crew cutting near the paddock (operator-observed start and end, incident log 09-09); the machine ran in EPISODES, so quiet minutes inside the window are the same-day control"}
+  # In-box cameras CH07/CH08 switched to COLOUR (visible light ON) for identity sampling; exclude ON-1 s .. OFF+5 s from any
+  # luminance / motion measure (3.5 s exposure settle after ON, 3 s white-out after OFF). 09-09 19:10 = the first test; from
+  # 09-10 to 09-12 every placement round adds ~2.5 min of colour plus six 8-s flashes per day - instants recoverable from the
+  # footage by a keyframe saturation scan (incident log 09-09 22:42 / 22:55; rig repo EXPERIMENT_ir_identity_color_sampling.md).
+  - {start: "2026-09-09 19:10:26", end: "2026-09-09 19:10:39", kind: light, note: "CH07 colour light ON 13.5 s (colour-switch behaviour test)"}
+  - {start: "2026-09-10 00:00", end: "2026-09-12 23:59", kind: light, note: "in-box colour sampling days (CH07/CH08): colour ON at placements (~2.5 min per round) + six 8-s flashes per day; exact instants from the footage / COLOUR_SAMPLING_LOG_cohort3.md in the rig repo"}
 
 # ---------------------------------------------------------------------------------------------------------
 # Ephys (WILD neurologger) — read by ephys/*.py
@@ -104,6 +110,14 @@ ephys:
     # 13:45, Notion Sep 6 row): clean Stops 12:31:20 / 12:32:32, ~1 h idle, Resync on the idle loggers, guard files, restart.
     - {animal: SF07, time: "2026-09-06 13:29:42", turns: 0.25, direction: advance, prev_session_stop: "2026-09-06 12:31:20", settle_h: 4}
     - {animal: SF11, time: "2026-09-06 13:33:38", turns: 0.25, direction: advance, prev_session_stop: "2026-09-06 12:32:32", settle_h: 4}
+    # 2026-09-09 PM round (early, rain): SF08 and SF12 probes "sitting high", each advanced 1/4 turn DOWN - the same manipulation as
+    # SF07/SF11's three earlier advances (operator "~18:10"; the BLE log is authoritative). SF08: inside its swap window, pre-move
+    # = the 17:57:34 Stop, post-move session starts 18:50:36 (no split). SF12: restarted 18:40:28, Stopped 18:46:34 for the
+    # adjustment, Resync idle, restarted 18:47:51 - the 6-min stub 18:40:28-18:46:34 is PRE-move. Never merge units across the
+    # move. Diagnostic value (field): a visible waveform change on SF08/SF12 after this, where SF07/SF11 never showed one for the
+    # identical operation, would point at SF07/SF11's drives (slipping shuttle) rather than the technique.
+    - {animal: SF08, time: "2026-09-09 18:10", turns: 0.25, direction: advance, prev_session_stop: "2026-09-09 17:57:34", settle_h: 4}
+    - {animal: SF12, time: "2026-09-09 18:47", turns: 0.25, direction: advance, prev_session_stop: "2026-09-09 18:46:34", settle_h: 4}
   # Operator observations on electrode position / signal (dated; the analysis reads them as expectations for sorting:
   # a probe still above the hippocampus yields no CA1 units, emerging ripples mark the approach to the pyramidal layer).
   probe_notes:
@@ -122,6 +136,7 @@ ephys:
     - {animal: SF07, time: "2026-09-07 09:15", note: "battery-path series resistance ~1-2 ohm suspected (holder spring / plug): first-minute sag after Rec Start 3-7x the fleet on three of four installs (65 / 62 / 144 mV) while the steady drain is the fleet lowest; the logger reads low under load, so it auto-stops earlier than its cell would - a weak cell was pulled after a 15-min stub session 08:52:49-09:07:34, second cell from 09:15:12", source: "incident log 2026-09-07 09:45"}
     - {animal: SF11, time: "2026-09-07 06:10:00", note: "DETACHMENT MEASURED in 13_20260906_195234.827: neural signal intact to 06:10:00 (rest state, inter-channel corr 0.95); 06:10:30-06:15:00 violent decorrelated transients (implant torn off); open circuit from 06:15:10 (>= 59/64 channels at MAD 80-110 ADC, theta gone, corr ~0.1-0.2, 60 Hz up); handling bursts 06:44, 06:54, 07:24-08:09; Stop 08:12:41. 1.5 h before the operator's 07:43 sighting - video around 06:08-06:16 (field-PC time ~ logger + 1 s) should show the event. Valid data on this card: 19:52:34 -> 06:10:00 (10.29 h); 2.04 h tail excluded via ephys.valid_until", source: "lab measurement 2026-09-07 (5-s windows: 1250 Hz LFP correlation, theta power, raw MAD, 60 Hz fraction)"}
     - {animal: SF11, time: "2026-09-07 06:10:45", note: "DETACHMENT CONFIRMED BY VIDEO: CH07 (camera inside the home box) shows the implant coming off at 06:10:45 field-PC time, inside the house, in the dark; 45 s after the last clean sample, 15 s into the card's tear window - video and card agree. The implant stayed in that box until collected; card bursts 06:44/06:54 = other rats bumping it, 07:24-08:09 = the retrieval; the animal is involved in none of them. WISER: tag 3058 rides on the implant, so the SF11 track also ends 06:10:45 (was 08:20); the drop was passive (no move > 12 cm 05:03:30-06:15:30, six tags huddled within 8-21 cm, static-object signature after 06:12)", source: "from-field/2026-09-07_sf11-implant-loss.md update 19:00 (operator review of E:/Reolink_record/CH07 06:00-07:00); field2026-sync 99b9431 (WISER DB snapshot query)"}
+    - {animal: SF07, time: "2026-09-09 22:33", note: "OUT OF BLE RANGE 22:33-23:06 (tag 3079 parked motionless at a paddock corner, in the open, > 15 min): last fresh advertisement 22:32:36 (rec 14073 s), back 23:06 with rec 15873 s = 18:38:03 + 15873 s -> counter continuous, NO gap, not a logger fault (alive check REC-FROZEN was the range, not a stop). Field asks: check SF07's own recording 22:33-22:56 (rec ~14,100-15,500 s in the 18:38:03 session, on the 09-09 night card) for a rest/sleep state = napping outside the nest. No bedtime anchor pass that night (rats scattered outside); Stop clusters at the 07:00 round anchor the ends", source: "incident log 2026-09-09 22:54 / 23:06"}
   # Sessions whose recording continued after the neural signal ended (implant detached mid-session): the session stays a
   # normal session (fitted, counted, sortable) up to valid_until (logger wallclock); the index limits its probe windows to
   # the valid part and the coverage tables stop there. Not a field_flag: the session is real up to that time.
