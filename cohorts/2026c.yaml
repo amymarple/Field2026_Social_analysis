@@ -153,6 +153,22 @@ ephys:
     # keep them out of coverage and sorting until the operator decides.
     - {animal: SF07, sessions: ["0_20260906_123827.548", "1_20260906_123931.995"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
     - {animal: SF11, sessions: ["0_20260906_124136.884"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
+    # ADC/mic lane ON (2026-09-10 14:42 -> switch-off): 312.5 Hz full-scale pulse train on every amplifier channel (see adc_lane above).
+    # Real recordings, same tissue, PC time fine - but unusable ephys; excluded from coverage and from the firmware verdict (their tick
+    # counts would read as a wide-impulse defect). Add each logger's lane-ON sessions as they are offloaded.
+    - {animal: SF08, sessions: ["7_20260910_144204.188", "8_20260910_150945.224", "9_20260910_184248.287", "10_20260910_184306.556"], flag: "ADC lane ON: 312.5 Hz ~5.5 mV pulse train on all 64 channels (measured 09-10); ephys unusable; 10_ is an empty record (fs 0)"}
+  # ADC ("microphone") lane - switched ON on all five loggers 2026-09-10 14:40-14:56 for a body-temperature sensor (field note
+  # from-field/2026-09-10_adc-lane-switch-on-and-session-splits.md; config block byte 28 = 0x08, param 625). MEASURED on SF08
+  # 2026-09-10 (sessions 7_/8_/9_ vs the lane-OFF day session 6_): (1) the export gains adc.dat = int16 at 160 kHz (8 samples per
+  # amplifier sample; CE_params sampling_rates[2] = 160000) - rail-to-rail garbage (mean ~8,500, sd ~13,000, hits +/-32767, 25 % of
+  # power > 10 kHz): a microphone input is AC-coupled, a DC temperature voltage cannot pass it - NO temperature is recorded; (2) the
+  # AMPLIFIER channels carry a full-scale pulse train while the lane is on: 312.5 Hz (= 625/2, the config parameter), ~1.2 ms wide
+  # (0.4-4.4), median 28,000 ADC ~ 5.5 mV, on 64/64 channels, ~18 % of samples, onsets staggered 0-4.3 ms across channels (not
+  # common-mode: median-referencing does not remove it); spike-band MAD 44 -> 250 ADC (x5.6), raw std 1,200 -> 9,500; harmonic
+  # comb at 23.15 Hz multiples up to 300+ Hz. Ephys recorded with the lane ON is unusable for spikes and contaminated for LFP.
+  # Sessions with the lane ON are field-flagged below (SF08 now; the other four loggers' post-14:4x day sessions and the 09-10 night
+  # sessions when offloaded). The battery reading also freezes in this mode (field, 18:45).
+  adc_lane: {file: adc.dat, dtype: int16, rate_hz: 160000, on_flag: "CE_params byte 28 == 0x08", verdict: "no temperature recorded; amplifier polluted by a 312.5 Hz full-scale pulse train - keep OFF"}
   deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
   probe_config: ephys/configs/probes_2026c.yaml
   preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT
