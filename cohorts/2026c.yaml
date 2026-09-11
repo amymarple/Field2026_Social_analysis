@@ -154,9 +154,12 @@ ephys:
     - {animal: SF07, sessions: ["0_20260906_123827.548", "1_20260906_123931.995"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
     - {animal: SF11, sessions: ["0_20260906_124136.884"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
     # ADC/mic lane ON (2026-09-10 14:42 -> switch-off): 312.5 Hz full-scale pulse train on every amplifier channel (see adc_lane above).
+    # QUARANTINE (operator decision 2026-09-10): lane-ON sessions are MOVED out of the raw tree to
+    # E:/3rd_rat_spikes/_quarantine_adc_lane_on/<SFxx>/<MAC>/<session>/ (leading underscore = skipped by iter_raw_sessions) and stay
+    # listed here for the record. Procedure per offload: size check first (it counts every folder), then move the lane-ON pieces, then QC.
     # Real recordings, same tissue, PC time fine - but unusable ephys; excluded from coverage and from the firmware verdict (their tick
     # counts would read as a wide-impulse defect). Add each logger's lane-ON sessions as they are offloaded.
-    - {animal: SF08, sessions: ["7_20260910_144204.188", "8_20260910_150945.224", "9_20260910_184248.287", "10_20260910_184306.556"], flag: "ADC lane ON: 312.5 Hz ~5.5 mV pulse train on all 64 channels (measured 09-10); ephys unusable; 10_ is an empty record (fs 0)"}
+    - {animal: SF08, sessions: ["7_20260910_144204.188", "8_20260910_150945.224", "9_20260910_184248.287", "10_20260910_184306.556"], flag: "ADC lane ON: 312.5 Hz ~5.5 mV pulse train on all 64 channels (measured 09-10); ephys unusable; 10_ is an empty record (fs 0). QUARANTINED 2026-09-10: moved to E:/3rd_rat_spikes/_quarantine_adc_lane_on/SF8/<MAC>/ (invisible to the index); listed here for the record"}
     # PENDING lane-ON pieces to flag when their cards are offloaded (field response 2026-09-10 21:20, times ET; the session folder
     # names come from the card): day SF07 14:43:52-18:39:24, SF09 15:07:21-18:47:50, SF10 14:51:22-18:49:40, SF12 15:04:57-18:51:05;
     # night (1000 mAh cells) SF07 19:33:05-20:41:16, SF08 19:35:30-20:46:01, SF09 19:42:03-~20:39, SF10 19:44:42-20:53:23,
