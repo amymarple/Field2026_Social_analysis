@@ -160,7 +160,8 @@ ROW_KEYS = ["animal", "session", "start", "duration_s", "crosses_midnight", "pc_
 
 
 def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, add_delay: bool, verbose: bool = True,
-                   pc_steps: list[dict] | None = None, exclude: dict[str, str] | None = None) -> list[dict]:
+                   pc_steps: list[dict] | None = None, exclude: dict[str, str] | None = None,
+                   accept: dict[str, str] | None = None) -> list[dict]:
     # Sessions recorded from ANOTHER PC's console (cohorts/<key>.yaml ephys.field_flags with pc_time: false) carry that PC's
     # clock in their anchors: they are not fitted, never lend a cluster to a neighbour, and are reported as "excluded".
     exclude = exclude or {}
@@ -302,6 +303,8 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
             verdict = "OK-native" if (abs(fit_native["drift_ppm"]) <= 200 and ends_ok) else "inconsistent"
             if verdict == "OK-native" and fit_native["rms_ms"] > 150:
                 verdict = "OK-native (mid outliers)"
+            if verdict == "inconsistent" and accept and sdir.name in accept and abs(fit_native["drift_ppm"]) <= 200:
+                verdict = f"OK-native (accepted: {accept[sdir.name]})"      # registry pc_time_accept: the native line stands
         elif drift_chain != "":
             verdict = "OK-chained" if abs(float(drift_chain)) <= 200 + float(chain_unc) else "inconsistent"
         else:
@@ -430,10 +433,17 @@ def main() -> None:
             an = f"SF{int(an[2:]):02d}" if an.startswith("SF") and an[2:].isdigit() else an
             for s in ff.get("sessions") or []:
                 excluded[an][str(s)] = str(ff.get("flag", "recorded from another PC; anchors are not field-PC time"))
+    # cohorts/<key>.yaml ephys.pc_time_accept: sessions whose 'inconsistent' verdict comes from a void cross-check (RTC Resync or a
+    # quarantined piece inside the preceding gap, end clusters disturbed by config writes) while the native fit is good
+    accepted: dict[str, dict[str, str]] = defaultdict(dict)
+    for acc in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("pc_time_accept") or []):
+        an = str(acc.get("animal", "")).upper()
+        an = f"SF{int(an[2:]):02d}" if an.startswith("SF") and an[2:].isdigit() else an
+        accepted[an][str(acc.get("session"))] = str(acc.get("reason", "registry"))
     for animal in sorted(per_animal):
         cp = parse_ce_params(per_animal[animal][0][0])
         rows.extend(analyse_animal(animal, per_animal[animal], float(cp.fs or fs), a.add_delay, pc_steps=pc_steps,
-                                   exclude=excluded.get(animal)))
+                                   exclude=excluded.get(animal), accept=accepted.get(animal)))
     rd = report_dir(a.cohort)
     csv_path = rd / f"ephys_spikes_pc_time_chain_{a.cohort}{a.suffix}.csv"
     md_path = rd / f"ephys_spikes_pc_time_chain_{a.cohort}{a.suffix}.md"
