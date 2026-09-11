@@ -202,7 +202,7 @@ def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe
         a["hours"] += float(row.get("duration_s") or 0) / 3600.0
         if row.get("firmware") != "":
             a["firmware"].add(int(row["firmware"]))
-    for animal_dir in sorted(p for p in Path(raw_root).iterdir() if p.is_dir() and not p.name.startswith(("$", "."))):
+    for animal_dir in sorted(p for p in Path(raw_root).iterdir() if p.is_dir() and not p.name.startswith(("$", ".", "_", "analysis"))):
         rb = animal_dir / "recovery.bin"
         a = animals.setdefault(animal_dir.name, {"animal": animal_dir.name, "logger_mac": "", "n_sessions": 0, "hours": 0.0, "firmware": set(), "recovery_bin_gb": ""})
         a["recovery_bin_gb"] = round(os.path.getsize(rb) / 1e9, 1) if rb.exists() else ""
