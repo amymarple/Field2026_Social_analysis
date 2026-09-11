@@ -32,7 +32,10 @@ from _common import ephys_block, iter_raw_sessions, parse_session_name, raw_ephy
 QUARANTINE_DIR = "_quarantine_adc_lane_on"
 PULSE_THR_ADC = 5000.0
 MIN_CHANNELS = 32
-MIN_PULSES_PER_S = 100.0
+# Per-channel pulse density varies by logger (2026-09-10 cards: SF09 ~40-100/s, SF10 60-125/s, SF08/SF12 130-180/s) while the
+# spike-band noise floor is x7-10 on every lane-ON session (350-570 ADC vs 35-100 clean), so the data test uses either sign.
+MIN_PULSES_PER_S = 20.0
+MAX_CLEAN_SPIKE_MAD_ADC = 200.0
 
 
 def _norm_animal(a: str) -> str:
@@ -61,10 +64,12 @@ def pulse_metric(sdir: Path, fs: int = 20000, nch: int = 64) -> tuple[float, flo
     else:
         starts = sorted({fs * 60, max(0, n // 2 - fs * 5), max(0, n - fs * 70)})
     mm = np.memmap(amp, dtype=np.int16, mode="r", shape=(n, nch))
-    worst = (0.0, 0.0, 0)
+    from scipy import signal as _sig
+    sos = _sig.butter(2, [300, 3000], btype="bandpass", fs=fs, output="sos")
+    worst = (0.0, 0.0, 0, 0.0)
     for s in starts:
         x = np.asarray(mm[s:min(n, s + fs * 10)], dtype=np.float32)
-        if len(x) < fs:
+        if len(x) < fs * 2:
             continue
         x -= np.median(x, axis=0)
         inp = np.abs(x) > PULSE_THR_ADC
@@ -72,9 +77,11 @@ def pulse_metric(sdir: Path, fs: int = 20000, nch: int = 64) -> tuple[float, flo
         n_on = (d == 1).sum(axis=0)
         rate = n_on / (len(x) / fs)
         chans = int((rate >= MIN_PULSES_PER_S / 4).sum())
-        cand = (float(np.median(rate)), float(inp.mean()), chans)
-        if cand[0] > worst[0]:
-            worst = cand
+        hp = _sig.sosfilt(sos, x, axis=0)[fs:]
+        spk = float(np.median(np.median(np.abs(hp), axis=0) * 1.4826))
+        cand = (float(np.median(rate)), float(inp.mean()), chans, spk)
+        if cand[0] > worst[0] or cand[3] > worst[3]:
+            worst = (max(cand[0], worst[0]), max(cand[1], worst[1]), max(cand[2], worst[2]), max(cand[3], worst[3]))
     return worst
 
 
@@ -114,15 +121,15 @@ def main() -> None:
         win_hit = [w for w in wins.get(an, []) if start < w[1] and end > w[0]]
         if not hdr and not win_hit:
             continue                                   # nothing suggests the lane; skip the expensive data test
-        rate, frac, chans = (0.0, 0.0, 0) if a.no_data_test or n == 0 else pulse_metric(sdir, fs, nch)
-        data = (rate >= MIN_PULSES_PER_S and chans >= MIN_CHANNELS)
+        rate, frac, chans, spk = (0.0, 0.0, 0, 0.0) if a.no_data_test or n == 0 else pulse_metric(sdir, fs, nch)
+        data = (rate >= MIN_PULSES_PER_S and chans >= MIN_CHANNELS) or spk >= MAX_CLEAN_SPIKE_MAD_ADC
         reasons = []
         if hdr: reasons.append(f"header byte28=0x{b28:02x} sr2={sr2}")
         if win_hit: reasons.append("window " + "; ".join(f"{w[0]:%m-%d %H:%M:%S}->{w[1]:%m-%d %H:%M:%S}" for w in win_hit))
-        if data: reasons.append(f"data {rate:.0f} pulses/s on {chans} ch, {frac * 100:.0f} % samples")
+        if data: reasons.append(f"data {rate:.0f} pulses/s on {chans} ch, {frac * 100:.0f} % samples, spike-band MAD {spk:.0f} ADC")
         verdict = "ON" if (hdr or data or win_hit) else "off"
         if not data and not a.no_data_test and n > fs * 12:
-            reasons.append(f"data test NEGATIVE ({rate:.0f}/s on {chans} ch) - header/window say ON: check before trusting either")
+            reasons.append(f"data test NEGATIVE ({rate:.0f}/s on {chans} ch, spike-band MAD {spk:.0f} ADC) - header/window say ON: check before trusting either")
         flagged.append((animal, mac or "", sdir, start, n / fs / 3600, b28, sr2, rate, frac, chans, verdict, "; ".join(reasons)))
         print(f"  {an} {sdir.name:26} {start:%m-%d %H:%M:%S} {n / fs / 3600:6.2f} h  -> {verdict}: {'; '.join(reasons)}")
     # registered windows with nothing on disk yet
