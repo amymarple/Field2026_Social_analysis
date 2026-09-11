@@ -36,7 +36,7 @@ CSV_COLUMNS = [
     "tick_removal_frac", "raw_std_median_adc", "glitch_samples_per_s", "glitch_pct_samples", "probe_seconds", "probe_windows", "noise_uV_median",
     "bad_channel_candidates",
     "fs", "n_channels", "n_samples", "amplifier_gb", "rtc_start", "rtc_agrees_with_folder", "has_info_rhd",
-    "time_dat_ok", "analogin_ok", "sd_capacity_kb", "error_code", "valid_until", "field_flag", "notes", "path",
+    "time_dat_ok", "analogin_ok", "sd_capacity_kb", "error_code", "valid_until", "adc_lane", "field_flag", "notes", "path",
 ]
 
 
@@ -76,6 +76,14 @@ def index_session(animal: str, mac: str | None, sdir: Path, cfg: dict, *, probe_
                     "rtc_start": cp.rtc_start or "", "sd_capacity_kb": cp.sd_capacity, "error_code": cp.error_code})
         if mac and cp.mac != mac.upper():
             notes.append(f"header MAC {cp.mac} != folder MAC {mac}")
+        # ADC ("microphone") lane: byte 28 == 0x08 or sampling_rates[2] == 160000 -> the amplifier stream carries a 312.5 Hz full-scale
+        # pulse train and adc.dat holds no usable signal (measured 2026-09-10; cohorts/<key>.yaml ephys.adc_lane). Such sessions belong
+        # in <raw_root>/_quarantine_adc_lane_on (ephys/quarantine_adc_sessions.py); if one is still in the tree, say so loudly.
+        raw_ce = ce.read_bytes()
+        sr2 = cp.sampling_rates[2] if len(cp.sampling_rates) > 2 else 0
+        if (len(raw_ce) > 28 and raw_ce[28] == 0x08) or sr2 == 160000 or (sdir / "adc.dat").exists() and os.path.getsize(sdir / "adc.dat") > 0:
+            row["adc_lane"] = "ON"
+            notes.append("ADC LANE ON (byte 28 = 0x08 / 160 kHz adc.dat): amplifier carries the 312.5 Hz pulse train - UNUSABLE; quarantine it (ephys/quarantine_adc_sessions.py --move)")
         prov, need, risk = provenance_for(cp.firmware_version, cfg)
         row.update({"provenance": prov, "deglitch_required": need, "commit_risk": risk})
         if meta and cp.rtc_start:
@@ -263,7 +271,8 @@ def render_markdown(rows: list[dict], animals: dict, *, cohort: str, cfg: dict, 
     L.append("| `bad_channel_candidates` | `noise_uV < 3` or `noise_uV > 4·median` or `raw_std < 0.25·median` | advisory dead/broken channels for `probes_<cohort>.yaml` `reject_channels` |")
     L.append("| `time_dat_ok` / `analogin_ok` | `bytes(time.dat) = 4·n_samples`; `bytes(analogin.dat) = 2·n_samples` (16 lanes @ fs/16) | sidecar sizes consistent with the amplifier stream |")
     L.append("| `field_flag` | text from `cohorts/<key>.yaml` `ephys.field_flags` (empty = none) | the field record marks the session as not a real recording (zombie restart of a dying cell) or as a TEST recording; kept in this inventory, excluded from coverage, the firmware verdict and any analysis until decided. `[no field-PC time]` = recorded from another PC's console: its BLE anchors are not field-PC time and `pc_time_chain` does not fit it |")
-    L.append("| `valid_until` | 'YYYY-MM-DD HH:MM:SS' from `cohorts/<key>.yaml` `ephys.valid_until` (empty = whole session valid), logger wallclock | the neural signal ended before the Stop (implant detached mid-session): the session is a normal session up to this time (fitted, counted, sortable) and open-circuit noise after it; the probe windows and the coverage tables stop here |\n")
+    L.append("| `valid_until` | 'YYYY-MM-DD HH:MM:SS' from `cohorts/<key>.yaml` `ephys.valid_until` (empty = whole session valid), logger wallclock | the neural signal ended before the Stop (implant detached mid-session): the session is a normal session up to this time (fitted, counted, sortable) and open-circuit noise after it; the probe windows and the coverage tables stop here |")
+    L.append("| `adc_lane` | `ON` when `CE_params.bin` byte 28 == 0x08 or `sampling_rates[2]` == 160000 or a non-empty `adc.dat` exists (empty = lane off) | the WILD ADC/microphone lane was on: the amplifier stream carries a 312.5 Hz full-scale pulse train and `adc.dat` no usable signal (measured 2026-09-10) - unusable; such sessions are moved to `<raw_root>/_quarantine_adc_lane_on` and should not appear here |\n")
     from _common import FOREIGN
     if FOREIGN:
         L.append("## Foreign logger folders (ignored)\n")
@@ -277,6 +286,12 @@ def render_markdown(rows: list[dict], animals: dict, *, cohort: str, cfg: dict, 
         L.append("## Field-flagged sessions (indexed, excluded from coverage and analysis)\n")
         for r in flagged:
             L.append(f"- {r['animal']} `{r['session']}` ({r.get('duration_hms', '')}): {r['field_flag']}")
+        L.append("")
+    adc = [r for r in rows if r.get("adc_lane") == "ON"]
+    if adc:
+        L.append("## ADC-lane-ON sessions still in the raw tree (UNUSABLE - quarantine them)\n")
+        for r in adc:
+            L.append(f"- {r['animal']} `{r['session']}` ({r.get('duration_hms', '')}): run `python ephys/quarantine_adc_sessions.py --cohort <key> --move`")
         L.append("")
     bounded = [r for r in rows if r.get("valid_until")]
     if bounded:
