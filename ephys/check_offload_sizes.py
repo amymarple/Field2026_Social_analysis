@@ -71,6 +71,10 @@ def main() -> None:
     since = datetime.strptime(a.since, "%Y-%m-%d %H:%M") if a.since else None
     cards = {an: (n, mb) for an, n, mb in (parse_card(c) for c in a.card)}
     roots = [raw_ephys_root(a.cohort, a.raw_root)] + [Path(r) for r in a.roots]
+    # the ADC-lane quarantine (ephys/quarantine_adc_sessions.py) holds real card records: count them like the raw tree
+    quarantine = roots[0] / "_quarantine_adc_lane_on"
+    if quarantine.is_dir():
+        roots.append(quarantine)
 
     test_card = set()      # (animal, session) recorded on a separate test card (cohorts/<key>.yaml field_flags with card: test)
     for ff in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("field_flags") or []):
@@ -91,11 +95,19 @@ def main() -> None:
             n = st.st_size // BYTES_PER_SAMPLE_AMP
             t_ok = (sdir / "time.dat").exists() and os.path.getsize(sdir / "time.dat") == 4 * n
             an_ok = (sdir / "analogin.dat").exists() and os.path.getsize(sdir / "analogin.dat") == 2 * n
+            # ADC ("microphone") lane ON: the card record also holds the 160 kHz ADC stream byte for byte (adc.dat); the header
+            # byte 28 == 0x08 marks it even when the stream is empty (validated on SF08's 2026-09-10 listing to 100.00 %)
+            adc_bytes = os.path.getsize(sdir / "adc.dat") if (sdir / "adc.dat").exists() else 0
+            ce = sdir / "CE_params.bin"
+            adc_on = adc_bytes > 0 or (ce.exists() and ce.stat().st_size > 28 and ce.read_bytes()[28] == 0x08)
             per_animal.setdefault(norm(animal), []).append({
                 "animal": norm(animal), "root": str(root), "session": sdir.name, "start": meta["start"], "amp_bytes": st.st_size,
-                "hours": n / fs / 3600.0,
-                "predicted_card_bytes": st.st_size * BYTES_PER_SAMPLE_CARD / BYTES_PER_SAMPLE_AMP,
-                "sidecars_ok": bool(st.st_size % BYTES_PER_SAMPLE_AMP == 0 and t_ok and an_ok),
+                "hours": n / fs / 3600.0, "adc_on": bool(adc_on), "adc_bytes": adc_bytes,
+                "predicted_card_bytes": st.st_size * BYTES_PER_SAMPLE_CARD / BYTES_PER_SAMPLE_AMP + adc_bytes,
+                # an EMPTY record (0 amplifier samples: the console exports a header + stray lanes for a record the logger never
+                # filled, e.g. SF08 10_20260910_184306 with fs 0) has nothing to be consistent with and holds no data
+                "sidecars_ok": bool(st.st_size % BYTES_PER_SAMPLE_AMP == 0 and t_ok and an_ok) or n == 0,
+                "empty": n == 0,
                 "growing": (time.time() - st.st_mtime) < GROWING_S,
             })
 
@@ -170,9 +182,12 @@ def main() -> None:
         listing = f", card lists {n_card} records / {mb_card:,.3f} MB" if n_card else ", no card listing given"
         print(f"== {an}: {len(sess)} folders on disk{span}{listing}")
         for r in sess:
-            flag = ("GROWING " if r["growing"] else "") + ("" if r["sidecars_ok"] else "SIDECARS-INCONSISTENT ")
-            print(f"   {r['session']:26} {r['amp_bytes'] / 1e6:12,.3f} MB  {r['hours']:6.2f} h  {flag}")
-            rows.append({**{k: v for k, v in r.items() if k != "start"}, "card_records": n_card or "", "card_total_mb": mb_card or ""})
+            flag = ("GROWING " if r["growing"] else "") + ("" if r["sidecars_ok"] else "SIDECARS-INCONSISTENT ") + ("ADC-ON " if r["adc_on"] else "") + ("EMPTY-RECORD " if r.get("empty") else "")
+            slot = r["session"].split("_")[0]
+            print(f"   slot {slot:>2}  {r['session']:26} {r['amp_bytes'] / 1e6:12,.3f} MB  {r['hours']:6.2f} h  -> on card ~{(r['predicted_card_bytes'] + OVERHEAD_PER_RECORD) / 1e6:10,.0f} MB  {flag}")
+            rows.append({**{k: v for k, v in r.items() if k != "start"}, "card_slot": slot, "card_record_mb_est": round((r["predicted_card_bytes"] + OVERHEAD_PER_RECORD) / 1e6, 1),
+                         "card_plan": ("KEEP on card (ADC lane ON - maker evidence)" if r["adc_on"] else "deletable after verified backup"),
+                         "card_records": n_card or "", "card_total_mb": mb_card or ""})
         if not n_card:
             verdicts[an] = "no listing"
             continue
@@ -191,7 +206,16 @@ def main() -> None:
         else:
             v = f"CHECK - {pct:.3f} %; an undownloaded record of ~{missing_s / 60:.1f} min remains on the card ({n_card - len(sess)} record(s) not on disk)"
         verdicts[an] = v
-        print(f"   predicted card bytes {pred / 1e6:,.3f} MB -> {v}\n")
+        print(f"   predicted card bytes {pred / 1e6:,.3f} MB -> {v}")
+        # per-record card plan (the maker asked for the ADC-lane records to stay on the card: delete only the verified rest)
+        keep = [r for r in sess if r["adc_on"]]
+        if keep and v.startswith("SAFE"):
+            dele = [r for r in sess if not r["adc_on"]]
+            print(f"   card plan: DELETE slots {', '.join(r['session'].split('_')[0] for r in dele)} "
+                  f"(~{sum(r['predicted_card_bytes'] + OVERHEAD_PER_RECORD for r in dele) / 1e6:,.0f} MB, all backed up and verified); "
+                  f"KEEP slots {', '.join(r['session'].split('_')[0] for r in keep)} "
+                  f"(ADC lane ON, ~{sum(r['predicted_card_bytes'] + OVERHEAD_PER_RECORD for r in keep) / 1e6:,.0f} MB) for the maker")
+        print()
 
     tag = datetime.now().strftime("%Y-%m-%d")
     out = report_dir(a.cohort) / f"ephys_spikes_offload_sizes_{resolve_cohort(a.cohort)}_{tag}.csv"
