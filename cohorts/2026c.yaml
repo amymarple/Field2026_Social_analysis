@@ -157,6 +157,11 @@ ephys:
     # Real recordings, same tissue, PC time fine - but unusable ephys; excluded from coverage and from the firmware verdict (their tick
     # counts would read as a wide-impulse defect). Add each logger's lane-ON sessions as they are offloaded.
     - {animal: SF08, sessions: ["7_20260910_144204.188", "8_20260910_150945.224", "9_20260910_184248.287", "10_20260910_184306.556"], flag: "ADC lane ON: 312.5 Hz ~5.5 mV pulse train on all 64 channels (measured 09-10); ephys unusable; 10_ is an empty record (fs 0)"}
+    # PENDING lane-ON pieces to flag when their cards are offloaded (field response 2026-09-10 21:20, times ET; the session folder
+    # names come from the card): day SF07 14:43:52-18:39:24, SF09 15:07:21-18:47:50, SF10 14:51:22-18:49:40, SF12 15:04:57-18:51:05;
+    # night (1000 mAh cells) SF07 19:33:05-20:41:16, SF08 19:35:30-20:46:01, SF09 19:42:03-~20:39, SF10 19:44:42-20:53:23,
+    # SF12 19:47:10-20:42:47. Lane switched OFF on all five 20:41-21:05; lane-off night sessions start SF07 20:44:13, SF08 21:02:46,
+    # SF09 20:49:12, SF10 20:56:12, SF12 21:05:19 (each a fresh start cluster; every RTC write on an idle logger). Never re-enabled.
   # ADC ("microphone") lane - switched ON on all five loggers 2026-09-10 14:40-14:56 for a body-temperature sensor (field note
   # from-field/2026-09-10_adc-lane-switch-on-and-session-splits.md; config block byte 28 = 0x08, param 625). MEASURED on SF08
   # 2026-09-10 (sessions 7_/8_/9_ vs the lane-OFF day session 6_): (1) the export gains adc.dat = int16 at 160 kHz (8 samples per
