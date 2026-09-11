@@ -1,6 +1,6 @@
 # WILD neurologger session index — cohort `2026c`
 
-Generated 2026-09-10T03:42:34+00:00 by `ephys/build_session_index.py` (git 94ba51a+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
+Generated 2026-09-11T02:20:39+00:00 by `ephys/build_session_index.py` (git 4c92621+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
 
 ## Firmware provenance (the rule that decides what may be analysed)
 
@@ -40,6 +40,7 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 - SF11 `0_20260906_124136.884` (0:33:46): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 - SF7 `0_20260906_123827.548` (0:00:39): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 - SF7 `1_20260906_123931.995` (0:21:22): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
+- SF8 `9_20260910_184248.287` (): ADC lane ON: 312.5 Hz ~5.5 mV pulse train on all 64 channels (measured 09-10); ephys unusable; 10_ is an empty record (fs 0). QUARANTINED 2026-09-10: moved to E:/3rd_rat_spikes/_quarantine_adc_lane_on/SF8/<MAC>/ (invisible to the index); listed here for the record
 
 ## Sessions with a validity boundary (neural signal ended before the Stop)
 
@@ -53,11 +54,10 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 | SF11 | 1DFE7F77721C | 65 | 140.95 | FM62, FM64, FM65 | 512.1 |
 | SF12 | FBED2F2321B1 | 64 | 199.34 | FM62, FM64, FM65 | 512.1 |
 | SF7 | D0DBEFEF3111 | 73 | 196.56 | FM64, FM65 | 512.1 |
-| SF8 | 128C2F27E131 | 67 | 198.65 | FM62, FM64, FM65 | 512.1 |
+| SF8 | 128C2F27E131 | 75 | 217.47 | FM62, FM64, FM65 | 512.1 |
 | SF9 | 68BDFFFF62DB | 69 | 199.80 | FM62, FM64, FM65 | 512.1 |
-| analysis | — | 0 | 0.00 | — | — |
 
-**410 sessions indexed: 69 require de-glitching (firmware < FM65), 341 flagged clean by firmware.**
+**418 sessions indexed: 69 require de-glitching (firmware < FM65), 348 flagged clean by firmware.**
 
 ## Sessions
 
@@ -404,6 +404,14 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 | SF8 | `0_20260909_083708.518` | 2026-09-09 08:37:08.518 | 2026-09-09 08:37:13 | 0:00:05 | 0.012 | FM65 | no | clean | normal | 0.21 | 1.0 | 521.0 | 9.46 | 32 |  |
 | SF8 | `1_20260909_090526.132` | 2026-09-09 09:05:26.132 | 2026-09-09 09:05:58 | 0:00:33 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 554.0 | 9.68 | 32 |  |
 | SF8 | `2_20260909_090608.006` | 2026-09-09 09:06:08.006 | 2026-09-09 17:57:34 | 8:51:26 | 81.629 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.23 | 1.0 | 1594.0 | 8.55 | 32 |  |
+| SF8 | `0_20260909_181432.740` | 2026-09-09 18:14:32.740 | 2026-09-09 18:15:00 | 0:00:27 | 0.07 | FM65 | no | glitchy+wide-impulse | wide-impulse | 678.32 | 0.204 | 1397.0 | 8.96 | 32 | MEASURED GLITCHY although firmware >= clean_firmware_min; WIDE (>=3-sample) impulses dominate: not the FM62/64 single-sample defect; de-glitch will NOT clean this; QC before use |
+| SF8 | `1_20260909_181543.715` | 2026-09-09 18:15:43.715 | 2026-09-09 18:16:52 | 0:01:09 | 0.177 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.2 | 1.0 | 695.0 | 9.41 | 32 |  |
+| SF8 | `2_20260909_184954.514` | 2026-09-09 18:49:54.514 | 2026-09-09 18:50:27 | 0:00:33 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 1247.0 | 8.57 | 32 |  |
+| SF8 | `3_20260909_185036.554` | 2026-09-09 18:50:36.554 | 2026-09-10 07:21:43 | 12:31:07 | 115.37 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 712.0 | 10.81 | 32 |  |
+| SF8 | `4_20260910_075715.519` | 2026-09-10 07:57:15.519 | 2026-09-10 07:57:17 | 0:00:02 | 0.004 | FM65 | no | clean | normal | 0.57 | 1.0 | 523.0 | 10.04 | 32 |  |
+| SF8 | `5_20260910_082534.281` | 2026-09-10 08:25:34.281 | 2026-09-10 08:26:15 | 0:00:41 | 0.106 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 1099.0 | 8.06 | 32 |  |
+| SF8 | `6_20260910_082629.685` | 2026-09-10 08:26:29.685 | 2026-09-10 14:41:44 | 6:15:14 | 57.637 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.53 | 1.0 | 1398.0 | 7.91 | 32 |  |
+| SF8 | `9_20260910_184248.287` | 2026-09-10 18:42:48.287 |  |  |  | FM | ? |  |  |  |  |  |  |  | CE_params.bin missing; amplifier.dat missing |
 | SF9 | `0_20260831_070319.133` | 2026-08-31 07:03:19.133 | 2026-08-31 07:13:46 | 0:10:28 | 1.606 | FM62 | YES | glitchy+broadband | wide-impulse,broadband,wide-impulse,wide-impulse,wide-impulse | 14983.0 | 0.22 | 2757.0 | 12.85 | 2 4 32 54 56 58 62 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF9 | `1_20260831_071357.350` | 2026-08-31 07:13:57.350 | 2026-08-31 11:29:22 | 4:15:25 | 39.232 | FM62 | YES | glitchy+wide-impulse | normal,wide-impulse,normal,wide-impulse,wide-impulse | 10061.67 | 0.237 | 1310.0 | 13.48 | 2 4 32 36 54 56 58 62 | WIDE (>=3-sample) impulses dominate: not the FM62/64 single-sample defect; de-glitch will NOT clean this; QC before use |
 | SF9 | `0_20260831_190404.508` | 2026-08-31 19:04:04.508 | 2026-08-31 19:05:10 | 0:01:06 | 0.169 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 314.97 | 0.958 | 1364.0 | 8.26 | 2 4 32 36 52 54 56 58 60 62 |  |

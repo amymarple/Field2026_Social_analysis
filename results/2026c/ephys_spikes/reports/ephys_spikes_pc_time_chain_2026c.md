@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-10T03:55:11+00:00 by `ephys/pc_time_chain.py` (git 94ba51a+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-11T02:33:37+00:00 by `ephys/pc_time_chain.py` (git 4c92621+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -143,7 +143,14 @@ Generated 2026-09-10T03:55:11+00:00 by `ephys/pc_time_chain.py` (git 94ba51a+dir
 | SF08 | `8_20260908_193958.035` | 12.63 | yes | 61 | 17/17 | 1416 | 480 | 51 | -20.4 ± 0.2 | 24.4 | 0  | 1158.2 |  | -5 | +1387 | OK-native |  |
 | SF08 | `0_20260909_083708.518` | 0.00 |  | 2 | 2/2 | 30 | 945 |  |  |  | 0  | 1692.8 |  |  | -736 | one-end-only |  |
 | SF08 | `1_20260909_090526.132` | 0.01 |  | 7 | 7/7 | 176 | 209 |  |  |  | 15 next:15 | 9.4 | 0.0 ± 21550.4 | -736 | +0 | OK-chained |  |
-| SF08 | `2_20260909_090608.006` | 8.86 |  | 51 | 15/21 | 1206 | 209 | 50 | -18.8 ± 0.1 | 10.3 | 0  |  |  | -0 |  | OK-native |  |
+| SF08 | `2_20260909_090608.006` | 8.86 |  | 51 | 15/21 | 1206 | 209 | 50 | -18.8 ± 0.1 | 10.3 | 0  | 1018.3 |  | -0 |  | OK-native |  |
+| SF08 | `0_20260909_181432.740` | 0.01 |  | 1607 | 1607/1607 | 130 |  |  |  |  | 0  | 43.6 |  |  |  | corrupt |  |
+| SF08 | `1_20260909_181543.715` | 0.02 |  | 15 | 15/15 | 764 | 1030 |  |  |  | 0  | 1981.7 |  |  | -775 | one-end-only |  |
+| SF08 | `2_20260909_184954.514` | 0.01 |  | 7 | 7/7 | 271 | 255 |  |  |  | 15 next:15 | 9.5 | -35.0 ± 21418.5 | -775 | -2 | OK-chained |  |
+| SF08 | `3_20260909_185036.554` | 12.52 | yes | 46 | 15/14 | 1074 | 253 | 45 | -20.6 ± 0.1 | 11.8 | 0  | 2132.4 |  | -2 | +368 | OK-native |  |
+| SF08 | `4_20260910_075715.519` | 0.00 |  | 2 | 2/2 | 407 | -304 |  |  |  | 0  | 1697.0 |  |  | +686 | one-end-only |  |
+| SF08 | `5_20260910_082534.281` | 0.01 |  | 10 | 10/10 | 1529 | 382 |  |  |  | 16 next:16 | 14.0 | 7.0 ± 16941.5 | +686 | +0 | OK-chained |  |
+| SF08 | `6_20260910_082629.685` | 6.25 |  | 31 | 16/2 | 0 | 383 | 31 | -20.2 ± 0.2 | 11.2 | 0  |  |  | +0 |  | OK-native |  |
 | SF09 | `0_20260831_070319.133` | 0.17 |  | 69565 | 28/34901 | 65 |  |  |  |  | 0  | 10.7 |  |  |  | corrupt |  |
 | SF09 | `1_20260831_071357.350` | 4.26 |  | 137457 | 11/70 | 1830 |  |  |  |  | 0  | 27282.3 |  |  |  | corrupt |  |
 | SF09 | `0_20260831_190404.508` | 0.02 |  | 15 | 15/15 | 343 | 834 |  |  |  | 9 next:9 | 12.1 | -8.1 ± 15943.8 |  | -1 | OK-chained |  |
@@ -419,7 +426,7 @@ Generated 2026-09-10T03:55:11+00:00 by `ephys/pc_time_chain.py` (git 94ba51a+dir
 
 | verdict | sessions | hours |
 |---|---|---|
-| OK-native | 113 | 891.3 |
+| OK-native | 115 | 910.1 |
 | OK-native (PC step modelled) | 8 | 55.3 |
 | one-end-only | 10 | 25.0 |
 | corrupt | 5 | 16.7 |

@@ -1,6 +1,6 @@
 # WILD offload QC — cohort `2026c`
 
-Generated 2026-09-10T05:15:53+00:00 by `ephys/offload_qc_report.py` (git 6af7668+dirty) from the session index (`ephys_spikes_session_index_2026c.csv`) and the PC-time fits under `E:\3rd_rat_spikes\analysis\pc_time`. Regenerate; do not hand-edit.
+Generated 2026-09-11T03:40:19+00:00 by `ephys/offload_qc_report.py` (git 4c92621+dirty) from the session index (`ephys_spikes_session_index_2026c.csv`) and the PC-time fits under `D:\3rd_rat_spikes\analysis\pc_time`. Regenerate; do not hand-edit.
 
 Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's Definitions section (`ticks_per_s`, `tick_removal_frac`, `regime`, `noise_uV`, bad-channel rule). Times are the logger wallclock (field-PC local time at Resync, EDT).
 
@@ -8,11 +8,12 @@ Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's D
 
 | firmware | sessions | hours | ticks/s (median / max over sessions) | tick removal (min) | noise µV (median) | regimes |
 |---|---|---|---|---|---|---|
+| FM | 1 | 0.0 | nan / nan | nan | nan | :1 |
 | FM62 | 13 | 18.0 | 10061.7 / 54898.0 | 0.183 | 10.1 | broadband:6, normal:5, wide-impulse:2 |
 | FM64 | 56 | 115.0 | 502.8 / 2463.2 | 0.787 | 9.8 | normal:56 |
-| FM65 | 341 | 999.0 | 0.3 / 28549.7 | 0.153 | 9.9 | broadband:2, normal:331, wide-impulse:8 |
+| FM65 | 348 | 1017.8 | 0.3 / 28549.7 | 0.153 | 9.9 | broadband:2, normal:337, wide-impulse:9 |
 
-**FM65 verdict:** CLEAN — per logger, FM65 worst-window ticks/s vs the same logger's FM64 median: SF10 8.2 vs 1887 ok; SF11 3.1 vs 751 ok; SF12 7.4 vs 908 ok; SF7 2.6 vs 13 ok; SF8 3.2 vs 1248 ok; SF9 2.7 vs 1832 ok (n = 341 FM65 sessions, max 28549.73/s). The residual 1–7/s on the noisier loggers are ordinary fast transients (they are not removed by the median rule, unlike the defect), two orders of magnitude below the FM64 defect load. Excluded as channel-local: SF10 `7_20260905_093927.479` 12.2/s concentrated on ch [1, 55] (channel-local impulses, not the defect); SF10 `4_20260907_090135.869` 12.9/s concentrated on ch [1, 38] (channel-local impulses, not the defect); SF12 `3_20260903_080924.473` 11.7/s concentrated on ch [2, 29] (channel-local impulses, not the defect); SF12 `2_20260905_094454.579` 13.4/s concentrated on ch [34, 32] (channel-local impulses, not the defect); SF12 `10_20260906_195502.355` 10.3/s concentrated on ch [47, 0] (channel-local impulses, not the defect); SF12 `2_20260907_180003.285` 9.2/s concentrated on ch [39, 35] (channel-local impulses, not the defect); SF7 `4_20260903_001558.656` 6.6/s concentrated on ch [34, 0] (channel-local impulses, not the defect); SF8 `2_20260903_075352.907` 14.0/s concentrated on ch [34, 1] (channel-local impulses, not the defect); SF8 `3_20260903_160306.510` 8.6/s concentrated on ch [34, 1] (channel-local impulses, not the defect); SF8 `2_20260905_093534.819` 9.1/s concentrated on ch [34, 1] (channel-local impulses, not the defect); SF9 `3_20260905_094705.608` 17.3/s concentrated on ch [54, 8] (channel-local impulses, not the defect); SF9 `2_20260907_085841.028` 13.1/s concentrated on ch [34, 1] (channel-local impulses, not the defect). Excluded as field-flagged: SF10 `10_20260905_070012.038` 2339.2/s (zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude); SF10 `11_20260905_080522.427` 3.9/s (zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude); SF11 `0_20260906_124136.884` 3.5/s (probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)); SF7 `1_20260906_123931.995` 0.3/s (probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)).
+**FM65 verdict:** CLEAN — per logger, FM65 worst-window ticks/s vs the same logger's FM64 median: SF10 8.2 vs 1887 ok; SF11 3.1 vs 751 ok; SF12 7.4 vs 908 ok; SF7 2.6 vs 13 ok; SF8 3.2 vs 1248 ok; SF9 2.7 vs 1832 ok (n = 348 FM65 sessions, max 28549.73/s). The residual 1–7/s on the noisier loggers are ordinary fast transients (they are not removed by the median rule, unlike the defect), two orders of magnitude below the FM64 defect load. Excluded as channel-local: SF10 `7_20260905_093927.479` 12.2/s concentrated on ch [1, 55] (channel-local impulses, not the defect); SF10 `4_20260907_090135.869` 12.9/s concentrated on ch [1, 38] (channel-local impulses, not the defect); SF12 `3_20260903_080924.473` 11.7/s concentrated on ch [2, 29] (channel-local impulses, not the defect); SF12 `2_20260905_094454.579` 13.4/s concentrated on ch [34, 32] (channel-local impulses, not the defect); SF12 `10_20260906_195502.355` 10.3/s concentrated on ch [47, 0] (channel-local impulses, not the defect); SF12 `2_20260907_180003.285` 9.2/s concentrated on ch [39, 35] (channel-local impulses, not the defect); SF7 `4_20260903_001558.656` 6.6/s concentrated on ch [34, 0] (channel-local impulses, not the defect); SF8 `2_20260903_075352.907` 14.0/s concentrated on ch [34, 1] (channel-local impulses, not the defect); SF8 `3_20260903_160306.510` 8.6/s concentrated on ch [34, 1] (channel-local impulses, not the defect); SF8 `2_20260905_093534.819` 9.1/s concentrated on ch [34, 1] (channel-local impulses, not the defect); SF9 `3_20260905_094705.608` 17.3/s concentrated on ch [54, 8] (channel-local impulses, not the defect); SF9 `2_20260907_085841.028` 13.1/s concentrated on ch [34, 1] (channel-local impulses, not the defect). Excluded as field-flagged: SF10 `10_20260905_070012.038` 2339.2/s (zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude); SF10 `11_20260905_080522.427` 3.9/s (zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude); SF11 `0_20260906_124136.884` 3.5/s (probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)); SF7 `1_20260906_123931.995` 0.3/s (probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)).
 
 ## Per-animal timeline and continuity
 
@@ -94,7 +95,7 @@ Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's D
 | `2_20260909_090244.932` | FM65 | 2026-09-09 09:02:44 | 2026-09-09 09:03:19 | 0:00:35 | 0.09 | True | ok | clean | 0.0 | 1.0 | 9.97 |  | OK (chained next:16): drift -154.6 ± 18625 ppm; start offset known to BLE precision | gap 31 min after previous |
 | `3_20260909_090331.016` | FM65 | 2026-09-09 09:03:31 | 2026-09-09 17:55:29 | 8:51:58 | 81.711 | True | ok | clean | 0.0 | 1.0 | 8.83 |  | OK: 68 anchors, drift -22.4 ± 0.5 ppm, residual 55 ms |  |
 
-### SF08 (logger 128C2F27E131) — 67 sessions, 198.6 h
+### SF08 (logger 128C2F27E131) — 75 sessions, 217.5 h
 
 | session | FW | start | end | dur | GB | rtc=folder | sidecars | measured (worst window) | ticks/s | removable | noise µV | bad ch | PC-time fit | notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -165,6 +166,14 @@ Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's D
 | `0_20260909_083708.518` | FM65 | 2026-09-09 08:37:08 | 2026-09-09 08:37:12 | 0:00:05 | 0.012 | True | ok | clean | 0.21 | 1.0 | 9.46 | 32 | start cluster only (2 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions | gap 19 min after previous |
 | `1_20260909_090526.132` | FM65 | 2026-09-09 09:05:26 | 2026-09-09 09:05:58 | 0:00:33 | 0.083 | True | ok | clean | 0.0 | 1.0 | 9.68 | 32 | OK (chained next:15): drift +0.0 ± 21550 ppm; start offset known to BLE precision | gap 28 min after previous |
 | `2_20260909_090608.006` | FM65 | 2026-09-09 09:06:08 | 2026-09-09 17:57:34 | 8:51:26 | 81.629 | True | ok | clean | 0.23 | 1.0 | 8.55 | 32 | OK: 50 anchors, drift -18.8 ± 0.1 ppm, residual 10 ms |  |
+| `0_20260909_181432.740` | FM65 | 2026-09-09 18:14:32 | 2026-09-09 18:14:59 | 0:00:27 | 0.07 | True | ok | glitchy+wide-impulse | 678.32 | 0.204 | 8.96 | 32 | CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time | gap 17 min after previous; MEASURED GLITCHY although firmware >= clean_firmware_min; WIDE (>=3-sample) impulses dominate: not the FM62/64 single-sample defect; de-glitch will NOT clean this; QC before use |
+| `1_20260909_181543.715` | FM65 | 2026-09-09 18:15:43 | 2026-09-09 18:16:52 | 0:01:09 | 0.177 | True | ok | clean | 0.2 | 1.0 | 9.41 | 32 | start cluster only (15 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions |  |
+| `2_20260909_184954.514` | FM65 | 2026-09-09 18:49:54 | 2026-09-09 18:50:26 | 0:00:33 | 0.083 | True | ok | clean | 0.03 | 1.0 | 8.57 | 32 | OK (chained next:15): drift -35.0 ± 21418 ppm; start offset known to BLE precision | gap 33 min after previous |
+| `3_20260909_185036.554` | FM65 | 2026-09-09 18:50:36 | 2026-09-10 07:21:42 | 12:31:07 | 115.37 | True | ok | clean | 0.0 | 1.0 | 10.81 | 32 | OK: 45 anchors, drift -20.6 ± 0.1 ppm, residual 12 ms |  |
+| `4_20260910_075715.519` | FM65 | 2026-09-10 07:57:15 | 2026-09-10 07:57:16 | 0:00:02 | 0.004 | True | ok | clean | 0.57 | 1.0 | 10.04 | 32 | start cluster only (2 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions | gap 36 min after previous |
+| `5_20260910_082534.281` | FM65 | 2026-09-10 08:25:34 | 2026-09-10 08:26:15 | 0:00:41 | 0.106 | True | ok | clean | 0.0 | 1.0 | 8.06 | 32 | OK (chained next:16): drift +7.0 ± 16942 ppm; start offset known to BLE precision | gap 28 min after previous |
+| `6_20260910_082629.685` | FM65 | 2026-09-10 08:26:29 | 2026-09-10 14:41:43 | 6:15:14 | 57.637 | True | ok | clean | 0.53 | 1.0 | 7.91 | 32 | OK: 31 anchors, drift -20.2 ± 0.2 ppm, residual 11 ms |  |
+| `9_20260910_184248.287` | FM | 2026-09-10 18:42:48 | 2026-09-10 18:42:48 |  |  |  | time.dat  analogin  rhd False |  |  |  |  |  | not run | gap 241 min after previous; CE_params.bin missing; amplifier.dat missing |
 
 ### SF09 (logger 68BDFFFF62DB) — 69 sessions, 199.8 h
 
@@ -462,7 +471,7 @@ Source: `ephys/pc_time_chain.py` (day-wrap-aware, delay word not added, adjacent
 
 | verdict | sessions | hours |
 |---|---|---|
-| OK | 123 | 997.3 |
+| OK | 125 | 1016.0 |
 | OK (field-PC step inside, modelled) | 10 | 68.3 |
 | start cluster only (offset known, drift assumed) | 10 | 25.0 |
 | CORRUPT SYNC LANES | 5 | 16.7 |
@@ -520,6 +529,11 @@ Source: `ephys/pc_time_chain.py` (day-wrap-aware, delay word not added, adjacent
 - index note: SF08 `0_20260907_082936.983`: MEASURED GLITCHY although firmware >= clean_firmware_min
 - noise regime wide-impulse: SF08 `0_20260907_171731.629` (FM65, windows wide-impulse, removal 0.282)
 - index note: SF08 `0_20260907_171731.629`: MEASURED GLITCHY although firmware >= clean_firmware_min
+- noise regime wide-impulse: SF08 `0_20260909_181432.740` (FM65, windows wide-impulse, removal 0.204)
+- index note: SF08 `0_20260909_181432.740`: MEASURED GLITCHY although firmware >= clean_firmware_min
+- sidecar inconsistency: SF08 `9_20260910_184248.287` time.dat  analogin  info.rhd False
+- index note: SF08 `9_20260910_184248.287`: CE_params.bin missing
+- index note: SF08 `9_20260910_184248.287`: amplifier.dat missing
 - noise regime broadband: SF09 `0_20260831_070319.133` (FM62, windows wide-impulse,broadband,wide-impulse,wide-impulse,wide-impulse, removal 0.22)
 - noise regime wide-impulse: SF09 `1_20260831_071357.350` (FM62, windows normal,wide-impulse,normal,wide-impulse,wide-impulse, removal 0.237)
 - index note: SF09 `0_20260903_172814.047`: MEASURED GLITCHY although firmware >= clean_firmware_min
