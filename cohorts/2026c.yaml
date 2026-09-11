@@ -176,7 +176,23 @@ ephys:
   # comb at 23.15 Hz multiples up to 300+ Hz. Ephys recorded with the lane ON is unusable for spikes and contaminated for LFP.
   # Sessions with the lane ON are field-flagged below (SF08 now; the other four loggers' post-14:4x day sessions and the 09-10 night
   # sessions when offloaded). The battery reading also freezes in this mode (field, 18:45).
-  adc_lane: {file: adc.dat, dtype: int16, rate_hz: 160000, on_flag: "CE_params byte 28 == 0x08", verdict: "no temperature recorded; amplifier polluted by a 312.5 Hz full-scale pulse train - keep OFF"}
+  adc_lane:
+    file: adc.dat
+    dtype: int16
+    rate_hz: 160000
+    on_flag: "CE_params byte 28 == 0x08 (and sampling_rates[2] == 160000)"
+    verdict: "no temperature recorded; amplifier polluted by a 312.5 Hz full-scale pulse train - keep OFF"
+    # Lane-ON windows per logger = mic-ON config write -> mic-OFF config write (field2026-sync
+    # from-field/2026-09-10_adc-lane-contamination-boundaries.csv, ble_messages times, ET). A session whose [start, end] overlaps a
+    # window is contaminated even if its header says OFF (the ON block can land mid-recording: SF08 14:45:13, SF09 14:48:33,
+    # SF10 14:51:32). ephys/quarantine_adc_sessions.py uses these + the header + the pulse train itself, and moves the sessions.
+    on_windows:
+      - {animal: SF07, on_from: "2026-09-10 14:43:45", off_at: "2026-09-10 20:43:57", note: "day 14:43:52-18:39:24, guard stubs 18:40 / 19:32, night piece 19:33:05-20:41:16"}
+      - {animal: SF08, on_from: "2026-09-10 14:45:13", off_at: "2026-09-10 18:43:06", note: "stub 14:42:04-15:09 (ON mid-recording), day 15:09:45-18:42:13, guard stub 18:42:48; the 18:43:16-18:45:37 stub is CLEAN (mic off written 18:43:06)"}
+      - {animal: SF08, on_from: "2026-09-10 19:35:09", off_at: "2026-09-10 21:02:37", note: "night piece 19:35:30-20:46:01"}
+      - {animal: SF09, on_from: "2026-09-10 14:48:33", off_at: "2026-09-10 20:48:05", note: "stub B 14:48:29-~15:00 (ON 4 s after Start), day 15:07:21-18:47:50, guard stubs 19:37-19:41, night piece 19:42:03-~20:47:40 (ended by RESET, no Stop)"}
+      - {animal: SF10, on_from: "2026-09-10 14:51:32", off_at: "2026-09-10 20:55:47", note: "day 14:51:22-18:49:40 (ON 10 s after Start), guard stub 19:43:55, night piece 19:44:42-20:53:23"}
+      - {animal: SF12, on_from: "2026-09-10 15:04:40", off_at: "2026-09-10 21:04:59", note: "day 15:04:57-18:51:05, night piece 19:47:10-20:42:47; the 14:54:09-~15:01 stub is CLEAN (no ON block)"}
   deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
   probe_config: ephys/configs/probes_2026c.yaml
   preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT
