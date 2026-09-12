@@ -303,8 +303,8 @@ def analyse_animal(animal: str, sessions: list[tuple[Path, dict]], fs: float, ad
             verdict = "OK-native" if (abs(fit_native["drift_ppm"]) <= 200 and ends_ok) else "inconsistent"
             if verdict == "OK-native" and fit_native["rms_ms"] > 150:
                 verdict = "OK-native (mid outliers)"
-            if verdict == "inconsistent" and accept and sdir.name in accept and abs(fit_native["drift_ppm"]) <= 200:
-                verdict = f"OK-native (accepted: {accept[sdir.name]})"      # registry pc_time_accept: the native line stands
+            if verdict == "inconsistent" and accept and s["name"] in accept and abs(fit_native["drift_ppm"]) <= 200:
+                verdict = f"OK-native (accepted: {accept[s['name']]})"      # registry pc_time_accept: the native line stands
         elif drift_chain != "":
             verdict = "OK-chained" if abs(float(drift_chain)) <= 200 + float(chain_unc) else "inconsistent"
         else:
