@@ -1,6 +1,6 @@
 # Hourly recording coverage, cohort `2026c`
 
-Generated 2026-09-11T23:07:26+00:00 by `ephys/coverage_tables.py` (git 0d19594+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
+Generated 2026-09-12T00:54:54+00:00 by `ephys/coverage_tables.py` (git b6b670b+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
 
 **5 field-flagged session(s), 2.01 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
 - SF10 `10_20260905_070012.038` 2026-09-05 07:00 (29.8 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude

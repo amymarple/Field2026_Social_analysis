@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-11T21:51:39+00:00 by `ephys/pc_time_chain.py` (git 0d19594+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-11T23:36:25+00:00 by `ephys/pc_time_chain.py` (git b6b670b+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -83,7 +83,7 @@ Generated 2026-09-11T21:51:39+00:00 by `ephys/pc_time_chain.py` (git 0d19594+dir
 | SF07 | `3_20260910_075159.050` | 0.01 |  | 12 | 12/12 | 808 | 664 |  |  |  | 0  | 1811.7 |  | +919 | -113 | one-end-only |  |
 | SF07 | `4_20260910_082304.358` | 0.01 |  | 8 | 8/8 | 1205 | 551 |  |  |  | 15 next:15 | 13.2 | 224.4 ± 19285.3 | -113 | +17 | OK-chained |  |
 | SF07 | `5_20260910_082351.495` | 6.28 |  | 40 | 15/3 | 2562 | 569 | 40 | -22.2 ± 1.1 | 55.0 | 0  | 21818.9 |  | +17 | +783 | OK-native |  |
-| SF07 | `12_20260910_204411.854` | 11.36 | yes | 39 | 14/24 | 265 | 892 | 32 | -23.6 ± 0.3 | 31.8 | 0  |  |  | +783 |  | inconsistent |  |
+| SF07 | `12_20260910_204411.854` | 11.36 | yes | 39 | 14/24 | 265 | 892 | 32 | -23.6 ± 0.3 | 31.8 | 0  |  |  | +783 |  | OK-native (accepted: RTC Resync 20:42:04/20:42:44 on the idle logger inside the 6-h gap (lane-ON piece quarantined); native fit 39 anchors, 32 ms, drift -23.6 ppm) |  |
 | SF08 | `0_20260831_070148.859` | 0.18 |  | 26852 | 26718/8 | 28 |  |  |  |  | 0  | 12.0 |  |  |  | corrupt |  |
 | SF08 | `1_20260831_071239.713` | 0.05 |  | 14 | 10/4 | 2497 | -3599 | 14 | 13273.1 ± 8362.1 | 1854.1 | 0  | 9.7 |  |  |  | inconsistent |  |
 | SF08 | `2_20260831_071541.642` | 1.25 |  | 1281724 | 92482/94544 | 133 |  |  |  |  | 0  | 6.5 |  |  |  | corrupt |  |
@@ -471,7 +471,7 @@ Generated 2026-09-11T21:51:39+00:00 by `ephys/pc_time_chain.py` (git 0d19594+dir
 | OK-native [last touch 6.6 h, tail 6.3 h extrapolated] | 1 | 12.8 |
 | OK-chained | 3 | 12.7 |
 | OK-native [last touch 10.8 h, tail 1.5 h extrapolated] | 1 | 12.3 |
-| inconsistent | 1 | 11.4 |
+| OK-native (accepted: RTC Resync 20:42:04/20:42:44 on the idle logger inside the 6-h gap (lane-ON piece quarantined); native fit 39 anchors, 32 ms, drift -23.6 ppm) | 1 | 11.4 |
 | OK-native [last touch 4.2 h, tail 6.3 h extrapolated] | 1 | 10.5 |
 | OK-native [last touch 8.5 h, tail 1.4 h extrapolated] | 1 | 9.9 |
 | OK-native [last touch 5.6 h, tail 3.5 h extrapolated] | 1 | 9.1 |

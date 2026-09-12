@@ -1,6 +1,6 @@
 # WILD offload QC — cohort `2026c`
 
-Generated 2026-09-11T23:07:25+00:00 by `ephys/offload_qc_report.py` (git 0d19594+dirty) from the session index (`ephys_spikes_session_index_2026c.csv`) and the PC-time fits under `D:\3rd_rat_spikes\analysis\pc_time`. Regenerate; do not hand-edit.
+Generated 2026-09-12T00:54:53+00:00 by `ephys/offload_qc_report.py` (git b6b670b+dirty) from the session index (`ephys_spikes_session_index_2026c.csv`) and the PC-time fits under `D:\3rd_rat_spikes\analysis\pc_time`. Regenerate; do not hand-edit.
 
 Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's Definitions section (`ticks_per_s`, `tick_removal_frac`, `regime`, `noise_uV`, bad-channel rule). Times are the logger wallclock (field-PC local time at Resync, EDT).
 
@@ -99,7 +99,7 @@ Definitions: see the docstring of `ephys/offload_qc_report.py` and the index's D
 | `3_20260910_075159.050` | FM65 | 2026-09-10 07:51:59 | 2026-09-10 07:52:52 | 0:00:54 | 0.137 | True | ok | clean | 0.67 | 0.632 | 11.18 |  | start cluster only (12 anchors, no chainable neighbour): offset known, drift assumed from the logger's other sessions | gap 34 min after previous |
 | `4_20260910_082304.358` | FM65 | 2026-09-10 08:23:04 | 2026-09-10 08:23:37 | 0:00:34 | 0.087 | True | ok | clean | 0.0 | 1.0 | 10.76 |  | OK (chained next:15): drift +224.4 ± 19285 ppm; start offset known to BLE precision | gap 30 min after previous |
 | `5_20260910_082351.495` | FM65 | 2026-09-10 08:23:51 | 2026-09-10 14:40:32 | 6:16:41 | 57.86 | True | ok | clean | 0.0 | 1.0 | 8.35 |  | OK: 40 anchors, drift -22.2 ± 1.1 ppm, residual 55 ms |  |
-| `12_20260910_204411.854` | FM65 | 2026-09-10 20:44:11 | 2026-09-11 08:06:00 | 11:21:50 | 104.73 | True | ok | ambiguous | 1.1 | 0.333 | 13.13 |  | inconsistent: drift -23.6 ppm | gap 364 min after previous |
+| `12_20260910_204411.854` | FM65 | 2026-09-10 20:44:11 | 2026-09-11 08:06:00 | 11:21:50 | 104.73 | True | ok | ambiguous | 1.1 | 0.333 | 13.13 |  | OK: 32 anchors, drift -23.6 ± 0.3 ppm, residual 32 ms | gap 364 min after previous |
 
 ### SF08 (logger 128C2F27E131) — 76 sessions, 228.6 h
 
@@ -504,12 +504,11 @@ Source: `ephys/pc_time_chain.py` (day-wrap-aware, delay word not added, adjacent
 
 | verdict | sessions | hours |
 |---|---|---|
-| OK | 137 | 1137.0 |
+| OK | 138 | 1148.4 |
 | OK (field-PC step inside, modelled) | 10 | 68.3 |
 | start cluster only (offset known, drift assumed) | 10 | 25.0 |
 | CORRUPT SYNC LANES | 5 | 16.7 |
 | OK (chained through the next session's start) | 3 | 12.7 |
-| inconsistent: drift -23.6 ppm | 1 | 11.4 |
 
 ## Problems and flags
 
@@ -582,7 +581,6 @@ Source: `ephys/pc_time_chain.py` (day-wrap-aware, delay word not added, adjacent
 - channel-local impulses: SF09 `2_20260907_085841.028` FM65 13.07 ticks/s concentrated on ch [34, 1] (flaky contact / bad channel, not the firmware defect; add to reject_channels)
 - index note: SF09 `2_20260907_085841.028`: MEASURED GLITCHY although firmware >= clean_firmware_min
 - PC-time: SF07 `6_20260901_125442.165` (4.3 h): OK (field-PC step inside, modelled): 17 anchors, drift -23.1 ± 3.1 ppm, residual 80 ms | field-PC clock stepped forward inside the session (2026-09-01 13:09:12 +2.55 s, LED log): PC span 2.2 s longer than the card, no samples missing; pc_time.dat models the step
-- PC-time: SF07 `12_20260910_204411.854` (11.4 h): inconsistent: drift -23.6 ppm
 - PC-time: SF08 `0_20260831_070148.859` (0.2 h): CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time
 - PC-time: SF08 `2_20260831_071541.642` (1.3 h): CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time
 - PC-time: SF08 `4_20260831_083120.285` (2.9 h): CORRUPT SYNC LANES (noise decoded as anchors); no field-PC time | field-PC clock stepped forward inside the session (2026-08-31 09:00:19 +2.42 s, LED log): PC span 2.3 s longer than the card, no samples missing; pc_time.dat models the step
