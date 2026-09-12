@@ -1,11 +1,12 @@
 # Hourly recording coverage, cohort `2026c`
 
-Generated 2026-09-12T00:54:54+00:00 by `ephys/coverage_tables.py` (git b6b670b+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
+Generated 2026-09-12T07:47:19+00:00 by `ephys/coverage_tables.py` (git 7081dcc+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
 
-**5 field-flagged session(s), 2.01 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
+**6 field-flagged session(s), 10.70 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
 - SF10 `10_20260905_070012.038` 2026-09-05 07:00 (29.8 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
 - SF10 `11_20260905_080522.427` 2026-09-05 08:05 (34.9 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
 - SF11 `0_20260906_124136.884` 2026-09-06 12:41 (33.8 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
+- SF12 `3_20260911_094747.706` 2026-09-11 09:47 (521.5 min): SF12 connector OPEN 09:47:47 -> ~17:50 (no neural signal: LFP x10 down on all 64 ch, theta gone, 60 Hz episodes); normal again from ~18:00 to the Stop (measured 09-11)
 - SF07 `0_20260906_123827.548` 2026-09-06 12:38 (0.6 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 - SF07 `1_20260906_123931.995` 2026-09-06 12:39 (21.4 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 
@@ -365,22 +366,22 @@ Day total 84.0 logger-hours; SF07 16.9 h, SF08 16.6 h, SF09 16.8 h, SF10 16.7 h,
 | 05 | 60* | 60* | 60* | 60* | - | 60* | 5 |
 | 06 | 60* | 60* | 60* | 60* | - | 60* | 5 |
 | 07 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 08 | 6* | 7* | 9* | 15* | - | 24* | 5 |
-| 09 | - | - | - | - | - | - | 0 |
-| 10 | - | - | - | - | - | - | 0 |
-| 11 | - | - | - | - | - | - | 0 |
-| 12 | - | - | - | - | - | - | 0 |
-| 13 | - | - | - | - | - | - | 0 |
-| 14 | - | - | - | - | - | - | 0 |
-| 15 | - | - | - | - | - | - | 0 |
-| 16 | - | - | - | - | - | - | 0 |
-| 17 | - | - | - | - | - | - | 0 |
-| 18 | - | - | - | - | - | - | 0 |
+| 08 | 6* | 8* | 9* | 15* | - | 24* | 5 |
+| 09 | 44* | 42* | 38* | 36* | - | 4* | 5 |
+| 10 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 11 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 12 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 13 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 14 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 15 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 16 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 17 | 60* | 60* | 36* | 60* | - | - | 4 |
+| 18 | 27* | 24* | - | 26* | - | - | 3 |
 | 19 | - | - | - | - | - | - | 0 |
 | 20 | - | - | - | - | - | - | 0 |
 | 21 | - | - | - | - | - | - | 0 |
 | 22 | - | - | - | - | - | - | 0 |
 | 23 | - | - | - | - | - | - | 0 |
 
-Day total 41.0 logger-hours; SF07 8.1 h, SF08 8.1 h, SF09 8.1 h, SF10 8.2 h, SF11 0.0 h, SF12 8.4 h.
+Day total 76.6 logger-hours; SF07 17.3 h, SF08 17.2 h, SF09 16.4 h, SF10 17.3 h, SF11 0.0 h, SF12 8.5 h.
 
