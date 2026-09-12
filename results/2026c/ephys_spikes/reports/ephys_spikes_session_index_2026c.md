@@ -1,6 +1,6 @@
 # WILD neurologger session index — cohort `2026c`
 
-Generated 2026-09-12T06:11:46+00:00 by `ephys/build_session_index.py` (git 7081dcc+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
+Generated 2026-09-12T22:24:46+00:00 by `ephys/build_session_index.py` (git 378bdd3+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
 
 ## Firmware provenance (the rule that decides what may be analysed)
 
@@ -54,11 +54,11 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 | SF10 | CACB6D600151 | 82 | 235.82 | FM62, FM64, FM65 | 512.7 |
 | SF11 | 1DFE7F77721C | 65 | 140.95 | FM62, FM64, FM65 | 512.1 |
 | SF12 | FBED2F2321B1 | 78 | 238.79 | FM62, FM64, FM65 | 512.1 |
-| SF7 | D0DBEFEF3111 | 83 | 236.10 | FM64, FM65 | 512.1 |
-| SF8 | 128C2F27E131 | 80 | 237.65 | FM62, FM64, FM65 | 512.1 |
-| SF9 | 68BDFFFF62DB | 81 | 238.33 | FM62, FM64, FM65 | 512.1 |
+| SF7 | D0DBEFEF3111 | 86 | 251.28 | FM64, FM65 | 512.1 |
+| SF8 | 128C2F27E131 | 83 | 252.84 | FM62, FM64, FM65 | 512.1 |
+| SF9 | 68BDFFFF62DB | 84 | 253.48 | FM62, FM64, FM65 | 512.1 |
 
-**469 sessions indexed: 69 require de-glitching (firmware < FM65), 400 flagged clean by firmware.**
+**478 sessions indexed: 69 require de-glitching (firmware < FM65), 409 flagged clean by firmware.**
 
 ## Sessions
 
@@ -372,6 +372,9 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 | SF7 | `0_20260911_083048.666` | 2026-09-11 08:30:48.666 | 2026-09-11 08:30:53 | 0:00:05 | 0.012 | FM65 | no | glitchy | normal | 17.36 | 0.0 | 1920.0 | 16.21 |  | MEASURED GLITCHY although firmware >= clean_firmware_min |
 | SF7 | `1_20260911_091521.524` | 2026-09-11 09:15:21.524 | 2026-09-11 09:16:02 | 0:00:41 | 0.106 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 631.0 | 13.42 |  |  |
 | SF7 | `2_20260911_091615.116` | 2026-09-11 09:16:15.116 | 2026-09-11 18:27:25 | 9:11:11 | 84.661 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 1108.0 | 8.76 |  |  |
+| SF7 | `12_20260911_183849.226` | 2026-09-11 18:38:49.226 | 2026-09-11 18:38:56 | 0:00:08 | 0.02 | FM65 | no | clean | normal | 0.0 | 1.0 | 546.0 | 9.2 |  |  |
+| SF7 | `13_20260911_191407.256` | 2026-09-11 19:14:07.256 | 2026-09-11 19:14:39 | 0:00:33 | 0.084 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 683.0 | 11.91 |  |  |
+| SF7 | `14_20260911_191449.075` | 2026-09-11 19:14:49.075 | 2026-09-12 10:24:47 | 15:09:59 | 139.772 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.77 | 0.0 | 1497.0 | 8.17 |  |  |
 | SF8 | `0_20260831_070148.859` | 2026-08-31 07:01:48.859 | 2026-08-31 07:12:27 | 0:10:39 | 1.635 | FM62 | YES | glitchy+broadband | broadband,wide-impulse,wide-impulse,wide-impulse,normal | 34988.23 | 0.183 | 5178.0 | 12.9 |  | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF8 | `1_20260831_071239.713` | 2026-08-31 07:12:39.713 | 2026-08-31 07:15:31 | 0:02:52 | 0.441 | FM62 | YES | glitchy | normal,normal,normal,normal,normal | 2012.73 | 1.0 | 1395.0 | 8.49 | 32 |  |
 | SF8 | `2_20260831_071541.642` | 2026-08-31 07:15:41.642 | 2026-08-31 08:30:55 | 1:15:14 | 11.556 | FM62 | YES | glitchy+broadband | wide-impulse,broadband,broadband,broadband,broadband | 15120.33 | 0.399 | 3685.0 | 14.32 | 32 52 53 61 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
@@ -452,6 +455,9 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 | SF8 | `1_20260911_091754.818` | 2026-09-11 09:17:54.818 | 2026-09-11 09:18:25 | 0:00:31 | 0.079 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 787.0 | 8.35 | 32 |  |
 | SF8 | `2_20260911_091844.146` | 2026-09-11 09:18:44.146 | 2026-09-11 09:19:21 | 0:00:38 | 0.096 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.07 | 1.0 | 1478.0 | 8.3 | 32 |  |
 | SF8 | `3_20260911_091931.245` | 2026-09-11 09:19:31.245 | 2026-09-11 18:23:51 | 9:04:20 | 83.61 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.27 | 1.0 | 1285.0 | 9.19 | 32 |  |
+| SF8 | `3_20260911_184457.602` | 2026-09-11 18:44:57.602 | 2026-09-11 18:45:47 | 0:00:50 | 0.129 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.37 | 1.0 | 573.0 | 9.55 | 32 |  |
+| SF8 | `4_20260911_191633.935` | 2026-09-11 19:16:33.935 | 2026-09-11 19:17:06 | 0:00:33 | 0.083 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.2 | 1.0 | 859.0 | 9.08 | 32 |  |
+| SF8 | `5_20260911_191715.923` | 2026-09-11 19:17:15.923 | 2026-09-12 10:27:14 | 15:09:59 | 139.772 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.1 | 0.969 | 1596.0 | 7.53 | 32 |  |
 | SF9 | `0_20260831_070319.133` | 2026-08-31 07:03:19.133 | 2026-08-31 07:13:46 | 0:10:28 | 1.606 | FM62 | YES | glitchy+broadband | wide-impulse,broadband,wide-impulse,wide-impulse,wide-impulse | 14983.0 | 0.22 | 2757.0 | 12.85 | 2 4 32 54 56 58 62 | BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
 | SF9 | `1_20260831_071357.350` | 2026-08-31 07:13:57.350 | 2026-08-31 11:29:22 | 4:15:25 | 39.232 | FM62 | YES | glitchy+wide-impulse | normal,wide-impulse,normal,wide-impulse,wide-impulse | 10061.67 | 0.237 | 1310.0 | 13.48 | 2 4 32 36 54 56 58 62 | WIDE (>=3-sample) impulses dominate: not the FM62/64 single-sample defect; de-glitch will NOT clean this; QC before use |
 | SF9 | `0_20260831_190404.508` | 2026-08-31 19:04:04.508 | 2026-08-31 19:05:10 | 0:01:06 | 0.169 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 314.97 | 0.958 | 1364.0 | 8.26 | 2 4 32 36 52 54 56 58 60 62 |  |
@@ -533,6 +539,9 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 | SF9 | `0_20260911_084254.170` | 2026-09-11 08:42:54.170 | 2026-09-11 08:43:02 | 0:00:08 | 0.021 | FM65 | no | clean | normal | 0.0 | 1.0 | 665.0 | 12.72 | 2 4 32 36 52 54 56 58 60 62 |  |
 | SF9 | `1_20260911_092140.430` | 2026-09-11 09:21:40.430 | 2026-09-11 09:22:13 | 0:00:33 | 0.086 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.07 | 1.0 | 908.0 | 10.16 | 2 4 32 36 52 54 56 58 60 62 |  |
 | SF9 | `2_20260911_092224.167` | 2026-09-11 09:22:24.167 | 2026-09-11 17:35:59 | 8:13:36 | 75.816 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 1.0 | 1.0 | 1153.0 | 9.56 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `15_20260911_185030.223` | 2026-09-11 18:50:30.223 | 2026-09-11 18:50:33 | 0:00:03 | 0.008 | FM65 | no | clean | normal | 0.34 | 1.0 | 667.0 | 15.05 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `16_20260911_191902.632` | 2026-09-11 19:19:02.632 | 2026-09-11 19:19:35 | 0:00:33 | 0.084 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.03 | 1.0 | 657.0 | 11.77 | 2 4 32 36 52 54 56 58 60 62 |  |
+| SF9 | `17_20260911_191947.524` | 2026-09-11 19:19:47.524 | 2026-09-12 10:28:01 | 15:08:14 | 139.505 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.47 | 0.714 | 1292.0 | 9.49 | 2 4 32 36 52 54 56 58 60 62 |  |
 
 ## How to use
 

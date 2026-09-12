@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-12T06:27:32+00:00 by `ephys/pc_time_chain.py` (git 7081dcc+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-12T23:41:29+00:00 by `ephys/pc_time_chain.py` (git 4d4479e+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -86,7 +86,10 @@ Generated 2026-09-12T06:27:32+00:00 by `ephys/pc_time_chain.py` (git 7081dcc+dir
 | SF07 | `12_20260910_204411.854` | 11.36 | yes | 39 | 14/24 | 265 | 892 | 32 | -23.6 ± 0.3 | 31.8 | 0  | 1486.8 |  | +783 | -1368 | OK-native (accepted: RTC Resync 20:42:04/20:42:44 on the idle logger inside the 6-h gap (lane-ON piece quarantined); native fit 39 anchors, 32 ms, drift -23.6 ppm) |  |
 | SF07 | `0_20260911_083048.666` | 0.00 |  | 3 | 3/3 | 82 | -1304 |  |  |  | 0  | 2668.0 |  | -1368 | +2014 | one-end-only |  |
 | SF07 | `1_20260911_091521.524` | 0.01 |  | 10 | 10/10 | 94 | 710 |  |  |  | 15 next:15 | 12.3 | -171.3 ± 18533.5 | +2014 | -14 | OK-chained |  |
-| SF07 | `2_20260911_091615.116` | 9.19 |  | 49 | 15/14 | 1419 | 696 | 48 | -21.8 ± 0.6 | 60.3 | 0  |  |  | -14 |  | OK-native |  |
+| SF07 | `2_20260911_091615.116` | 9.19 |  | 49 | 15/14 | 1419 | 696 | 48 | -21.8 ± 0.6 | 60.3 | 0  | 683.3 |  | -14 | +634 | OK-native |  |
+| SF07 | `12_20260911_183849.226` | 0.00 |  | 3 | 3/3 | 66 | 645 |  |  |  | 0  | 2110.4 |  | +634 | +503 | one-end-only |  |
+| SF07 | `13_20260911_191407.256` | 0.01 |  | 8 | 8/8 | 1312 | 1147 |  |  |  | 15 next:15 | 9.1 | -59.1 ± 21138.0 | +503 | -4 | OK-chained |  |
+| SF07 | `14_20260911_191449.075` | 15.17 | yes | 30 | 15/15 | 1736 | 1144 | 29 | -24.4 ± 0.7 | 82.8 | 0  |  |  | -4 |  | OK-native [last touch 13.6 h, tail 1.5 h extrapolated] |  |
 | SF08 | `0_20260831_070148.859` | 0.18 |  | 26852 | 26718/8 | 28 |  |  |  |  | 0  | 12.0 |  |  |  | corrupt |  |
 | SF08 | `1_20260831_071239.713` | 0.05 |  | 14 | 10/4 | 2497 | -3599 | 14 | 13273.1 ± 8362.1 | 1854.1 | 0  | 9.7 |  |  |  | inconsistent |  |
 | SF08 | `2_20260831_071541.642` | 1.25 |  | 1281724 | 92482/94544 | 133 |  |  |  |  | 0  | 6.5 |  |  |  | corrupt |  |
@@ -166,7 +169,10 @@ Generated 2026-09-12T06:27:32+00:00 by `ephys/pc_time_chain.py` (git 7081dcc+dir
 | SF08 | `0_20260911_083845.527` | 0.00 |  | 3 | 3/3 | 29 | -2008 |  |  |  | 0  | 2346.1 |  | -2066 |  | one-end-only |  |
 | SF08 | `1_20260911_091754.818` | 0.01 |  | 0 | 0/0 |  |  |  |  |  | 0  | 18.5 |  |  |  | no-anchors |  |
 | SF08 | `2_20260911_091844.146` | 0.01 |  | 8 | 8/8 | 318 | 284 |  |  |  | 21 next:21 | 9.5 | -30.1 ± 16686.9 |  | -3 | OK-chained |  |
-| SF08 | `3_20260911_091931.245` | 9.07 |  | 54 | 21/15 | 1177 | 282 | 53 | -18.6 ± 0.1 | 14.1 | 0  |  |  | -3 |  | OK-native |  |
+| SF08 | `3_20260911_091931.245` | 9.07 |  | 54 | 21/15 | 1177 | 282 | 53 | -18.6 ± 0.1 | 14.1 | 0  | 1266.1 |  | -3 | +1007 | OK-native |  |
+| SF08 | `3_20260911_184457.602` | 0.01 |  | 11 | 11/11 | 365 | 695 |  |  |  | 0  | 1846.1 |  | +1007 | -308 | one-end-only |  |
+| SF08 | `4_20260911_191633.935` | 0.01 |  | 7 | 7/7 | 1262 | 388 |  |  |  | 14 next:14 | 9.4 | -2.6 ± 21393.4 | -308 | -0 | OK-chained |  |
+| SF08 | `5_20260911_191715.923` | 15.17 | yes | 28 | 14/14 | 0 | 387 | 28 | -21.7 ± 0.1 | 15.2 | 0  |  |  | -0 |  | OK-native [last touch 13.6 h, tail 1.6 h extrapolated] |  |
 | SF09 | `0_20260831_070319.133` | 0.17 |  | 69565 | 28/34901 | 65 |  |  |  |  | 0  | 10.7 |  |  |  | corrupt |  |
 | SF09 | `1_20260831_071357.350` | 4.26 |  | 137457 | 11/70 | 1830 |  |  |  |  | 0  | 27282.3 |  |  |  | corrupt |  |
 | SF09 | `0_20260831_190404.508` | 0.02 |  | 15 | 15/15 | 343 | 834 |  |  |  | 9 next:9 | 12.1 | -8.1 ± 15943.8 |  | -1 | OK-chained |  |
@@ -247,7 +253,10 @@ Generated 2026-09-12T06:27:32+00:00 by `ephys/pc_time_chain.py` (git 7081dcc+dir
 | SF09 | `15_20260910_204912.017` | 11.33 | yes | 25 | 8/15 | 368 | 356 | 23 | -26.2 ± 0.4 | 37.6 | 0  | 2042.3 |  | +854 | +1472 | OK-native |  |
 | SF09 | `0_20260911_084254.170` | 0.00 |  | 3 | 3/3 | 389 | 776 |  |  |  | 0  | 2318.2 |  | +1472 | +127 | one-end-only |  |
 | SF09 | `1_20260911_092140.430` | 0.01 |  | 8 | 8/8 | 63 | 903 |  |  |  | 14 next:14 | 10.3 | -66.9 ± 20546.5 | +127 | -3 | OK-chained |  |
-| SF09 | `2_20260911_092224.167` | 8.23 |  | 29 | 14/15 | 0 | 900 | 29 | -25.6 ± 0.2 | 11.9 | 0  |  |  | -3 |  | OK-native [last touch 7.5 h, tail 0.7 h extrapolated] |  |
+| SF09 | `2_20260911_092224.167` | 8.23 |  | 29 | 14/15 | 0 | 900 | 29 | -25.6 ± 0.2 | 11.9 | 0  | 4470.5 |  | -3 |  | OK-native [last touch 7.5 h, tail 0.7 h extrapolated] |  |
+| SF09 | `15_20260911_185030.223` | 0.00 |  | 2 | 2/2 | 630 | 958 |  |  |  | 0  | 1709.5 |  |  | -720 | one-end-only |  |
+| SF09 | `16_20260911_191902.632` | 0.01 |  | 8 | 8/8 | 1446 | 238 |  |  |  | 15 next:15 | 12.1 | 4.3 ± 20762.7 | -720 | +0 | OK-chained |  |
+| SF09 | `17_20260911_191947.524` | 15.14 | yes | 31 | 15/16 | 1389 | 239 | 30 | -27.5 ± 0.1 | 9.5 | 0  |  |  | +0 |  | OK-native [last touch 13.6 h, tail 1.5 h extrapolated] |  |
 | SF10 | `0_20260831_070700.822` | 0.17 |  | 0 | 0/0 |  |  |  |  |  | 0  | 149.3 |  |  |  | no-anchors |  |
 | SF10 | `1_20260831_071948.008` | 4.11 |  | 123390 | 13/2 | 2240 |  |  |  |  | 0  | 27796.0 |  |  |  | corrupt |  |
 | SF10 | `0_20260831_190956.580` | 0.01 |  | 8 | 8/8 | 27 | 293 |  |  |  | 10 next:10 | 13.2 | -60.8 ± 23258.5 |  | -4 | OK-chained |  |
@@ -329,7 +338,9 @@ Generated 2026-09-12T06:27:32+00:00 by `ephys/pc_time_chain.py` (git 7081dcc+dir
 | SF10 | `9_20260910_205611.775` | 11.31 | yes | 27 | 13/14 | 866 | 693 | 26 | -24.1 ± 0.1 | 10.9 | 0  | 2288.7 |  | +688 |  | OK-native |  |
 | SF10 | `0_20260911_085259.942` | 0.00 |  | 1618 | 1618/1618 | 114 |  |  |  |  | 0  | 1851.6 |  |  |  | corrupt |  |
 | SF10 | `1_20260911_092358.028` | 0.01 |  | 8 | 8/8 | 63 | 663 |  |  |  | 16 next:16 | 7.8 | -16.0 ± 20541.4 |  | -1 | OK-chained |  |
-| SF10 | `2_20260911_092441.104` | 9.02 |  | 45 | 16/15 | 1346 | 662 | 44 | -22.7 ± 0.1 | 12.0 | 0  |  |  | -1 |  | OK-native |  |
+| SF10 | `2_20260911_092441.104` | 9.02 |  | 45 | 16/15 | 1346 | 662 | 44 | -22.7 ± 0.1 | 12.0 | 0  | 1945.1 |  | -1 | +307 | OK-native |  |
+| SF10 | `9_20260911_185815.751` | 0.00 |  | 3 | 3/3 | 552 | 236 |  |  |  | 0  | 1376.7 |  | +307 | +443 | one-end-only |  |
+| SF10 | `10_20260911_192122.000` | 0.01 |  | 9 | 9/9 | 1072 | 679 |  |  |  | 0  |  |  | +443 |  | one-end-only |  |
 | SF11 | `0_20260831_072408.414` | 0.56 |  | 390640 | 8/11302 | 1046 |  |  |  |  | 0  | 40516.1 |  |  |  | corrupt |  |
 | SF11 | `0_20260831_191252.932` | 0.01 |  | 8 | 8/8 | 163 | 690 |  |  |  | 12 next:12 | 10.0 | -51.7 ± 20520.8 |  | -5 | OK-chained |  |
 | SF11 | `1_20260831_191341.611` | 5.25 | yes | 630 | 12/2 | 163 | 685 | 568 | -23.8 ± 0.7 | 31.5 | 0  | 15.2 |  | -5 | +18 | OK-native |  |
@@ -472,7 +483,9 @@ Generated 2026-09-12T06:27:32+00:00 by `ephys/pc_time_chain.py` (git 7081dcc+dir
 | SF12 | `0_20260911_093859.455` | 0.02 |  | 16 | 16/16 | 2120 | 1031 |  |  |  | 8 next:8 | 287.8 | -2561.4 ± 3987.0 | +901 | -964 | OK-chained |  |
 | SF12 | `1_20260911_094501.436` | 0.01 |  | 8 | 8/8 | 33 | 68 |  |  |  | 22 next:22 | 19.9 | -57.0 ± 15107.7 | -964 | -7 | OK-chained |  |
 | SF12 | `2_20260911_094554.396` | 0.03 |  | 22 | 22/22 | 0 | 61 |  |  |  | 14 next:14 | 12.4 | 15.3 ± 10614.1 | -7 | +2 | OK-chained |  |
-| SF12 | `3_20260911_094747.706` | 8.69 |  | 49 | 14/20 | 2519 | 63 | 49 | -18.9 ± 0.1 | 12.1 | 0  |  |  | +2 |  | OK-native |  |
+| SF12 | `3_20260911_094747.706` | 8.69 |  | 49 | 14/20 | 2519 | 63 | 49 | -18.9 ± 0.1 | 12.1 | 0  | 2114.4 |  | +2 | +1088 | OK-native |  |
+| SF12 | `15_20260911_190431.837` | 0.00 |  | 3 | 3/3 | 1263 | 558 |  |  |  | 0  | 1142.3 |  | +1088 | -371 | one-end-only |  |
+| SF12 | `16_20260911_192342.556` | 0.01 |  | 8 | 8/8 | 29 | 187 |  |  |  | 0  |  |  | -371 |  | one-end-only |  |
 
 ## Sessions >= 1 h by verdict
 
@@ -480,8 +493,10 @@ Generated 2026-09-12T06:27:32+00:00 by `ephys/pc_time_chain.py` (git 7081dcc+dir
 |---|---|---|
 | OK-native | 131 | 1067.1 |
 | OK-native (PC step modelled) | 8 | 55.3 |
+| OK-native [last touch 13.6 h, tail 1.5 h extrapolated] | 2 | 30.3 |
 | one-end-only | 10 | 25.0 |
 | corrupt | 5 | 16.7 |
+| OK-native [last touch 13.6 h, tail 1.6 h extrapolated] | 1 | 15.2 |
 | OK-native [last touch 13.4 h, tail 0.4 h extrapolated] | 1 | 13.8 |
 | OK-native [last touch 6.1 h, tail 7.2 h extrapolated] | 1 | 13.4 |
 | OK-native [last touch 6.2 h, tail 7.1 h extrapolated] | 1 | 13.3 |
