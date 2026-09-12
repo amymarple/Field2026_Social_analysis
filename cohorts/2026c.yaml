@@ -10,7 +10,7 @@ description: >
 
 date_range:
   start: "2026-08-30"
-  end: null            # open — cohort running; extend when it closes
+  end: "2026-09-12"    # paddock phase ended 2026-09-12 10:10 ET (animals out; recorders stopped 11:14-11:19); the last cohort of the summer
 timezone_wallclock: "America/New_York"   # logger RTC is set from the field-PC local clock at Resync (EDT)
 
 identities: wiser/configs/rat_identities.csv   # WISER shortid -> animal (cohort-3 tags: see notes)
@@ -32,6 +32,13 @@ field_events:
   # tags) and five females with no logger. Every behaviour / sleep / social / ephys-state metric changes regime here; pile counts
   # can exceed five; the implanted animals' 09-11/12 night session (Starts 19:14-19:24) is the first with the females present.
   - {start: "2026-09-11 19:40", end: null, kind: population, note: "five non-implanted females released (population 5 -> 10); female WISER tags / colour marks not yet stated by the operator; the operator's own question is whether mating happens in the large paddock"}
+  # END OF THE FIELD EXPERIMENT: animals (five implanted + five females) out of the paddock 2026-09-12 10:10; every recorder stopped
+  # 11:14:30 (video/thermal) and 11:19:24 (mics); WISER closed by the operator afterwards. Paddock data END at 10:10 - the 10:10 ->
+  # 11:14/11:19 tail is an empty arena. Neurologger: the paddock sessions started 09-11 19:14-19:24 are the LAST field sessions
+  # (auto-stops SF12 09:53:39, SF10 09:54:07 confirmed by the console ad feed; SF07/SF09/SF08 ended ~10:19-10:28, console feed died
+  # 10:20:53 - the card length is the record). From ~11:00 a HOME-CAGE sleep session per logger, started from another laptop: no
+  # field-PC time (anchors from that laptop's clock, if any), not paddock data - to be field-flagged pc_time: false at offload.
+  - {start: "2026-09-12 10:10", end: "2026-09-12 11:19", kind: end, note: "field experiment ended 10:10 (animals out); empty-paddock tail until the recorders stopped 11:14 (video/thermal) / 11:19 (mics)"}
 
 # ---------------------------------------------------------------------------------------------------------
 # Ephys (WILD neurologger) — read by ephys/*.py
