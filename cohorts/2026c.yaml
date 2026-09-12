@@ -27,6 +27,11 @@ field_events:
   # footage by a keyframe saturation scan (incident log 09-09 22:42 / 22:55; rig repo EXPERIMENT_ir_identity_color_sampling.md).
   - {start: "2026-09-09 19:10:26", end: "2026-09-09 19:10:39", kind: light, note: "CH07 colour light ON 13.5 s (colour-switch behaviour test)"}
   - {start: "2026-09-10 00:00", end: "2026-09-12 23:59", kind: light, note: "in-box colour sampling days (CH07/CH08): colour ON at placements (~2.5 min per round) + six 8-s flashes per day; exact instants from the footage / COLOUR_SAMPLING_LOG_cohort3.md in the rig repo"}
+  # POPULATION boundary: five non-implanted females released into the paddock 2026-09-11 19:40 (operator; incident log 19:40,
+  # from-field/2026-09-11_five-females-released.md). From then the paddock holds ten animals: SF07/08/09/10/12 (loggers + WISER
+  # tags) and five females with no logger. Every behaviour / sleep / social / ephys-state metric changes regime here; pile counts
+  # can exceed five; the implanted animals' 09-11/12 night session (Starts 19:14-19:24) is the first with the females present.
+  - {start: "2026-09-11 19:40", end: null, kind: population, note: "five non-implanted females released (population 5 -> 10); female WISER tags / colour marks not yet stated by the operator; the operator's own question is whether mating happens in the large paddock"}
 
 # ---------------------------------------------------------------------------------------------------------
 # Ephys (WILD neurologger) — read by ephys/*.py
