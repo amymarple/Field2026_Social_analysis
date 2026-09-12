@@ -501,6 +501,19 @@ def write_pc_time_files(rows: list[dict], per_animal: dict, out_root: Path, fs_d
             _, inside = step_correction_ms(meta["start"], np.asarray([0.0, ns / fs]), [dict(s) for s in (pc_steps or [])])
             out = out_root / animal / sdir.name
             out.mkdir(parents=True, exist_ok=True)
+            # skip the rewrite when the existing file already encodes this exact fit (same sample count, offset, drift and steps):
+            # the full tree is ~300 GB and was rewritten on every run, which filled the derived-data drive on 2026-09-12
+            prev = out / "pc_time_fit.json"
+            if prev.exists() and (out / "pc_time.dat").exists() and os.path.getsize(out / "pc_time.dat") == 4 * ns:
+                try:
+                    pj = json.loads(prev.read_text(encoding="utf-8"))
+                    if (int(pj.get("n_samples", -1)) == int(ns) and abs(float(pj.get("offset_ms", 1e9)) - off) < 1e-6
+                            and abs(float(pj.get("drift_ppm", 1e9)) - drift) < 1e-9 and float(pj.get("fs", 0)) == fs
+                            and pj.get("field_pc_clock_steps_inside", []) == inside and pj.get("verdict") == r["verdict"]):
+                        n += 1
+                        continue
+                except (ValueError, TypeError):
+                    pass
             with open(out / "pc_time.dat", "wb") as f:
                 step = 5_000_000
                 for a0 in range(0, ns, step):
