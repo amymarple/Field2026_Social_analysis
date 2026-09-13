@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-12T23:41:29+00:00 by `ephys/pc_time_chain.py` (git 4d4479e+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -340,7 +340,8 @@ Generated 2026-09-12T23:41:29+00:00 by `ephys/pc_time_chain.py` (git 4d4479e+dir
 | SF10 | `1_20260911_092358.028` | 0.01 |  | 8 | 8/8 | 63 | 663 |  |  |  | 16 next:16 | 7.8 | -16.0 ± 20541.4 |  | -1 | OK-chained |  |
 | SF10 | `2_20260911_092441.104` | 9.02 |  | 45 | 16/15 | 1346 | 662 | 44 | -22.7 ± 0.1 | 12.0 | 0  | 1945.1 |  | -1 | +307 | OK-native |  |
 | SF10 | `9_20260911_185815.751` | 0.00 |  | 3 | 3/3 | 552 | 236 |  |  |  | 0  | 1376.7 |  | +307 | +443 | one-end-only |  |
-| SF10 | `10_20260911_192122.000` | 0.01 |  | 9 | 9/9 | 1072 | 679 |  |  |  | 0  |  |  | +443 |  | one-end-only |  |
+| SF10 | `10_20260911_192122.000` | 0.01 |  | 9 | 9/9 | 1072 | 679 |  |  |  | 15 next:15 | 11.0 | 3.8 ± 20546.5 | +443 | +0 | OK-chained |  |
+| SF10 | `11_20260911_192207.153` | 14.55 | yes | 30 | 15/15 | 1140 | 679 | 29 | -24.5 ± 0.1 | 9.8 | 0  |  |  | +0 |  | OK-native [last touch 13.5 h, tail 1.0 h extrapolated] |  |
 | SF11 | `0_20260831_072408.414` | 0.56 |  | 390640 | 8/11302 | 1046 |  |  |  |  | 0  | 40516.1 |  |  |  | corrupt |  |
 | SF11 | `0_20260831_191252.932` | 0.01 |  | 8 | 8/8 | 163 | 690 |  |  |  | 12 next:12 | 10.0 | -51.7 ± 20520.8 |  | -5 | OK-chained |  |
 | SF11 | `1_20260831_191341.611` | 5.25 | yes | 630 | 12/2 | 163 | 685 | 568 | -23.8 ± 0.7 | 31.5 | 0  | 15.2 |  | -5 | +18 | OK-native |  |
@@ -485,7 +486,8 @@ Generated 2026-09-12T23:41:29+00:00 by `ephys/pc_time_chain.py` (git 4d4479e+dir
 | SF12 | `2_20260911_094554.396` | 0.03 |  | 22 | 22/22 | 0 | 61 |  |  |  | 14 next:14 | 12.4 | 15.3 ± 10614.1 | -7 | +2 | OK-chained |  |
 | SF12 | `3_20260911_094747.706` | 8.69 |  | 49 | 14/20 | 2519 | 63 | 49 | -18.9 ± 0.1 | 12.1 | 0  | 2114.4 |  | +2 | +1088 | OK-native |  |
 | SF12 | `15_20260911_190431.837` | 0.00 |  | 3 | 3/3 | 1263 | 558 |  |  |  | 0  | 1142.3 |  | +1088 | -371 | one-end-only |  |
-| SF12 | `16_20260911_192342.556` | 0.01 |  | 8 | 8/8 | 29 | 187 |  |  |  | 0  |  |  | -371 |  | one-end-only |  |
+| SF12 | `16_20260911_192342.556` | 0.01 |  | 8 | 8/8 | 29 | 187 |  |  |  | 14 next:14 | 11.6 | -60.3 ± 20332.3 | -371 | -4 | OK-chained |  |
+| SF12 | `17_20260911_192428.023` | 14.51 | yes | 39 | 14/25 | 0 | 183 | 39 | -22.0 ± 0.1 | 10.7 | 0  |  |  | -4 |  | OK-native [last touch 13.6 h, tail 1.0 h extrapolated] |  |
 
 ## Sessions >= 1 h by verdict
 
@@ -497,6 +499,8 @@ Generated 2026-09-12T23:41:29+00:00 by `ephys/pc_time_chain.py` (git 4d4479e+dir
 | one-end-only | 10 | 25.0 |
 | corrupt | 5 | 16.7 |
 | OK-native [last touch 13.6 h, tail 1.6 h extrapolated] | 1 | 15.2 |
+| OK-native [last touch 13.5 h, tail 1.0 h extrapolated] | 1 | 14.6 |
+| OK-native [last touch 13.6 h, tail 1.0 h extrapolated] | 1 | 14.5 |
 | OK-native [last touch 13.4 h, tail 0.4 h extrapolated] | 1 | 13.8 |
 | OK-native [last touch 6.1 h, tail 7.2 h extrapolated] | 1 | 13.4 |
 | OK-native [last touch 6.2 h, tail 7.1 h extrapolated] | 1 | 13.3 |
