@@ -5,6 +5,7 @@ verification.
 
 | Date | Change | Scope |
 |---|---|---|
+| 2026-09-12 | [Storage health baseline for the raw-data drive E:](2026-09-12-storage-health-baseline.md) | SMART + OS-side condition of the WD Red Pro 20 TB that holds the only copy of the cohort-3 raw data (all failure counters zero, 1,400 h, 32 °C), the spin-down / USB-suspend settings changed the same day, and how to re-check it against this baseline. |
 | 2026-09-10 | [ADC lane: contamination measured, sessions quarantined](2026-09-10-adc-lane-quarantine.md) | The WILD "microphone" ADC lane (160 kHz) injects a 312.5 Hz full-scale pulse train into all 64 amplifier channels and records no temperature; lane-ON sessions are moved to `_quarantine_adc_lane_on/` by `ephys/quarantine_adc_sessions.py` (header + registered windows + pulse test); maker report pushed. |
 | 2026-09-10 | [Derived-data root moved from E: to D:](2026-09-10-analysis-root-moved-to-D.md) | `ephys.analysis_root` (index, pc_time, stage, sort, tools; 2857 files / 1.33 TB) moved to `D:/3rd_rat_spikes/analysis` so the raw offloads fit on E: to the end of cohort 3; verified copy, E: copy deleted. |
 | 2026-09-02 | [Ephys spike-sorting pipeline (WILD, cohort 3)](2026-09-02-ephys-spike-sorting-pipeline.md) | New `ephys/` + cohort `2026c`: firmware-aware session index (39 sessions, all measured glitchy; FM62/64), exact port of the field de-glitch (SF10 validation reproduced), staged clean copies, PreprocessPipeline+Kilosort4 driver with two pipeline bug workarounds; probe map UNVERIFIED (ARI≈0); FM62 daytime wide-impulse regime flagged. |
