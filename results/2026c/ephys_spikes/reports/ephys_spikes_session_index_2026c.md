@@ -1,6 +1,6 @@
 # WILD neurologger session index — cohort `2026c`
 
-Generated 2026-09-13T05:21:38+00:00 by `ephys/build_session_index.py` (git 8cc4025+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
+Generated 2026-09-13T07:08:37+00:00 by `ephys/build_session_index.py` (git 19edbbf+dirty) from `E:\3rd_rat_spikes`. Machine-readable twin: `ephys_spikes_session_index_2026c.csv`. Regenerate; do not hand-edit.
 
 ## Firmware provenance (the rule that decides what may be analysed)
 
@@ -46,6 +46,7 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 ## Sessions with a validity boundary (neural signal ended before the Stop)
 
 - SF11 `13_20260906_195234.827` (12:20:07): valid until 2026-09-07 06:10:00; recording continues 2.04 h past valid_until 2026-09-07 06:10:00 (cohorts/<key>.yaml ephys.valid_until): probe windows and coverage limited to the valid part
+- SF12 `17_20260911_192428.023` (14:30:37): valid until 2026-09-11 23:30:00; recording continues 10.42 h past valid_until 2026-09-11 23:30:00 (cohorts/<key>.yaml ephys.valid_until): probe windows and coverage limited to the valid part
 
 ## Per-animal summary
 
@@ -294,7 +295,7 @@ Session folders under a MAC folder that is NOT the animal's registered logger (a
 | SF12 | `3_20260911_094747.706` | 2026-09-11 09:47:47.706 | 2026-09-11 18:29:17 | 8:41:30 | 80.102 | FM65 | no | clean | normal,normal,normal,normal,normal | 0.0 | 1.0 | 327.0 | 7.06 |  |  |
 | SF12 | `15_20260911_190431.837` | 2026-09-11 19:04:31.837 | 2026-09-11 19:04:40 | 0:00:08 | 0.022 | FM65 | no | clean | normal | 0.0 | 1.0 | 1150.0 | 6.98 | 48 60 63 |  |
 | SF12 | `16_20260911_192342.556` | 2026-09-11 19:23:42.556 | 2026-09-11 19:24:16 | 0:00:34 | 0.087 | FM65 | no | glitchy | normal,normal,normal,normal,normal | 1640.33 | 0.957 | 262.0 | 8.23 | 60 | MEASURED GLITCHY although firmware >= clean_firmware_min |
-| SF12 | `17_20260911_192428.023` | 2026-09-11 19:24:28.023 | 2026-09-12 09:55:04 | 14:30:37 | 133.726 | FM65 | no | glitchy+broadband | normal,normal,broadband,broadband,normal | 169.43 | 0.017 | 5100.0 | 9.0 | 63 | MEASURED GLITCHY although firmware >= clean_firmware_min; BROADBAND noise blow-up (raw std > 2500 ADC): hardware/handling regime; QC before use |
+| SF12 | `17_20260911_192428.023` | 2026-09-11 19:24:28.023 | 2026-09-12 09:55:04 | 14:30:37 | 133.726 | FM65 | no | ambiguous | normal,normal,normal,normal,normal | 3.4 | -1.0 | 1876.0 | 8.73 |  | recording continues 10.42 h past valid_until 2026-09-11 23:30:00 (cohorts/<key>.yaml ephys.valid_until): probe windows and coverage limited to the valid part |
 | SF7 | `0_20260831_185816.804` | 2026-08-31 18:58:16.804 | 2026-08-31 18:58:50 | 0:00:34 | 0.087 | FM64 | YES | clean | normal,normal,normal,normal,normal | 0.5 | 1.0 | 619.0 | 11.99 |  | measured clean on the probe window despite pre-FM65 firmware (de-glitch anyway) |
 | SF7 | `1_20260831_185904.795` | 2026-08-31 18:59:04.795 | 2026-09-01 00:20:35 | 5:21:31 | 49.385 | FM64 | YES | ambiguous | normal,normal,normal,normal,normal | 6.23 | 1.0 | 788.0 | 12.95 |  |  |
 | SF7 | `2_20260901_002100.939` | 2026-09-01 00:21:00.939 | 2026-09-01 05:41:08 | 5:20:07 | 49.17 | FM64 | YES | glitchy | normal,normal,normal,normal,normal | 13.0 | 0.975 | 983.0 | 12.43 |  |  |

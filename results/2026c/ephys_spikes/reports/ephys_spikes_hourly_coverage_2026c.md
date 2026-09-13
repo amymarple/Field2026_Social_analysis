@@ -1,6 +1,6 @@
 # Hourly recording coverage, cohort `2026c`
 
-Generated 2026-09-13T05:41:15+00:00 by `ephys/coverage_tables.py` (git 8cc4025+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
+Generated 2026-09-13T07:08:38+00:00 by `ephys/coverage_tables.py` (git 19edbbf+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
 
 **6 field-flagged session(s), 10.70 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
 - SF10 `10_20260905_070012.038` 2026-09-05 07:00 (29.8 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
@@ -10,8 +10,9 @@ Generated 2026-09-13T05:41:15+00:00 by `ephys/coverage_tables.py` (git 8cc4025+d
 - SF07 `0_20260906_123827.548` 2026-09-06 12:38 (0.6 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 - SF07 `1_20260906_123931.995` 2026-09-06 12:39 (21.4 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 
-**1 session(s) counted only up to their `valid_until`** (cohorts/<key>.yaml `ephys.valid_until`: the neural signal ended before the Stop; the open-circuit tail is not coverage):
+**2 session(s) counted only up to their `valid_until`** (cohorts/<key>.yaml `ephys.valid_until`: the neural signal ended before the Stop; the open-circuit tail is not coverage):
 - SF11 `13_20260906_195234.827` 2026-09-06 19:52 -> valid until 2026-09-07 06:10:00 (10.29 h counted, 2.04 h tail not counted)
+- SF12 `17_20260911_192428.023` 2026-09-11 19:24 -> valid until 2026-09-11 23:30:00 (4.09 h counted, 10.42 h tail not counted)
 
 ## 2026-08-31
 
@@ -381,24 +382,24 @@ Day total 84.0 logger-hours; SF07 16.9 h, SF08 16.6 h, SF09 16.8 h, SF10 16.7 h,
 | 20 | 60* | 60* | 60* | 60* | - | 60* | 5 |
 | 21 | 60* | 60* | 60* | 60* | - | 60* | 5 |
 | 22 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 23 | 60* | 60* | 60* | 60* | - | 60* | 5 |
+| 23 | 60* | 60* | 60* | 60* | - | 30* | 5 |
 
-Day total 100.1 logger-hours; SF07 22.1 h, SF08 22.0 h, SF09 21.1 h, SF10 21.9 h, SF11 0.0 h, SF12 13.1 h.
+Day total 99.6 logger-hours; SF07 22.1 h, SF08 22.0 h, SF09 21.1 h, SF10 21.9 h, SF11 0.0 h, SF12 12.6 h.
 
 ## 2026-09-12
 
 | hour | SF07 | SF08 | SF09 | SF10 | SF11 | SF12 | loggers |
 |---|---|---|---|---|---|---|---|
-| 00 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 01 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 02 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 03 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 04 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 05 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 06 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 07 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 08 | 60* | 60* | 60* | 60* | - | 60* | 5 |
-| 09 | 60* | 60* | 60* | 55* | - | 55* | 5 |
+| 00 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 01 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 02 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 03 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 04 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 05 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 06 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 07 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 08 | 60* | 60* | 60* | 60* | - | - | 4 |
+| 09 | 60* | 60* | 60* | 55* | - | - | 4 |
 | 10 | 25* | 27* | 28* | - | - | - | 3 |
 | 11 | - | - | - | - | - | - | 0 |
 | 12 | - | - | - | - | - | - | 0 |
@@ -414,5 +415,5 @@ Day total 100.1 logger-hours; SF07 22.1 h, SF08 22.0 h, SF09 21.1 h, SF10 21.9 h
 | 22 | - | - | - | - | - | - | 0 |
 | 23 | - | - | - | - | - | - | 0 |
 
-Day total 51.2 logger-hours; SF07 10.4 h, SF08 10.5 h, SF09 10.5 h, SF10 9.9 h, SF11 0.0 h, SF12 9.9 h.
+Day total 41.3 logger-hours; SF07 10.4 h, SF08 10.5 h, SF09 10.5 h, SF10 9.9 h, SF11 0.0 h, SF12 0.0 h.
 
