@@ -1,6 +1,6 @@
 # Field-PC-time fits, day-wrap aware, with chained anchors, cohort `2026c`
 
-Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
+Generated 2026-09-16T14:41:55+00:00 by `ephys/pc_time_chain.py` (git 6b455e7+dirty); delay word NOT added. Anchors decoded from `analogin.dat` lanes 14/15 and unwrapped against the logger RTC start (folder name) with the 86,400,000-ms day wrap and the 2^20-ms packing both modelled. A session without an end cluster borrows the NEXT session's start cluster through the RTC (round protocol: Resync -> 30-s guard -> Start -> 30 s; mid-span stop->start) and carries the RTC-chain uncertainty (1.5 s / span). `start_vs_prev` / `end_vs_next` compare a session's own cluster with the neighbouring session's cluster (RTC-chained, ms): within about 2 s = agree; larger = an RTC re-set (Resync) lies between them. Definitions in the script docstring.
 
 | animal | session | dur h | midnight | anchors | start/end | start delay ms | PC−RTC at start ms | kept | drift native ppm ± sem | resid ms | borrowed | gap→next s | drift chained ppm ± unc | start vs prev ms | end vs next ms | verdict | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -90,6 +90,8 @@ Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dir
 | SF07 | `12_20260911_183849.226` | 0.00 |  | 3 | 3/3 | 66 | 645 |  |  |  | 0  | 2110.4 |  | +634 | +503 | one-end-only |  |
 | SF07 | `13_20260911_191407.256` | 0.01 |  | 8 | 8/8 | 1312 | 1147 |  |  |  | 15 next:15 | 9.1 | -59.1 ± 21138.0 | +503 | -4 | OK-chained |  |
 | SF07 | `14_20260911_191449.075` | 15.17 | yes | 30 | 15/15 | 1736 | 1144 | 29 | -24.4 ± 0.7 | 82.8 | 0  |  |  | -4 |  | OK-native [last touch 13.6 h, tail 1.5 h extrapolated] |  |
+| SF07 | `0_20260912_103016.514` | 0.01 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:30:55 -> auto-stop (12.02 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
+| SF07 | `1_20260912_103055.576` | 12.02 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:30:55 -> auto-stop (12.02 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
 | SF08 | `0_20260831_070148.859` | 0.18 |  | 26852 | 26718/8 | 28 |  |  |  |  | 0  | 12.0 |  |  |  | corrupt |  |
 | SF08 | `1_20260831_071239.713` | 0.05 |  | 14 | 10/4 | 2497 | -3599 | 14 | 13273.1 ± 8362.1 | 1854.1 | 0  | 9.7 |  |  |  | inconsistent |  |
 | SF08 | `2_20260831_071541.642` | 1.25 |  | 1281724 | 92482/94544 | 133 |  |  |  |  | 0  | 6.5 |  |  |  | corrupt |  |
@@ -173,6 +175,8 @@ Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dir
 | SF08 | `3_20260911_184457.602` | 0.01 |  | 11 | 11/11 | 365 | 695 |  |  |  | 0  | 1846.1 |  | +1007 | -308 | one-end-only |  |
 | SF08 | `4_20260911_191633.935` | 0.01 |  | 7 | 7/7 | 1262 | 388 |  |  |  | 14 next:14 | 9.4 | -2.6 ± 21393.4 | -308 | -0 | OK-chained |  |
 | SF08 | `5_20260911_191715.923` | 15.17 | yes | 28 | 14/14 | 0 | 387 | 28 | -21.7 ± 0.1 | 15.2 | 0  |  |  | -0 |  | OK-native [last touch 13.6 h, tail 1.6 h extrapolated] |  |
+| SF08 | `0_20260912_103448.825` | 0.01 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:35:40 -> auto-stop (9.67 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
+| SF08 | `1_20260912_103540.965` | 9.67 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:35:40 -> auto-stop (9.67 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
 | SF09 | `0_20260831_070319.133` | 0.17 |  | 69565 | 28/34901 | 65 |  |  |  |  | 0  | 10.7 |  |  |  | corrupt |  |
 | SF09 | `1_20260831_071357.350` | 4.26 |  | 137457 | 11/70 | 1830 |  |  |  |  | 0  | 27282.3 |  |  |  | corrupt |  |
 | SF09 | `0_20260831_190404.508` | 0.02 |  | 15 | 15/15 | 343 | 834 |  |  |  | 9 next:9 | 12.1 | -8.1 ± 15943.8 |  | -1 | OK-chained |  |
@@ -257,6 +261,8 @@ Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dir
 | SF09 | `15_20260911_185030.223` | 0.00 |  | 2 | 2/2 | 630 | 958 |  |  |  | 0  | 1709.5 |  |  | -720 | one-end-only |  |
 | SF09 | `16_20260911_191902.632` | 0.01 |  | 8 | 8/8 | 1446 | 238 |  |  |  | 15 next:15 | 12.1 | 4.3 ± 20762.7 | -720 | +0 | OK-chained |  |
 | SF09 | `17_20260911_191947.524` | 15.14 | yes | 31 | 15/16 | 1389 | 239 | 30 | -27.5 ± 0.1 | 9.5 | 0  |  |  | +0 |  | OK-native [last touch 13.6 h, tail 1.5 h extrapolated] |  |
+| SF09 | `0_20260912_104232.471` | 0.01 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:43:24 -> auto-stop (10.40 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
+| SF09 | `1_20260912_104324.946` | 10.40 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:43:24 -> auto-stop (10.40 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
 | SF10 | `0_20260831_070700.822` | 0.17 |  | 0 | 0/0 |  |  |  |  |  | 0  | 149.3 |  |  |  | no-anchors |  |
 | SF10 | `1_20260831_071948.008` | 4.11 |  | 123390 | 13/2 | 2240 |  |  |  |  | 0  | 27796.0 |  |  |  | corrupt |  |
 | SF10 | `0_20260831_190956.580` | 0.01 |  | 8 | 8/8 | 27 | 293 |  |  |  | 10 next:10 | 13.2 | -60.8 ± 23258.5 |  | -4 | OK-chained |  |
@@ -342,6 +348,8 @@ Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dir
 | SF10 | `9_20260911_185815.751` | 0.00 |  | 3 | 3/3 | 552 | 236 |  |  |  | 0  | 1376.7 |  | +307 | +443 | one-end-only |  |
 | SF10 | `10_20260911_192122.000` | 0.01 |  | 9 | 9/9 | 1072 | 679 |  |  |  | 15 next:15 | 11.0 | 3.8 ± 20546.5 | +443 | +0 | OK-chained |  |
 | SF10 | `11_20260911_192207.153` | 14.55 | yes | 30 | 15/15 | 1140 | 679 | 29 | -24.5 ± 0.1 | 9.8 | 0  |  |  | +0 |  | OK-native [last touch 13.5 h, tail 1.0 h extrapolated] |  |
+| SF10 | `0_20260912_104804.647` | 0.01 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:48:56 -> auto-stop after only 2.18 h (the other four ran 9.7-12.0 h; file closed byte-exact, so the cell died, not the download): real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
+| SF10 | `1_20260912_104856.875` | 2.18 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:48:56 -> auto-stop after only 2.18 h (the other four ran 9.7-12.0 h; file closed byte-exact, so the cell died, not the download): real FM65 data, no field-PC time (start cluster only, other host's clock) |  |
 | SF11 | `0_20260831_072408.414` | 0.56 |  | 390640 | 8/11302 | 1046 |  |  |  |  | 0  | 40516.1 |  |  |  | corrupt |  |
 | SF11 | `0_20260831_191252.932` | 0.01 |  | 8 | 8/8 | 163 | 690 |  |  |  | 12 next:12 | 10.0 | -51.7 ± 20520.8 |  | -5 | OK-chained |  |
 | SF11 | `1_20260831_191341.611` | 5.25 | yes | 630 | 12/2 | 163 | 685 | 568 | -23.8 ± 0.7 | 31.5 | 0  | 15.2 |  | -5 | +18 | OK-native |  |
@@ -488,6 +496,8 @@ Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dir
 | SF12 | `15_20260911_190431.837` | 0.00 |  | 3 | 3/3 | 1263 | 558 |  |  |  | 0  | 1142.3 |  | +1088 | -371 | one-end-only |  |
 | SF12 | `16_20260911_192342.556` | 0.01 |  | 8 | 8/8 | 29 | 187 |  |  |  | 14 next:14 | 11.6 | -60.3 ± 20332.3 | -371 | -4 | OK-chained |  |
 | SF12 | `17_20260911_192428.023` | 14.51 | yes | 39 | 14/25 | 0 | 183 | 39 | -22.0 ± 0.1 | 10.7 | 0  |  |  | -4 |  | OK-native [last touch 13.6 h, tail 1.0 h extrapolated] |  |
+| SF12 | `0_20260912_105344.857` | 0.02 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:54:47 -> auto-stop (12.02 h): real FM65 data, no field-PC time (start cluster only, other host's clock). SF12's headstage contact was failing from 09-11 23:39 - check this session for signal before using it |  |
+| SF12 | `1_20260912_105447.676` | 12.02 |  | 0 | 0/0 |  |  |  |  |  | 0  |  |  |  |  | excluded: HOME-CAGE sleep session 2026-09-12 10:54:47 -> auto-stop (12.02 h): real FM65 data, no field-PC time (start cluster only, other host's clock). SF12's headstage contact was failing from 09-11 23:39 - check this session for signal before using it |  |
 
 ## Sessions >= 1 h by verdict
 
@@ -507,12 +517,17 @@ Generated 2026-09-13T05:39:14+00:00 by `ephys/pc_time_chain.py` (git 8cc4025+dir
 | OK-native [last touch 6.6 h, tail 6.3 h extrapolated] | 1 | 12.8 |
 | OK-chained | 3 | 12.7 |
 | OK-native [last touch 10.8 h, tail 1.5 h extrapolated] | 1 | 12.3 |
+| excluded: HOME-CAGE sleep session 2026-09-12 10:54:47 -> auto-stop (12.02 h): real FM65 data, no field-PC time (start cluster only, other host's clock). SF12's headstage contact was failing from 09-11 23:39 - check this session for signal before using it | 1 | 12.0 |
+| excluded: HOME-CAGE sleep session 2026-09-12 10:30:55 -> auto-stop (12.02 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) | 1 | 12.0 |
 | OK-native (accepted: RTC Resync 20:42:04/20:42:44 on the idle logger inside the 6-h gap (lane-ON piece quarantined); native fit 39 anchors, 32 ms, drift -23.6 ppm) | 1 | 11.4 |
 | OK-native [last touch 4.2 h, tail 6.3 h extrapolated] | 1 | 10.5 |
+| excluded: HOME-CAGE sleep session 2026-09-12 10:43:24 -> auto-stop (10.40 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) | 1 | 10.4 |
 | OK-native [last touch 8.5 h, tail 1.4 h extrapolated] | 1 | 9.9 |
+| excluded: HOME-CAGE sleep session 2026-09-12 10:35:40 -> auto-stop (9.67 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) | 1 | 9.7 |
 | OK-native [last touch 5.6 h, tail 3.5 h extrapolated] | 1 | 9.1 |
 | OK-native (PC step modelled) [last touch 6.7 h, tail 2.0 h extrapolated] | 1 | 8.7 |
 | OK-native [last touch 7.5 h, tail 0.7 h extrapolated] | 1 | 8.2 |
 | OK-native [last touch 4.6 h, tail 0.9 h extrapolated] | 1 | 5.5 |
 | OK-native [last touch 4.6 h, tail 0.8 h extrapolated] | 1 | 5.3 |
 | OK-native (PC step modelled) [last touch 2.2 h, tail 2.1 h extrapolated] | 1 | 4.3 |
+| excluded: HOME-CAGE sleep session 2026-09-12 10:48:56 -> auto-stop after only 2.18 h (the other four ran 9.7-12.0 h; file closed byte-exact, so the cell died, not the download): real FM65 data, no field-PC time (start cluster only, other host's clock) | 1 | 2.2 |

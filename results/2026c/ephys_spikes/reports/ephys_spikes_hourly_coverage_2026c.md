@@ -1,14 +1,24 @@
 # Hourly recording coverage, cohort `2026c`
 
-Generated 2026-09-13T07:08:38+00:00 by `ephys/coverage_tables.py` (git 19edbbf+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
+Generated 2026-09-16T14:42:02+00:00 by `ephys/coverage_tables.py` (git 6b455e7+dirty) from the session index. Minutes recorded per local hour per logger (60 = full hour, `-` = none, `*` = FM65). Coverage = logger wallclock (RTC start + samples/fs). A logger absent for a whole day may simply not be offloaded yet.
 
-**6 field-flagged session(s), 10.70 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
+**16 field-flagged session(s), 57.05 h, are NOT counted** (`field_flag` in the session index; cohorts/<key>.yaml `ephys.field_flags`):
 - SF10 `10_20260905_070012.038` 2026-09-05 07:00 (29.8 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
 - SF10 `11_20260905_080522.427` 2026-09-05 08:05 (34.9 min): zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude
+- SF10 `0_20260912_104804.647` 2026-09-12 10:48 (0.7 min): HOME-CAGE sleep session 2026-09-12 10:48:56 -> auto-stop after only 2.18 h (the other four ran 9.7-12.0 h; file closed byte-exact, so the cell died, not the download): real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
+- SF10 `1_20260912_104856.875` 2026-09-12 10:48 (130.9 min): HOME-CAGE sleep session 2026-09-12 10:48:56 -> auto-stop after only 2.18 h (the other four ran 9.7-12.0 h; file closed byte-exact, so the cell died, not the download): real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
 - SF11 `0_20260906_124136.884` 2026-09-06 12:41 (33.8 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 - SF12 `3_20260911_094747.706` 2026-09-11 09:47 (521.5 min): SF12 connector OPEN 09:47:47 -> ~17:50 (no neural signal: LFP x10 down on all 64 ch, theta gone, 60 Hz episodes); normal again from ~18:00 to the Stop (measured 09-11)
+- SF12 `0_20260912_105344.857` 2026-09-12 10:53 (0.9 min): HOME-CAGE sleep session 2026-09-12 10:54:47 -> auto-stop (12.02 h): real FM65 data, no field-PC time (start cluster only, other host's clock). SF12's headstage contact was failing from 09-11 23:39 - check this session for signal before using it [no field-PC time]
+- SF12 `1_20260912_105447.676` 2026-09-12 10:54 (721.5 min): HOME-CAGE sleep session 2026-09-12 10:54:47 -> auto-stop (12.02 h): real FM65 data, no field-PC time (start cluster only, other host's clock). SF12's headstage contact was failing from 09-11 23:39 - check this session for signal before using it [no field-PC time]
 - SF07 `0_20260906_123827.548` 2026-09-06 12:38 (0.6 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
 - SF07 `1_20260906_123931.995` 2026-09-06 12:39 (21.4 min): probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06) [no field-PC time]
+- SF07 `0_20260912_103016.514` 2026-09-12 10:30 (0.5 min): HOME-CAGE sleep session 2026-09-12 10:30:55 -> auto-stop (12.02 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
+- SF07 `1_20260912_103055.576` 2026-09-12 10:30 (721.1 min): HOME-CAGE sleep session 2026-09-12 10:30:55 -> auto-stop (12.02 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
+- SF08 `0_20260912_103448.825` 2026-09-12 10:34 (0.7 min): HOME-CAGE sleep session 2026-09-12 10:35:40 -> auto-stop (9.67 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
+- SF08 `1_20260912_103540.965` 2026-09-12 10:35 (579.9 min): HOME-CAGE sleep session 2026-09-12 10:35:40 -> auto-stop (9.67 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
+- SF09 `0_20260912_104232.471` 2026-09-12 10:42 (0.7 min): HOME-CAGE sleep session 2026-09-12 10:43:24 -> auto-stop (10.40 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
+- SF09 `1_20260912_104324.946` 2026-09-12 10:43 (624.2 min): HOME-CAGE sleep session 2026-09-12 10:43:24 -> auto-stop (10.40 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock) [no field-PC time]
 
 **2 session(s) counted only up to their `valid_until`** (cohorts/<key>.yaml `ephys.valid_until`: the neural signal ended before the Stop; the open-circuit tail is not coverage):
 - SF11 `13_20260906_195234.827` 2026-09-06 19:52 -> valid until 2026-09-07 06:10:00 (10.29 h counted, 2.04 h tail not counted)
