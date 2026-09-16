@@ -182,6 +182,19 @@ ephys:
     # noise floor normal (35-47 ADC); at 18:03 (PM-round handling) everything is back (raw 578-676, theta 4.7-4.8, 60 Hz 0.00).
     # Real recording, PC time fine, but no neural signal until ~17:50 -> excluded from coverage and the firmware verdict.
     - {animal: SF12, sessions: ["3_20260911_094747.706"], flag: "SF12 connector OPEN 09:47:47 -> ~17:50 (no neural signal: LFP x10 down on all 64 ch, theta gone, 60 Hz episodes); normal again from ~18:00 to the Stop (measured 09-11)"}
+    # HOME-CAGE sleep recording, 2026-09-12: after the paddock phase ended (animals out 10:10) the operator started one session per
+    # logger on fresh cells from ANOTHER laptop and let them run to auto-stop. Real neural data, but NOT paddock data and NOT on the
+    # field-PC time base: this PC has no console log of them (incident log 09-12 11:00). Starts on the cards are 10:30-10:49, i.e.
+    # 20-40 min after the animals came out, not the "~11:00" of the field note. Each session has a 9-10 anchor START cluster (the
+    # other laptop's console connected at Start) and NO end cluster, so no drift fit -> pc_time false. MEASURED 2026-09-16: the
+    # start-cluster offset against the logger RTC is +160 / +335 / +809 ms (field-PC sessions sit at +1144 ms with 96 ms scatter),
+    # i.e. the other laptop's clock agreed with the logger RTC - last set by the field PC at the 09-11 19:14-19:24 round - to within
+    # ~1 s. With the logger's -20..-27 ppm drift over 10-12 h that makes the folder RTC time good absolute wallclock to about +/- 2 s:
+    # enough to place the session in the day, not enough for any cross-modal alignment (there is no paddock video/WISER to align to).
+    # Flagged so they stay out of the paddock coverage tables and out of the time chain; they are otherwise normal FM65 sessions.
+    - {animal: SF07, sessions: ["0_20260912_103016.514", "1_20260912_103055.576"], flag: "HOME-CAGE sleep session 2026-09-12 10:30:55 -> auto-stop (12.02 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock)", pc_time: false}
+    - {animal: SF08, sessions: ["0_20260912_103448.825", "1_20260912_103540.965"], flag: "HOME-CAGE sleep session 2026-09-12 10:35:40 -> auto-stop (9.67 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock)", pc_time: false}
+    - {animal: SF09, sessions: ["0_20260912_104232.471", "1_20260912_104324.946"], flag: "HOME-CAGE sleep session 2026-09-12 10:43:24 -> auto-stop (10.40 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock)", pc_time: false}
     # ADC/mic lane ON (2026-09-10 14:42 -> switch-off): 312.5 Hz full-scale pulse train on every amplifier channel (see adc_lane above).
     # QUARANTINE (operator decision 2026-09-10): lane-ON sessions are MOVED out of the raw tree to
     # E:/3rd_rat_spikes/_quarantine_adc_lane_on/<SFxx>/<MAC>/<session>/ (leading underscore = skipped by iter_raw_sessions) and stay
