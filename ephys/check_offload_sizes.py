@@ -103,7 +103,12 @@ def main() -> None:
             per_animal.setdefault(norm(animal), []).append({
                 "animal": norm(animal), "root": str(root), "session": sdir.name, "start": meta["start"], "amp_bytes": st.st_size,
                 "hours": n / fs / 3600.0, "adc_on": bool(adc_on), "adc_bytes": adc_bytes,
-                "predicted_card_bytes": st.st_size * BYTES_PER_SAMPLE_CARD / BYTES_PER_SAMPLE_AMP + adc_bytes,
+                # the card record is the raw lane stream: amplifier + the aux (misc) lanes + the ADC lane when it was on.
+                # Using the exported analogin.dat size instead of a fixed 130 B/sample covers BOTH configurations:
+                # 20 kHz spikes (16 misc lanes at fs/16 -> analogin = 2 B/sample = amp x 1/64) and the 2026-09-16
+                # temperature/LFP run (fs 1250, misc_ratio 1 -> analogin = 32 B/sample = amp x 1/4).
+                "predicted_card_bytes": st.st_size + (os.path.getsize(sdir / "analogin.dat") if (sdir / "analogin.dat").exists()
+                                                      else st.st_size * (BYTES_PER_SAMPLE_CARD - BYTES_PER_SAMPLE_AMP) / BYTES_PER_SAMPLE_AMP) + adc_bytes,
                 # an EMPTY record (0 amplifier samples: the console exports a header + stray lanes for a record the logger never
                 # filled, e.g. SF08 10_20260910_184306 with fs 0) has nothing to be consistent with and holds no data
                 "sidecars_ok": bool(st.st_size % BYTES_PER_SAMPLE_AMP == 0 and t_ok and an_ok) or n == 0,
