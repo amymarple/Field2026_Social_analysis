@@ -81,3 +81,11 @@ one cause of card-reader dropouts during offloads; DC left at 1, irrelevant on a
 Compare attributes 5, 196, 197, 198 and 199 against the table above. **Any of them moving off zero means the drive has started to
 fail: stop writing to it and copy the data off first.** Do not run `smartctl -t long` / `-t short` on the single copy. Re-check
 after the raw tree has been copied to the replacement backup drive.
+
+## Re-checks
+
+- **2026-09-19 09:39**, after robocopy had read the whole tree (18.2 TB) for the copy to L:: PASSED, attributes 1/5/7/10/196/197/198/199
+  all 0, 32 °C.
+- **2026-09-20 09:5x**, after the full SHA-256 pass had read it a second time: PASSED, same attributes all 0, 1,578 power-on hours,
+  35 °C (lifetime max 41 °C). The full-surface read this entry deferred is therefore done, twice, with no read error. E: is no longer
+  the single copy — `change_log/2026-09-20-raw-tree-backup-verified.md`.
