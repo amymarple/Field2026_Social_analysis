@@ -12,7 +12,7 @@ and how to re-verify either copy in future.
 |---|---|---|
 | Device | WDC WD202KFGX-68CKWN0, 20 TB, SATA, Disk 1 | WD Elements 25A3, 22 TB (21.83 TiB), USB, Disk 4 |
 | File system | NTFS, 8 KB clusters | NTFS, 8 KB clusters (empty before the copy) |
-| SMART | readable without elevation, table below | USB bridge: needs an elevated `smartctl -d sat /dev/pd4`, not yet read |
+| SMART | readable without elevation, table below | USB bridge: needs an elevated `smartctl -d sat /dev/pd4`; read 2026-09-21, section below |
 
 ## What was copied
 
@@ -70,6 +70,36 @@ was read twice (copy + hash) and on L: once, without a single read error.
 PASSED. Attributes 1, 5, 7, 10, 196, 197, 198, 199 all **0** — unchanged from the 2026-09-12 baseline. Power-on hours 1,578;
 temperature 35 °C (lifetime max 41 °C). No `disk`, `Ntfs`, `storahci`, USB or `partmgr` error/warning in the System log for either
 disk from 2026-09-17 17:00 to 2026-09-20 10:00. `Get-PhysicalDisk`: both Healthy / OK.
+
+## L: SMART baseline (2026-09-21, operator, elevated `smartctl -H -A -d sat /dev/pd4`, smartmontools 7.5)
+
+```
+SMART overall-health self-assessment test result: PASSED
+  1 Raw_Read_Error_Rate     0x000b   100   100   001    Pre-fail  Always       -       0
+  3 Spin_Up_Time            0x0007   095   095   001    Pre-fail  Always       -       0 (Average 247)
+  4 Start_Stop_Count        0x0012   100   100   000    Old_age   Always       -       5
+  5 Reallocated_Sector_Ct   0x0033   100   100   001    Pre-fail  Always       -       0
+  7 Seek_Error_Rate         0x000a   100   100   000    Old_age   Always       -       0
+  9 Power_On_Hours          0x0012   100   100   000    Old_age   Always       -       90
+ 10 Spin_Retry_Count        0x0012   100   100   000    Old_age   Always       -       0
+ 12 Power_Cycle_Count       0x0032   100   100   000    Old_age   Always       -       5
+ 22 Helium_Level            0x0023   100   100   025    Pre-fail  Always       -       6553700
+192 Power-Off_Retract_Count 0x0032   100   100   000    Old_age   Always       -       9
+193 Load_Cycle_Count        0x0012   100   100   000    Old_age   Always       -       9
+194 Temperature_Celsius     0x0002   032   032   000    Old_age   Always       -       45 (Min/Max 23/56)
+196 Reallocated_Event_Count 0x0032   100   100   000    Old_age   Always       -       0
+197 Current_Pending_Sector  0x0022   100   100   000    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0008   100   100   000    Old_age   Offline      -       0
+199 UDMA_CRC_Error_Count    0x000a   100   100   000    Old_age   Always       -       0
+```
+
+**Reading.** A new helium drive (90 power-on hours, 5 power cycles, helium 100 against a threshold of 25) that has just written
+18.2 TB and read it back once: every failure counter is 0. The one number to watch is **temperature — 45 °C at the time of the
+reading and a lifetime maximum of 56 °C**, reached during the 21-hour continuous read inside the fanless Elements enclosure. That
+is inside WD's 65 °C operating limit but well above the ~40 °C at which drive reliability is best. Practice from here: keep L:
+unplugged between uses, and give the enclosure airflow (a desk fan is enough) during any future multi-hour copy or hash. Re-check
+with the same command after the next full pass; attributes 5, 196, 197, 198, 199 moving off zero means stop using the drive as
+the backup and re-copy from E:.
 
 ## Where the evidence lives
 
