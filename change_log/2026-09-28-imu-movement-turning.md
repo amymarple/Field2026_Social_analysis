@@ -83,6 +83,31 @@ SF10 306B = 12395, SF12 3059 = 12377.
   - After the remount, 3058 is SF11's best tag in 37 of 40 night blocks (median r 0.60).
 - **Outputs:** `results/2026c/ephys_spikes/reports/ephys_spikes_imu_wiser_identity_2026c.{csv,md}`.
 
+## Immobility threshold and the IMU as EMG (`ephys/imu_lfp_state_check.py`)
+
+**Threshold.** The per-animal per-second VeDBA is clearly bimodal (all sessions; saturated and unreliable seconds
+excluded):
+- still mode 0.046–0.052 m/s², active mode 2.9–3.45 m/s²;
+- the valley of the smoothed log histogram is at **0.31–0.39 m/s²** (SF07 0.387, SF08 0.307, SF09 0.325,
+  SF10 0.325, SF11 0.387, SF12 0.365);
+- the valley is 7–9 % of the still peak's height;
+- about 50 % of all time is still;
+- the 2-component Gaussian-mixture boundary (0.18–0.24) is a cross-check.
+
+`still(s) = VeDBA_1s(s) < threshold_animal` (the valley). The values are in the script (`IMU_STILL_THR`).
+
+**LFP state.** Local LFP of three daytime sessions (SF08 09-10, SF07 09-02, SF10 09-02); the same logger clock for both
+signals, so no alignment step. Channel = the most theta-rich on IMU-moving seconds.
+- IMU-moving seconds are theta-dominated: log10 theta/delta median 0.18–0.34; 85–93 % above the split.
+- IMU-still seconds have a median of −0.59 to −0.17.
+- Notion REM observation (SF08 09-10 14:37 "legs twitching", rec 22,230 ± 60 s): theta/delta is high (0.26) while the
+  animal is mostly still. The twitches show in the IMU (\|ω\| 18.5 °/s; VeDBA at the threshold).
+- **Limit.** Within still seconds theta/delta is broad. A descriptive midpoint split calls 43–52 % "REM-like", far
+  above plausible REM shares, so it is not a sleep score. REM / NREM / quiet wake needs a state scorer using the IMU as
+  the EMG, smoothed over a few seconds so twitches do not read as wake.
+- **Outputs:** `results/2026c/ephys_spikes/reports/ephys_spikes_imu_lfp_state_check_2026c.csv` and
+  `figures/ephys_spikes_imu_lfp_state_check_2026c.png`.
+
 ## Definitions (headline; full set in the plan)
 
 - **Quiet window.** A 1-s window with median $\lVert\boldsymbol\omega\rVert < 10$ °/s and median
@@ -114,8 +139,7 @@ SF10 306B = 12395, SF12 3059 = 12377.
 
 ## Not done yet
 
-- The immobility threshold, set from the per-animal per-second VeDBA distributions.
-- Validation of the IMU "EMG" against the LFP state (theta vs delta/SWR).
+- A state scorer (REM / NREM / wake) using the IMU as the EMG input.
 - Identity matching against video tracks and WISER.
 - Whether the FM64 sessions' `analogin` lanes carry any firmware artefact (FM64 sessions are included; their k_a and
   quiet fractions look normal).
