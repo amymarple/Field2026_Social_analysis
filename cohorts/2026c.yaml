@@ -271,6 +271,16 @@ raw_data_roots:
     thermal:           "E:/thermal_record"
     wiser_live:        null
     weather:           null
-  biohpc:
-    wiser_snapshots:   null
-    reolink:           null
+  biohpc:               # Cornell BioHPC storage (cbsuruizfs1), mounted Q:\hc997 on the analysis PC; read-only for agents
+                        # (.claude/hooks/protect_data_servers.py). All of cohort 3 sits under 3rd_rat\ (per-cohort layout
+                        # after the Q: reorganisation); copies verified by name + exact size, reconciled 2026-09-23/24
+                        # (field2026-sync from-lab/2026-09-23_*reconciliation.md, 2026-09-24_*). Layout checked 2026-09-28.
+    wiser_snapshots:   "Q:/hc997/SocialFieldRat2026/3rd_rat/Wiser_backup/snapshots"    # mixed cohorts; cohort 3 = 3rdcohort_Spike_2026_3[_N]_<date>.sqlite (N = live-DB restart)
+    wiser_incremental: "Q:/hc997/SocialFieldRat2026/3rd_rat/Wiser_backup/incremental"  # mixed cohorts; one *.csv.gz per day
+    wiser_live_copy:   "Q:/hc997/SocialFieldRat2026/3rd_rat/wiser/data"   # copies of the field-PC live DBs: 3rdcohort_Spike_2026_3[_N].sqlite, 3rdcohort_LFP_2026_temperature.sqlite, tag_reports.sqlite (holds test epochs: filter by time)
+    reolink:           "Q:/hc997/SocialFieldRat2026/3rd_rat"   # raw video: <date>/CH01..CH08/ (+ copy_manifest.csv, copy_report.txt per date)
+    thermal:           "Q:/hc997/SocialFieldRat2026/3rd_rat"   # <date>/108_thermal, 108_visual, 109_thermal, 109_visual/
+    audio:             "Q:/hc997/SocialFieldRat2026/3rd_rat"   # <date>/MIC01, MIC02/ (hourly WAV)
+    ephys:             "Q:/hc997/SocialFieldRat2026/3rd_rat/WILD"   # SF7..SF12 (unpadded)/<MAC>/<session>/ + recovery.bin per animal; lane-ON sessions in _quarantine_adc_lane_on/
+    pc_time:           "Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/pc_time"   # SF07..SF12 (padded)/<session>/pc_time.dat + pc_time_fit.json (429 sessions)
+    weather:           null   # not on Q: - the record is the field PC D:\weather_data\local; git copies in field2026-sync from-field/AWN-*

@@ -435,12 +435,12 @@ Fix these or confirm before relying on the affected code:
   gets re-specified when cohort-3 analysis restarts — until then pass `--pc-time-root` / `--stage-root` / `--sort-root`
   explicitly rather than trusting the default. After pulling onto the ephys PC, restore the session-index JSON once:
   `git show fcaa792:results/2026c/ephys_spikes/reports/ephys_spikes_session_index_2026c.json > <ar>/index/ephys_spikes_session_index_2026c.json`.
-- `cohorts/2026c.yaml raw_data_roots` fills only `analysis_pc.ephys` and `field_pc.{reolink,thermal}`; every
-  `wiser_snapshots`/`reolink`/`thermal`/`weather` entry for `analysis_pc` and `biohpc` is `null` although
-  `Q:\hc997\SocialFieldRat2026\3rd_rat\` holds all of cohort 3 (`<date>\<stream>\`, `WILD\`, `wiser\`, `Wiser_backup\`,
-  `analysis\`). Only `wiser_snapshots` and `ephys` are read by code today, so the practical effect is that cohort-3 WISER
-  cannot go through `common/wiser_inputs.py` (2026c also has no `wiser:` block). `cohorts/2026a.yaml` and
-  `thermal --base` use Q: paths from before the per-cohort reorganisation (`Q:\…\1st_rat\…` now).
+- `cohorts/2026c.yaml raw_data_roots.biohpc` lists every cohort-3 location on `Q:\hc997\SocialFieldRat2026\3rd_rat\`
+  (video/thermal/mics `<date>\<stream>\`, `WILD\`, `wiser\data\`, `Wiser_backup\`, `analysis\pc_time\`; filled 2026-09-28).
+  Cohort-3 WISER still cannot go through `common/wiser_inputs.py`: 2026c has no `wiser:` block (snapshot glob / pin) —
+  to be added when cohort-3 WISER analysis starts; until then the resolver raises instead of guessing. The
+  `analysis_pc` video/thermal/WISER entries stay `null`. `cohorts/2026a.yaml` and `thermal --base` use Q: paths from
+  before the per-cohort reorganisation (`Q:\…\1st_rat\…` now).
 - Sibling repos resolve through `ephys/_common.sibling_repo()` (`../<name>`, fallback `C:/Users/Cornell/Documents/GitHub/`);
   `ephys/selftest.py` still hard-codes `C:/…/PreprocessPipeline` (absent here; that check is skipped).
 - `cv_field` and `ephys_spikes` have no `analyses/registry.yaml` entries (no cards/summaries); `STATUS.md` and
