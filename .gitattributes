@@ -1,2 +1,4 @@
 # Sealed analysis_exchange bundles are hashed byte-for-byte: never convert their line endings on checkout.
 analysis_exchange/published/** -text
+# Shell scripts run on Linux (BioHPC): keep LF in the working tree and in `git archive` deployments.
+*.sh text eol=lf
