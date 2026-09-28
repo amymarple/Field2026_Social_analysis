@@ -310,11 +310,31 @@ plane — a lower bound, not sleep; tag cutoffs apply only where `apply_tag_cuto
 
 ## Sibling repos (the field record)
 
-What follows is a **snapshot (2026-09-28)** of the two sibling repos: enough to orient and to know which rules apply.
-For anything specific or current — where a given stream/day lives and which copy is original, a parameter on a given
-date, a gap or clock step, what the field PC reported — **dispatch the `recording-inquiry` subagent**: it fetches both
-repos, reads only the relevant notes and returns a cited answer. Don't read those repos wholesale in the main
-session.
+What follows is a **snapshot (2026-09-28)** of the two sibling repos and the Notion cohort page: enough to orient and
+to know which rules apply. For anything specific or current — where a given stream/day lives and which copy is
+original, a parameter on a given date, a gap or clock step, an animal's identity or probe move, what the field PC
+reported — **dispatch the `recording-inquiry` subagent**: it fetches both repos, reads the Notion page through the
+Notion connector, reads only the relevant notes and returns a cited answer. Don't read those sources wholesale in the
+main session.
+
+### Notion cohort page — the operator's notebook (always check it)
+
+"4-Rat 3rd cohort — full (SF07–SF12)", https://app.notion.com/p/3c23b0530d4a8152a204cce3afa11671 (parent
+"Rat_field_social_sleep_2026"). It is the **newest** field record: the repo archives of it
+(`NOTION_OBSERVATION_LOG_ARCHIVE_cohort3.md`, `field2026-sync/from-field/*notion-observation-log*`) stop at 09-10, the
+page runs through 09-12 and the 09-16/17 post-cohort temperature run. It holds:
+- **Per-animal table** — probe advances with exact pre-/post-move session times and "kilosort: unstable until …"
+  windows; implant losses (SF11 09-07, SF12 09-17 ≈03:16); WISER tag history; and the **identity marks**: coban colour
+  (SF10 and SF12 changed on 08-31), sticker colour, and the IR-visible **pattern** (SF07 x, SF08 none, SF09 star, SF10
+  square with cross, SF11 circle, SF12 two lines) — the only per-animal cue a monochrome IR frame can carry.
+- **Observation log** per day (rounds, battery deaths, hardware findings, disturbance windows, the 09-11 19:40 females).
+- **Behaviour log** with logger session + rec-seconds per observation (e.g. 09-09 22:33–23:06 SF07 motionless at a
+  paddock corner) — ready-made WISER/video/LFP cross-check events.
+
+The page can disagree with itself (e.g. SF11's tag 3058 retired at 06:10:45 in the observation log vs `valid_until
+08:20` in the animal table): report both, prefer the version that cites video/card/telemetry evidence. The cohort-3
+identity CSV `rat_identities_cohort3.csv` it refers to lives in the old `Field_2026_Social` repo, not here; the five
+females' tags/marks were never stated.
 
 ### `Field_2026_Social_Recording` — rig tooling, setup, sync, field ledgers (`../Field_2026_Social_Recording`)
 
