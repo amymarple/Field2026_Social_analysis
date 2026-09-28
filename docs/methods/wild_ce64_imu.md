@@ -32,7 +32,11 @@ and `notebooks/CE32_scaleIMU_gravity.m`.
   - roll and pitch from accelerometer + gyroscope are usable;
   - yaw from gyro integration drifts and needs another heading reference (video / WISER).
 
-  Cause unknown (hardware, sensor configuration, or a magnet near the sensor) — ask the maker.
+  **Cause (user, 2026-09-28): the headstage carries a magnet.** Its field saturates the magnetometer's x axis. So
+  this is a property of the setup, not a sensor fault, and it applies to every session recorded with this headstage.
+  - Lanes 8–9 are not saturated, but they are dominated by the magnet's constant offset (it moves with the head).
+  - With x clipped, the Earth-field vector cannot be recovered, so no hard-iron calibration can restore a heading.
+  - Do not use lanes 7–9 for orientation.
 - **Time.** The folder name gives the logger RTC at Record Start, and the logger clock drifts about −15 to −27 ppm
   (pc_time fits). For field-PC time, use `pc_time.dat` at amplifier sample 16k, not the folder time + k / fs.
 

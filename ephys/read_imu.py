@@ -7,7 +7,9 @@ Lane layout and scaling come from the maker/lab MATLAB code (WILD_frank repo: ``
     lanes 4-6   gyroscope x/y/z       raw / 32768 * 2000 deg/s     -> deg/s   (bias ~ -1.5..-0.3 deg/s)
     lanes 7-9   magnetometer x/y/z    raw / 32768 * [1150 1150 2500]
                 ** lane 7 is saturated at -32767 in 100 % of samples on ALL six loggers (first and last FM65 session
-                   checked) -> no magnetic heading for cohort 3; 9-axis (ahrsfilter/magcal) yaw is invalid. **
+                   checked). Cause (user, 2026-09-28): the HEADSTAGE CARRIES A MAGNET, which saturates the magnetometer;
+                   lanes 8-9 are dominated by the magnet's offset. -> no magnetic heading for any session recorded with
+                   this headstage; 9-axis (ahrsfilter/magcal) yaw is invalid; do not use lanes 7-9 for orientation. **
     lanes 14/15 packed BLE PC-time word (ephys/pc_time_chain.py); lanes 0 and 10-13 = status (undocumented, not IMU)
 
 Timebase: analogin frames = amplifier samples / 16 exactly, so IMU frame k <-> amplifier sample 16*k; logger time =
@@ -75,7 +77,7 @@ def check(session_dir: str, max_seconds: float | None = None) -> None:
     for name, key in (("acc", "sat_acc"), ("gyr", "sat_gyr"), ("mag", "sat_mag")):
         print(f"  saturated fraction {name}: {np.round(imu[key].mean(axis=0), 5)}")
     if imu["sat_mag"][:, 0].mean() > 0.99:
-        print("  NOTE magnetometer x (lane 7) saturated -> no magnetic heading; use 6-axis (acc+gyro) orientation only")
+        print("  NOTE magnetometer x (lane 7) saturated (headstage magnet) -> no magnetic heading; use 6-axis (acc+gyro) orientation only")
 
 
 def main() -> None:
