@@ -62,6 +62,27 @@ SF10 306B = 12395, SF12 3059 = 12377.
   the basis for IMU-gated WISER denoising.
 - WISER covers 72–73 % of seconds that night; the IMU covers 100 %.
 
+## Cohort-wide identity: which tag moves like which logger (`ephys/imu_wiser_identity.py`)
+
+- **Tag table.** New `wiser/configs/rat_identities_2026c.csv` (from the Notion animal table) records each tag with a
+  validity window:
+  - SF07 3079, SF08 3062, SF09 3077, SF10 306B, SF12 3059;
+  - SF11 305A until 09-02 00:03, then 3058 from 09-02 08:15 to 09-07 08:20;
+  - SF12 also 3058 until 08-31 19:24.
+- **YAML fix.** `cohorts/2026c.yaml identities` pointed at the **2026a** table (the same tags on different animals).
+  It now points at the new table.
+- **Method.** In every 1-h block, 10-s smoothed log IMU VeDBA vs log WISER speed (centred 2-s displacement), Spearman
+  per logger × tag. Confident = r ≥ 0.5 and margin ≥ 0.25 over the runner-up. That rule was chosen on these data; the
+  independent evidence is that at a looser 0.3 / 0.15 the night blocks already agree 405/409.
+- **Result: 402 of 405 confident blocks agree with the table.**
+  - Night (20–03 h): 300/300.
+  - Rounds / dawn / dusk: 88/88.
+  - Day: 12/15. The 3 misses are daytime rest in a pile, where the animals move together.
+- **Both tag changes are visible from movement alone.**
+  - SF11 matches 305A every night hour until 09-01 23:00 (r 0.53–0.63); no tag matches after 305A's battery died.
+  - After the remount, 3058 is SF11's best tag in 37 of 40 night blocks (median r 0.60).
+- **Outputs:** `results/2026c/ephys_spikes/reports/ephys_spikes_imu_wiser_identity_2026c.{csv,md}`.
+
 ## Definitions (headline; full set in the plan)
 
 - **Quiet window.** A 1-s window with median $\lVert\boldsymbol\omega\rVert < 10$ °/s and median

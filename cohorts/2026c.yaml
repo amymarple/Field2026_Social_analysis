@@ -13,7 +13,7 @@ date_range:
   end: "2026-09-12"    # paddock phase ended 2026-09-12 10:10 ET (animals out; recorders stopped 11:14-11:19); the last cohort of the summer
 timezone_wallclock: "America/New_York"   # logger RTC is set from the field-PC local clock at Resync (EDT)
 
-identities: wiser/configs/rat_identities.csv   # WISER shortid -> animal (cohort-3 tags: see notes)
+identities: wiser/configs/rat_identities_2026c.csv   # WISER shortid -> animal WITH validity windows (tag 3058 was on SF12, then SF11); from the Notion animal table, checked against IMU movement (ephys/imu_wiser_identity.py). Was the 2026a table until 2026-09-28 - wrong for this cohort (same tags, different animals).
 
 # Field disturbance windows (from the field incident log, field2026-sync from-field/<date>_cohort3-incident-log.md): flag these
 # in any behaviour / sleep / ephys-state analysis until quantified from the mic audio (per-minute broadband level vs a quiet day).
