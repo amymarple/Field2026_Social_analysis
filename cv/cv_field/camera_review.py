@@ -17,6 +17,9 @@ the quickest way to spot a move (the walls jump off the fixed lines).
 
 Usage:  python cv/cv_field/camera_review.py --cohort 2026c [--cameras CH01 CH02 CH03 CH04] [--times 03:01 12:00 21:30]
         python cv/cv_field/camera_review.py --flipbook <run_dir> [--cameras ...] [--fps 2]   # rebuild videos only
+        python cv/cv_field/camera_review.py --ir-ref <run_dir>     # add the 09-18 IR reference, rebuild pages + videos
+The cohort footage is all IR while the labelled 09-18 frame is colour, so an IR frame of the same 09-18 session
+(found by mean saturation nearest the label clock) is the reference the pages blink against and the videos open with.
         python cv/cv_field/camera_review.py --selftest
 Output: $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_camera_review_<ts>/index.html + <CH>_flipbook.mp4 (off-repo).
 """
@@ -143,60 +146,133 @@ var r=im.dataset.ref,s=im.dataset.src;if(im.classList.toggle('ref')){{im.src=r}}
 </body></html>"""
 
 
-def review_camera(cam: str, args, ffmpeg: str, run: Path) -> dict:
-    lab_path = Path(args.labels_dir) / f"session_2026-09-18_line_labels_{cam}.json"
-    lab = json.loads(lab_path.read_text(encoding="utf-8")) if lab_path.exists() else {"lines": {}, "clock": "15:47:30"}
-    lines = lab.get("lines", {})
-    d = run / cam
-    size = tuple(lab["frame_size_upright"]) if "frame_size_upright" in lab else None
-    if size is None:
-        raise SystemExit(f"{cam}: no label file with frame_size_upright at {lab_path}")
-    ref_t = datetime.combine(date(2026, 9, 18), datetime.strptime(lab["clock"], "%H:%M:%S").time())
-    hit = locate(ref_t, segments(Path(args.ref_session), cam))
-    ref_html, ref_thumb = "<p class=na>no 09-18 reference frame</p>", ""
-    if hit:
-        f, off, tk = hit
-        full, ref_thumb = save_pair(grab(ffmpeg, f, off, cam, size), lines, f"{cam}_REF_{tk:%Y%m%d_%H%M%S}", d)
-        ref_html = (f"<p><b>Reference</b> — calibration 2026-09-18 {tk:%H:%M:%S} ({html.escape(f.name)}) "
-                    f"<a href='{full}'>full</a></p><img class=ref src='{ref_thumb}'>")
-    heads = "".join(f"<th>{t:%H:%M}</th>" for t in args.times)
-    rows, n = [], 0
-    day = args.start
-    while day <= args.end:
-        segs = segments(Path(args.cohort_root) / f"{day:%Y-%m-%d}" / cam, cam) + \
-            segments(Path(args.cohort_root) / f"{day - timedelta(days=1):%Y-%m-%d}" / cam, cam)
-        cells = []
-        for t0 in args.times:
-            hit = locate(datetime.combine(day, t0), segs)
+IR_SAT_MAX = 8.0                              # mean HSV saturation: IR (monochrome) frames measure ~0–6, colour > 12
+
+
+def saturation(img: np.ndarray) -> float:
+    small = cv2.resize(img, None, fx=0.125, fy=0.125, interpolation=cv2.INTER_AREA)
+    return float(cv2.cvtColor(small, cv2.COLOR_BGR2HSV)[..., 1].mean())
+
+
+def load_labels(cam: str, labels_dir: str) -> tuple[dict, tuple[int, int], datetime]:
+    lab_path = Path(labels_dir) / f"session_2026-09-18_line_labels_{cam}.json"
+    if not lab_path.exists():
+        raise SystemExit(f"{cam}: no label file at {lab_path}")
+    lab = json.loads(lab_path.read_text(encoding="utf-8"))
+    clock = datetime.strptime(lab["clock"], "%H:%M:%S").time()
+    return lab.get("lines", {}), tuple(lab["frame_size_upright"]), datetime.combine(date(2026, 9, 18), clock)
+
+
+def save_ir_ref(cam: str, args, ffmpeg: str, run: Path, step_min: int = 5, span_min: int = 120) -> str | None:
+    """The 09-18 calibration session holds colour AND IR footage; the cohort is all IR. Find the IR frame of the
+    session closest to the wall-label clock (±step_min steps, by mean saturation) and save it as <CH>_REFIR_<ts>."""
+    lines, size, ref_t = load_labels(cam, args.labels_dir)
+    segs = segments(Path(args.ref_session), cam)
+    for k in range(0, span_min // step_min + 1):
+        for sign in ((1,) if k == 0 else (-1, 1)):
+            hit = locate(ref_t + timedelta(minutes=sign * k * step_min), segs)
             if not hit:
-                cells.append("<td class=na>no video</td>")
                 continue
             f, off, tk = hit
-            try:
-                img = grab(ffmpeg, f, off, cam, size)
-            except (RuntimeError, subprocess.CalledProcessError) as e:
-                cells.append(f"<td class=na>grab failed: {html.escape(str(e)[:60])}</td>")
+            img = grab(ffmpeg, f, off, cam, size)
+            sat = saturation(img)
+            if sat < IR_SAT_MAX:
+                save_pair(img, lines, f"{cam}_REFIR_{tk:%Y%m%d_%H%M%S}", run / cam)
+                print(f"{cam}: IR reference {tk:%H:%M:%S} (sat {sat:.1f}, {f.name})")
+                return f.name
+    print(f"{cam}: no IR frame within ±{span_min} min of {ref_t:%H:%M:%S} in {args.ref_session}")
+    return None
+
+
+def _stamp(p: Path) -> datetime:
+    return datetime.strptime(p.stem[-15:], "%Y%m%d_%H%M%S")
+
+
+def build_page(run: Path, cam: str, args, lines: dict) -> tuple[str, int]:
+    """(Re)write <CH>.html from the frames on disk: colour (REF) and IR (REFIR) 09-18 references on top, one row per
+    day, blink against the IR reference when present (same mode as the all-IR cohort)."""
+    thumbs = sorted((run / cam / "thumb").glob(f"{cam}_*.jpg"))
+    rel = lambda p, kind: f"{cam}/{kind}/{p.name}"  # noqa: E731
+    refs = {k: next((p for p in thumbs if f"_{k}_" in p.name), None) for k in ("REF", "REFIR")}
+    blink = refs["REFIR"] or refs["REF"]
+    ref_html = ""
+    for k, what in (("REFIR", "IR reference (blink target)"), ("REF", "colour reference (the labelled frame)")):
+        if refs[k]:
+            ref_html += (f"<div style='display:inline-block;margin-right:12px'><p><b>{what}</b> — calibration "
+                         f"{_stamp(refs[k]):%Y-%m-%d %H:%M:%S} <a href='{rel(refs[k], 'full')}'>full</a></p>"
+                         f"<img class=ref src='{rel(refs[k], 'thumb')}'></div>")
+    samples = [p for p in thumbs if "_REF" not in p.name]
+    heads = "".join(f"<th>{t:%H:%M}</th>" for t in args.times)
+    rows, day = [], args.start
+    while day <= args.end:
+        cells = []
+        for t0 in args.times:
+            want = datetime.combine(day, t0)
+            p = next((p for p in samples if abs((_stamp(p) - want).total_seconds()) <= max(GAP_TRY_S) + 1), None)
+            if p is None:
+                cells.append("<td class=na>no frame</td>")
                 continue
-            full, thumb = save_pair(img, lines, f"{cam}_{tk:%Y%m%d_%H%M%S}", d)
-            n += 1
-            cells.append(f"<td><img src='{thumb}' data-src='{thumb}' data-ref='{ref_thumb}'><div class=cap>"
-                         f"{tk:%m-%d %H:%M:%S} · <a href='{full}'>full</a> · {html.escape(f.name)}</div></td>")
+            src = rel(p, "thumb")
+            cells.append(f"<td><img src='{src}' data-src='{src}' data-ref='{rel(blink, 'thumb') if blink else src}'>"
+                         f"<div class=cap>{_stamp(p):%m-%d %H:%M:%S} · <a href='{rel(p, 'full')}'>full</a></div></td>")
         rows.append(f"<tr><td>{day:%m-%d}</td>{''.join(cells)}</tr>")
         day += timedelta(days=1)
     legend = ("Magenta = wall-foot lines labelled on the 2026-09-18 calibration frame. If a wall does not sit on its line, "
-              "the camera moved relative to the calibration. <b>Click a thumbnail to blink it against the reference.</b> "
+              "the camera moved relative to the calibration. <b>Click a thumbnail to blink it against the "
+              + ("IR" if refs["REFIR"] else "colour") + " reference.</b> All cohort frames are IR. "
               "Times are field-PC time (file names), not the burnt-in OSD." + ("" if lines else " (No wall labels for this camera.)"))
     page = run / f"{cam}.html"
     page.write_text(PAGE.format(title=f"{cam} daily frames — cohort {args.cohort}", legend=legend, ref=ref_html,
                                 heads=heads, rows="".join(rows), tw=min(THUMB_W, 520)), encoding="utf-8")
-    print(f"{cam}: {n} frames -> {page}")
-    return {"camera": cam, "frames": n, "page": page.name}
+    return page.name, len(samples)
+
+
+def write_index(run: Path, cameras: list[str], cohort: str) -> None:
+    items = []
+    for cam in cameras:
+        n = len([p for p in (run / cam / "thumb").glob("*.jpg") if "_REF" not in p.name])
+        vid = run / f"{cam}_flipbook.mp4"
+        items.append(f"<li><a href='{cam}.html'>{cam}</a> — {n} frames"
+                     + (f" · <a href='{vid.name}'>flipbook mp4</a>" if vid.exists() else "") + "</li>")
+    (run / "index.html").write_text(f"<!doctype html><meta charset=utf-8><title>Camera review {cohort}</title>"
+                                    f"<body style='font-family:system-ui;background:#111;color:#ddd'><h2>Camera review — "
+                                    f"cohort {cohort}</h2><ul>{''.join(items)}</ul></body>", encoding="utf-8")
+
+
+def review_camera(cam: str, args, ffmpeg: str, run: Path) -> dict:
+    lines, size, ref_t = load_labels(cam, args.labels_dir)
+    d = run / cam
+    hit = locate(ref_t, segments(Path(args.ref_session), cam))
+    if hit:
+        f, off, tk = hit
+        save_pair(grab(ffmpeg, f, off, cam, size), lines, f"{cam}_REF_{tk:%Y%m%d_%H%M%S}", d)
+    save_ir_ref(cam, args, ffmpeg, run)
+    day = args.start
+    while day <= args.end:
+        segs = segments(Path(args.cohort_root) / f"{day:%Y-%m-%d}" / cam, cam) + \
+            segments(Path(args.cohort_root) / f"{day - timedelta(days=1):%Y-%m-%d}" / cam, cam)
+        for t0 in args.times:
+            hit = locate(datetime.combine(day, t0), segs)
+            if not hit:
+                continue
+            f, off, tk = hit
+            try:
+                save_pair(grab(ffmpeg, f, off, cam, size), lines, f"{cam}_{tk:%Y%m%d_%H%M%S}", d)
+            except (RuntimeError, subprocess.CalledProcessError) as e:
+                print(f"  {cam} {tk:%m-%d %H:%M}: grab failed, skipped ({str(e)[:80]})")
+        day += timedelta(days=1)
+    page, n = build_page(run, cam, args, lines)
+    print(f"{cam}: {n} frames -> {run / page}")
+    return {"camera": cam, "frames": n, "page": page}
 
 
 def flipbook(run: Path, cam: str, fps: float = 2.0, width: int = 1920) -> Path | None:
-    """Time-lapse MP4 of a camera's review frames (09-18 reference first, then chronological), wall lines kept,
-    field-PC timestamp burnt in top-left. A camera move shows as the walls jumping off the fixed magenta lines."""
-    frames = sorted((run / cam / "full").glob(f"{cam}_*.jpg"), key=lambda p: (0 if "_REF_" in p.name else 1, p.stem[-15:]))
+    """Time-lapse MP4 of a camera's review frames (09-18 reference first — the IR one when present, since the cohort is
+    all IR — then chronological), wall lines kept, field-PC timestamp burnt in top-left. A camera move shows as the
+    walls jumping off the fixed magenta lines."""
+    full = sorted((run / cam / "full").glob(f"{cam}_*.jpg"))
+    ref = next((p for p in full if "_REFIR_" in p.name), None) or next((p for p in full if "_REF_" in p.name), None)
+    frames = ([ref] if ref else []) + sorted((p for p in full if "_REF" not in p.name), key=_stamp)
     if not frames:
         return None
     tmp = Path(tempfile.mkdtemp(prefix=f"flip_{cam}_"))
@@ -206,7 +282,8 @@ def flipbook(run: Path, cam: str, fps: float = 2.0, width: int = 1920) -> Path |
             s = width / img.shape[1]
             img = cv2.resize(img, (width, int(round(img.shape[0] * s / 2)) * 2), interpolation=cv2.INTER_AREA)
             ts = datetime.strptime(p.stem[-15:], "%Y%m%d_%H%M%S")
-            text = f"{cam}  " + ("REFERENCE calibration " if "_REF_" in p.name else "") + f"{ts:%Y-%m-%d %H:%M:%S}"
+            kind = "REFERENCE IR calibration " if "_REFIR_" in p.name else "REFERENCE colour calibration " if "_REF_" in p.name else ""
+            text = f"{cam}  {kind}{ts:%Y-%m-%d %H:%M:%S}"
             (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
             cv2.rectangle(img, (0, 0), (tw + 20, th + 20), (0, 0, 0), -1)
             cv2.putText(img, text, (10, th + 10), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
@@ -243,6 +320,12 @@ def selftest() -> int:
             and int(draw_lines(img, {"X24": [[0, 0], [99, 99]]}).sum()) == 0
         ok &= passed
         print(f"[{'PASS' if passed else 'FAIL'}] only WALL_* lines are drawn")
+        grey = np.dstack([np.tile(np.arange(200, dtype=np.uint8), (100, 1))] * 3)
+        colour = grey.copy()
+        colour[..., 0] //= 3                                                # tint: blue channel suppressed
+        passed = saturation(grey) < IR_SAT_MAX < saturation(colour)
+        ok &= passed
+        print(f"[{'PASS' if passed else 'FAIL'}] IR/colour split: grey sat {saturation(grey):.1f}, tinted {saturation(colour):.1f}")
     print(("PASS" if ok else "FAIL") + " — camera_review self-test")
     return 0 if ok else 1
 
@@ -262,25 +345,32 @@ def main(argv=None) -> int:
     ap.add_argument("--flipbook", metavar="RUN_DIR", default=None,
                     help="only (re)build <CH>_flipbook.mp4 from the frames already in RUN_DIR (no video decoding)")
     ap.add_argument("--fps", type=float, default=2.0, help="flipbook frame rate")
+    ap.add_argument("--ir-ref", metavar="RUN_DIR", default=None,
+                    help="add the 09-18 IR reference to an existing run, then rebuild its pages, flipbooks and index")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
+    import output_paths as op
+    args.cohort = op.resolve_cohort(args.cohort)
     if args.flipbook:
         for cam in args.cameras:
             flipbook(Path(args.flipbook), cam, args.fps)
         return 0
-    import output_paths as op
-    args.cohort = op.resolve_cohort(args.cohort)
     ffmpeg = find_ffmpeg()
-    run = op.run_dir("cv_field_camera_review", args.cohort, make_figures=False)
-    pages = [review_camera(cam, args, ffmpeg, run) for cam in args.cameras]
-    for p in pages:
-        p["video"] = flipbook(run, p["camera"], args.fps)
-    links = "".join(f"<li><a href='{p['page']}'>{p['camera']}</a> — {p['frames']} frames"
-                    + (f" · <a href='{p['video'].name}'>flipbook mp4</a>" if p.get("video") else "") + "</li>" for p in pages)
-    (run / "index.html").write_text(f"<!doctype html><meta charset=utf-8><title>Camera review {args.cohort}</title>"
-                                    f"<body style='font-family:system-ui;background:#111;color:#ddd'><h2>Camera review — "
-                                    f"cohort {args.cohort}</h2><ul>{links}</ul></body>", encoding="utf-8")
+    if args.ir_ref:
+        run = Path(args.ir_ref)
+        for cam in args.cameras:
+            for old in (run / cam).glob(f"*/{cam}_REFIR_*.jpg"):
+                old.unlink()
+            save_ir_ref(cam, args, ffmpeg, run)
+            build_page(run, cam, args, load_labels(cam, args.labels_dir)[0])
+            flipbook(run, cam, args.fps)
+    else:
+        run = op.run_dir("cv_field_camera_review", args.cohort, make_figures=False)
+        for cam in args.cameras:
+            review_camera(cam, args, ffmpeg, run)
+            flipbook(run, cam, args.fps)
+    write_index(run, args.cameras, args.cohort)
     print(f"open -> {run / 'index.html'}")
     return 0
 

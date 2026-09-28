@@ -39,6 +39,25 @@ extraction will use GPU decode (NVDEC) from now on (not yet implemented).
 **Verdict:** user's first look at the CH01/CH02 pages — "我觉得是没动" (no move). Final per-camera verdict pending the
 flipbooks; to be recorded as stable periods per camera for the paddock-mapping code.
 
+**Update after the flipbooks (user, 2026-09-28):**
+- **Every camera shows small shifts across days** — one calibration per cohort cannot be assumed; a per-day (or finer)
+  correction will be needed.
+- The 09-18 reference looked geometrically different (a house "stretched"). The user checked
+  `CH02_2026-09-18_15-00-01_to_15-49-36.mp4`, which holds colour and IR footage, and saw **no colour-vs-IR distortion**,
+  and asked whether the extracted frames had been altered. Verified numerically: all files share one geometry
+  (CH01/CH02 stored 2160×7680, CH03/CH04 4512×2512, no SAR, no rotation metadata); saved frames equal a pure 90° CCW
+  rotation of the raw decode (panos) or the raw decode (CH03/CH04) to JPEG precision (corr 0.9988–0.9998, mean
+  |Δ| 0.8–2.7 grey levels). By mean HSV saturation, **the cohort footage is all IR** (as the user states) and only the
+  09-18 reference was colour — so the review had compared a colour calibration frame with IR cohort frames. The
+  remaining difference therefore reflects a change between cohort 3 and 09-18 (camera pose, pano stitching, or the
+  objects themselves), not the extraction and not the colour/IR mode.
+- `camera_review.py` now also saves an **IR reference from the same 09-18 session** (`REFIR`, nearest the label clock
+  by saturation: CH01 13:57:30, CH02 15:22:30, CH03 15:45:00, CH04 14:32:30) and blinks / opens the flipbooks with it;
+  `--ir-ref <run_dir>` adds it to an existing run. Houses are not usable as references (appearance changes).
+- Proposed next (user's idea): a landmark-based correction from **rigid structures** — pole outlines, the wall TOP edge
+  (the foot is hidden by grass), the PC box facing CH02, the water-tower outline — labelled by the user on a few
+  reference frames and tracked per day by patch matching within the same (IR) mode.
+
 ## 3. `cv` env on the new GPU
 
 The analysis PC now has an RTX 5070 Ti (sm_120). The env's `torch 2.13.0+cu126` reported `cuda.is_available() == True`
