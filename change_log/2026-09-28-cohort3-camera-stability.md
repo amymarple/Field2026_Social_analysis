@@ -58,13 +58,18 @@ flipbooks; to be recorded as stable periods per camera for the paddock-mapping c
   (the foot is hidden by grass), the PC box facing CH02, the water-tower outline — labelled by the user on a few
   reference frames and tracked per day by patch matching within the same (IR) mode.
 
-**Final verdict (user, after the IR-reference flipbooks, 2026-09-28):** the differences between the cohort frames and
-the 09-18 reference are **neither colour/IR nor camera movement** — the central pole barely moves across the whole
-series. So CH01–CH04 are treated as **not moved** between cohort 3 and the 09-18 calibration (the 09-24 calibration
-applies to cohort-3 footage at its stated precision); what does change is in the scene itself (e.g. a house's
-apparent shape/size). Consequence to keep in mind: positions of movable objects (houses) measured on 09-18 frames must
-not be assumed for cohort 3. The flipbooks now show the reference at the start and the end. The rigid-landmark
-correction is on hold unless a later need appears.
+**Verdict (user, after the IR-reference flipbooks, 2026-09-28; supersedes an earlier "not moved" reading):**
+- The differences are **not colour/IR** — the reference and the cohort frames are both IR.
+- **CH01/CH02 (Duo 3 panoramas): a large image DISTORTION change** between cohort 3 and the 09-18 calibration — a
+  house's size in the image clearly differs — while the central pole barely moves (so it is not a simple camera
+  move). The user does not attribute it to reboots (the machines were certainly rebooted mid-recording); the event
+  timeline is being checked against the records.
+- **CH03/CH04: no distortion change, but larger day-to-day image motion than CH01/CH02.**
+- **Consequence:** the calibration anchors were established after the cohort (09-18/19), so cohort-3 pixels cannot be
+  mapped to paddock coordinates with the 09-24 calibration as is. A correction from cohort-epoch pixels to
+  calibration-epoch pixels is needed — per epoch for the CH01/CH02 distortion, per day (or finer) for the CH03/CH04
+  motion — from rigid structures that do not move over days (user's proposal). Plan to follow.
+- The flipbooks show the reference at the start and the end.
 
 ## 3. `cv` env on the new GPU
 
