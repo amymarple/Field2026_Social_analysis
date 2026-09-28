@@ -58,6 +58,14 @@ flipbooks; to be recorded as stable periods per camera for the paddock-mapping c
   (the foot is hidden by grass), the PC box facing CH02, the water-tower outline — labelled by the user on a few
   reference frames and tracked per day by patch matching within the same (IR) mode.
 
+**Final verdict (user, after the IR-reference flipbooks, 2026-09-28):** the differences between the cohort frames and
+the 09-18 reference are **neither colour/IR nor camera movement** — the central pole barely moves across the whole
+series. So CH01–CH04 are treated as **not moved** between cohort 3 and the 09-18 calibration (the 09-24 calibration
+applies to cohort-3 footage at its stated precision); what does change is in the scene itself (e.g. a house's
+apparent shape/size). Consequence to keep in mind: positions of movable objects (houses) measured on 09-18 frames must
+not be assumed for cohort 3. The flipbooks now show the reference at the start and the end. The rigid-landmark
+correction is on hold unless a later need appears.
+
 ## 3. `cv` env on the new GPU
 
 The analysis PC now has an RTX 5070 Ti (sm_120). The env's `torch 2.13.0+cu126` reported `cuda.is_available() == True`

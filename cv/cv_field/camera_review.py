@@ -267,12 +267,13 @@ def review_camera(cam: str, args, ffmpeg: str, run: Path) -> dict:
 
 
 def flipbook(run: Path, cam: str, fps: float = 2.0, width: int = 1920) -> Path | None:
-    """Time-lapse MP4 of a camera's review frames (09-18 reference first — the IR one when present, since the cohort is
-    all IR — then chronological), wall lines kept, field-PC timestamp burnt in top-left. A camera move shows as the
-    walls jumping off the fixed magenta lines."""
+    """Time-lapse MP4 of a camera's review frames: the 09-18 reference (the IR one when present, since the cohort is all
+    IR), then the cohort frames in time order, then the reference again (so the last cohort frame can be compared with
+    it too); wall lines kept, field-PC timestamp burnt in top-left. A camera move shows as the walls jumping off the
+    fixed magenta lines."""
     full = sorted((run / cam / "full").glob(f"{cam}_*.jpg"))
     ref = next((p for p in full if "_REFIR_" in p.name), None) or next((p for p in full if "_REF_" in p.name), None)
-    frames = ([ref] if ref else []) + sorted((p for p in full if "_REF" not in p.name), key=_stamp)
+    frames = ([ref] if ref else []) + sorted((p for p in full if "_REF" not in p.name), key=_stamp) + ([ref] if ref else [])
     if not frames:
         return None
     tmp = Path(tempfile.mkdtemp(prefix=f"flip_{cam}_"))
