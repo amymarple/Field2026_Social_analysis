@@ -18,6 +18,8 @@ the quickest way to spot a move (the walls jump off the fixed lines).
 Usage:  python cv/cv_field/camera_review.py --cohort 2026c [--cameras CH01 CH02 CH03 CH04] [--times 03:01 12:00 21:30]
         python cv/cv_field/camera_review.py --flipbook <run_dir> [--cameras ...] [--fps 2]   # rebuild videos only
         python cv/cv_field/camera_review.py --ir-ref <run_dir>     # add the 09-18 IR reference, rebuild pages + videos
+        python cv/cv_field/camera_review.py --cohort 2026c --events cv/configs/cohort3_camera_events.json
+                                                                   # before/after pairs around candidate events
 The cohort footage is all IR while the labelled 09-18 frame is colour, so an IR frame of the same 09-18 session
 (found by mean saturation nearest the label clock) is the reference the pages blink against and the videos open with.
         python cv/cv_field/camera_review.py --selftest
@@ -163,9 +165,10 @@ def load_labels(cam: str, labels_dir: str) -> tuple[dict, tuple[int, int], datet
     return lab.get("lines", {}), tuple(lab["frame_size_upright"]), datetime.combine(date(2026, 9, 18), clock)
 
 
-def save_ir_ref(cam: str, args, ffmpeg: str, run: Path, step_min: int = 5, span_min: int = 120) -> str | None:
+def save_ir_ref(cam: str, args, ffmpeg: str, run: Path, step_min: int = 5, span_min: int = 120) -> datetime | None:
     """The 09-18 calibration session holds colour AND IR footage; the cohort is all IR. Find the IR frame of the
-    session closest to the wall-label clock (±step_min steps, by mean saturation) and save it as <CH>_REFIR_<ts>."""
+    session closest to the wall-label clock (±step_min steps, by mean saturation), save it as <CH>_REFIR_<ts> and
+    return its time."""
     lines, size, ref_t = load_labels(cam, args.labels_dir)
     segs = segments(Path(args.ref_session), cam)
     for k in range(0, span_min // step_min + 1):
@@ -179,7 +182,7 @@ def save_ir_ref(cam: str, args, ffmpeg: str, run: Path, step_min: int = 5, span_
             if sat < IR_SAT_MAX:
                 save_pair(img, lines, f"{cam}_REFIR_{tk:%Y%m%d_%H%M%S}", run / cam)
                 print(f"{cam}: IR reference {tk:%H:%M:%S} (sat {sat:.1f}, {f.name})")
-                return f.name
+                return tk
     print(f"{cam}: no IR frame within ±{span_min} min of {ref_t:%H:%M:%S} in {args.ref_session}")
     return None
 
@@ -266,6 +269,96 @@ def review_camera(cam: str, args, ffmpeg: str, run: Path) -> dict:
     return {"camera": cam, "frames": n, "page": page}
 
 
+def render_video(items: list[tuple[Path, str]], out: Path, fps: float = 2.0, width: int = 1920) -> Path:
+    """Write an H.264 MP4 from (image, caption) pairs: each image scaled to `width`, caption burnt in top-left."""
+    tmp = Path(tempfile.mkdtemp(prefix="flip_"))
+    try:
+        for i, (p, text) in enumerate(items):
+            img = cv2.imread(str(p))
+            s = width / img.shape[1]
+            img = cv2.resize(img, (width, int(round(img.shape[0] * s / 2)) * 2), interpolation=cv2.INTER_AREA)
+            (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+            cv2.rectangle(img, (0, 0), (min(tw + 20, width), th + 20), (0, 0, 0), -1)
+            cv2.putText(img, text, (10, th + 10), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.imwrite(str(tmp / f"{i:04d}.png"), img)
+        subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-framerate", str(fps), "-i", str(tmp / "%04d.png"),
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", str(out)], check=True)
+        return out
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def grab_at(t: datetime, cam: str, args, ffmpeg: str, size) -> tuple[np.ndarray, datetime, Path] | None:
+    """Frame of `cam` at field-PC time t: the 09-18 calibration session for 09-18, else the cohort copy (date folder
+    and the previous one)."""
+    if t.date() == date(2026, 9, 18):
+        segs = segments(Path(args.ref_session), cam)
+    else:
+        segs = segments(Path(args.cohort_root) / f"{t:%Y-%m-%d}" / cam, cam) + \
+            segments(Path(args.cohort_root) / f"{t - timedelta(days=1):%Y-%m-%d}" / cam, cam)
+    hit = locate(t, segs)
+    if not hit:
+        return None
+    f, off, tk = hit
+    try:
+        return grab(ffmpeg, f, off, cam, size), tk, f
+    except (RuntimeError, subprocess.CalledProcessError) as e:
+        print(f"  {cam} {t:%m-%d %H:%M}: grab failed ({str(e)[:80]})")
+        return None
+
+
+def review_events(cfg_path: Path, args, ffmpeg: str, run: Path) -> None:
+    """Before/after frames for each candidate event (cv/configs/cohort3_camera_events.json) per camera: one HTML page
+    (click a frame to blink it against the other side of the pair) and one MP4 (before, after, before, after per
+    event, captioned). No judgement is made here."""
+    cfg = json.loads(Path(cfg_path).read_text(encoding="utf-8"))
+    for cam in args.cameras:
+        events = [e for e in cfg["events"] if cam in e["cams"]]
+        if not events:
+            continue
+        lines, size, _ = load_labels(cam, args.labels_dir)
+        irref = save_ir_ref(cam, args, ffmpeg, run) if any(e["after"] == "IRREF" or e["before"] == "IRREF" for e in events) else None
+        rows, items = [], []
+        for ev in events:
+            pair = {}
+            for side in ("before", "after"):
+                t = irref if ev[side] == "IRREF" else datetime.strptime(ev[side], "%Y-%m-%d %H:%M:%S")
+                got = grab_at(t, cam, args, ffmpeg, size) if t else None
+                if got:
+                    img, tk, f = got
+                    stem = f"{cam}_{ev['id']}_{side}_{tk:%Y%m%d_%H%M%S}"
+                    save_pair(img, lines, stem, run / cam)
+                    pair[side] = (run / cam / "full" / f"{stem}.jpg", f"{cam}/thumb/{stem}.jpg", f"{cam}/full/{stem}.jpg", tk, f.name)
+            cells = []
+            for side, other in (("before", "after"), ("after", "before")):
+                if side not in pair:
+                    cells.append("<td class=na>no frame</td>")
+                    continue
+                _, th, fu, tk, fn = pair[side]
+                blink = pair[other][1] if other in pair else th
+                cells.append(f"<td><img src='{th}' data-src='{th}' data-ref='{blink}'><div class=cap>{side.upper()} "
+                             f"{tk:%Y-%m-%d %H:%M:%S} · <a href='{fu}'>full</a> · {html.escape(fn)}</div></td>")
+            rows.append(f"<tr><td><b>{ev['id']}</b><br><span class=cap>{html.escape(ev['label'])}</span></td>{''.join(cells)}</tr>")
+            if len(pair) == 2:
+                for _ in range(2):
+                    for side in ("before", "after"):
+                        items.append((pair[side][0], f"{cam} {ev['id']} {side.upper()} {pair[side][3]:%Y-%m-%d %H:%M:%S}"))
+        legend = ("Before/after frames around candidate events (field-PC time). Magenta = 09-18 wall-foot lines. "
+                  "<b>Click a frame to blink it against the other one of its pair.</b> The MP4 shows each pair twice.")
+        page = run / f"{cam}_events.html"
+        page.write_text(PAGE.format(title=f"{cam} event pairs — cohort {args.cohort}", legend=legend, ref="",
+                                    heads="<th>before</th><th>after</th>", rows="".join(rows), tw=min(THUMB_W, 620))
+                        .replace("<th>date</th>", "<th>event</th>"), encoding="utf-8")
+        if items:
+            render_video(items, run / f"{cam}_events.mp4", args.fps)
+        print(f"{cam}: {len(events)} events -> {page}")
+    links = "".join(f"<li>{c}: <a href='{c}_events.html'>page</a> · <a href='{c}_events.mp4'>mp4</a></li>"
+                    for c in args.cameras if (run / f"{c}_events.html").exists())
+    (run / "index.html").write_text(f"<!doctype html><meta charset=utf-8><title>Camera events {args.cohort}</title>"
+                                    f"<body style='font-family:system-ui;background:#111;color:#ddd'><h2>Camera event pairs — "
+                                    f"cohort {args.cohort}</h2><ul>{links}</ul></body>", encoding="utf-8")
+
+
 def flipbook(run: Path, cam: str, fps: float = 2.0, width: int = 1920) -> Path | None:
     """Time-lapse MP4 of a camera's review frames: the 09-18 reference (the IR one when present, since the cohort is all
     IR), then the cohort frames in time order, then the reference again (so the last cohort frame can be compared with
@@ -276,26 +369,13 @@ def flipbook(run: Path, cam: str, fps: float = 2.0, width: int = 1920) -> Path |
     frames = ([ref] if ref else []) + sorted((p for p in full if "_REF" not in p.name), key=_stamp) + ([ref] if ref else [])
     if not frames:
         return None
-    tmp = Path(tempfile.mkdtemp(prefix=f"flip_{cam}_"))
-    try:
-        for i, p in enumerate(frames):
-            img = cv2.imread(str(p))
-            s = width / img.shape[1]
-            img = cv2.resize(img, (width, int(round(img.shape[0] * s / 2)) * 2), interpolation=cv2.INTER_AREA)
-            ts = datetime.strptime(p.stem[-15:], "%Y%m%d_%H%M%S")
-            kind = "REFERENCE IR calibration " if "_REFIR_" in p.name else "REFERENCE colour calibration " if "_REF_" in p.name else ""
-            text = f"{cam}  {kind}{ts:%Y-%m-%d %H:%M:%S}"
-            (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
-            cv2.rectangle(img, (0, 0), (tw + 20, th + 20), (0, 0, 0), -1)
-            cv2.putText(img, text, (10, th + 10), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.imwrite(str(tmp / f"{i:04d}.png"), img)
-        out = run / f"{cam}_flipbook.mp4"
-        subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-framerate", str(fps), "-i", str(tmp / "%04d.png"),
-                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", str(out)], check=True)
-        print(f"{cam}: flipbook ({len(frames)} frames @ {fps:g} fps) -> {out}")
-        return out
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+    items = []
+    for p in frames:
+        kind = "REFERENCE IR calibration " if "_REFIR_" in p.name else "REFERENCE colour calibration " if "_REF_" in p.name else ""
+        items.append((p, f"{cam}  {kind}{_stamp(p):%Y-%m-%d %H:%M:%S}"))
+    out = render_video(items, run / f"{cam}_flipbook.mp4", fps, width)
+    print(f"{cam}: flipbook ({len(frames)} frames @ {fps:g} fps) -> {out}")
+    return out
 
 
 def selftest() -> int:
@@ -348,6 +428,8 @@ def main(argv=None) -> int:
     ap.add_argument("--fps", type=float, default=2.0, help="flipbook frame rate")
     ap.add_argument("--ir-ref", metavar="RUN_DIR", default=None,
                     help="add the 09-18 IR reference to an existing run, then rebuild its pages, flipbooks and index")
+    ap.add_argument("--events", metavar="JSON", default=None,
+                    help="before/after frames around candidate events (e.g. cv/configs/cohort3_camera_events.json)")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
@@ -358,6 +440,11 @@ def main(argv=None) -> int:
             flipbook(Path(args.flipbook), cam, args.fps)
         return 0
     ffmpeg = find_ffmpeg()
+    if args.events:
+        run = op.run_dir("cv_field_camera_events", args.cohort, make_figures=False)
+        review_events(Path(args.events), args, ffmpeg, run)
+        print(f"open -> {run / 'index.html'}")
+        return 0
     if args.ir_ref:
         run = Path(args.ir_ref)
         for cam in args.cameras:

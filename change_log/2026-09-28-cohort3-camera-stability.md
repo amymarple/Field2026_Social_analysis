@@ -71,6 +71,18 @@ flipbooks; to be recorded as stable periods per camera for the paddock-mapping c
   motion — from rigid structures that do not move over days (user's proposal). Plan to follow.
 - The flipbooks show the reference at the start and the end.
 
+**Event timeline and event-pair review.** The records (field2026-sync incident log, recording repo, file names,
+weather) show no Duo 3 settings/firmware/mount change and no house move logged; one NVR reboot during the cohort
+(09-06 ~13:00→14:04:44, all NVR channels, not in the incident log); PC blue screens 09-01 04:19:56 and 09-03 13:56
+(PC-side only); 08-31 ~11:52→19:01 unlogged troubleshooting; 26 h unrecorded 09-17 12:01→09-18 13:54 during which the
+image mode was switched (cohort footage all IR even at noon; colour again on 09-18); storm 09-02 21:05–21:25; heavy rain
+09-03 23:25–23:45. **CH01/CH02 drop their stream in dawn/dusk clusters** (1–3-min pieces ~4 min apart for ~20 min,
+e.g. CH01 09-03 18:45:23→19:07:48, CH02 09-12 06:01:44→06:06:16). `camera_review.py --events` (config
+`cv/configs/cohort3_camera_events.json`) extracted IR before/after pairs around each candidate (run
+`cv_field_camera_events_20260928_1934`: per-camera pages + MP4s) for the user to date the changes.
+New `cv/cv_field/landmark_gui.py` (adapted from the recording repo's `line_gui.py`) for the rigid-landmark labels;
+labels go to `cv/configs/landmarks/2026c/`.
+
 ## 3. `cv` env on the new GPU
 
 The analysis PC now has an RTX 5070 Ti (sm_120). The env's `torch 2.13.0+cu126` reported `cuda.is_available() == True`
