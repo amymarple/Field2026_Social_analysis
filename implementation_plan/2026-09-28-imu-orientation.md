@@ -3,6 +3,25 @@
 **Status.** PLAN, 2026-09-28 (mounting and axis map verified on all six loggers). Nothing implemented beyond the reader (`ephys/read_imu.py`). Local first: developed and
 validated on `E:\3rd_rat_spikes`, then the same commit runs on BioHPC.
 
+## Purposes (user, 2026-09-28, in priority order)
+
+1. **Sleep epochs:** the IMU is the EMG — when the animal moves and when it is still.
+2. **Animal identity with video:** match each logger's movement and **2D head turning** to the video tracks.
+3. **WISER denoising and identity:** the same movement signal against each tag (IMU still → WISER displacement is
+   jitter; the tag ↔ animal assignment is checked).
+4. Head rotation in 3D — secondary.
+
+So the products, in that order:
+- the **movement index** (VeDBA, \|ω\|) and the **turn rate about the vertical** at 50 Hz and **per second**, all in
+  field-PC time;
+- then pitch/roll;
+- the quaternion is kept for later.
+
+The turn rate needs only the gravity direction, not a heading, so the missing magnetometer does not limit it. Only
+its integral (relative yaw) drifts.
+
+The immobility threshold is set from the local per-second distributions after the pilot. It is not fixed in advance.
+
 ## Goal
 
 Per session, a 100 Hz time series of:
