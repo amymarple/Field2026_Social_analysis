@@ -1,6 +1,6 @@
 # Head IMU orientation and activity for cohort 3 (2026c): reuse the lab algorithm, 6-axis (2026-09-28)
 
-**Status.** PLAN, 2026-09-28. Nothing implemented beyond the reader (`ephys/read_imu.py`). Local first: developed and
+**Status.** PLAN, 2026-09-28 (mounting and axis map verified on all six loggers). Nothing implemented beyond the reader (`ephys/read_imu.py`). Local first: developed and
 validated on `E:\3rd_rat_spikes`, then the same commit runs on BioHPC.
 
 ## Goal
@@ -22,11 +22,11 @@ The algorithm is `CE32_scaleIMU_gravity.m` + `process_IMU_from_basepath.m` (WILD
 |---|---|---|---|
 | Read | lanes 2:10 (MATLAB) = accelerometer, gyroscope, magnetometer, 1250 Hz | lanes 1–6 only (accelerometer + gyroscope) via `read_imu.py` | the headstage magnet saturates the magnetometer |
 | Units | acc ±8 g, gyro ±2000 °/s | same | validated: \|acc\| ≈ g, gyro bias < 2 °/s |
-| Rate | `resample` → 100 Hz | anti-aliased `resample_poly(2, 25)` → 100 Hz; 1250 Hz stays available | same idea. 100 Hz sample j ↔ amplifier sample 200j exactly |
+| Rate | `resample` → 100 Hz | fuse at 100 Hz (anti-aliased `resample_poly(2, 25)`), **store 50 Hz** (user: 100 Hz is more than enough); 1250 Hz stays available through `read_imu.py` | the fusion integrates the gyro more accurately at 100 Hz. Stored 50 Hz sample j ↔ amplifier sample 400j exactly |
 | Outliers | clip each lane at 0.1 / 99.9 % | **no clipping**; flag full-scale saturation | clipping removes real jumps/falls |
 | Calibration | acc scaled so the session median \|a\| = g; gyro bias = session median; `magcal` | acc scale and gyro bias from **quiet windows**, the bias per 10-min block (interpolated); no mag | a whole-session median includes movement; bias drifts with temperature |
 | Fusion | 9-axis `ahrsfilter` (NED) | **6-axis** filter: x-io Fusion AHRS (`imufusion`), gyro range 2000 °/s, acceleration rejection. Madgwick (`ahrs`) as a check | no magnetometer; Fusion recovers after gyro saturation |
-| Axis map | fixed `S`: head up = sensor +x (x' = −y, y' = −z, z' = +x) | same `S`, **verified per animal** from gravity in quiet upright windows | SF07 at rest: gravity mostly along sensor +x ([0.60, 0.32, −0.03]), consistent with `S`. Their comment and code disagree, so it must be checked |
+| Axis map | fixed `S`: head up = sensor +x (x' = −y, y' = −z, z' = +x) | same `S` — **verified 2026-09-28 on all six loggers** | Mounting (user): the logger is on the **right side of the head**; the IMU / text side faces right (outward), the molex connector points to the tail, and the IMU is on the nose side. So the chip normal (z_B) points right, x_B up, and y_B (right-handed) to the tail: nose = −y_B, left = −z_B, up = +x_B = `S`. Data: in active night windows (median \|ω\| 30–150 °/s, first 2 h of the first FM65 night) the median roll is −9 to +4° and the median pitch −30 to −50° (nose down) on all six; a mirrored map would give roll ≈ ±180° or nose-up exploring. Quiet windows spread widely (curled / lying on the side), so rest is not a level reference. The PCB drawing function (`CE32_draw3DPCB`) is not on this machine |
 | Angles | ZYX Euler [roll, yaw, pitch], unwrap + `processAxis_fast` jump "repair" | pitch and roll from the gravity vector in the head frame (no gimbal lock); yaw only as turn rate / relative yaw; no jump repair | rearing takes pitch near 90°, where ZYX breaks; the repair distorts real fast turns |
 | World accel | R·a − median(R·a) | R·a − g·ẑ (exact gravity) | the median absorbs orientation bias |
 | "speed" | cumsum(accel), 0.1 Hz high-pass | **not computed**; VeDBA and angular speed instead | it is not locomotion speed (speed comes from WISER/video) |
@@ -84,6 +84,9 @@ $$ \theta(t) = \arcsin\bigl(u_{H,x}(t)\bigr) $$
 **Text:** the elevation of the nose above horizontal, in degrees, range $[-90°, 90°]$. Positive means nose up
 (rearing, sniffing up); negative means nose down (grooming, eating, head-down sleep). It is well defined at any
 attitude.
+- Absolute θ includes each logger's gluing tilt on the head (unknown, possibly tens of degrees): exploring
+  medians are −30 to −50°.
+- Compare animals on θ relative to the animal's own active-locomotion median, or after a video calibration.
 
 ### Head roll ($\phi$)
 $$ \phi(t) = \operatorname{atan2}\bigl(u_{H,y}(t),\,u_{H,z}(t)\bigr) $$
@@ -154,13 +157,16 @@ fingerprint, and the git commit.
    `imufilter` on a 10-min segment; θ/φ agreement should be RMS < 2°.
 6. Then the same commit runs on BioHPC; one session is compared with the local output.
 
-## Questions for the user
+## Decisions (user, 2026-09-28)
 
-1. **How is the logger mounted on the head** (connector forward/back, which face up)? This names $x_H$/$y_H$, and
-   whether their `S` holds for CE64.
-2. Is 100 Hz output enough (as in their pipeline)? 1250 Hz stays available through `read_imu.py` for
-   impacts/tremor.
-3. Library: x-io **Fusion** (`imufusion`: 6-axis mode, gyro offset tracking, saturation recovery) as primary, Madgwick
-   as a check. OK?
-4. Which behaviours matter first (rearing, grooming, sleep posture, head turns during following)? That decides the
-   validation set.
+1. **Mounting:** the logger is on the right side of the head; the IMU/text side faces right; the molex connector
+   points to the tail; the IMU is on the nose side. The lab `S` holds and is verified in the data (see the table).
+2. **Rate:** 100 Hz is more than enough, so fuse at 100 Hz and store 50 Hz.
+3. **Library:** x-io Fusion (`imufusion`) is primary, Madgwick a check.
+4. **Where and how long:** local (IMU data is small).
+   - Only `analogin.dat` is read: 144 MB per recorded hour, about 200 GB for 1,372 h, about 17 min from `E:` at
+     ~200 MB/s.
+   - The fusion runs at 100 Hz in C; with sessions in parallel it takes minutes.
+   - The whole cohort should take about 30 min on this PC; the server is not needed for this step.
+5. **Still open:** which behaviours matter first (rearing, grooming, sleep posture, head turns during following).
+   That decides the validation set.
