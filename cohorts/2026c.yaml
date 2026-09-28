@@ -130,6 +130,10 @@ ephys:
     # identical operation, would point at SF07/SF11's drives (slipping shuttle) rather than the technique.
     - {animal: SF08, time: "2026-09-09 18:10", turns: 0.25, direction: advance, prev_session_stop: "2026-09-09 17:57:34", settle_h: 4}
     - {animal: SF12, time: "2026-09-09 18:47", turns: 0.25, direction: advance, prev_session_stop: "2026-09-09 18:46:34", settle_h: 4}
+    # Second SF12 advance, 14 h after the first, inside the 09-10 AM swap (operator 'turn 1/4'; guard stubs 08:33:35-08:34:09,
+    # 08:34:19-08:34:51). Source: Notion cohort page, animal table + 09-10 observation log (added 2026-09-28; was missing here).
+    # The 09-09 18:47:51 -> 09-10 07:43:01 night session is the tissue between the two moves.
+    - {animal: SF12, time: "2026-09-10 08:35:07", turns: 0.25, direction: advance, prev_session_stop: "2026-09-10 07:43:01", settle_h: 4}
   # Operator observations on electrode position / signal (dated; the analysis reads them as expectations for sorting:
   # a probe still above the hippocampus yields no CA1 units, emerging ripples mark the approach to the pyramidal layer).
   probe_notes:

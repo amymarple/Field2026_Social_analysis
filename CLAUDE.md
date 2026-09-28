@@ -159,6 +159,15 @@ Raw (read-only): `E:\3rd_rat_spikes\<SFx>\<MAC>\<slot>_<YYYYMMDD>_<HHMMSS>.<ms>\
 Off-repo root `<ar>` = `ephys.analysis_root` (2026c: `D:/3rd_rat_spikes/analysis`; fallback `<OUT_ROOT>/<c>/ephys_*`)
 holding `index/` (SESSION_INDEX mirror + regenerable bulk), `stage/`, `sort/`, `pc_time/`, `tools/`.
 
+**Before choosing, sorting, matching or interpreting any session, run `/regime-aware-ephys`.** It holds the per-logger
+record: probe advances and their ~4 h unstable windows, contact/implant losses, the ADC lane, battery gaps, clock
+steps, disturbance windows and the 09-11 population change. It also points to the current sources (Notion cohort page,
+the incident log and offload QC in field2026-sync, BATTERY_LOG). **Sorting strategy:** sort per *block* (continuous FM65,
+gaps < 5 min joined; never across a battery round, probe move or firmware change), then match units across blocks. The
+plan and the SF07 pilot are in `implementation_plan/2026-09-28-ephys-block-sorting-strategy.md`. On this PC the pipeline
+checkout is `D:\Documents\ayalab\PreprocessPipeline` (set `PREPROCESS_PIPELINE_ROOT`), and the `preprocess` env has to
+be rebuilt.
+
 | # | Stage | Command (`--cohort 2026c`) | Output |
 |---|---|---|---|
 | 0 | card size check / ADC-lane quarantine | `check_offload_sizes.py --card SF7=<records>:<MB>`; `quarantine_adc_sessions.py [--move]` | `reports/…offload_sizes_*.csv`; moves lane-ON sessions to `<raw>/_quarantine_adc_lane_on/` |
@@ -303,8 +312,9 @@ plane — a lower bound, not sleep; tag cutoffs apply only where `apply_tag_cuto
   `results/`). **`PARKED_ITEMS.md`**: unresolved migration items. **`FIELD_OBSERVATIONS.md`**: 2026a daily field log +
   roster. **`runs/detect/`** (root) and `yolo*.pt`: untracked Ultralytics debris — ignore.
 - **`.claude/`**: agents `analysis-result-bridge`, `analysis-status-simplifier`, `cv-measurement-auditor`,
-  `wiser-measurement-auditor`, `recording-inquiry` (cited answers from the two sibling repos); skills `analysis-definitions`, `analysis-status`, `export-analysis-result`,
-  `scientific-report-promotion` → `human-readable-scientific-summary`, `regime-aware-*`,
+  `wiser-measurement-auditor`, `recording-inquiry` (cited answers from the two sibling repos + the Notion cohort page);
+  skills `analysis-definitions`, `analysis-status`, `export-analysis-result`,
+  `scientific-report-promotion` → `human-readable-scientific-summary`, `regime-aware-*` (WISER, CV, **ephys**),
   `multi-agent-behavior-modeling-audit`, `offload-field-request` (after each neurologger offload QC); hook
   `protect_data_servers.py`. Mirrors for Codex: `.agents/skills/`, `.codex/agents/`.
 
@@ -370,7 +380,9 @@ the channel, before using color; CH07/CH08 run IR with deliberate color inserts 
    USB). Phase only, no absolute marker — the file name supplies the second. The join pipeline is
    `field2026-sync/from-field/2026-09-03_led_sync_pipeline.py`; `ephys/pc_time_chain.py` emits its schema.
 4. **PC drift** (`README_pc_drift.md`, from 2026-08-29): NTP sampled 4×/day, never sets the clock →
-   `E:\recording_qc\pc_drift_log.csv` (`offset_ms` = PC − NTP, + = PC fast; `w32time`, `tz_id`). A step = the clock was
+   `E:\recording_qc\pc_drift_log.csv` (`offset_ms` = **NTP − PC, + = PC slow**: the code computes the standard NTP θ; the
+   script's docstring and `README_pc_drift.md` say the opposite and are wrong —
+   `field2026-sync/from-field/2026-09-07_pc-clock-drift-analysis.md` §0; `w32time`, `tz_id`). A step = the clock was
    set → split the analysis there. The recording repo does not list clock steps: derive them from this log + the
    incident log; this repo's registry of them is `cohorts/2026c.yaml ephys.field_pc_clock_steps`.
 5. **Neurologgers (cohort 3):** Resync only on an idle logger before Record Start; Sync[Live] anchors land on the
