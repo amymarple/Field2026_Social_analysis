@@ -36,7 +36,7 @@ Quick rules (all detailed in CONVENTIONS.md):
   share the cohort registry, `common/`, the ledgers and the cross-modal clock chain. A four-week ephys branch caused the
   2026-09-28 merge conflicts; keep branches short-lived.
 - **Local first, then the server (user rule, 2026-09-28).** Every new ephys / LFP / IMU / sorting step is developed and
-  validated on this PC against the local raw copy `E:rd_rat_spikes` (read-only) before it runs on BioHPC. The server
+  validated on this PC against the local raw copy `E:\3rd_rat_spikes` (read-only) before it runs on BioHPC. The server
   runs only code already validated here, deployed from a commit, and its output is spot-checked against the local result
   (e.g. the LFP of SF07 `9_20260901_192912.215` is byte-identical on both machines).
 - Medium/large change: `implementation_plan/<date>-topic.md` **before**, `change_log/<date>-topic.md` **after**, and

@@ -47,7 +47,7 @@ are the current truth.
 3. **Look up each session** in `results/2026c/ephys_spikes/reports/ephys_spikes_session_index_2026c.csv`:
    `firmware`, `measured_verdict`, `regime`, `bad_channel_candidates`, `field_flag`, `valid_until`, `adc_lane`. Also
    check its `pc_time_chain` verdict (`…pc_time_chain_2026c.md`).
-4. **Local first.** Develop and validate every new step on this PC against the local raw copy `E:rd_rat_spikes`
+4. **Local first.** Develop and validate every new step on this PC against the local raw copy `E:\3rd_rat_spikes`
    (read-only). Only then deploy the same commit to BioHPC, and spot-check the server output against the local result.
 5. **Apply the rules below.**
    - When the record has a fact that `cohorts/2026c.yaml` lacks, add it to the YAML with its source (the YAML is
