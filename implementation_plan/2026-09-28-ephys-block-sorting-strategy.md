@@ -1,6 +1,7 @@
 # Ephys preprocessing strategy for cohort 3 (2026c): sort per block, match units across blocks; local pilot (2026-09-28)
 
-**Status.** PLAN, 2026-09-28. Pilot not started. Production run later on BioHPC GPUs.
+**Status.** PLAN, 2026-09-28. Pilot not started. Production and the pilot go to BioHPC `cbsuruiz01` (see
+*Production on BioHPC*); the local-pilot section below stays as the fallback.
 
 ## Decision
 
@@ -107,18 +108,75 @@ and theta work run on it and need no spike sorting.
 
 **5. Curation.** Phy only on the blocks the first analyses need. Do not curate 128 blocks × 4 shanks up front.
 
-## Production on the server
+## Production on BioHPC (cbsuruiz01)
 
-- **Job.** One block per job: 16–32 CPU cores for preprocessing, 1 GPU for Kilosort4 (16-channel shanks use little
-  VRAM, so 2–4 shank jobs can share a GPU), and CPU for the postprocess. The pipeline already has Slurm execution and
-  automatic GPU selection.
-- **Inputs.** The raw tree on BioHPC storage (`…\3rd_rat\WILD\SF7..SF12\<MAC>\<session>\`, reconciled 2026-09-23).
-- **Outputs.** First to the workdir, then to storage `…\3rd_rat\analysis\{index,sort}`; the 2026-09-24 reconciliation
-  note reserved those names.
-- **What to keep.** Keep the Phy folders, `.lfp`, `session.mat`, MergePoints and the manifests. Keep a block's filtered
-  `.dat` (≈ raw size, regenerable) only while that block is being curated.
-- **Wall time.** Set from the throughput pilot P2 measures (hours of compute per hour of data) × 1,250 h ÷ the number of
-  GPUs.
+**The machine** (runbook `D:\FastenPC\BioHPC-server.md` and probe `server-profile.json`, both verified 2026-07-12/13;
+a live re-probe is pending, see below):
+- `cbsuruiz01.biohpc.cornell.edu`, user `hc997`, `ssh gpu` (key + 2FA cached about a week per IP).
+- **2× RTX PRO 6000 Blackwell Max-Q, 96 GB each** (sm_120, driver 580.95 → CUDA 13.0 wheels OK).
+- **No Slurm, no conda.** Jobs run directly under `nohup` (`D:\FastenPC\gpu-job.ps1 run`). The machine is shared;
+  check `gpu-job.ps1 status` before launching.
+- `module load python/3.12.7`; singularity/docker are available.
+- `/workdir/hc997`: local scratch, 21 TB (4.6 TB free on 07-13), purged at 3 AM when the disk fills.
+- `/home/hc997`: permanent, network-mounted.
+- Storage NFS-mounted at `/fs/cbsuruizfs1/storage/hc997` (= `Q:\hc997` here). Cohort 3 raw:
+  `…/SocialFieldRat2026/3rd_rat/WILD/SF7..SF12/<MAC>/<session>/`, the same layout as `E:\3rd_rat_spikes`.
+
+**Environment** (one-time; everything in `/home/hc997` so the purge cannot touch it):
+- `git clone` PreprocessPipeline and pin commit `eb3dad4` (2026-09-24).
+- `python scripts/setup_uv.py` → a Python 3.11 `.venv` with torch 2.9.1 + CUDA 13.0, vendored Kilosort4 and Phy. uv
+  fetches Python itself, so no conda is needed. It needs `uv`, `git` and GitHub access on the node.
+- `git clone` this repo; `git pull` before each campaign.
+- The pipeline's own GPU admission (start only when a GPU uses < 10 % VRAM; `src/execution/worker.py`) sits only on
+  its GUI/worker path. Our driver calls `run_preprocess_session` directly and pins each worker with
+  `CUDA_VISIBLE_DEVICES`, so another user's small job does not stall ours.
+
+**Job runner.** Without Slurm this is our own queue: a new `ephys/server/run_block_queue.py`, one process per
+worker, launched with `gpu-job.ps1 run`. Each worker loops:
+1. **Claim** the next block from the block table with an atomic lock file. Blocks are resumable: a block is done when
+   its `DONE.json` exists on storage, which survives the workdir purge.
+2. **Stage** the member sessions by copying them from storage to `/workdir/hc997/ephys_2026c/stage/<block>/` (one
+   sequential NFS read) and write the block XML.
+   - This follows the runbook's rule: compute from `/workdir`, never against network storage. Preprocessing reads
+     with many parallel workers, which NFS handles badly.
+   - Symlink staging is only for the local pilot.
+3. **Sort:** preprocess, then Kilosort4 per shank, then fast postprocess (the `run_sort_session.py` logic,
+   generalised to multi-session blocks). Timings are recorded per stage.
+4. **Archive to storage:** the Phy folders, `.lfp`, `session.mat`, MergePoints, manifests and log go to
+   `…/3rd_rat/analysis/sort/<SFxx>/<block>/`, the name reserved in the 2026-09-24 reconciliation. Verify by size and
+   hash, then write `DONE.json` (pipeline and repo commits, host, GPU, timings).
+5. **Clean up:** delete the staged raw and the filtered `.dat` from `/workdir`. The `.dat` is regenerable; keep it only
+   for blocks selected for curation.
+
+- **Concurrency.** Start with 2 workers (one per GPU). Add a second worker per GPU only if the probe shows spare CPU
+  and RAM: a 16-channel Kilosort4 job uses a few GB of VRAM, so CPU preprocessing is the likely bottleneck, not the
+  96 GB GPUs.
+- **Workdir budget.** About 250 GB per concurrent 12 h block (staged raw 110 + filtered 110 + LFP 7 + Kilosort
+  scratch).
+- **Storage growth.** About 10 GB per block (LFP + Phy), about 1.3 TB for the cohort.
+
+**Code changes needed first:**
+- a Linux machine block in `cohorts/2026c.yaml`, selected by `FIELD2026_MACHINE`. It holds `raw_data_roots.biohpc_node`
+  with the `/fs/...` paths and a per-machine `ephys.analysis_root` (`/workdir/hc997/ephys_2026c`). `raw_data_roots.biohpc`
+  holds the Windows `Q:/` view;
+- `ephys/plan_blocks.py`;
+- multi-session block staging;
+- `ephys/server/run_block_queue.py`;
+- an `ephys/server/README.md` runbook.
+
+**Pilot on the server, not on this PC.** Production runs on the server's Linux stack, NFS and CPUs, so P1–P4 (same
+blocks) run there. Throughput measured there is what sets the campaign's wall time; this PC keeps Phy curation.
+P0 becomes the server env build.
+
+**Live probe still to do.** Once `ssh gpu` works again (the 2FA cache had expired on 2026-09-28), a read-only probe
+collects:
+- CPU cores and RAM;
+- current GPU and CPU load by other users;
+- free `/workdir` and storage space;
+- whether `uv`, `git` and GitHub are available;
+- NFS read throughput (`dd` of 2 GB from one raw `amplifier.dat`).
+
+Worker count and wall time are set from those numbers and P2.
 
 ## Local pilot on this PC
 
