@@ -106,12 +106,16 @@ def figure_dir(cohort: str, direction: str = DEFAULT_DIRECTION) -> Path:
 
 
 def git_commit(root: Path = PROJECT_ROOT) -> str:
+    """Short HEAD (+dirty). A deployed copy without .git (e.g. `git archive` onto BioHPC) records the commit in
+    ``<root>/.git_commit`` at deploy time; that file is read when git cannot answer."""
     try:
-        out = subprocess.check_output(["git", "-C", str(root), "rev-parse", "--short", "HEAD"], text=True).strip()
+        out = subprocess.check_output(["git", "-C", str(root), "rev-parse", "--short", "HEAD"], text=True,
+                                      stderr=subprocess.DEVNULL).strip()
         dirty = subprocess.call(["git", "-C", str(root), "diff", "--quiet"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0
         return out + ("+dirty" if dirty else "")
     except Exception:
-        return "unknown"
+        stamp = Path(root) / ".git_commit"
+        return (stamp.read_text(encoding="utf-8").strip() + " (deployed)") if stamp.is_file() else "unknown"
 
 
 def utc_now_iso() -> str:

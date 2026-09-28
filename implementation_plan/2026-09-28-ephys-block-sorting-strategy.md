@@ -28,6 +28,34 @@ log. The LFP is 1/16 of the raw size and needs no sorting, so it goes first for 
 - Self-test PASS: chunked output equals the one-shot computation to 0 LSB, the passband is kept, 2 kHz does not
   alias, glitches are removed.
 - These are also the LFP files for state scoring, SWR and theta.
+- **Storage.** The LFP is computed on BioHPC into `/workdir/hc997/ephys_2026c/lfp/`, then copied to storage
+  `…/3rd_rat/analysis/lfp/<SFxx>/<session>.lfp` (+ `.lfp.json`) and verified by size + MD5. That is our own
+  analysis folder next to `WILD/`; derived files never go into the raw session folders.
+
+*LFP makers compared (2026-09-28, from the code).* All three low-pass the **raw** signal at ~450 Hz and downsample
+to 1250 Hz, and none of them cleans the LFP:
+
+| | `ephys/make_lfp.py` | PreprocessPipeline `write_lfp` (`eb3dad4`) | neurocode `LFPfromDat` (`f78cdbe`) |
+|---|---|---|---|
+| Input | each raw `amplifier.dat`, read in place | concatenated raw recording (`recording_base`, before bad-channel zeroing / CMR / artifact removal) | concatenated `basename.dat` (a full copy made first) |
+| Low-pass | Butterworth-5 450 Hz, zero-phase (−2.3 dB at 400, −6 dB at 450, −29 dB at 625 Hz) | same | windowless sinc FIR, 525 taps, 450 Hz (0.8 dB passband ripple, −42 dB at 625 Hz) |
+| Decimation | `resample_poly` ÷16 (FIR anti-alias) | spikeinterface FFT `resample` | every 16th sample |
+| Alignment | lfp[k] ↔ raw 16k | ≈ 16k | 16k+15 (0.75 ms later) |
+| Chunk edges | 200 ms margin both sides; chunked = one-shot to 0 LSB | spikeinterface margins | past buffer only (see below) |
+| FM64 glitches | de-glitched in the stream | only if given a de-glitched `.dat` | same |
+| Needs XML | no | yes | yes |
+
+- **neurocode edge defect** (numpy emulation of the code, not run in MATLAB). Each 5-s chunk is filtered with past
+  samples but no future samples. **The last LFP sample of every chunk comes out at about half amplitude** (290 → 150),
+  and the 2–3 before it are off by 3–10 %. That is a one-sample notch every 5 s: a candidate false ripple/event and a
+  0.2 Hz comb in spectra. Report it to the neurocode maintainers.
+- **The pipeline's cleaning is spike-band only.** It applies 500–8000 Hz band-pass, local CMR, TTL and high-amplitude
+  artifact removal and bad-channel zeroing to the sort `.dat`; its `.lfp` is made from the raw signal.
+  - For sorting we use that cleaning unchanged (the sort step runs the pipeline).
+  - For the LFP we add none: CMR/CAR would distort the depth profiles (SPW polarity reversal, ripple layer) that
+    phase L2 measures.
+  - LFP artifacts are masked at analysis time instead, which stays reversible: record windows (battery rounds, probe
+    advances, connector-open), amplitude/broadband artifact detection on the LFP, and XML skip channels.
 
 **L2 — Per-shank position time series.**
 - In sliding windows (e.g. 2 min every 10 min, sleep windows preferred), compute per channel:
