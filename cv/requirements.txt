@@ -5,6 +5,9 @@
 #
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 #
+# (torch 2.13 exists only for cu130+: the analysis PC, RTX 5070 Ti, runs torch==2.13.0+cu130 /
+#  torchvision==0.28.0+cu130 since 2026-09-28 — see environment.yml for the exact command.)
+#
 # Then install the rest with this file:
 #   pip install -r requirements.txt
 

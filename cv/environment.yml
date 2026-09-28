@@ -3,6 +3,11 @@
 #   conda activate cv
 # Then install GPU PyTorch (Blackwell needs cu128) INSIDE the env:
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+# Newer torch is only built for newer CUDA (torch 2.13 has no cu128/cu129 wheel). The analysis PC (RTX 5070 Ti,
+# sm_120) runs, since 2026-09-28:
+#   pip install --force-reinstall --no-deps "torch==2.13.0+cu130" "torchvision==0.28.0+cu130" --index-url https://download.pytorch.org/whl/cu130
+# Pin the "+cuXXX" tag: pip treats an installed "+cu126" as satisfying "torch==2.13.0" and does nothing.
+# Check with a real GPU op, not torch.cuda.is_available() (a +cu126 build says True on sm_120, then every kernel fails).
 name: cv
 channels:
   - conda-forge

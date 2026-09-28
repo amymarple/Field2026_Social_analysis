@@ -63,6 +63,9 @@ near-wall), **~2 are genuine false-fires on the OSD watermark text** ("RLC-1212A
    DINOv2 (weaker). See `field_embed.find_dinov3_weights()`.
 4. **Rebuild the `cv` conda env**: `cv/environment.yml` (+ `pip install torch torchvision --index-url
    https://download.pytorch.org/whl/cu128` for a Blackwell GPU; this PC was an RTX 3060 on cu126).
+   **2026-09-28:** the analysis PC now has an RTX 5070 Ti (sm_120); the env was upgraded to `torch==2.13.0+cu130`
+   `torchvision==0.28.0+cu130` (`--index-url .../whl/cu130`, `--force-reinstall --no-deps`, exact `+cu130` pins).
+   The old `+cu126` build said `cuda.is_available() == True` but had no sm_120 kernels.
 5. **ffmpeg** at `C:\ffmpeg\bin` (or set `REOLINK_FFMPEG`). Attach the E:/F: drives if you want fast harvest.
 
 ## HOW TO RUN THINGS (from `cv/`, using the env python directly)
