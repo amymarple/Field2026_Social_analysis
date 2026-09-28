@@ -1,6 +1,6 @@
 # Head IMU orientation and activity for cohort 3 (2026c): reuse the lab algorithm, 6-axis (2026-09-28)
 
-**Status.** PLAN, 2026-09-28 (mounting and axis map verified on all six loggers). Nothing implemented beyond the reader (`ephys/read_imu.py`). Local first: developed and
+**Status.** v1 IMPLEMENTED and run on all 203 sessions locally (2026-09-28; see change_log/2026-09-28-imu-movement-turning.md). Open: immobility threshold, LFP-state and identity validation. Originally: nothing implemented beyond the reader (`ephys/read_imu.py`). Local first: developed and
 validated on `E:\3rd_rat_spikes`, then the same commit runs on BioHPC.
 
 ## Purposes (user, 2026-09-28, in priority order)
