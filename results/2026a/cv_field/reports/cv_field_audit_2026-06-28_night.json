@@ -1,0 +1,48 @@
+{
+  "schema_version": "cv_field_measurement_audit/1.0",
+  "cohort": "2026a",
+  "direction": "cv_field",
+  "mode": "metadata",
+  "channels": [
+    "CH03",
+    "CH04"
+  ],
+  "verdict": "metadata-only: selection coverage + provenance recorded; no error metric invented",
+  "selection": {
+    "rounds": {
+      "0": {
+        "n_selected": 40,
+        "method_mix": {
+          "medoid": 3,
+          "fps": 37
+        },
+        "distinct_clusters": 3,
+        "day_night": {
+          "night": 40
+        },
+        "by_camera": {
+          "CH03": 18,
+          "CH04": 22
+        }
+      }
+    },
+    "total_selected": 40,
+    "day_night_total": {
+      "night": 40
+    }
+  },
+  "calibration_rmse_cm": {
+    "CH03": 19.694,
+    "CH04": 11.278
+  },
+  "validation": null,
+  "random_control": null,
+  "active_learning_delta_map50": null,
+  "regime_caveats": [
+    "scope is night-IR only (21:00\u201304:20); CH01/CH02 daytime color is corrupt and excluded.",
+    "counts are a LOWER BOUND (visible_count): wall-edge blind band + huddle occlude animals.",
+    "NO cross-camera identity (animal_id=<camera>:<track_id>) \u2014 no whole-field per-animal / cross-camera-headcount claims.",
+    "day/night split is approximate (recording-start wallclock hour); expect ~all night in-scope.",
+    "clusters are a labeling heuristic, not evidence of behavioral discreteness."
+  ]
+}

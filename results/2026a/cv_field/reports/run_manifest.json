@@ -1,0 +1,9 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026a\\cv_field_select_20260714_2233",
+  "cohort": "2026a",
+  "direction": "cv_field",
+  "analysis": "labeling_round2",
+  "mc_run_id": "mc_63470eb86e6f",
+  "embed_backend": "dino",
+  "method": "active"
+}

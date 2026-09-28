@@ -55,14 +55,39 @@ Source of truth for identity + validity: `wiser/configs/rat_identities.csv`.
 | 12395 | 306b | Sen | Green | Open Circle | Copper | 360 g | active |
 | 12407 | 3077 | Dormi | Red | N/A | N/A | 376 g | active |
 | 12386 | 3062 | Nox | Yellow | Filled Circle | Purple | 357 g | active |
-| 12380 | 305c | Hypnos | Black | X | Silver | 368 g | active |
+| 12380 | 305c | Hypnos | Black | X | Silver | 368 g | **tag INVALID 2026-07-09 03:35:41 EDT (implant dropped) → removed & sac'd** |
 | ~~12409~~ | ~~3079~~ | ~~Sova~~ | ~~White~~ | ~~Triangle w/ Line~~ | ~~Pink~~ | 296 g | **REMOVED 2026-06-29 15:00 EDT** |
 
 - **Sova (12409)** — mouth injury / breathing issues (superglue-sealed nose?); removed
   **2026-06-29 15:00 EDT**. `valid_until` set in `rat_identities.csv`; excluded from night-2+
   analyses (see `wiser/ANALYSIS_STATUS.md`).
-- Timeline: implant surgery **2026-06-18**, tags fitted **2026-06-26**, **released into paddock
-  2026-06-28 19:25 EDT**. Paddock is 20 × 40 ft.
+- **Hypnos (12380)** — hat/implant came off; **tag/implant dropped 2026-07-09 03:35:41 EDT** (all
+  WISER data for 12380 at/after that instant is INVALID), animal **removed from the paddock and
+  sac'd** later that day. Final weight **373 g (2026-07-09)**. See Day 12. **Removal-time
+  discrepancy to reconcile:** Notion (roster + Day-12 entry) logs the physical removal at
+  **~14:00 EDT**; this file's Day-12 narrative records **~12:15 EDT** — confirm which is correct
+  (the 03:35:41 tag-validity cutoff is unaffected either way).
+- **Pilot-1 cohort timeline:** implant surgery **2026-06-18**, tags fitted **2026-06-26**,
+  **released into paddock 2026-06-28 19:25 EDT**, **collected 2026-07-12 ~15:00 EDT**. Paddock is
+  20 × 40 ft.
+
+### "1.5 cohort" (LFP) — added mid-study, mixed into the same paddock
+
+A **second group of 4 rats** ("1.5 cohort") was **released into the same paddock 2026-07-11
+~20:00 EDT** and **collected 2026-07-12 ~15:00 EDT** — overlapping the last ~19 h with the 4
+remaining Pilot-1 rats (see Days 14–15). Implant surgery **2026-07-03**. Unlike the Pilot-1 animals
+they are **not listed with WISER decimal/hex tags** in the Notion roster; they are marked with
+**reflective hats** (Shiloh has a **black "L"** on the hat). So on current evidence they are a
+**CV-identifiable, LFP-implanted group without WISER UWB tags** — WISER would still see only the 4
+Pilot-1 tags while CV sees up to 8 animals (confirm against `wiser/configs/rat_identities.csv`
+before assuming WISER tracks them).
+
+| Name | Hat | Implant surgery | Initial wt | Notes |
+|---|---|---|---|---|
+| Shiloh | Reflective | 2026-07-03 | 323 g | black "L" on hat |
+| Yoru | Reflective | 2026-07-03 | 310 g | |
+| Somnus | Reflective | 2026-07-03 | 303 g | |
+| Rocco | Reflective | 2026-07-03 | 306 g | |
 
 ## Daily observations
 
@@ -359,13 +384,39 @@ Source of truth for identity + validity: `wiser/configs/rat_identities.csv`.
   **glassless interior view as ground truth** to test whether CH05/CH06 fog is a hard optical floor
   (compare what CH07/08 see vs CH05/06 in the same fogged windows).
 
+### Day 11 — 2026-07-08 · obs — · Equipment ✅ OK · hot (observer: "high 30s / low 40s", unit unstated)
+
+- **Observed field events:** 13:45 a **tunnel being dug from a house entrance toward the pole in the
+  middle of the paddock** (further burrowing/tunnelling beyond the shelter-4 burrow). All five
+  remaining rats (Siesta, Sen, Dormi, Nox, Hypnos) **in the same house**, split **2 at one entrance /
+  3 at the other**; by 17:00 **all five in the same house**. **Huddling together despite the heat**
+  (observer: outside "high 30s / low 40s"). **Nesting material outside the house entrances that is
+  not the bedding we provided — looks like dry, possibly uprooted grass.**
+- **Data interpretation flags:** the **07-08 13:45 mid-paddock tunnel** is a **new digging site
+  distinct from the shelter-4 burrow** — another point where WISER may see below-plane dropout and
+  where CV shelter/zone geometry can drift; log it as a shelter/geometry change point. "Same house,
+  2-vs-3 at the two entrances" is an **entrance-level split**, finer than the house-level splits
+  logged earlier — don't score it as two separate shelters. The observer's temperature is
+  **unit-unstated** ("high 30s / low 40s"); if °C it is a heat spike above the 34–36 °C of Days 3–4,
+  so don't treat it as a calibrated reading.
+- **Scientific ideas / hypotheses:** **huddling while it is very warm** suggests the huddle is driven
+  by **social comfort rather than thermoregulation** (they pay a thermal cost to stay together), and
+  that this social-contact preference may be **prioritised in a novel environment** — a
+  thermoregulation-vs-social-comfort tradeoff. Self-collected dry-grass nesting extends the
+  **niche-construction / active-bedding** theme (Days 9–10).
+- **Analysis hooks:** test whether **huddle size / contact is maintained independent of temperature**
+  (huddle vs ambient / shelter temp) as a social-comfort-over-thermoregulation test; add the **07-08
+  mid-paddock tunnel** to the shelter-geometry change-point list and check it against WISER dropout
+  and the CV zone maps; track **self-sourced nesting-material events** across days.
+
 ### Day 12 — 2026-07-09 · obs HC · Equipment ⚙️ Duo 3 encoder retuned (CBR→VBR, max-rate 10240→12228, I-frame 2×) — keyframe-cap test · **Hypnos implant dropped → removed & sac'd**
 
 - **Hypnos (`shortid 12380`, hex `305c`, coband Black / pattern X) implant DROPPED at
   ~03:35:41 EDT.** After this instant its UWB tag/implant is off the animal, so **all WISER data for
   12380 at/after 2026-07-09 03:35:41 EDT is INVALID** (tag position ≠ animal position — a detached
-  implant, not a moving rat). The animal was physically **removed from the paddock at ~12:15 EDT** and
-  **sacrificed** afterward; the 03:35→12:15 window is invalid tag data regardless (implant already off).
+  implant, not a moving rat). The animal was physically **removed from the paddock at ~12:15 EDT** (Notion's
+  roster + Day-12 log record **~14:00 EDT** — reconcile) and **sacrificed** afterward; the
+  03:35→removal window is invalid tag data regardless (implant already off).
 - **Cohort:** the active tracked group drops from **5 → 4** after 07-09 03:35 (Siesta 12378, Sen 12395,
   Dormi 12407, Nox 12386). This is the second cohort change after Sova (12409) removed 2026-06-29 15:00.
 - **Analysis hooks (done):** `valid_until = 2026-07-09T03:35:41-04:00` added for `12380` in
@@ -411,6 +462,76 @@ Source of truth for identity + validity: `wiser/configs/rat_identities.csv`.
   → want `CAPPED-KF: none`; and re-extract a daytime CH01/CH02 frame → the bottom band should now be
   fully present (not white/garbage). Confirm which units received the change (both Duo 3 = CH01/CH02;
   and CH07/CH08 if same model). If it still caps, fall back to the I-frame 2×→1× step.
+
+### Day 13 — 2026-07-10 · obs — · Equipment ✅ OK
+
+- **Observed field events:** 23:00 **light digging around the top water hole**, then the rats
+  **patched it up with a rock**; **increased activity around this area**. **Following behaviour
+  increased afterward.**
+- **Data interpretation flags:** the **top-water-hole digging/patching (07-10 23:00)** is another
+  **shelter/terrain-geometry change point** (and a possible WISER-dropout / CV-zone drift site) — log
+  it alongside the shelter-4 burrow and the 07-08 mid-paddock tunnel. A **movement/following spike
+  right after a novel environmental change is disturbance/novelty-driven**, not necessarily
+  spontaneous social behaviour — do not attribute it causally.
+- **Scientific ideas / hypotheses:** a **novel local change (the patched water hole) may transiently
+  confuse the group and raise following behaviour** — consistent with the recurring theme that
+  **diffuse / novel disturbances increase social coupling** (Days 7, 9) rather than individual
+  escape.
+- **Analysis hooks:** test whether **following rate rises after localized novelty / terrain-change
+  events** (water-hole patch, new digging) vs a shuffled null; add the 07-10 water-hole site to the
+  geometry change-point list.
+
+### Day 14 — 2026-07-11 · obs — · Equipment ⚠️ WISER tags reporting LOW voltage (~14–15-day battery limit) · **"1.5 cohort" (+4 rats) released ~20:00**
+
+- **Observed field events:** the **"1.5 cohort" of 4 new rats was released into the paddock
+  ~20:00 EDT** (Shiloh, Yoru, Somnus, Rocco — see roster), joining the **4 remaining Pilot-1 rats**
+  (Siesta, Sen, Dormi, Nox). By 20:52 the groups had **not fought even as the new rats arrived**; a
+  repeated **"go out and go in" behaviour between the two main houses**. **Minimal fighting within
+  the new group, little between new and old**; at one point **up to 8 rats together in one house**.
+  **More nesting behaviour, rats digging for bedding.** **New rats appear to follow each other** more
+  than new-following-old; **following among the old-cohort rats continues.** 21:55 rats **ripping
+  apart a towel in a home box**, with **3–4 rats behind the towel**.
+- **Data interpretation flags:**
+  - **WISER battery:** all tags began reporting **low voltage**; the observer estimates the tags are
+    good for only **~14–15 days of recording** (roughly through the 07-12 collection). Expect
+    **elevated dropout / missing fixes in the final days for battery reasons** — a sensor-path
+    artifact, not behaviour; treat late-window WISER gaps with extra caution.
+  - **Mixed cohort / identity:** from **~20:00 07-11** the paddock holds **8 rats (4 Pilot-1 + 4
+    "1.5 cohort")**. On current roster evidence the **4 new rats carry reflective hats but no WISER
+    tags**, so **WISER still sees only the 4 Pilot-1 tags** while **CV sees up to 8 animals** — any
+    count / occupancy reconciliation between CV and WISER after 07-11 20:00 must not assume equal
+    populations. Confirm the new cohort's tag status in `wiser/configs/rat_identities.csv`. Treat
+    **07-11 ~20:00 as a cohort / population regime boundary** for all CV counts.
+  - Towel-ripping / bedding digging continue to **change in-house material and geometry** (CV zone
+    drift).
+- **Scientific ideas / hypotheses:** **low intergroup aggression on first contact** (old vs new) is
+  notable — the residents did **not** strongly defend against 4 introduced strangers, consistent with
+  the **fission–fusion / low-territoriality** framing (Standing hypotheses) rather than fixed
+  territory defence. **New rats following each other** (not the residents) suggests **within-cohort
+  familiarity drives following** early, before cross-cohort bonds form.
+- **Analysis hooks:** add battery-degradation caveats for the **WISER low-voltage window
+  (~07-11 onward)**; compare **within-cohort vs cross-cohort following / proximity** (new–new vs
+  old–old vs new–old) once the new rats are CV-tracked; quantify **intergroup aggression rate on
+  introduction** (07-11 20:00+) against the resident baseline.
+
+### Day 15 — 2026-07-12 · obs — · **both cohorts collected ~15:00 (study end)**
+
+- **Observed field events:** 12:00 at **midday nap time the Pilot-1 ("old") rats began napping but
+  the newly released "1.5 cohort" rats did not** — the old rats' rest/circadian timing did **not**
+  directly propagate to the new ones. By 14:00 some returned to a house; **no clear old-vs-new effect
+  in house use — all spreading randomly.** Both cohorts **collected ~15:00 EDT (end of the pilot
+  recording).**
+- **Data interpretation flags:** **07-12 ~15:00 is the hard end of field recording** for this pilot
+  (both cohorts removed) — no field data after it. The **old/new nap-timing difference** is
+  confounded by **time-in-environment** (Pilot-1 had ~14 days to entrain; the 1.5 cohort ~16 h), so
+  it is **not** clean evidence about circadian entrainment — treat as a covariate.
+- **Scientific ideas / hypotheses:** **rest / circadian timing looks tied to residency / entrainment,
+  not socially contagious on contact** — a newly introduced group does **not** immediately adopt the
+  residents' nap schedule (the observer's "circadian cannot be directly propagated"). Whether the new
+  rats would entrain to the group rhythm given longer co-residence is an open question.
+- **Analysis hooks:** if the new cohort is CV-trackable, compare **rest-onset timing old vs new** on
+  07-11→07-12 as a first look at **social vs residency-driven rest timing** (with time-in-environment
+  as a covariate); mark **07-12 15:00 as the recording end-boundary** in the manifests.
 
 ## Standing hypotheses (cross-cutting)
 
@@ -492,6 +613,9 @@ Structured provenance this log summarizes — go here for exact, machine-readabl
 - `change_log/2026-07-01-audio-extraction-on-analysis-pc.md` — 2026-06-29 NVR IP-change audio gap
   (~15:00–17:45, audio not recoverable) and CH01/CH02 mic-enable (~12:00).
 - `wiser/ANALYSIS_STATUS.md` — WISER analysis status, candidate findings, caveats.
-- Notion source: **"1 - Pilot Study → Daily Observations"** (`Rat_field_social_sleep_2026`).
+- Notion source: **"1 - Pilot Study → Daily Observations"** (`Rat_field_social_sleep_2026`) — the
+  Rat Identities + "1.5 cohort" tables and the per-day rows this log mirrors.
+- Notion synthesis: **"1 - Pilot Study → Pilot Study Observations + Directions"** — a cross-cutting
+  observations/future-directions write-up (feeds the Standing-hypotheses section here).
 
 _Maintenance: add a new `### Day N — YYYY-MM-DD` section per date using the four fixed subsections._

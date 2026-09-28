@@ -1,0 +1,9 @@
+{
+  "threshold": -0.006353169679641724,
+  "dim": 768,
+  "fit_balanced_acc": 0.9451,
+  "n_rat": 205,
+  "n_bg": 410,
+  "backend": "dino",
+  "data_root": "..\\dataset\\rat_field"
+}

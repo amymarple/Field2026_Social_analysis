@@ -86,6 +86,10 @@ class Labeler:
     def __init__(self, root, imgs, img_dir, lbl_dir, status_dir, args):
         self.root, self.imgs = root, imgs
         self.img_dir, self.lbl_dir, self.status_dir, self.args = img_dir, lbl_dir, status_dir, args
+        # motion PROPOSALS (editable pre-fill): a separate dir of YOLO txts; never a training label until the
+        # human reviews the frame and advances (which writes it to labels/). Proposals are NOT pseudo-labels.
+        self.proposals_dir = Path(args.proposals) if getattr(args, "proposals", None) else None
+        self.from_proposal = False
         # interaction state
         self.mode, self.boxes, self.sel = "draw", [], -1
         self.show_boxes = True
@@ -202,6 +206,13 @@ class Labeler:
         self.dispW, self.dispH = int(self.W * self.base), int(self.H * self.base)
         self.txt = self.lbl_dir / f"{self.path.stem}.txt"
         self.boxes = yolo_load(self.txt, self.W, self.H)
+        # editable pre-fill: only for an UNDECIDED frame (no label, no skip/huddle), from a separate proposals dir
+        self.from_proposal = False
+        if not self.boxes and not self.is_decided(i) and self.status_of(i) is None and self.proposals_dir:
+            pf = self.proposals_dir / f"{self.path.stem}.txt"
+            if pf.exists():
+                self.boxes = yolo_load(pf, self.W, self.H)
+                self.from_proposal = bool(self.boxes)
         self.sel, self.action, self.p0, self.p1, self.pan_last = -1, None, None, None, None
         self.zoom, self.cx, self.cy = 1.0, self.W / 2, self.H / 2
         self.vx0, self.vy0, self.vw0, self.vh0 = 0.0, 0.0, float(self.W), float(self.H)
@@ -235,7 +246,7 @@ class Labeler:
             region = canvas[:dispH]
             overlay = region.copy()                            # draw edges here, then alpha-blend into the image
             for j, (x1, y1, x2, y2) in enumerate(self.boxes):
-                col = (0, 255, 255) if j == self.sel else (0, 255, 0)
+                col = (0, 255, 255) if j == self.sel else ((255, 0, 255) if self.from_proposal else (0, 255, 0))
                 dx1, dy1 = self.i2d(x1, y1); dx2, dy2 = self.i2d(x2, y2)
                 cv2.rectangle(overlay, (int(dx1), int(dy1)), (int(dx2), int(dy2)), col, 2)
                 if j == self.sel and self.mode == "edit":
@@ -260,6 +271,13 @@ class Labeler:
                     f"{'' if self.show_boxes else ' (HIDDEN)'}  mode:{self.mode.upper()}  "
                     f"zoom:{self.zoom:.1f}x   s=skip  g=huddle  b=hide/show",
                     (6, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 220, 255), 1)
+        if self.from_proposal and self.boxes:
+            lab = "PROPOSED (motion) - review/adjust, then n to confirm as label"
+            (tw, th), _ = cv2.getTextSize(lab, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            bx = max(0, (dispW - tw) // 2 - 8)
+            cv2.rectangle(canvas, (bx, 30), (bx + tw + 16, 60), (0, 0, 0), -1)
+            cv2.rectangle(canvas, (bx, 30), (bx + tw + 16, 60), (255, 0, 255), 2)
+            cv2.putText(canvas, lab, (bx + 8, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
         if st and not self.boxes:
             lab = "SKIPPED (s) - excluded from training" if st == "skip" \
                 else "HUDDLE (g) - deferred, excluded from training"
@@ -326,6 +344,8 @@ class Labeler:
         if self.action == "resize" and self.sel >= 0:
             b = self.boxes[self.sel]
             b[0], b[2] = sorted((b[0], b[2])); b[1], b[3] = sorted((b[1], b[3]))
+        if self.action in ("new", "resize", "move"):
+            self.from_proposal = False           # human touched the boxes -> no longer a raw proposal
         self.action = None; self.corner = None; self.p0 = self.p1 = None
         self.render()
 
@@ -369,8 +389,10 @@ class Labeler:
                 self.boxes.pop(self.sel); self.sel = -1
             elif self.boxes:
                 self.boxes.pop(); self.sel = -1
+            self.from_proposal = False
         elif cmd == "c":
             self.boxes.clear(); self.sel = -1
+            self.from_proposal = False
         elif cmd == "b":
             self.show_boxes = not self.show_boxes
             print(f"  boxes {'shown' if self.show_boxes else 'HIDDEN (peek)'}")
@@ -435,6 +457,10 @@ def main() -> None:
     here = Path(__file__).resolve().parent
     ap.add_argument("--dir", default=str(here / "dataset" / "rat" / "images"))
     ap.add_argument("--labels", default=None, help="labels dir (default: sibling 'labels')")
+    ap.add_argument("--proposals", default=None,
+                    help="dir of editable motion box PROPOSALS (YOLO txt); pre-fills UNDECIDED frames in "
+                         "magenta for review. Confirmed only when you advance (written to labels/). Never a "
+                         "pseudo-label.")
     ap.add_argument("--class-id", type=int, default=0)
     ap.add_argument("--min-box", type=int, default=4, help="ignore boxes smaller than this (px)")
     ap.add_argument("--all", action="store_true",

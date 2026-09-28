@@ -144,15 +144,23 @@ def run_id(ctx) -> str:
         if isinstance(o, list):
             return [_strip_mtime(v) for v in o]
         return o
-    basis = _strip_mtime({k: ctx.get(k) for k in _ID_KEYS})
+    # `active_learning` affects the id ONLY when present, so shelter runs (which never set it) keep the
+    # exact hash they had before this block existed. The embedding fingerprint rides inside `detector`,
+    # which is already in _ID_KEYS, so it flips the id without a new top-level key.
+    keys = _ID_KEYS + (("active_learning",) if ctx.get("active_learning") is not None else ())
+    basis = _strip_mtime({k: ctx.get(k) for k in keys})
     blob = json.dumps(basis, sort_keys=True, default=str)
     return "mc_" + hashlib.sha256(blob.encode()).hexdigest()[:12]
 
 
 def build_context(script, args, channels, view_quality_config=None, field_conditions=None,
-                  glass_treatments=None, inputs=None) -> dict:
+                  glass_treatments=None, inputs=None, embedding=None, active_learning=None) -> dict:
     """Assemble the per-run measurement_context dict (provenance + params + config fingerprints + cameras).
-    Pure: reads config files for fingerprints, captures git + UTC time; changes nothing on disk or in logic."""
+    Pure: reads config files for fingerprints, captures git + UTC time; changes nothing on disk or in logic.
+
+    ``embedding`` / ``active_learning`` are OPTIONAL cv_field extensions (from
+    cv_field.field_embed.embedding_fingerprint and the selector's round/params). They are added only when
+    provided, so shelter (CH05/CH06) runs that omit them produce a byte-identical manifest and mc_run_id."""
     lay = _load_layout()
     fld = lay.get("field_cm", {})
     a = vars(args) if hasattr(args, "__dict__") else dict(args or {})
@@ -199,6 +207,13 @@ def build_context(script, args, channels, view_quality_config=None, field_condit
         ],
         "command_args": a,
     }
+    # cv_field additive extension (absent for shelter runs -> their manifest stays byte-identical):
+    # embedding provenance sits inside the detector block; the active-learning round/params become a
+    # top-level, id-affecting block (see run_id).
+    if embedding is not None:
+        ctx["detector"]["embedding"] = embedding
+    if active_learning is not None:
+        ctx["active_learning"] = active_learning
     ctx["mc_run_id"] = run_id(ctx)
     return ctx
 

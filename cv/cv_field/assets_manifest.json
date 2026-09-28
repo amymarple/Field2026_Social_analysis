@@ -1,0 +1,42 @@
+{
+  "cohort": "2026a",
+  "direction": "cv_field",
+  "artifact_root_env": "FIELD2026_ANALYSIS_OUT_ROOT",
+  "location": "D:\\Field2026_analysis_out\\2026a\\assets\\cv_field",
+  "cornell_storage_mirror": "Q:\\hc997\\Field2026_analysis_out\\2026a\\assets\\cv_field",
+  "assets": [
+    {
+      "name": "dataset/rat_field",
+      "kind": "hand-labeled YOLO dataset for whole-field CH01-CH04 (built via the active-learning loop)",
+      "regeneratable": false,
+      "note": "NOT in git and NOT regeneratable — the label budget is the expensive input. round_provenance.csv records which round each frame entered. Mirror to Cornell storage so stage-data.ps1 can stage it to /workdir."
+    },
+    {
+      "name": "runs/detect/rat_field/weights/best.pt",
+      "kind": "cv_field whole-field detector weights",
+      "regeneratable": true,
+      "note": "Regeneratable from dataset/rat_field via train_detector.py --data-root dataset/rat_field --name rat_field. Fetched back from BioHPC with fetch-results.ps1 -Archive after a server retrain."
+    }
+  ],
+  "embedding_model": {
+    "backend": "dino",
+    "resolved": "DINOv3 ViT-B/16 (dinov3_vitb16_pretrain_lvd1689m, sha256_16 73cec8be7427c865, dim 768) when the license-gated checkpoint is present; else DINOv2 ViT-S/14 (free). Reduced by numpy PCA; gray64+PCA is the CPU/self-test fallback.",
+    "checkpoint": "~/.cache/torch/hub/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth (license-gated, not committed; override via DINOV3_WEIGHTS)",
+    "note": "Fingerprint (family/variant/weights sha256) travels in each run's measurement_context detector.embedding block."
+  },
+  "current_state": {
+    "phase": "rounds 0-1 trained (candidate, single-night pilot)",
+    "dataset_local_path": "cv/dataset/rat_field (git-ignored); 78 labeled over 2 rounds (67 with rats, 154 boxes)",
+    "round0": "2026-06-28 night, CH03/CH04, 40 frames from a 323-frame pool (DINOv3 ViT-B/16 diversity, K=3)",
+    "round1": "same night, +40 uncertainty x diversity frames (seed = rat_field_stab), excluding round-0's 40",
+    "detectors": {
+      "round0_40labels": "cv/runs/detect/rat_field_stab/weights/best.pt (yolo11s, --freeze 10 --lr0 0.002 --batch 8)",
+      "round1_80labels": "cv/runs/detect/rat_field_r1/weights/best.pt (same recipe)",
+      "diverged_superseded": "cv/runs/detect/rat_field (default lr0=0.01, no freeze -> mAP 0)"
+    },
+    "fair_head_to_head": "same 15 held-out frames / 29 boxes (both models held these sessions out): round0@40 mAP50 0.715 / mAP50-95 0.354 / P 0.656 / R 0.724; round1@80 mAP50 0.726 / mAP50-95 0.424 / P 0.758 / R 0.655. Within noise; +labels helped precision/localization, not recall.",
+    "harvest_pool": "D:\\Field2026_analysis_out\\2026a\\cv_field_harvest\\night_2026-06-28\\pool",
+    "next": "more NIGHTS (new scenes) > more frames from one night; pin a fixed held-out + run --method random control for a rigorous label-efficiency curve"
+  },
+  "note": "Large / non-regeneratable cv_field assets live off-repo under the artifact root; this file is the in-repo pointer. Separate from cv/assets_manifest.json so cv_shelter assets are untouched."
+}

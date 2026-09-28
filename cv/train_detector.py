@@ -110,16 +110,38 @@ def main() -> None:
                     help="explicit session substrings to hold out for val, e.g. CH06_2026-06-28_21")
     ap.add_argument("--name", default="rat_feasibility")
     ap.add_argument("--device", default="0")
+    ap.add_argument("--lr0", type=float, default=0.01, help="initial LR (lower, e.g. 0.002, for tiny sets that diverge)")
+    ap.add_argument("--freeze", type=int, default=None,
+                    help="freeze the first N layers (e.g. 10 = COCO backbone); strong regularizer for small data")
+    ap.add_argument("--optimizer", default="auto", help="auto|SGD|AdamW")
+    ap.add_argument("--patience", type=int, default=30)
+    ap.add_argument("--augment", action="store_true",
+                    help="strong DOMAIN-RANDOMIZATION aug for night-to-night generalization: heavy photometric "
+                         "(brightness/contrast via hsv_v) + scale/translate/rotate + mixup/erasing. Targets the "
+                         "confirmed train->held-out-night overfitting and the detector's scale-lock.")
     ap.add_argument("--predict-clip", help="after training, run best.pt on this clip (save annotated)")
     args = ap.parse_args()
 
     from ultralytics import YOLO
 
     data_yaml = build_split(Path(args.data_root), args.val_frac, val_sessions=args.val_sessions)
+    n_train = sum(1 for _ in (Path(args.data_root) / "train.txt").open())
+    if n_train < 100 and args.freeze is None and args.lr0 >= 0.01:
+        print(f"WARNING: only {n_train} train frames at lr0={args.lr0} with no --freeze. YOLO often DIVERGES on "
+              f"small sets (mAP briefly rises then collapses to 0, val cls_loss explodes). "
+              f"Recommended for a small active-learning batch: --freeze 10 --lr0 0.002 --batch 8.")
     model = YOLO(args.model)
-    results = model.train(data=str(data_yaml), epochs=args.epochs, imgsz=args.imgsz, batch=args.batch,
+    # batch is float to allow -1 (auto) and 0<f<1 (VRAM fraction); a positive whole number must be an int
+    # or the DataLoader rejects it (batch_size=8.0).
+    batch = int(args.batch) if args.batch >= 1 else args.batch
+    # Strong domain-randomization preset (night-IR is grayscale, so hsv_v = brightness is the main
+    # photometric lever; big scale/translate breaks the 1280-scale-lock; mixup/erasing regularize).
+    aug = dict(hsv_h=0.015, hsv_s=0.3, hsv_v=0.8, degrees=5.0, translate=0.2, scale=0.9,
+               fliplr=0.5, mosaic=1.0, close_mosaic=10, mixup=0.15, erasing=0.5) if args.augment else {}
+    results = model.train(data=str(data_yaml), epochs=args.epochs, imgsz=args.imgsz, batch=batch,
                           device=args.device, project=str(HERE / "runs" / "detect"), name=args.name,
-                          patience=30, seed=0)
+                          patience=args.patience, seed=0, lr0=args.lr0, optimizer=args.optimizer,
+                          freeze=args.freeze, **aug)
 
     # Training already validated best.pt on the held-out videos; report THOSE metrics (no second
     # model.val(): it's redundant and its batched imgsz-1280 inference crashes the RTX 3060). Read the
