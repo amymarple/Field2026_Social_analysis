@@ -220,7 +220,7 @@ see the change log for the numbers:
 - **Kilosort1 DOES run here (2026-09-09, corrected).** MATLAB R2021b refuses the RTX 5070 Ti natively (`parallel:gpu:device:DeviceTooNew`,
   compute capability 12.0 vs the bundled CUDA 11.0), but `parallel.gpu.enableCUDAForwardCompatibility(true)` recompiles the GPU libraries once
   (~9 min) and then works: matmul and FFT match the CPU. With Visual Studio 2019 the three KiloSort1 CUDA MEX files compile from a copy of the
-  lab checkout at `E:rd_rat_spikesnalysis	ools\KiloSort1_field2026` using
+  lab checkout at `E:\3rd_rat_spikes\analysis\tools\KiloSort1_field2026` using
   `mexcuda -largeArrayDims <f>.cu NVCC_FLAGS='-allow-unsupported-compiler -gencode=arch=compute_80,code=compute_80'` (PTX only, the driver JITs it),
   and `mexWtW2` executes on the GPU with finite output. The pipeline already carries `sorter/Kilosort1_config.yaml` and a MATLAB launcher, so KS1 is
   a real option; Kilosort4 was used so far because this was believed impossible. MathWorks warns that forward compatibility can behave unexpectedly,

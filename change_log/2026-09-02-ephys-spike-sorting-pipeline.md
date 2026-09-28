@@ -462,7 +462,7 @@ disturb the timestamps (no Resync is pressed, and 79 of 97 short restart boundar
 ## Addendum 2026-09-04 (IV) — timing precision vs what the analyses need
 
 Report: `results/2026c/ephys_spikes/reports/ephys_spikes_timing_precision_vs_requirements_2026c.md` (mirrored to
-`E:rd_rat_spikesnalysis\index\`). Headline: the ephys -> field-PC chain is 8-22 ms typical, <= 60 ms worst
+`E:\3rd_rat_spikes\analysis\index\`). Headline: the ephys -> field-PC chain is 8-22 ms typical, <= 60 ms worst
 (08-31 FM62 block excluded, no PC time there); place fields tolerate 100-300 ms, behaviour events one 50 ms frame, so
 the chain is not the bottleneck by 5-10x - the position side is (WISER 0.26 s fix interval, 10-18 cm jitter; 50 ms
 video frame). Not supported: ms-scale spike synchrony between animals (15-30 ms combined + a <= 50 ms constant BLE
@@ -470,7 +470,7 @@ latency, ESTIMATE) - needs a shared hardware TTL. Headline definitions (full set
 - timing error as position error: $e_x = v\,\delta t$ (cm; $v$ cm/s, $\delta t$ s) - compare with sensor noise;
 - end error of an assumed-drift session: $\delta_{	ext{end}}(T) = |\Delta b| 	imes 10^{-6} 	imes T 	imes 1000$ ms,
   with $\Delta b$ = a session's drift minus its logger's median (0.8 ppm median, 2.0 ppm sd);
-- parabolic bow $eta = |c_2|/4$ (ms) on $	au=(t-ar t)/T$: 6 ms median, 13 ms worst over 6-11 h = linear.
+- parabolic bow $\beta = |c_2|/4$ (ms) on $\tau=(t-\bar t)/T$: 6 ms median, 13 ms worst over 6-11 h = linear.
 - **Batch paused for the 2026-09-05 07:00 card offload (user decision 00:50):** SF11 and SF12 are held by renaming their staged XMLs
   to `<session>.xml.hold` (`E:\3rd_rat_spikes\analysis\stage\SF11\12_20260902_083534.755\`, `…\SF12\11_20260902_083748.804\`), so the
   running batch skips them in seconds ("session is not staged", rc≠0 in its summary — expected) and ends after SF10 (~02:00).
@@ -483,12 +483,9 @@ latency, ESTIMATE) - needs a shared hardware TTL. Headline definitions (full set
 
 ## Addendum 2026-09-05 — recovery images duplicated to F:, offload throughput measured
 
-- The six raw card images `E:rd_rat_spikes\SFxx
-ecovery.bin` (3.07 TB) were copied to `F:rd_rat_spikes\SFxx
-ecovery.bin`
+- The six raw card images `E:\3rd_rat_spikes\SFxx\recovery.bin` (3.07 TB) were copied to `F:\3rd_rat_spikes\SFxx\recovery.bin`
   (SanDisk Extreme 4 TB) between 09-04 19:14 and 09-05 06:29, hashing the source stream during the copy and re-reading each
-  destination afterwards: all six sha256 pairs match (`F:rd_rat_spikes
-ecovery_images_manifest.json`). Purpose: E: had
+  destination afterwards: all six sha256 pairs match (`F:\3rd_rat_spikes\recovery_images_manifest.json`). Purpose: E: had
   2.98 TB free against ~2.1 TB per offload round; deleting the E: originals (operator's decision, not done here) frees 2.9 TB.
 - E: (WD Red Pro 20 TB, 84 % full, free space on the inner tracks) reads a single stream at 103-114 MB/s there, against the
   268-285 MB/s outer-track spec, so it absorbs about two simultaneous 50 MB/s card exports, not three. Card-copy history
@@ -877,7 +874,7 @@ and is corrected here.** Tested tonight on this machine:
   itself points at the way out**: `parallel.gpu.enableCUDAForwardCompatibility(true)`. With it, MATLAB recompiles its GPU libraries once (521 s here) and
   then reports `NVIDIA GeForce RTX 5070 Ti | CC 12.0 | supported 1 | toolkit 11.0`; a 2000×2000 single matmul matches the CPU to 1.8e-4 and a 2^20 FFT runs.
 - Visual Studio Community 2019 is installed and is a supported compiler for R2021b. From a copy of the lab checkout at
-  `E:rd_rat_spikesnalysis	ools\KiloSort1_field2026` (the lab checkout stays untouched), all three KiloSort1 CUDA MEX files compile with
+  `E:\3rd_rat_spikes\analysis\tools\KiloSort1_field2026` (the lab checkout stays untouched), all three KiloSort1 CUDA MEX files compile with
   `mexcuda -largeArrayDims <f>.cu NVCC_FLAGS='-allow-unsupported-compiler -gencode=arch=compute_80,code=compute_80'` — PTX only, JIT'd by the driver —
   and `mexWtW2` then executes on the GPU (output 32×32×121 for nt0 = 61, all finite).
 - The pipeline already supports KS1: `sorter/Kilosort1_config.yaml` (the lab's parameters: Th 6/10/10, lam 12/40/40, full whitening, 500–8000 Hz) and a
