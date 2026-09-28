@@ -1,4 +1,4 @@
-"""IMU movement vs WISER tag speed for one night: identity matrix, lag, stillness agreement (validation, 2026-09-28).
+r"""IMU movement vs WISER tag speed for one night: identity matrix, lag, stillness agreement (validation, 2026-09-28).
 
 Reads only local data: per-second IMU tables (ephys/make_imu.py, D:\3rd_rat_spikes\analysis\imu) and the WISER
 incremental exports on the local backup (F:\wiser\Wiser_backup\incremental). Tags per animal = Notion cohort page
