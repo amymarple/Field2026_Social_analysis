@@ -33,7 +33,12 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-import numpy as np
+# One BLAS/OpenMP thread per worker process: parallelism comes from the process pool. Without this, each worker starts a
+# thread pool the size of the machine (512 on BioHPC cbsuruiz01) and the run is ~10x slower (measured 2026-09-28).
+for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")
+
+import numpy as np  # noqa: E402
 from scipy import signal
 
 from _common import (analysis_root, ephys_block, find_session_dir, git_commit, out_root, raw_ephys_root, report_dir,
@@ -76,16 +81,33 @@ def _lfp_chunk(x: np.ndarray, thr: np.ndarray | None) -> tuple[np.ndarray, np.nd
     return signal.resample_poly(y, 1, DOWN, axis=0).astype(np.float32), counts
 
 
-def _work(args: tuple) -> tuple[int, np.ndarray, np.ndarray | None]:
-    """Worker: one output chunk [a, b) of input samples, read with margins from the memmapped raw file."""
-    path, nch, ns, a, b, thr = args
-    d = np.memmap(path, dtype=np.int16, mode="r").reshape(ns, nch)
-    pa, pb = max(a - MARGIN, 0), min(b + MARGIN, ns)
-    z, bad = _lfp_chunk(np.asarray(d[pa:pb]), thr)
-    k0 = (a - pa) // DOWN
-    n_out = math.ceil((b - a) / DOWN)
-    counts = bad[a - pa:b - pa].sum(axis=0) if bad is not None else None
-    return a, np.clip(np.rint(z[k0:k0 + n_out]), -32768, 32767).astype(np.int16), counts
+def _read(f, nch: int, s0: int, s1: int) -> np.ndarray:
+    """Samples [s0, s1) of an open raw file as (n, nch) int16, one large read (sequential access keeps NFS/HDD read-ahead)."""
+    x = np.empty((s1 - s0) * nch, dtype=np.int16)
+    f.seek(s0 * nch * 2)
+    got = f.readinto(memoryview(x).cast("B"))
+    if got != x.nbytes:
+        raise IOError(f"short read at sample {s0}: {got} of {x.nbytes} bytes")
+    return x.reshape(-1, nch)
+
+
+def _work(args: tuple) -> tuple[int, np.ndarray | None]:
+    """Worker: a CONTIGUOUS segment [s_lo, s_hi) of input samples, read front to back chunk by chunk (one sequential
+    stream per worker) and written straight into its place in the preallocated output (frame a/16 for chunk start a)."""
+    path, out_path, nch, ns, s_lo, s_hi, thr = args
+    counts = np.zeros(nch, dtype=np.int64) if thr is not None else None
+    with open(path, "rb", buffering=0) as f, open(out_path, "r+b") as fo:
+        for a in range(s_lo, s_hi, CHUNK):
+            b = min(a + CHUNK, s_hi)
+            pa, pb = max(a - MARGIN, 0), min(b + MARGIN, ns)
+            z, bad = _lfp_chunk(_read(f, nch, pa, pb), thr)
+            k0 = (a - pa) // DOWN
+            n_out = math.ceil((b - a) / DOWN)
+            if bad is not None:
+                counts += bad[a - pa:b - pa].sum(axis=0)
+            fo.seek((a // DOWN) * nch * 2)
+            fo.write(np.clip(np.rint(z[k0:k0 + n_out]), -32768, 32767).astype(np.int16).tobytes())
+    return s_hi - s_lo, counts
 
 
 def convert_session(src: Path, out: Path, *, nch: int = 64, deglitch: bool = False, workers: int = 8,
@@ -107,22 +129,28 @@ def convert_session(src: Path, out: Path, *, nch: int = 64, deglitch: bool = Fal
         del d
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + ".partial")
-    jobs = [(str(src), nch, ns_file, a, min(a + CHUNK, ns), thr) for a in range(0, ns, CHUNK)]
+    expected = math.ceil(ns / DOWN)
+    with open(tmp, "wb") as fo:                       # preallocate; every worker writes its own region
+        fo.truncate(expected * nch * 2)
+    # One contiguous segment per worker (boundaries on CHUNK multiples, so frames stay aligned to 16*k).
+    n_chunks = math.ceil(ns / CHUNK)
+    nseg = max(1, min(workers, n_chunks))
+    bounds = [min(ns, (n_chunks * i // nseg) * CHUNK) for i in range(nseg + 1)]
+    jobs = [(str(src), str(tmp), nch, ns_file, bounds[i], bounds[i + 1], thr) for i in range(nseg) if bounds[i] < bounds[i + 1]]
     replaced = np.zeros(nch, dtype=np.int64)
-    n_frames = 0
-    with open(tmp, "wb") as fo, ProcessPoolExecutor(max_workers=max(1, workers)) as ex:
-        for i, (a, z, counts) in enumerate(ex.map(_work, jobs, chunksize=1)):
-            z.tofile(fo)
-            n_frames += z.shape[0]
+    done_samples = 0
+    with ProcessPoolExecutor(max_workers=len(jobs)) as ex:
+        for n_done, counts in ex.map(_work, jobs):
+            done_samples += n_done
             if counts is not None:
                 replaced += counts
             if progress:
-                print(f"\r  {100.0 * min(a + CHUNK, ns) / ns:5.1f}%  {time.time() - t0:6.0f} s", end="", flush=True)
+                print(f"\r  {100.0 * done_samples / ns:5.1f}%  {time.time() - t0:6.0f} s", end="", flush=True)
     if progress:
         print()
-    expected = math.ceil(ns / DOWN)
-    if n_frames != expected or os.path.getsize(tmp) != expected * nch * 2:
-        raise RuntimeError(f"{out}: wrote {n_frames} frames, expected {expected}")
+    n_frames = expected
+    if done_samples != ns or os.path.getsize(tmp) != expected * nch * 2:
+        raise RuntimeError(f"{out}: processed {done_samples} of {ns} samples")
     os.replace(tmp, out)
     elapsed = time.time() - t0
     side = {

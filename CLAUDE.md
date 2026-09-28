@@ -56,7 +56,7 @@ No repo-wide venv or lockfile; each subsystem has its own:
 |---|---|---|
 | `wiser/`, `ephys/` (all but sorting), `common/`, `analysis_exchange/`, generators | base Python (here `C:\Python313`) + pandas numpy matplotlib pyyaml | `analysis_exchange` is stdlib-only |
 | `thermal/` | base Python + OpenCV ≥ 4.12 + numpy; ffmpeg on PATH | no GPU, no weights |
-| `cv/` (shelter + `cv_field`) | conda env `cv` (`cv/environment.yml`, then pip cu128 torch). Here call `C:\Users\Cornell\.conda\envs\cv\python.exe` directly (not `conda run`) | GPU for YOLO/DINOv3; set `PYTHONIOENCODING=utf-8` |
+| `cv/` (shelter + `cv_field`) | conda env `cv` (`cv/environment.yml`, then a GPU torch built for CUDA ≥ 12.8 — the RTX 5070 Ti is sm_120; here `torch 2.13.0+cu130` / `torchvision 0.28.0+cu130` since 2026-09-28, installed with an exact `+cu130` pin because pip treats the old `+cu126` as satisfying `==2.13.0`; a `+cu126` build reports `cuda.is_available()` True but every kernel fails). Here call `C:\Users\Cornell\.conda\envs\cv\python.exe` directly (not `conda run`) | GPU for YOLO/DINOv3; set `PYTHONIOENCODING=utf-8` |
 | `audio/` | conda env `audio` (`audio/environment.yml`); ffmpeg path set in `audio/configs/*.yaml` | |
 | ephys sorting (`run_sort_session.py`, `resort_shanks.py`) | PreprocessPipeline's `preprocess` env (spikeinterface 0.103.2 + Kilosort4, GPU); pipeline root = `--pipeline-root` → `$PREPROCESS_PIPELINE_ROOT` → cohort YAML | Phy curation: `ephys/open_phy.py` → `phy2` env |
 | `episode_browser/` | `episode_browser/requirements.txt` (streamlit, pyarrow required) | |
@@ -166,7 +166,9 @@ the incident log and offload QC in field2026-sync, BATTERY_LOG). **Sorting strat
 gaps < 5 min joined; never across a battery round, probe move or firmware change), then match units across blocks. The
 plan and the SF07 pilot are in `implementation_plan/2026-09-28-ephys-block-sorting-strategy.md`. On this PC the pipeline
 checkout is `D:\Documents\ayalab\PreprocessPipeline` (set `PREPROCESS_PIPELINE_ROOT`), and the `preprocess` env has to
-be rebuilt.
+be rebuilt. On BioHPC the env exists (`/home/hc997/src/PreprocessPipeline/.venv`, uv, torch cu130); access needs one
+shared SSH connection the user opens in Git Bash (`ssh -M -S ~/.ssh/cm-gpu -o ControlPersist=12h -fN gpu`, one Duo code), then
+`ssh -S ~/.ssh/cm-gpu gpu '<cmd>'` — details in the plan's *Production on BioHPC*.
 
 | # | Stage | Command (`--cohort 2026c`) | Output |
 |---|---|---|---|
@@ -177,7 +179,7 @@ be rebuilt.
 | 1c | offload QC report | `offload_qc_report.py` | `reports/…offload_qc_<c>.{md,csv}` |
 | 1d | coverage | `coverage_tables.py` | hourly csv/md + raster (in-repo); 1-s CSVs → `<ar>/index/` |
 | 1e | field request | `field_request.py [--push/--check]` (or the `/offload-field-request` skill) | a task file in field2026-sync (`--push` commits + pushes there) |
-| L | LFP for every session (before sorting; phase L of the plan) | `make_lfp.py [--animal …] [--session …] [--workers 8]` (`--dry-run`, `--selftest`) | `<ar>/lfp/<SFxx>/<session>.lfp` + `.lfp.json` (pipeline filter: Butterworth-5 450 Hz zero-phase on raw, ÷16 → 1250 Hz; FM64 de-glitched in the stream; ~60× real time here) |
+| L | LFP for every session (before sorting; phase L of the plan) | `make_lfp.py [--animal …] [--session …] [--workers 8]` (`--dry-run`, `--selftest`) | `<ar>/lfp/<SFxx>/<session>.lfp` + `.lfp.json` (pipeline filter: Butterworth-5 450 Hz zero-phase on raw, ÷16 → 1250 Hz; FM64 de-glitched in the stream; one sequential read stream per worker; ~60× real time on this PC from the USB HDD, ~200× on BioHPC with `--workers 8`; server and PC outputs byte-identical) |
 | 2 | stage | `stage_session.py --animal SF10 --session <s> [--window-s S D]` | `<ar>/stage/<SFxx>/<s>/`: clean `amplifier.dat`, sidecars, `<s>.xml`, manifest |
 | 3 | sort | `run_sort_session.py --animal … --session … --partition shank` (`preprocess` env) | `<ar>/sort/<SFxx>/<s>/` (KS4 per shank, `_spi` postprocessed); row in `reports/…sort_runs_<c>.csv` |
 | 4 | yield / curate | `unit_yield_report.py`; `open_phy.py --list` / `--animal --session --shank k [--raw]` | `reports/…ks4_unit_yield_*`; Phy edits in `_spi` |

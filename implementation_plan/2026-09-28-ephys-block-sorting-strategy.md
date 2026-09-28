@@ -207,15 +207,43 @@ worker, launched with `gpu-job.ps1 run`. Each worker loops:
 blocks) run there. Throughput measured there is what sets the campaign's wall time; this PC keeps Phy curation.
 P0 becomes the server env build.
 
-**Live probe still to do.** Once `ssh gpu` works again (the 2FA cache had expired on 2026-09-28), a read-only probe
-collects:
-- CPU cores and RAM;
-- current GPU and CPU load by other users;
-- free `/workdir` and storage space;
-- whether `uv`, `git` and GitHub are available;
-- NFS read throughput (`dd` of 2 GB from one raw `amplifier.dat`).
+**Measured 2026-09-28 (live probe and tests).**
 
-Worker count and wall time are set from those numbers and P2.
+*Access.*
+- Every new SSH connection needs Duo; the "cached a week per IP" behaviour did not hold from `132.236.112.181`.
+- What works is **one shared connection** opened by the user in Git Bash, which the agent's commands then reuse for
+  12 h: `ssh -M -S ~/.ssh/cm-gpu -o ControlPersist=12h -fN gpu`. Then `ssh -S ~/.ssh/cm-gpu gpu '<cmd>'`.
+- Windows' own OpenSSH cannot share connections.
+- The data-server hook matches `p:` / `m:` anywhere in a command line, so put remote logic in a script piped to
+  `bash -s`.
+
+*Hardware and load.*
+- 2× AMD EPYC 9755 (**512 threads**) and **2.27 TB RAM**; load was about 61, so over 400 threads were free.
+- **Both GPUs were busy with another user** (about 83 of 98 GB and 89 % utilization each). Our 16-channel Kilosort
+  jobs fit in the remaining ~14 GB but share compute.
+- Disks: `/workdir` → `/local/workdir` (13 TB free); `/home` on Lustre (808 TB free); storage 710 TB free.
+- git and curl are installed; GitHub and download.pytorch.org are reachable.
+
+*Storage read speed (NFS).* A single sequential stream runs at 939 MB/s cold. 4 parallel streams total 1.16 GB/s.
+
+*Environment* (built in `/home/hc997/src/PreprocessPipeline/.venv` with uv 0.12.19, pipeline `eb3dad4`):
+- Python 3.11.16, torch 2.9.1+cu130; both GPUs usable (a test matmul on the Blackwell card).
+- spikeinterface 0.103.2; the vendored Kilosort4 imports.
+- The pipeline's own final setup check fails only on `neuro_py.raw`: pinned `neuro-analysis-py==0.0.2` lacks it. It is
+  used only for the GUI's Phy log summary, not on our path — report it upstream.
+- Our code is deployed with `git archive HEAD | ssh … tar -x` into `~/src/Field2026_Social_analysis`; no push needed.
+  Without `.git` there, the recorded git commit reads `unknown`.
+
+*LFP test (`make_lfp.py`).*
+- The server output is **byte-identical (MD5)** to this PC's for SF07 `9_20260901_192912.215`.
+- Two fixes were needed:
+  - One BLAS thread per worker: without it, 32 workers on a 512-thread machine ran 10× slower.
+  - One contiguous, sequential read stream per worker instead of interleaved chunks: cold throughput went from 217 to
+    **524 MB/s (204× real time) with 8 streams**; 16 streams gave 457 MB/s.
+- The full cohort (203 sessions, 1,372 h, about 12.6 TB raw) should take about 7 h one session at a time, or about 4 h
+  with two sessions at once. This PC would take about 21 h.
+
+Worker count and wall time for sorting come from P2.
 
 ## Local pilot on this PC
 
