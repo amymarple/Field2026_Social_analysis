@@ -114,12 +114,11 @@ def calibrate(a_H: np.ndarray, w_H: np.ndarray) -> dict:
     if vals:
         c, v = np.array(centers), np.array(vals)
         bias = np.column_stack([np.interp(t, c, v[:, k]) for k in range(3)])
-    else:
-        q_all = (np.repeat(quiet, wlen)[: a_H.shape[0]]) if nw else np.zeros(a_H.shape[0], bool)
-        b0 = np.median(w_H[q_all], axis=0) if q_all.sum() > 100 else np.zeros(3)
-        bias = np.tile(b0, (a_H.shape[0], 1))
-    quiet_s = np.zeros(a_H.shape[0], bool)
+    quiet_s = np.zeros(a_H.shape[0], bool)              # per sample; the tail after the last full second stays False
     quiet_s[: nw * wlen] = np.repeat(quiet, wlen)
+    if not vals:                                        # short session: no block has enough quiet seconds
+        b0 = np.median(w_H[quiet_s], axis=0) if quiet_s.sum() > 100 else np.zeros(3)
+        bias = np.tile(b0, (a_H.shape[0], 1))
     return {"k_a": k_a, "bias": bias, "quiet": quiet_s, "n_quiet_s": int(quiet.sum()),
             "bias_blocks": [{"t_s": float(ci / FS), "bias_dps": [float(x) for x in vi]} for ci, vi in zip(centers, vals)]}
 
@@ -308,6 +307,13 @@ def _selftest() -> int:
             (f"k_a {side['k_a']:.3f} within 1% of 1", abs(side["k_a"] - 1) < 0.01),
             ("still periods quiet, turns not", bool(z["quiet_calib"][(z["t_logger_s"] % 60) < 18].mean() > 0.9)),
         ]
+        # short session with a partial last second and no bias block (the path that crashed on real data 2026-09-28)
+        try:
+            short = process_session(sd, Path(td) / "out", "short", max_seconds=25.12)   # 20 quiet s < BIAS_MIN_QUIET_S
+            checks.append((f"short session (25.12 s) runs on the fallback bias (blocks: {len(short['bias_blocks'])}, expect 0)",
+                           len(short["bias_blocks"]) == 0))
+        except Exception as e:  # noqa: BLE001
+            checks.append((f"short session runs ({type(e).__name__}: {e})", False))
     for name_, c in checks:
         print(f"[{'PASS' if c else 'FAIL'}] {name_}")
         ok &= bool(c)
@@ -317,8 +323,12 @@ def _selftest() -> int:
 
 # ---------------------------------------------------------------- CLI
 def _run_one(args: tuple) -> str:
+    """One session; an error is reported and the batch goes on (nothing partial is left: the sidecar is written last)."""
     sd, out_dir, name, fit, start_local, max_seconds, meta = args
-    side = process_session(Path(sd), Path(out_dir), name, fit=fit, start_local=start_local, max_seconds=max_seconds, meta=meta)
+    try:
+        side = process_session(Path(sd), Path(out_dir), name, fit=fit, start_local=start_local, max_seconds=max_seconds, meta=meta)
+    except Exception as e:  # noqa: BLE001
+        return f"ERROR {meta['animal']} {name}: {type(e).__name__}: {e}"
     return f"{meta['animal']} {name}: {side['duration_s'] / 3600:.2f} h in {side['elapsed_s']} s, k_a {side['k_a']:.3f}, pc_time {side['pc_time']}"
 
 
