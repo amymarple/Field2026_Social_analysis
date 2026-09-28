@@ -46,9 +46,9 @@ Quick rules (all detailed in CONVENTIONS.md):
 ## Machines, environments, env vars
 
 Clone paths differ per machine. On this PC (`DESKTOP-HUA1FJN`) the three repos sit side by side in
-`D:\Documents\GitHub\`; some code/docs hard-code `C:/Users/Cornell/Documents/GitHub/…` (another machine) — pass an
-explicit path when it does not exist. Refer to the sibling repos as `../Field_2026_Social_Recording` and
-`../field2026-sync`.
+`D:\Documents\GitHub\` (so do `ProbeMaps` etc.); the other machine uses `C:/Users/Cornell/Documents/GitHub/`. Refer to
+sibling repos as `../<name>` — in ephys code via `_common.sibling_repo("<name>")`, which falls back to the C: layout —
+and never hard-code either absolute root in new code.
 
 No repo-wide venv or lockfile; each subsystem has its own:
 
@@ -430,13 +430,19 @@ Fix these or confirm before relying on the affected code:
   read `FIELD2026_COHORT`).
 - `wiser/scripts/georeference_wiser.py`, `analyze_sleep_site_cv_crossval.py`, `calibrate_camera_visibility.py` still
   point at the pre-migration `preprocessing/computer_vision/` tree (now `cv/`).
-- `cohorts/2026c.yaml`: `ephys.analysis_root` is `D:/3rd_rat_spikes/analysis`, which does not exist on this PC (only the
-  `index/` created 2026-09-28); the pc_time master is now on `Q:\…\3rd_rat\analysis\pc_time`. Its `raw_data_roots.biohpc`
-  and video/WISER roots are null although `Q:\…\3rd_rat` holds all of cohort 3. `cohorts/2026a.yaml` and `thermal --base`
-  use Q: paths from before the per-cohort reorganisation (`Q:\…\1st_rat\…` now). 2026c has no `wiser:` block.
-- `ephys/field_request.py` and `offload_qc_report.py` default to `C:/Users/Cornell/Documents/GitHub/field2026-sync` —
-  pass the path explicitly on this PC. After pulling onto the ephys PC, restore the session-index JSON once:
+- `cohorts/2026c.yaml` `ephys.analysis_root` (`D:/3rd_rat_spikes/analysis`) does not exist on this PC (only the
+  `index/` created 2026-09-28); the pc_time master is now `Q:\…\3rd_rat\analysis\pc_time`. **Deferred by the user:** it
+  gets re-specified when cohort-3 analysis restarts — until then pass `--pc-time-root` / `--stage-root` / `--sort-root`
+  explicitly rather than trusting the default. After pulling onto the ephys PC, restore the session-index JSON once:
   `git show fcaa792:results/2026c/ephys_spikes/reports/ephys_spikes_session_index_2026c.json > <ar>/index/ephys_spikes_session_index_2026c.json`.
+- `cohorts/2026c.yaml raw_data_roots` fills only `analysis_pc.ephys` and `field_pc.{reolink,thermal}`; every
+  `wiser_snapshots`/`reolink`/`thermal`/`weather` entry for `analysis_pc` and `biohpc` is `null` although
+  `Q:\hc997\SocialFieldRat2026\3rd_rat\` holds all of cohort 3 (`<date>\<stream>\`, `WILD\`, `wiser\`, `Wiser_backup\`,
+  `analysis\`). Only `wiser_snapshots` and `ephys` are read by code today, so the practical effect is that cohort-3 WISER
+  cannot go through `common/wiser_inputs.py` (2026c also has no `wiser:` block). `cohorts/2026a.yaml` and
+  `thermal --base` use Q: paths from before the per-cohort reorganisation (`Q:\…\1st_rat\…` now).
+- Sibling repos resolve through `ephys/_common.sibling_repo()` (`../<name>`, fallback `C:/Users/Cornell/Documents/GitHub/`);
+  `ephys/selftest.py` still hard-codes `C:/…/PreprocessPipeline` (absent here; that check is skipped).
 - `cv_field` and `ephys_spikes` have no `analyses/registry.yaml` entries (no cards/summaries); `STATUS.md` and
   `aggregate/README.md` still describe one cohort.
 - `data_manifests/README.md` points to "AGENTS.md → Data Manifest Requirements", which no longer exists.

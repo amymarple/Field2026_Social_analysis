@@ -41,7 +41,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from _common import PROJECT_ROOT, ephys_block, git_commit, index_root, out_root, report_dir, resolve_cohort, utc_now_iso
+from _common import (PROJECT_ROOT, ephys_block, git_commit, index_root, out_root, report_dir, resolve_cohort, sibling_repo,
+                     utc_now_iso)
 
 FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -434,7 +435,7 @@ def main() -> None:
     pc_root = Path(a.pc_time_root) if a.pc_time_root else (Path(ar) / "pc_time" if ar else out_root() / resolve_cohort(a.cohort) / "ephys_pc_time")
     marks_path = Path(a.pc_marks) if a.pc_marks else None
     if marks_path is None:
-        cands = sorted(Path("C:/Users/Cornell/Documents/GitHub/field2026-sync/from-field").glob("*pc-side-session-marks.csv"))
+        cands = sorted((sibling_repo("field2026-sync") / "from-field").glob("*pc-side-session-marks.csv"))
         marks_path = cands[-1] if cands else None
     md, timeline = build(a.cohort, a.animals, pc_root, marks_path)
     rd = report_dir(a.cohort)

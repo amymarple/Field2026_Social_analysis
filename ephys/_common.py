@@ -22,8 +22,16 @@ from cohorts import load_cohort  # noqa: E402  (common/cohorts.py)
 from output_paths import out_root, resolve_cohort  # noqa: E402  (common/output_paths.py)
 
 DEFAULT_DIRECTION = "ephys_spikes"
+LEGACY_GITHUB_ROOT = Path("C:/Users/Cornell/Documents/GitHub")   # repo layout on the other (field/ephys) machine
 SESSION_RE = re.compile(r"^(?P<slot>\d+)_(?P<date>\d{8})_(?P<time>\d{6})(?:\.(?P<ms>\d+))?$")
 MAC_RE = re.compile(r"^[0-9A-Fa-f]{12}$")
+
+
+def sibling_repo(name: str) -> Path:
+    """A repo cloned next to this one (``field2026-sync``, ``ProbeMaps``, ...): ``<PROJECT_ROOT>/../<name>`` when it exists
+    (this PC: D:/Documents/GitHub/<name>), else the other machine's C:/Users/Cornell/Documents/GitHub/<name>."""
+    p = PROJECT_ROOT.parent / name
+    return p if p.is_dir() else LEGACY_GITHUB_ROOT / name
 
 
 def ephys_block(cohort: str) -> dict:

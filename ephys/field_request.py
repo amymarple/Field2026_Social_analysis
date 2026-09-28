@@ -22,9 +22,9 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from _common import PROJECT_ROOT, ephys_block, report_dir, resolve_cohort
+from _common import PROJECT_ROOT, ephys_block, report_dir, resolve_cohort, sibling_repo
 
-SYNC_DEFAULT = "C:/Users/Cornell/Documents/GitHub/field2026-sync"
+SYNC_DEFAULT = str(sibling_repo("field2026-sync"))   # this PC: D:/Documents/GitHub/field2026-sync
 ROUTINE = [
     ("pc-side session marks", r"cohort3-pc-side-session-marks\.csv$", "refreshed through the latest Stop (run from-field/2026-09-04_pc_side_session_marks.py)"),
     ("LED-sync log", r"ledsync_(\d{4}-\d{2}-\d{2})\.txt$", "one file per new day, closed hours only"),

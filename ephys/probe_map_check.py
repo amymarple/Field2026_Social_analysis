@@ -43,11 +43,12 @@ from pathlib import Path
 
 import numpy as np
 
-from _common import PROJECT_ROOT, ephys_block, find_session_dir, iter_raw_sessions, parse_session_name, raw_ephys_root, report_dir, utc_now_iso
+from _common import (PROJECT_ROOT, ephys_block, find_session_dir, iter_raw_sessions, parse_session_name, raw_ephys_root, report_dir,
+                     sibling_repo, utc_now_iso)
 from deglitch_wild import estimate_thresholds, med5
 from wild_ce_params import parse_ce_params
 
-PROBEMAPS = Path(r"C:/Users/Cornell/Documents/GitHub/ProbeMaps/Neuronexus")
+PROBEMAPS = sibling_repo("ProbeMaps") / "Neuronexus"
 MAP_CSV = PROJECT_ROOT / "ephys" / "configs" / "wild_ce64_channel_map_v57.csv"
 
 # ProbeMaps XML group order = sites along each shank, top to bottom (A4x16-Lin: 16 linear sites, 50 um;
