@@ -46,6 +46,22 @@ of the lab MATLAB scripts: [docs/methods/wild_ce64_imu.md](../docs/methods/wild_
   | SF11 | 27 | 139.6 | 0.90–1.20 | 25.7 | 0.45 | 3.8e-5 |
   | SF12 | 36 | 240.1 | 0.93–1.13 | 22.8 | 2.76 | 8.9e-5 |
 
+## WISER cross-check (one night, `ephys/imu_wiser_crosscheck.py`)
+
+Night 2026-09-08 20:00 → 09-09 06:00: five animals; WISER incremental exports from the local `F:` backup,
+de-duplicated. Tags (Notion, hex → decimal shortid): SF07 3079 = 12409, SF08 3062 = 12386, SF09 3077 = 12407,
+SF10 306B = 12395, SF12 3059 = 12377.
+
+- **Identity.** Spearman r between the 10-s smoothed log IMU VeDBA and the log WISER speed is **0.62–0.77 on the
+  diagonal and ≤ 0.25 off it**. Every logger's best tag is its own, which confirms the tag table from movement alone.
+- **Clocks.** The matched pairs peak at +1 to +2 s (WISER later than IMU); r at the peak barely exceeds r at 0. About
+  +1 s comes from the backward 2-s WISER displacement. So the pc_time-mapped IMU and the WISER field-PC clock agree
+  within about 1 s at 1-s resolution; the exact latency needs a centred estimate at finer resolution.
+- **Stillness.** While the IMU is still (provisional VeDBA < 0.2 m/s²), WISER shows a median of 1.1 in/s (p90 about
+  3). While it is moving, 2.1–2.9 (p90 6.6–9.7). Apparent WISER motion during IMU stillness is UWB jitter, which is
+  the basis for IMU-gated WISER denoising.
+- WISER covers 72–73 % of seconds that night; the IMU covers 100 %.
+
 ## Definitions (headline; full set in the plan)
 
 - **Quiet window.** A 1-s window with median $\lVert\boldsymbol\omega\rVert < 10$ °/s and median
