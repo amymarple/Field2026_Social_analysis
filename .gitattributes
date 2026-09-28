@@ -1,0 +1,2 @@
+# Sealed analysis_exchange bundles are hashed byte-for-byte: never convert their line endings on checkout.
+analysis_exchange/published/** -text

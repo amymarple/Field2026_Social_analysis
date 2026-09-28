@@ -1,6 +1,8 @@
 # Merge the ephys branch, move ephys bulk off-repo, write the agent code map (2026-09-28)
 
-**Status.** In progress 2026-09-28.
+**Status.** DONE 2026-09-28 — see [change_log/2026-09-28-merge-ephys-bulk-offrepo-code-map.md](../change_log/2026-09-28-merge-ephys-bulk-offrepo-code-map.md).
+Added during the work: the read-only `recording-inquiry` subagent (user request), repair of Python-escape corruption in
+five merged docs, and `.gitattributes` for sealed exchange bundles.
 
 **Why.** Two workstreams — ephys preprocessing (`ephys/`, branch `ephys-cohort3-pipeline`, 86 commits since
 2026-09-02) and CV preprocessing (`cv/cv_field/`, `thermal/`, on `main`) — diverged for four weeks and collided in the
