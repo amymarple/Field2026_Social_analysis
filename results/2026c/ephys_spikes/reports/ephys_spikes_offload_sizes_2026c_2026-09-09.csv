@@ -1,0 +1,16 @@
+animal,root,session,amp_bytes,hours,predicted_card_bytes,sidecars_ok,growing,card_records,card_total_mb,verdict
+SF07,E:\3rd_rat_spikes,1_20260909_083201.648,10027008,0.001088,10183680.0,True,False,,,no listing
+SF07,E:\3rd_rat_spikes,2_20260909_090244.932,89784320,0.009742222222222223,91187200.0,True,False,,,no listing
+SF07,E:\3rd_rat_spikes,3_20260909_090331.016,81710874624,8.866197333333332,82987607040.0,True,False,,,no listing
+SF08,E:\3rd_rat_spikes,0_20260909_083708.518,12386304,0.001344,12579840.0,True,False,,,no listing
+SF08,E:\3rd_rat_spikes,1_20260909_090526.132,83230720,0.009031111111111111,84531200.0,True,False,,,no listing
+SF08,E:\3rd_rat_spikes,2_20260909_090608.006,81629216768,8.857336888888888,82904673280.0,True,False,,,no listing
+SF09,E:\3rd_rat_spikes,0_20260909_084505.692,20643840,0.00224,20966400.0,True,False,,,no listing
+SF09,E:\3rd_rat_spikes,1_20260909_090751.518,83197952,0.009027555555555556,84497920.0,True,False,,,no listing
+SF09,E:\3rd_rat_spikes,2_20260909_090835.027,81484709888,8.84165688888889,82757908480.0,True,False,,,no listing
+SF10,E:\3rd_rat_spikes,0_20260909_084938.378,8257536,0.000896,8386560.0,True,False,3,82713.613312,SAFE TO FORMAT - 99.978 % of the listing; residual 17.9 MB = record overhead
+SF10,E:\3rd_rat_spikes,1_20260909_091016.538,93847552,0.010183111111111112,95313920.0,True,False,3,82713.613312,SAFE TO FORMAT - 99.978 % of the listing; residual 17.9 MB = record overhead
+SF10,E:\3rd_rat_spikes,2_20260909_091105.736,81321328640,8.823928888888888,82591974400.0,True,False,3,82713.613312,SAFE TO FORMAT - 99.978 % of the listing; residual 17.9 MB = record overhead
+SF12,E:\3rd_rat_spikes,0_20260909_085559.729,8257536,0.000896,8386560.0,True,False,3,82489.491968,SAFE TO FORMAT - 99.979 % of the listing; residual 17.5 MB = record overhead
+SF12,E:\3rd_rat_spikes,1_20260909_091306.837,90177536,0.009784888888888888,91586560.0,True,False,3,82489.491968,SAFE TO FORMAT - 99.979 % of the listing; residual 17.5 MB = record overhead
+SF12,E:\3rd_rat_spikes,2_20260909_091353.804,81104764928,8.800430222222221,82372026880.0,True,False,3,82489.491968,SAFE TO FORMAT - 99.979 % of the listing; residual 17.5 MB = record overhead

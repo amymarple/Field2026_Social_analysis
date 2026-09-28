@@ -1,0 +1,30 @@
+Proposed upstream fix for PreprocessPipeline (yoshihito-saito/PreprocessPipeline, observed at commit cb89e24, 2026-09-02),
+Windows only. NOT applied to the local checkout; ephys/run_sort_session.py works around it at runtime by closing
+Kilosort4's open logging FileHandlers right after spikeinterface.sorters.run_sorter returns.
+
+Symptom (Windows, sorter=kilosort4; Kilosort4 itself finished and wrote sorter_output/ completely):
+    File ".../src/preprocess/sorter_runner.py", line 1504, in _flatten_sorter_output_folder
+        shutil.move(str(e), str(output_folder / e.name))
+    PermissionError: [WinError 32] The process cannot access the file because it is being used by another process:
+        '...\Kilosort4_<ts>_probe1_shank1\sorter_output\kilosort4.log' -> '...\Kilosort4_<ts>_probe1_shank1\kilosort4.log'
+
+Cause: kilosort.run_kilosort attaches a logging.FileHandler for sorter_output/kilosort4.log and does not close it
+before returning; on Windows an open file cannot be renamed/unlinked, so flattening the spikeinterface output
+folder fails after a successful sort.
+
+Suggested change in sorter_runner.py, before calling _flatten_sorter_output_folder(output_folder):
+
+    def _close_file_handlers_under(folder: Path) -> None:
+        root = str(folder.resolve()).lower()
+        loggers = [logging.getLogger()] + [
+            lg for lg in logging.Logger.manager.loggerDict.values() if isinstance(lg, logging.Logger)
+        ]
+        for lg in loggers:
+            for h in list(lg.handlers):
+                base = getattr(h, "baseFilename", None)
+                if base and str(Path(base).resolve()).lower().startswith(root):
+                    h.flush(); h.close(); lg.removeHandler(h)
+
+    ...
+    _close_file_handlers_under(output_folder)   # Windows: Kilosort4 leaves kilosort4.log open
+    _flatten_sorter_output_folder(output_folder)

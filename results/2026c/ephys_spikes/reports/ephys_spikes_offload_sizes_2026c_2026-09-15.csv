@@ -1,0 +1,5 @@
+animal,root,session,amp_bytes,hours,adc_on,adc_bytes,predicted_card_bytes,sidecars_ok,empty,growing,card_slot,card_record_mb_est,card_plan,card_records,card_total_mb,verdict
+SF07,E:\3rd_rat_spikes,0_20260912_103016.514,82575360,0.00896,False,0,83865600.0,True,False,False,0,90.4,deletable after verified backup,2,112580.838912,SAFE TO FORMAT - 99.989 % of the listing; residual 12.6 MB = record overhead
+SF07,E:\3rd_rat_spikes,1_20260912_103055.576,110753841152,12.01756088888889,False,0,112484369920.0,True,False,False,1,112490.9,deletable after verified backup,2,112580.838912,SAFE TO FORMAT - 99.989 % of the listing; residual 12.6 MB = record overhead
+SF09,E:\3rd_rat_spikes,0_20260912_104232.471,111476736,0.012096,False,0,113218560.0,True,False,False,0,119.7,deletable after verified backup,2,97505.178624,SAFE TO FORMAT - 99.987 % of the listing; residual 12.6 MB = record overhead
+SF09,E:\3rd_rat_spikes,1_20260912_104324.946,95881199616,10.403776,False,0,97379343360.0,True,False,False,1,97385.8,deletable after verified backup,2,97505.178624,SAFE TO FORMAT - 99.987 % of the listing; residual 12.6 MB = record overhead

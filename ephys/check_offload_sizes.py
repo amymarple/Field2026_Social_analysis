@@ -1,0 +1,243 @@
+"""Offload size check: is the copy on disk byte-complete against the WILD console's card listing, so the card can be formatted?
+
+The console shows, per card, "Records: N" and "Total File Size (MB)" (= bytes / 1e6, a multiple of 512 bytes). A card
+record is the raw 65-lane stream (64 amplifier + 1 misc lane, all int16) plus ~6.5 MB of per-record overhead, while the
+export on disk splits it into amplifier.dat (64 lanes), analogin.dat (2 bytes/sample) and time.dat (4 bytes/sample).
+So the card bytes predicted from a copied folder are  bytes(amplifier.dat) x 65/64 , and
+
+    listing - sum(predicted)  =  overhead (~6.5 MB x N records)  +  data of any record NOT copied
+
+which is how a few-second undownloaded test record (common: slot 0 of a freshly formatted card) is told apart from a
+missing session. Sidecar sizes (time.dat = 4 n, analogin.dat = 2 n, amplifier a whole number of 128-byte samples) and a
+"still growing" check (amplifier.dat modified in the last 2 min) guard against reading a copy that is still in progress.
+
+Which folders belong to THIS card: the slot number in a folder name (<slot>_<date>_<time>) is the card's write order and
+restarts at 0 every time the card is formatted, so it is NOT unique across offloads (SF7 has a 4_20260903_001558 and a
+4_20260903_171804), and cards are rotated between rounds without always being formatted (SF10 on 09-05: slots 0-2 were
+the 09-03 daytime records of a card reused unformatted, slots 3-7 the new ones). The card's N records are slots 0..N-1;
+for each slot the tool considers every folder on disk with that slot number and picks the combination that is physically
+possible - start times increasing with the slot number, and listing minus prediction equal to the per-record overhead
+(plus at most one undownloaded few-second test record) - preferring the newest folders (depth-first with byte-sum pruning).
+Sessions the registry marks as test-card recordings (field_flags with `card: test`) are never candidates. If no combination fits, it falls
+back to the N newest folders and reports the record(s) that were not downloaded. Raw folder names are never changed.
+
+Usage:
+    python ephys/check_offload_sizes.py --cohort 2026c --card SF7=15:432815.446 --card SF8=8:... --card SF9=9:...
+      --card <animal>=<records>:<total MB from the console>   (repeat per card)
+      --since  optional override "YYYY-MM-DD HH:MM": only folders starting at/after it count (else the N-newest rule)
+      --roots  extra roots to scan besides the cohort's raw root (e.g. an SSD inbox), same <root>/<SFxx>/<MAC>/<session> layout
+
+Writes results/<cohort>/ephys_spikes/reports/ephys_spikes_offload_sizes_<cohort>_<date>.csv (+ mirror under <analysis_root>/index/).
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import os
+import time
+from datetime import datetime
+from pathlib import Path
+
+from _common import analysis_root, ephys_block, iter_raw_sessions, parse_session_name, raw_ephys_root, report_dir, resolve_cohort
+
+OVERHEAD_PER_RECORD = 6.5e6      # bytes the card keeps per record beyond the 65-lane stream (measured on 2026-09-02..05 checks)
+BYTES_PER_SAMPLE_CARD = 130.0    # 65 lanes x int16
+BYTES_PER_SAMPLE_AMP = 128       # 64 lanes x int16
+GROWING_S = 120.0
+TEST_RECORD_MAX_S = 60.0         # an undownloaded record shorter than this is a round-time test record, not a session
+
+
+def norm(animal: str) -> str:
+    a = animal.upper()
+    return f"SF{int(a[2:]):02d}" if a.startswith("SF") and a[2:].isdigit() else a
+
+
+def parse_card(spec: str) -> tuple[str, int, float]:
+    animal, rest = spec.split("=", 1)
+    n, mb = rest.split(":", 1)
+    return norm(animal), int(n), float(mb)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--cohort", required=True)
+    ap.add_argument("--card", action="append", default=[], help="SFxx=<records>:<total MB> from the console listing")
+    ap.add_argument("--since", default=None, help='optional "YYYY-MM-DD HH:MM"; else the N newest folders per card (N = listed records)')
+    ap.add_argument("--roots", nargs="*", default=[], help="extra roots with the same <SFxx>/<MAC>/<session> layout")
+    ap.add_argument("--raw-root", default=None)
+    a = ap.parse_args()
+    cfg = ephys_block(a.cohort)
+    fs = float(cfg["sampling_rate_hz"])
+    since = datetime.strptime(a.since, "%Y-%m-%d %H:%M") if a.since else None
+    cards = {an: (n, mb) for an, n, mb in (parse_card(c) for c in a.card)}
+    roots = [raw_ephys_root(a.cohort, a.raw_root)] + [Path(r) for r in a.roots]
+    # the ADC-lane quarantine (ephys/quarantine_adc_sessions.py) holds real card records: count them like the raw tree
+    quarantine = roots[0] / "_quarantine_adc_lane_on"
+    if quarantine.is_dir():
+        roots.append(quarantine)
+
+    test_card = set()      # (animal, session) recorded on a separate test card (cohorts/<key>.yaml field_flags with card: test)
+    for ff in ((cfg.get("_cohort_yaml") or {}).get("ephys", {}).get("field_flags") or []):
+        if str(ff.get("card", "")).lower() == "test":
+            test_card.update((norm(str(ff.get("animal"))), str(s)) for s in ff.get("sessions") or [])
+    per_animal: dict[str, list[dict]] = {}
+    for root in roots:
+        for animal, mac, sdir in iter_raw_sessions(root, cfg.get("session_glob", "*"), cohort=a.cohort):
+            meta = parse_session_name(sdir.name)
+            if meta is None or (since is not None and meta["start"] < since):
+                continue
+            if (norm(animal), sdir.name) in test_card:
+                continue
+            amp = sdir / "amplifier.dat"
+            if not amp.exists():
+                continue
+            st = amp.stat()
+            n = st.st_size // BYTES_PER_SAMPLE_AMP
+            t_ok = (sdir / "time.dat").exists() and os.path.getsize(sdir / "time.dat") == 4 * n
+            an_ok = (sdir / "analogin.dat").exists() and os.path.getsize(sdir / "analogin.dat") == 2 * n
+            # ADC ("microphone") lane ON: the card record also holds the 160 kHz ADC stream byte for byte (adc.dat); the header
+            # byte 28 == 0x08 marks it even when the stream is empty (validated on SF08's 2026-09-10 listing to 100.00 %)
+            adc_bytes = os.path.getsize(sdir / "adc.dat") if (sdir / "adc.dat").exists() else 0
+            ce = sdir / "CE_params.bin"
+            adc_on = adc_bytes > 0 or (ce.exists() and ce.stat().st_size > 28 and ce.read_bytes()[28] == 0x08)
+            per_animal.setdefault(norm(animal), []).append({
+                "animal": norm(animal), "root": str(root), "session": sdir.name, "start": meta["start"], "amp_bytes": st.st_size,
+                "hours": n / fs / 3600.0, "adc_on": bool(adc_on), "adc_bytes": adc_bytes,
+                # the card record is the raw lane stream: amplifier + the aux (misc) lanes + the ADC lane when it was on.
+                # Using the exported analogin.dat size instead of a fixed 130 B/sample covers BOTH configurations:
+                # 20 kHz spikes (16 misc lanes at fs/16 -> analogin = 2 B/sample = amp x 1/64) and the 2026-09-16
+                # temperature/LFP run (fs 1250, misc_ratio 1 -> analogin = 32 B/sample = amp x 1/4).
+                "predicted_card_bytes": st.st_size + (os.path.getsize(sdir / "analogin.dat") if (sdir / "analogin.dat").exists()
+                                                      else st.st_size * (BYTES_PER_SAMPLE_CARD - BYTES_PER_SAMPLE_AMP) / BYTES_PER_SAMPLE_AMP) + adc_bytes,
+                # an EMPTY record (0 amplifier samples: the console exports a header + stray lanes for a record the logger never
+                # filled, e.g. SF08 10_20260910_184306 with fs 0) has nothing to be consistent with and holds no data
+                "sidecars_ok": bool(st.st_size % BYTES_PER_SAMPLE_AMP == 0 and t_ok and an_ok) or n == 0,
+                "empty": n == 0,
+                "growing": (time.time() - st.st_mtime) < GROWING_S,
+            })
+
+    rows, verdicts = [], {}
+    window = f"sessions starting >= {since:%Y-%m-%d %H:%M}" if since else "window = the N newest folders per card (N = listed records)"
+    print(f"offload size check, cohort {a.cohort}, {window}\n")
+    for an in sorted(set(per_animal) | set(cards)):
+        sess = sorted(per_animal.get(an, []), key=lambda r: r["start"])
+        n_card, mb_card = cards.get(an, (None, None))
+        skipped_older = 0
+        if n_card and since is None:
+            # A card holds slots 0..N-1 since its last format. Cards are rotated between rounds and are not always formatted,
+            # so a slot may have several folders on disk (SF10 on 09-05: slots 0-2 were the 09-03 daytime records of a card that
+            # was reused unformatted, slots 3-7 the new ones). Choose, per slot, the folder set whose predicted bytes best match
+            # the listing (residual = ~6.5 MB per record); brute force is cheap. Falls back to the N newest when there is no
+            # combination that fits (e.g. a record was not downloaded).
+            import itertools
+            by_slot = {}
+            for r in sess:
+                by_slot.setdefault(int(r["session"].split("_")[0]), []).append(r)
+            # candidates per slot, newest first (ties on bytes then resolve toward the newest folder); a folder that alone
+            # exceeds the listing cannot be on this card
+            cands = [sorted([r for r in by_slot.get(k, []) if r["predicted_card_bytes"] <= mb_card * 1e6],
+                            key=lambda r: r["start"], reverse=True) for k in range(n_card)]
+            # Physical constraints, not numerical coincidence: the card wrote its slots in order, so start times must increase
+            # with the slot number; and the listing must exceed the prediction by the per-record overhead plus at most one
+            # undownloaded test record. Among the combinations that satisfy both, take the NEWEST folders.
+            best = None
+            if all(cands):
+                # Depth-first over the slots with two prunings: starts must increase with the slot, and the running sum plus
+                # the smallest/largest bytes the remaining slots can still add must stay inside [listing - slack, listing].
+                # The old brute-force product blew past its cap once a logger had ~6 folders per slot (SF7 09-07: 1.9 M combos).
+                slack = OVERHEAD_PER_RECORD * n_card + TEST_RECORD_MAX_S * BYTES_PER_SAMPLE_CARD * fs
+                target = mb_card * 1e6
+                min_rest = [0.0] * (n_card + 1); max_rest = [0.0] * (n_card + 1)
+                for k in range(n_card - 1, -1, -1):
+                    min_rest[k] = min_rest[k + 1] + min(r["predicted_card_bytes"] for r in cands[k])
+                    max_rest[k] = max_rest[k + 1] + max(r["predicted_card_bytes"] for r in cands[k])
+                budget = [2_000_000]
+
+                def dfs(k, prev_start, acc, chosen):
+                    nonlocal best
+                    if budget[0] <= 0:
+                        return
+                    budget[0] -= 1
+                    if k == n_card:
+                        if 0 <= target - acc <= slack:
+                            newness = sum(r["start"].timestamp() for r in chosen)
+                            if best is None or newness > best[0]:
+                                best = (newness, list(chosen))
+                        return
+                    for r in cands[k]:
+                        if prev_start is not None and r["start"] <= prev_start:
+                            continue
+                        b = acc + r["predicted_card_bytes"]
+                        if b + min_rest[k + 1] > target or b + max_rest[k + 1] < target - slack:
+                            continue
+                        chosen.append(r)
+                        dfs(k + 1, r["start"], b, chosen)
+                        chosen.pop()
+
+                dfs(0, None, 0.0, [])
+            if best is not None:
+                sess = sorted(best[1], key=lambda r: r["start"])
+            else:
+                sess = sess[-n_card:]
+                while len(sess) > 1 and sum(r["predicted_card_bytes"] for r in sess) > mb_card * 1e6:
+                    sess = sess[1:]
+                    skipped_older += 1      # the card's oldest record(s) were not downloaded: an older folder had crept into the window
+        pred = sum(r["predicted_card_bytes"] for r in sess)
+        span = f" (window {sess[0]['start']:%m-%d %H:%M} -> {sess[-1]['start']:%m-%d %H:%M})" if sess else ""
+        listing = f", card lists {n_card} records / {mb_card:,.3f} MB" if n_card else ", no card listing given"
+        print(f"== {an}: {len(sess)} folders on disk{span}{listing}")
+        for r in sess:
+            flag = ("GROWING " if r["growing"] else "") + ("" if r["sidecars_ok"] else "SIDECARS-INCONSISTENT ") + ("ADC-ON " if r["adc_on"] else "") + ("EMPTY-RECORD " if r.get("empty") else "")
+            slot = r["session"].split("_")[0]
+            print(f"   slot {slot:>2}  {r['session']:26} {r['amp_bytes'] / 1e6:12,.3f} MB  {r['hours']:6.2f} h  -> on card ~{(r['predicted_card_bytes'] + OVERHEAD_PER_RECORD) / 1e6:10,.0f} MB  {flag}")
+            rows.append({**{k: v for k, v in r.items() if k != "start"}, "card_slot": slot, "card_record_mb_est": round((r["predicted_card_bytes"] + OVERHEAD_PER_RECORD) / 1e6, 1),
+                         "card_plan": ("KEEP on card (ADC lane ON - maker evidence)" if r["adc_on"] else "deletable after verified backup"),
+                         "card_records": n_card or "", "card_total_mb": mb_card or ""})
+        if not n_card:
+            verdicts[an] = "no listing"
+            continue
+        resid = mb_card * 1e6 - pred
+        beyond = resid - OVERHEAD_PER_RECORD * n_card
+        missing_s = max(beyond, 0.0) / (BYTES_PER_SAMPLE_CARD * fs)
+        pct = pred / (mb_card * 1e6) * 100.0
+        problems = [r["session"] for r in sess if r["growing"] or not r["sidecars_ok"]]
+        if problems:
+            v = f"WAIT - still writing or inconsistent: {', '.join(problems)}"
+        elif len(sess) > n_card or resid < -OVERHEAD_PER_RECORD or skipped_older > 1:
+            v = f"CHECK - disk holds MORE than the listing ({pct:.3f} %): card mix-up, or more than one record undownloaded"
+        elif missing_s <= TEST_RECORD_MAX_S:
+            v = f"SAFE TO FORMAT - {pct:.3f} % of the listing; residual {resid / 1e6:,.1f} MB = record overhead" + \
+                (f" + ~{missing_s:.0f} s test record not copied" if missing_s > 2 else "")
+        else:
+            v = f"CHECK - {pct:.3f} %; an undownloaded record of ~{missing_s / 60:.1f} min remains on the card ({n_card - len(sess)} record(s) not on disk)"
+        verdicts[an] = v
+        print(f"   predicted card bytes {pred / 1e6:,.3f} MB -> {v}")
+        # per-record card plan (the maker asked for the ADC-lane records to stay on the card: delete only the verified rest)
+        keep = [r for r in sess if r["adc_on"]]
+        if keep and v.startswith("SAFE"):
+            dele = [r for r in sess if not r["adc_on"]]
+            print(f"   card plan: DELETE slots {', '.join(r['session'].split('_')[0] for r in dele)} "
+                  f"(~{sum(r['predicted_card_bytes'] + OVERHEAD_PER_RECORD for r in dele) / 1e6:,.0f} MB, all backed up and verified); "
+                  f"KEEP slots {', '.join(r['session'].split('_')[0] for r in keep)} "
+                  f"(ADC lane ON, ~{sum(r['predicted_card_bytes'] + OVERHEAD_PER_RECORD for r in keep) / 1e6:,.0f} MB) for the maker")
+        print()
+
+    tag = datetime.now().strftime("%Y-%m-%d")
+    out = report_dir(a.cohort) / f"ephys_spikes_offload_sizes_{resolve_cohort(a.cohort)}_{tag}.csv"
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=(list(rows[0].keys()) + ["verdict"]) if rows else ["animal", "verdict"])
+        w.writeheader()
+        for r in rows:
+            w.writerow({**r, "verdict": verdicts.get(r["animal"], "")})
+    ar = analysis_root(a.cohort)
+    if ar:
+        (ar / "index").mkdir(parents=True, exist_ok=True)
+        (ar / "index" / out.name).write_bytes(out.read_bytes())
+    print("verdicts:")
+    for an, v in verdicts.items():
+        print(f"  {an}: {v}")
+    print(f"\nwritten {out}")
+
+
+if __name__ == "__main__":
+    main()

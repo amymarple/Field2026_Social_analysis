@@ -21,6 +21,7 @@ You should never need to read `scripts/` to learn what was done. Start at:
 cohorts/<key>.yaml          registry: one YAML per cohort (date range, raw-data roots, identities, caveats)
 common/                     output_paths.py (cohort-aware) + cohorts.py loader — shared, cohort-agnostic
 wiser/ cv/ audio/           pipeline code + libraries (cohort-agnostic; take --cohort)
+ephys/                      WILD neurologger spike-sorting path (session index, de-glitch, staging, PreprocessPipeline+Kilosort4 driver)
 crossmodal/                 cross-modal drivers index (code lives in the wiser import graph — see its README)
 analysis_exchange/          producer -> consumer bridge contract
 episode_browser/            researcher-facing episode UI (consumer)

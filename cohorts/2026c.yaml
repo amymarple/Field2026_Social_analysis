@@ -1,0 +1,276 @@
+# Cohort descriptor — the ONLY file you add/edit to register a cohort (see cohorts/2026a.yaml for the schema).
+
+cohort: 2026c
+label: "3rd rat cohort (SF07–SF12, 6 animals, WILD neurologger implants; released 2026-08-30 ~19:00 ET)"
+description: >
+  Third Field_2026_Social outdoor rat cohort in the 20x40 ft paddock, first cohort with head-mounted WILD CE64
+  neurologgers (64 ch @ 20 kHz on SD, BLE sync) on every animal. Multimodal as before: WISER/UWB, Reolink video
+  (8 ch), thermal, camera mics, Ambient Weather, plus the new ephys modality (ephys/).
+  Field notes: Notion "4-Rat 3rd cohort — full (SF07–SF12)".
+
+date_range:
+  start: "2026-08-30"
+  end: "2026-09-12"    # paddock phase ended 2026-09-12 10:10 ET (animals out; recorders stopped 11:14-11:19); the last cohort of the summer
+timezone_wallclock: "America/New_York"   # logger RTC is set from the field-PC local clock at Resync (EDT)
+
+identities: wiser/configs/rat_identities.csv   # WISER shortid -> animal (cohort-3 tags: see notes)
+
+# Field disturbance windows (from the field incident log, field2026-sync from-field/<date>_cohort3-incident-log.md): flag these
+# in any behaviour / sleep / ephys-state analysis until quantified from the mic audio (per-minute broadband level vs a quiet day).
+# Times = field-PC local (EDT); end: null = the crew's departure was not logged yet.
+field_events:
+  - {start: "2026-09-08 07:50", end: null, kind: acoustic, note: "construction with heavy machinery near the paddock (operator, incident log 09-08); magnitude unknown, start ~07:5x; nobody saw the crew leave - the end is to be dated from the MIC01/MIC02 hourly wavs at the lab"}
+  - {start: "2026-09-09 09:41", end: "2026-09-09 14:00", kind: acoustic, note: "mowing / landscaping crew cutting near the paddock (operator-observed start and end, incident log 09-09); the machine ran in EPISODES, so quiet minutes inside the window are the same-day control"}
+  # In-box cameras CH07/CH08 switched to COLOUR (visible light ON) for identity sampling; exclude ON-1 s .. OFF+5 s from any
+  # luminance / motion measure (3.5 s exposure settle after ON, 3 s white-out after OFF). 09-09 19:10 = the first test; from
+  # 09-10 to 09-12 every placement round adds ~2.5 min of colour plus six 8-s flashes per day - instants recoverable from the
+  # footage by a keyframe saturation scan (incident log 09-09 22:42 / 22:55; rig repo EXPERIMENT_ir_identity_color_sampling.md).
+  - {start: "2026-09-09 19:10:26", end: "2026-09-09 19:10:39", kind: light, note: "CH07 colour light ON 13.5 s (colour-switch behaviour test)"}
+  - {start: "2026-09-10 00:00", end: "2026-09-12 23:59", kind: light, note: "in-box colour sampling days (CH07/CH08): colour ON at placements (~2.5 min per round) + six 8-s flashes per day; exact instants from the footage / COLOUR_SAMPLING_LOG_cohort3.md in the rig repo"}
+  # POPULATION boundary: five non-implanted females released into the paddock 2026-09-11 19:40 (operator; incident log 19:40,
+  # from-field/2026-09-11_five-females-released.md). From then the paddock holds ten animals: SF07/08/09/10/12 (loggers + WISER
+  # tags) and five females with no logger. Every behaviour / sleep / social / ephys-state metric changes regime here; pile counts
+  # can exceed five; the implanted animals' 09-11/12 night session (Starts 19:14-19:24) is the first with the females present.
+  - {start: "2026-09-11 19:40", end: null, kind: population, note: "five non-implanted females released (population 5 -> 10); female WISER tags / colour marks not yet stated by the operator; the operator's own question is whether mating happens in the large paddock"}
+  # END OF THE FIELD EXPERIMENT: animals (five implanted + five females) out of the paddock 2026-09-12 10:10; every recorder stopped
+  # 11:14:30 (video/thermal) and 11:19:24 (mics); WISER closed by the operator afterwards. Paddock data END at 10:10 - the 10:10 ->
+  # 11:14/11:19 tail is an empty arena. Neurologger: the paddock sessions started 09-11 19:14-19:24 are the LAST field sessions
+  # (auto-stops SF12 09:53:39, SF10 09:54:07 confirmed by the console ad feed; SF07/SF09/SF08 ended ~10:19-10:28, console feed died
+  # 10:20:53 - the card length is the record). From ~11:00 a HOME-CAGE sleep session per logger, started from another laptop: no
+  # field-PC time (anchors from that laptop's clock, if any), not paddock data - to be field-flagged pc_time: false at offload.
+  - {start: "2026-09-12 10:10", end: "2026-09-12 11:19", kind: end, note: "field experiment ended 10:10 (animals out); empty-paddock tail until the recorders stopped 11:14 (video/thermal) / 11:19 (mics)"}
+
+# ---------------------------------------------------------------------------------------------------------
+# Ephys (WILD neurologger) — read by ephys/*.py
+# ---------------------------------------------------------------------------------------------------------
+ephys:
+  direction: ephys_spikes
+  # Raw offload layout: <root>/<animal>/<logger_mac>/<slot>_<YYYYMMDD>_<HHMMSS>.<ms>/{amplifier.dat,...}
+  # <animal>/recovery.bin = raw 512 GB card image kept for a FUTURE forensic recovery of the FM59-62
+  # uncommitted (stop-only-commit) sessions. Never parsed by the pipeline; never delete.
+  session_glob: "[0-9]*_[0-9]*_[0-9]*"
+  n_channels: 64
+  sampling_rate_hz: 20000
+  dtype: int16
+  gain_to_uV: 0.195          # Intan RHD default; the WILD header carries no scale -> RELATIVE, unverified
+  # Animal -> logger MAC (last 4 hex = the Notion "Probename" column). SF07 offloaded 2026-09-02 (17 sessions,
+  # 08-31 18:58 -> 09-02 18:12; sessions 0-7 FM64, 8-16 FM65).
+  loggers:
+    SF07: {mac_suffix: "3111", mac: "D0DBEFEF3111"}
+    SF08: {mac_suffix: "E131", mac: "128C2F27E131"}
+    SF09: {mac_suffix: "62DB", mac: "68BDFFFF62DB"}
+    SF10: {mac_suffix: "0151", mac: "CACB6D600151"}
+    # SF11: implant fell off in the night of 09-06/07 (operator sighting 07:43); the logger kept recording open-circuit noise until
+    # the round's clean Stop 08:12:41 and was retired (not restarted). MEASURED 2026-09-07 in 13_20260906_195234.827 (5-s windows,
+    # 1250 Hz LFP, 64-ch median inter-channel correlation, theta 6-10 Hz power, raw MAD, 60-Hz fraction): in tissue up to 06:10:00
+    # (corr 0.95, theta normal, rest state); 06:10:30-06:15:00 large decorrelated transients (MAD to 4200 ADC, corr <= 0.5: the
+    # implant being torn off); from 06:15:10 open circuit on >= 59 of 64 channels (MAD 80-110 ADC, theta gone, corr ~0.1-0.2,
+    # 60-Hz fraction up to 0.57), later big handling bursts (06:44, 06:54, 07:24-08:09). Times = logger wallclock; field-PC time
+    # is ~1 s later (SF11 runs -27 ppm vs the field PC, 10.3 h into the session). ephys_end = the retired logger's last Stop;
+    # last_valid_ephys = the measured boundary (registered below in ephys.valid_until). The rat stays in the group (WISER 3058, video).
+    # CONFIRMED BY VIDEO (field, 09-07 19:00): CH07 (camera inside the home box) shows the implant coming off at 06:10:45 field-PC time,
+    # inside the house, in the dark - 45 s after the last clean sample, 15 s into the tear window; the implant stayed in that box
+    # until collected (the 06:44/06:54 bursts = other rats bumping it, 07:24-08:09 = the retrieval). WISER (field, 09-07 22:xx): tag 3058
+    # rides on the implant, so the WISER track of SF11 ends at 06:10:45 too (field identity table fixed); the drop was PASSIVE - no
+    # 30-s move > 12 cm from 05:03:30 to 06:15:30, all six tags huddled within 8-21 cm, static-object signature after 06:12, nudges
+    # 06:15:30-06:23 match the card's open-circuit onset, implant carried out 08:17-08:19. The animal is untracked from 06:10:45.
+    SF11: {mac_suffix: "721C", mac: "1DFE7F77721C", ephys_end: "2026-09-07 08:12:41", implant_lost: "2026-09-07 06:10:45", last_valid_ephys: "2026-09-07 06:10:00"}
+    SF12: {mac_suffix: "21B1", mac: "FBED2F2321B1"}
+  # Firmware provenance (field history, confirmed from CE_params.bin firmware_version @ byte 328):
+  #   FM59-62  stop-only file commit (night-1 loss on all six) AND single-sample glitch defects
+  #   FM64     glitch defects ("artificial spikes": channel-substitution ticks + 15-s housekeeping spikes)
+  #   FM65     maker fix for both (2026-09-01 ~19:30 round) — UNEVALUATED until offloaded data is indexed
+  firmware_history:
+    62: "stop-only commit (session exists only after a clean Record Stop) + glitch defects A/B"
+    64: "glitch defects A/B (~100-1400 ticks/s summed over 64 ch); stop-only commit"
+    65: "maker fix, both parts now VERIFIED. Glitch defects absent: measured clean on all six loggers over 94 field sessions (240.8 h) - see the offload QC report. Power-cut-safe commit: survives a HARD power cut (battery pulled mid-recording), tested by the operator 2026-09-04; and the logger's own low-battery auto-stop closes the files byte-exact - SF09 2_20260903_075655.297 (8.713 h) and SF07 4_20260903_001558.656 (4.039 h) both have amplifier.dat a whole number of 128-byte samples, time.dat = 4 x n_samples and analogin.dat = 2 x n_samples. Consequence for the field protocol: a mid-night Stop->Start restart is no longer needed as insurance, so the midnight BLE touch can be a mid-session anchor instead of a session start - worth ~50 ms on the unanchored tail (see change_log 2026-09-04)"
+  clean_firmware_min: 65     # sessions with firmware_version < this MUST be de-glitched before any analysis
+  # Field-PC clock steps (w32time stepping the PC FORWARD; the PC free-runs ~2.1 s/day SLOW, the loggers' uniform
+  # -21..-27 ppm apparent drift is that rate). Measured 2026-09-03 from the field PC's 1-Hz LED-sync log
+  # (from-field/2026-09-03_ledsync_*.txt: a pulse sent late by the step size and the following seconds skipped) and
+  # confirmed by the BLE anchors + card-vs-PC spans of every session spanning them. Video, WISER and LED timestamps
+  # carry the same clock, so pc_time.dat must INCLUDE the step; the fit subtracts it, then adds it back.
+  # time = field-PC local wallclock (EDT) just before the jump; jump_s = new minus old clock.
+  field_pc_clock_steps:
+    # w32time steps: EXACT from the Windows System log (Kernel-General Id 1, old -> new in 100-ns ticks; field2026-sync
+    # from-field/2026-09-04_cohort3-pc-clock-change-events.csv). Each step is one large set plus two sub-ms re-adjustments.
+    - {time: "2026-08-30 13:23:19", jump_s: 2.3067, source: "Kernel-General Id 1 event 17:23:17.1289863 -> 17:23:19.4356624 UTC; confirmed by event. Before any recorded session (night-1 sessions were never committed), no fit uses it"}
+    - {time: "2026-08-31 09:00:19", jump_s: 2.4164, source: "Kernel-General Id 1 event 13:00:16.8782911 -> 13:00:19.2947288 UTC; confirmed by event (was 2.386 s at 09:00:17 from the LED log)"}
+    - {time: "2026-09-01 13:09:12", jump_s: 2.5487, source: "Kernel-General Id 1 event 17:09:10.0116962 -> 17:09:12.5603560 UTC; confirmed by event (was 2.6 s at 13:09:11 from anchors + LED log). No further w32time step exists; W32Time disabled 2026-09-01 19:00"}
+    # Reboots: Windows does NOT log the boot-time clock load from the hardware RTC (no old time to log; Kernel-Boot 238 is
+    # 1-s resolution), so a reboot step can only be measured. 2026-09-01 04:22 reboot: any step was absorbed by the 13:09
+    # w32time step (w32time still running) - if the 04:22 -> 13:09 sessions ever fit badly, look there first.
+    - {time: "2026-09-03 13:56:01", jump_s: 1.28, source: "measured value final (not loggable by Windows). PC bugcheck reboot 13:56:01-13:59:05. Field drift log (NTP minus PC): +92.4 ms/h before, +91.0 ms/h after, residuals 10/4 ms, lines differing by 1.263 s at the reboot; free-step BLE anchor fits SF08 2_ 1.265, SF11 3_ 1.281, SF12 3_ 1.319 s (step/slope 0.96-0.99 anti-correlated, so the 54 ms spread is the real uncertainty). Adopted 1.28 +- 0.04 s. Future reboots: the drift-check task now also fires 5 min after boot (2026-09-05 01:16)"}
+  # Field-PC outages (PC-side modalities only; the loggers record on their own). Not clock steps: the LED log resumes
+  # with sched == timestamp after each reboot. From from-field notes / System log.
+  field_pc_outages:
+    - {start: "2026-09-01 04:20:14", end: "2026-09-01 04:22:40", cause: "bugcheck 0x1E (BSOD), auto-logon"}
+    - {start: "2026-09-03 13:56:01", end: "2026-09-03 13:59:05", cause: "bugcheck 0x1E (same ntoskrnl fault); video/thermal/mic/LED/WISER gap ~3 min"}
+  # Probe advances (turns of the microdrive). The move sits inside a Stop -> Start gap, so no session needs splitting,
+  # but the sites sit in DIFFERENT TISSUE before and after: sort the epochs separately and NEVER merge unit identities
+  # across a move. settle_h = the post-move window to treat as unstable (drifting / appearing / disappearing units).
+  # Source: field2026-sync from-field/2026-09-04_probe-move-sf07-sf11.md (operator HC, console log + incident log).
+  probe_moves:
+    - {animal: SF07, time: "2026-09-04 14:00:54", turns: 0.25, direction: advance, prev_session_stop: "2026-09-04 13:40:27", settle_h: 4}
+    - {animal: SF11, time: "2026-09-04 13:56:50", turns: 0.25, direction: advance, prev_session_stop: "2026-09-04 13:41:26", settle_h: 4}
+    # Second advances 2026-09-05 (recording repo BATTERY_LOG_cohort3.md 9/5 row, commits 11f6cbb / 5a76417): the session was
+    # stopped, the probe turned, and a new session started on the same battery; the turn amount is logged as "1/4" for SF11
+    # and only as "probe move" for SF07.
+    - {animal: SF07, time: "2026-09-05 13:31:19", turns: 0.25, direction: advance, prev_session_stop: "2026-09-05 13:15:40", settle_h: 4}
+    - {animal: SF11, time: "2026-09-05 15:11:34", turns: 0.25, direction: advance, prev_session_stop: "2026-09-05 15:02:10", settle_h: 4}
+    # Third advances 2026-09-06 during the operator's 12:30-13:34 signal check (recording repo BATTERY_LOG 9/6 row, incident log
+    # 13:45, Notion Sep 6 row): clean Stops 12:31:20 / 12:32:32, ~1 h idle, Resync on the idle loggers, guard files, restart.
+    - {animal: SF07, time: "2026-09-06 13:29:42", turns: 0.25, direction: advance, prev_session_stop: "2026-09-06 12:31:20", settle_h: 4}
+    - {animal: SF11, time: "2026-09-06 13:33:38", turns: 0.25, direction: advance, prev_session_stop: "2026-09-06 12:32:32", settle_h: 4}
+    # 2026-09-09 PM round (early, rain): SF08 and SF12 probes "sitting high", each advanced 1/4 turn DOWN - the same manipulation as
+    # SF07/SF11's three earlier advances (operator "~18:10"; the BLE log is authoritative). SF08: inside its swap window, pre-move
+    # = the 17:57:34 Stop, post-move session starts 18:50:36 (no split). SF12: restarted 18:40:28, Stopped 18:46:34 for the
+    # adjustment, Resync idle, restarted 18:47:51 - the 6-min stub 18:40:28-18:46:34 is PRE-move. Never merge units across the
+    # move. Diagnostic value (field): a visible waveform change on SF08/SF12 after this, where SF07/SF11 never showed one for the
+    # identical operation, would point at SF07/SF11's drives (slipping shuttle) rather than the technique.
+    - {animal: SF08, time: "2026-09-09 18:10", turns: 0.25, direction: advance, prev_session_stop: "2026-09-09 17:57:34", settle_h: 4}
+    - {animal: SF12, time: "2026-09-09 18:47", turns: 0.25, direction: advance, prev_session_stop: "2026-09-09 18:46:34", settle_h: 4}
+  # Operator observations on electrode position / signal (dated; the analysis reads them as expectations for sorting:
+  # a probe still above the hippocampus yields no CA1 units, emerging ripples mark the approach to the pyramidal layer).
+  probe_notes:
+    - {animal: SF11, time: "2026-09-05 23:50", note: "probably still ABOVE the hippocampus, or impedance bad; drive resistance very strong, unclear whether it can be advanced tomorrow", source: operator}
+    - {animal: SF07, time: "2026-09-05 23:50", note: "ripples gradually strengthening (approaching the CA1 pyramidal layer); another advance planned for the 2026-09-06 morning round", source: operator}
+    # 2026-09-06 LFP-signature assessment (ephys/hpc_signature_check.py + swr_strict_check.py, windows 09-04 21:30 / 09-05 00:30 / 09-05 10:30):
+    - {animal: SF11, time: "2026-09-06 16:30", note: "ABOVE CA1: weakest theta of the fleet (ratio 2.5 vs 7-8), strongest slow waves in every state, only 1-6 coherent SWR-like events/min with small ripple amplitude and POSITIVE sharp waves = deep cortex (L5/L6) down to the corpus callosum/alveus, ~300-600 um above the pyramidal layer. Operator decision 09-06: keep as a cortical slow-wave / exploratory dataset (sleep staging, delta), do not expect CA1 place cells; site order within shanks still unverified (no laminar claims)", source: "analysis + operator"}
+    - {animal: SF07, time: "2026-09-06 16:30", note: "just above CA1: state-locked ripple events 25-49/min at rest vs 0-4/min in theta, small amplitude, sharp waves POSITIVE on shanks 2-4 (negative on shank 1) = alveus/oriens, probably 100-200 um above the pyramidal layer; SF09/SF10/SF12 show large NEGATIVE sharp waves = inside CA1 (radiatum side)", source: analysis}
+    - {animal: SF07, time: "2026-09-06 16:00", note: "the three logged 1/4-turn advances (09-04, 09-05, 09-06) produced NO detectable displacement (fingerprint r 0.95-1.00 vs the pre-turn profile for 47 h; 1 site = 50 um would give 0.85); SF11 likewise none on 09-04/09-05 - microdrives suspected slipping, drive test 2026-09-07; see results/2026c/ephys_spikes/reports/ephys_spikes_probe_move_check_2026c.md", source: analysis}
+  # Logger hardware events that explain a gap or an odd session end (not probe-related). Source: the field PC incident log
+  # (field2026-sync from-field/<date>_cohort3-incident-log.md) and the task Responses.
+  logger_notes:
+    - {animal: SF10, time: "2026-09-06 04:02:54", note: "night session 9_20260905_185709 (EVO card, not offloaded yet) stopped with a healthy cell (3.74 V flat, card 17 %, no dive, no console link); RTC writes 05:57:54/05:57:56 hit the IDLE logger, operator restarted it 05:58:13 on the same cell. Second anomalous stop in two nights (09-05 06:58 sag-and-rebound) -> loose battery contact suspected; expect a start cluster + midnight touch (00:29-00:32) and a ~3.5 h extrapolated tail", source: "incident log 2026-09-06 05:40 / 06:10, task Response 06:45"}
+    - {animal: SF07, time: "2026-09-06 05:32", note: "NOT a stop: the advertisement rec counter froze at 38655 s (05:36-05:56) while voltage and card % kept updating; connect at 06:02:47 showed rec = 40529 s, continuous since 18:47:32. A frozen ad counter alone is not evidence of a stop", source: "incident log 2026-09-06 06:10"}
+    - {animal: SF11, time: "2026-09-07 07:40", note: "IMPLANT FELL OFF (operator 07:43); logger recorded open-circuit noise until the clean Stop 08:12:41, retired, not restarted. Last valid ephys = detachment time, TBD from the 09-06 19:52:35 night session (not offloaded yet); the 09-05 evening shank-2 x4 attenuation and the no-effect advances read as a loosening headcap rather than a moved probe", source: "incident log 2026-09-07 07:44 / 09:45, from-field/2026-09-07_sf11-implant-loss.md"}
+    - {animal: SF07, time: "2026-09-07 09:15", note: "battery-path series resistance ~1-2 ohm suspected (holder spring / plug): first-minute sag after Rec Start 3-7x the fleet on three of four installs (65 / 62 / 144 mV) while the steady drain is the fleet lowest; the logger reads low under load, so it auto-stops earlier than its cell would - a weak cell was pulled after a 15-min stub session 08:52:49-09:07:34, second cell from 09:15:12", source: "incident log 2026-09-07 09:45"}
+    - {animal: SF11, time: "2026-09-07 06:10:00", note: "DETACHMENT MEASURED in 13_20260906_195234.827: neural signal intact to 06:10:00 (rest state, inter-channel corr 0.95); 06:10:30-06:15:00 violent decorrelated transients (implant torn off); open circuit from 06:15:10 (>= 59/64 channels at MAD 80-110 ADC, theta gone, corr ~0.1-0.2, 60 Hz up); handling bursts 06:44, 06:54, 07:24-08:09; Stop 08:12:41. 1.5 h before the operator's 07:43 sighting - video around 06:08-06:16 (field-PC time ~ logger + 1 s) should show the event. Valid data on this card: 19:52:34 -> 06:10:00 (10.29 h); 2.04 h tail excluded via ephys.valid_until", source: "lab measurement 2026-09-07 (5-s windows: 1250 Hz LFP correlation, theta power, raw MAD, 60 Hz fraction)"}
+    - {animal: SF11, time: "2026-09-07 06:10:45", note: "DETACHMENT CONFIRMED BY VIDEO: CH07 (camera inside the home box) shows the implant coming off at 06:10:45 field-PC time, inside the house, in the dark; 45 s after the last clean sample, 15 s into the card's tear window - video and card agree. The implant stayed in that box until collected; card bursts 06:44/06:54 = other rats bumping it, 07:24-08:09 = the retrieval; the animal is involved in none of them. WISER: tag 3058 rides on the implant, so the SF11 track also ends 06:10:45 (was 08:20); the drop was passive (no move > 12 cm 05:03:30-06:15:30, six tags huddled within 8-21 cm, static-object signature after 06:12)", source: "from-field/2026-09-07_sf11-implant-loss.md update 19:00 (operator review of E:/Reolink_record/CH07 06:00-07:00); field2026-sync 99b9431 (WISER DB snapshot query)"}
+    - {animal: SF07, time: "2026-09-09 22:33", note: "OUT OF BLE RANGE 22:33-23:06 (tag 3079 parked motionless at a paddock corner, in the open, > 15 min): last fresh advertisement 22:32:36 (rec 14073 s), back 23:06 with rec 15873 s = 18:38:03 + 15873 s -> counter continuous, NO gap, not a logger fault (alive check REC-FROZEN was the range, not a stop). Field asks: check SF07's own recording 22:33-22:56 (rec ~14,100-15,500 s in the 18:38:03 session, on the 09-09 night card) for a rest/sleep state = napping outside the nest. No bedtime anchor pass that night (rats scattered outside); Stop clusters at the 07:00 round anchor the ends", source: "incident log 2026-09-09 22:54 / 23:06"}
+    - {animal: SF12, time: "2026-09-10 21:05", note: "SF12 shank 1 / shank 4 INTERMITTENT open-circuit signature in the lane-off night session 15_20260910_210518 (measured 09-11, 2-min windows): at +10 min and mid-session shank 1 raw amplitude x0.4 (199-268 vs 460-578 ADC before), 60-Hz fraction 0.30-0.35 (vs <= 0.13), LFP corr with the probe median 0.79-0.87 (vs 0.99); 8 of shank 1's 16 channels (48 50 52 54 56 58 61 63) and shank 4 as a whole (60 Hz 0.27-0.34) affected; by the last 10 min (~08:00 09-11) both shanks are back to normal (60 Hz 0.03-0.04, amplitude 680-700). Shanks 2/3 unaffected throughout. The 09-09 night (4_) and the 09-10 day (8_, after the 08:30 advance) are normal except ch 63 (flagged since the 09-09 day) and ch 48 - i.e. the weakness predates both SF12 advances and is not the turn. The ADC-on pieces (10_, 14_) show no open channel beyond the pulse train. Reading: a loosening headstage/cable contact on the shank-1/shank-4 lines (recovers = not a broken shank); watch item - inspect the connector seating at the next round", source: "lab measurement 2026-09-11 (E:/3rd_rat_spikes/SF12, sessions 4_/8_/10_/14_/15_)"}
+    - {animal: SF12, time: "2026-09-11 08:05", note: "SF12 shank 1 + shank 4 connection, hourly series 21:05-08:05 through 15_20260910_210518 (1-min windows every 20 min): (1) PERSISTENT half amplitude on shanks 1 and 4 all night (raw MAD 170-330 ADC vs 630-900 on shanks 2/3; shank 1 was already ~60 % of the others on 09-09/09-10, shank 4 was NORMAL in the 09-10 day session 8_ and dropped to shank 1's level between 14:53 and 21:05 = during the ADC afternoon / PM-round handling); (2) INTERMITTENT full open on the whole shank 1 (all 16 channels together, 60-Hz fraction 0.45-0.70) and shank 4 at 21:05, 01:25-02:05, 02:45-03:25, 04:05, 05:25, each lasting minutes to ~40 min, gone by 05:45; (3) at 07:25-08:05 all four shanks normal (489/1317/1228/446 ADC, 60 Hz 0.02-0.05). Two outer shanks flipping together = one mechanical contact (headstage/probe connector or cable), not electrodes and not the drive; a progressive contact failure that would end as a dead probe. Not the 09-09 18:47 or 09-10 08:30 advances (both followed by normal sessions)", source: "lab measurement 2026-09-11"}
+    - {animal: SF12, time: "2026-09-11 09:47:47", note: "FIELD FLAGS (from-field/2026-09-11_sf12-hardware-flags.md): SF12 unreachable 08:26-09:44 during the card change - operator suspects a faulty SD card SLOT (not the card); operator also says 'the probe may be broken'. Console preview amplitude this morning is like the other loggers'. Lab: treat SF12 from 09:47:47 as PROBE INTEGRITY UNKNOWN until its 09-11 day session is offloaded and compared channel by channel with 8_20260910_083507 (day, lane off) and 15_20260910_210518 (night, lane off): noise floor, spike-band power, ch 48/63 watch, impulse census, and the shank 1/4 contact signature measured on 09-10 night. If broken, the 09-11 day session is the boundary. Trial stubs before the final Starts 09-11 AM on every logger (30-100 s) are stubs, not sessions", source: "field 2026-09-11 10:10 / task Response 10:20"}
+    - {animal: SF07, time: "2026-09-10 20:44:11", note: "12_20260910_204411 (09-10 night, lane off, 11.36 h) chain verdict 'inconsistent': native fit is fine (39 anchors = 14 start + 24 end, drift -23.6 ppm = SF07's usual, residual 32 ms) but the end-cluster consistency test failed and the start offset disagrees by +783 ms with the extrapolation from the previous indexed session across the 6-h gap - the gap holds the quarantined lane-ON piece and an RTC Resync on the idle logger (20:42:04 / 20:42:44) that re-set the clock. Accepted on its native fit (ephys.pc_time_accept)", source: "lab 2026-09-11; field response 09-10 21:20 (Resync times)"}
+    - {animal: SF12, time: "2026-09-11 18:03", note: "SF12 09-11 day session 3_20260911_094747 (09:47:47 -> 18:29): NO neural signal from the first minute - all four shanks at raw MAD 77-196 ADC (09-10 day: 400-1400), theta log10 2.0-3.3 (vs 4.1-4.8), MUA ~0.1/s, 60-Hz fraction in episodes 0.5-1.35, spike-band floor at the electronic level (35-47 ADC) - i.e. the electrodes were not connected to the amplifier inputs (open/shorted headstage contact), not a broken probe; at 18:03, during the PM-round handling, all four shanks return to normal (raw 578-676, theta 4.73-4.81, 60 Hz 0.00-0.01). Together with the 09-10 night shank 1/4 intermittency and the 08:26-09:44 unreachable window at the card change: a mechanical contact at the headstage/probe connector that handling opens and closes. Field flag on the session; the last ~30 min are normal", source: "lab measurement 2026-09-11 evening (answer to from-field/2026-09-11_sf12-hardware-flags.md item 1)"}
+    - {animal: SF12, time: "2026-09-11 23:30", note: "END OF USABLE SF12 EPHYS. The final field night 17_20260911_192428 (19:24:28 -> auto-stop ~09:55 on 09-12, 14.51 h) carries signal only to 23:30 (theta log10 4.6-5.1 on all four shanks, shanks 1/4 still attenuated as since 09-10); from 23:39 the headstage/probe contact fails for good: BROADBAND blow-ups (std 3300-6000 ADC) alternating with OPEN circuit (raw MAD 90-150, theta 2.0, 60-Hz fraction 0.3-23) for the rest of the night, with short returns at 23:59-00:09 and 07:25 that a per-minute quality mask could recover. Registered as ephys.valid_until; the QC probe windows and coverage stop at 23:30, which also restores the FM65 CLEAN verdict (this is a contact regime, not a firmware defect). SF12 totals: usable ephys ends 2026-09-11 23:30", source: "lab measurement 2026-09-13 (30-min then 10-min windows over the whole session)"}
+  # Sessions whose recording continued after the neural signal ended (implant detached mid-session): the session stays a
+  # normal session (fitted, counted, sortable) up to valid_until (logger wallclock); the index limits its probe windows to
+  # the valid part and the coverage tables stop there. Not a field_flag: the session is real up to that time.
+  # Sessions whose field-PC-time chain verdict is 'inconsistent' ONLY because a cross-check is void (an RTC Resync or a quarantined
+  # piece inside the preceding gap, or end clusters disturbed by config writes) while the native fit is good: pc_time_chain accepts
+  # the native fit, writes pc_time.dat and marks the verdict 'OK-native (accepted: <reason>)'.
+  pc_time_accept:
+    - {animal: SF07, session: "12_20260910_204411.854", reason: "RTC Resync 20:42:04/20:42:44 on the idle logger inside the 6-h gap (lane-ON piece quarantined); native fit 39 anchors, 32 ms, drift -23.6 ppm"}
+  valid_until:
+    - {animal: SF11, session: "13_20260906_195234.827", valid_until: "2026-09-07 06:10:00", note: "implant detached 06:10:30-06:15:00; open circuit from 06:15:10 to the 08:12:41 Stop (see loggers.SF11 and logger_notes)"}
+    - {animal: SF12, session: "17_20260911_192428.023", valid_until: "2026-09-11 23:30:00", note: "final field night: neural signal to 23:30, then the shank-1/4 contact fails for good - from 23:39 the session alternates BROADBAND noise (raw std 3300-6000 ADC) and OPEN circuit (raw MAD 90-150, theta log10 2.0, 60-Hz fraction up to 23) with only brief returns (23:59-00:09, 07:25); measured 09-13 in 1-min windows. 4.09 h usable of 14.51 h"}
+  # Sessions the field log marks as not-real recordings (keep them in the index, exclude from analysis). Source: recording
+  # repo BATTERY_LOG_cohort3.md.
+  field_flags:
+    - {animal: SF10, sessions: ["10_20260905_070012.038", "11_20260905_080522.427"], flag: "zombie restarts of a dying 900 mAh cell after its 06:58 auto-stop (cell retired); high-IR sag, exclude"}
+    # Probe-position TEST recordings 2026-09-06 (operator, 13:46): while SF07 and SF11 sat idle for the third advance, both loggers
+    # were run on separate 64 GB test cards from a DIFFERENT PC's console to check whether the probe had reached the hippocampus.
+    # Their BLE anchors carry that PC's clock, so no field-PC time exists for them (`pc_time: false` = pc_time_chain does not
+    # fit them and never chains a neighbour through them). Whether they enter any analysis is UNDECIDED - keep them indexed,
+    # keep them out of coverage and sorting until the operator decides.
+    - {animal: SF07, sessions: ["0_20260906_123827.548", "1_20260906_123931.995"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:31-13:29 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
+    - {animal: SF11, sessions: ["0_20260906_124136.884"], flag: "probe-position TEST on a 64 GB test card from another PC's console during the 09-06 12:32-13:33 advance; anchors are NOT field-PC time; inclusion undecided (operator 09-06)", pc_time: false, card: test}
+    # SF12 09-11 day: the headstage/probe CONTACT was open for the whole session except the last ~30 min - all 64 channels at ~90 ADC
+    # raw MAD (x10 below the 09-10 day), theta log10 2.0-3.3 vs 4.1-4.8, 60-Hz episodes (fraction up to 1.35), MUA ~0, electronic
+    # noise floor normal (35-47 ADC); at 18:03 (PM-round handling) everything is back (raw 578-676, theta 4.7-4.8, 60 Hz 0.00).
+    # Real recording, PC time fine, but no neural signal until ~17:50 -> excluded from coverage and the firmware verdict.
+    - {animal: SF12, sessions: ["3_20260911_094747.706"], flag: "SF12 connector OPEN 09:47:47 -> ~17:50 (no neural signal: LFP x10 down on all 64 ch, theta gone, 60 Hz episodes); normal again from ~18:00 to the Stop (measured 09-11)"}
+    # HOME-CAGE sleep recording, 2026-09-12: after the paddock phase ended (animals out 10:10) the operator started one session per
+    # logger on fresh cells from ANOTHER laptop and let them run to auto-stop. Real neural data, but NOT paddock data and NOT on the
+    # field-PC time base: this PC has no console log of them (incident log 09-12 11:00). Starts on the cards are 10:30-10:49, i.e.
+    # 20-40 min after the animals came out, not the "~11:00" of the field note. Each session has a 9-10 anchor START cluster (the
+    # other laptop's console connected at Start) and NO end cluster, so no drift fit -> pc_time false. MEASURED 2026-09-16: the
+    # start-cluster offset against the logger RTC is +160 / +335 / +809 ms (field-PC sessions sit at +1144 ms with 96 ms scatter),
+    # i.e. the other laptop's clock agreed with the logger RTC - last set by the field PC at the 09-11 19:14-19:24 round - to within
+    # ~1 s. With the logger's -20..-27 ppm drift over 10-12 h that makes the folder RTC time good absolute wallclock to about +/- 2 s:
+    # enough to place the session in the day, not enough for any cross-modal alignment (there is no paddock video/WISER to align to).
+    # Flagged so they stay out of the paddock coverage tables and out of the time chain; they are otherwise normal FM65 sessions.
+    - {animal: SF07, sessions: ["0_20260912_103016.514", "1_20260912_103055.576"], flag: "HOME-CAGE sleep session 2026-09-12 10:30:55 -> auto-stop (12.02 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock)", pc_time: false}
+    - {animal: SF08, sessions: ["0_20260912_103448.825", "1_20260912_103540.965"], flag: "HOME-CAGE sleep session 2026-09-12 10:35:40 -> auto-stop (9.67 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock)", pc_time: false}
+    - {animal: SF09, sessions: ["0_20260912_104232.471", "1_20260912_104324.946"], flag: "HOME-CAGE sleep session 2026-09-12 10:43:24 -> auto-stop (10.40 h), started from another laptop: real FM65 data, no field-PC time (start cluster only, other host's clock)", pc_time: false}
+    - {animal: SF10, sessions: ["0_20260912_104804.647", "1_20260912_104856.875"], flag: "HOME-CAGE sleep session 2026-09-12 10:48:56 -> auto-stop after only 2.18 h (the other four ran 9.7-12.0 h; file closed byte-exact, so the cell died, not the download): real FM65 data, CLEAN signal in all 13 windows measured 09-16 (theta log10 4.1-6.4), no field-PC time (start cluster only, other host's clock)", pc_time: false}
+    - {animal: SF12, sessions: ["0_20260912_105344.857", "1_20260912_105447.676"], flag: "HOME-CAGE sleep session 2026-09-12 10:54:47 -> auto-stop (12.02 h), no field-PC time. MEASURED 09-16 (1-min window every 30 min): the failing headstage contact makes it mostly UNUSABLE - signal in 10 of 24 windows (continuous only 10:55-12:25, then scattered returns 15:25, 16:55, 18:25-18:55, 21:25-21:55), OPEN circuit in 12 (raw MAD 83-130, theta log10 1.9-2.6, 60-Hz fraction up to 19) and BROADBAND in 2. Use only with a per-minute quality mask; the first ~1.5 h is the last continuous SF12 data", pc_time: false}
+    # ADC/mic lane ON (2026-09-10 14:42 -> switch-off): 312.5 Hz full-scale pulse train on every amplifier channel (see adc_lane above).
+    # QUARANTINE (operator decision 2026-09-10): lane-ON sessions are MOVED out of the raw tree to
+    # E:/3rd_rat_spikes/_quarantine_adc_lane_on/<SFxx>/<MAC>/<session>/ (leading underscore = skipped by iter_raw_sessions) and stay
+    # listed here for the record. Procedure per offload: size check first (it counts every folder), then move the lane-ON pieces, then QC.
+    # Real recordings, same tissue, PC time fine - but unusable ephys; excluded from coverage and from the firmware verdict (their tick
+    # counts would read as a wide-impulse defect). Add each logger's lane-ON sessions as they are offloaded.
+    - {animal: SF08, sessions: ["7_20260910_144204.188", "8_20260910_150945.224", "9_20260910_184248.287", "10_20260910_184306.556"], flag: "ADC lane ON: 312.5 Hz ~5.5 mV pulse train on all 64 channels (measured 09-10); ephys unusable; 10_ is an empty record (fs 0). QUARANTINED 2026-09-10: moved to E:/3rd_rat_spikes/_quarantine_adc_lane_on/SF8/<MAC>/ (invisible to the index); listed here for the record"}
+    # PENDING lane-ON pieces to flag when their cards are offloaded (field response 2026-09-10 21:20, times ET; the session folder
+    # names come from the card): day SF07 14:43:52-18:39:24, SF09 15:07:21-18:47:50, SF10 14:51:22-18:49:40, SF12 15:04:57-18:51:05;
+    # night (1000 mAh cells) SF07 19:33:05-20:41:16, SF08 19:35:30-20:46:01, SF09 19:42:03-~20:39, SF10 19:44:42-20:53:23,
+    # SF12 19:47:10-20:42:47. Lane switched OFF on all five 20:41-21:05; lane-off night sessions start SF07 20:44:13, SF08 21:02:46,
+    # SF09 20:49:12, SF10 20:56:12, SF12 21:05:19 (each a fresh start cluster; every RTC write on an idle logger). Never re-enabled.
+  # ADC ("microphone") lane - switched ON on all five loggers 2026-09-10 14:40-14:56 for a body-temperature sensor (field note
+  # from-field/2026-09-10_adc-lane-switch-on-and-session-splits.md; config block byte 28 = 0x08, param 625). MEASURED on SF08
+  # 2026-09-10 (sessions 7_/8_/9_ vs the lane-OFF day session 6_): (1) the export gains adc.dat = int16 at 160 kHz (8 samples per
+  # amplifier sample; CE_params sampling_rates[2] = 160000) - rail-to-rail garbage (mean ~8,500, sd ~13,000, hits +/-32767, 25 % of
+  # power > 10 kHz): a microphone input is AC-coupled, a DC temperature voltage cannot pass it - NO temperature is recorded; (2) the
+  # AMPLIFIER channels carry a full-scale pulse train while the lane is on: 312.5 Hz (= 625/2, the config parameter), ~1.2 ms wide
+  # (0.4-4.4), median 28,000 ADC ~ 5.5 mV, on 64/64 channels, ~18 % of samples, onsets staggered 0-4.3 ms across channels (not
+  # common-mode: median-referencing does not remove it); spike-band MAD 44 -> 250 ADC (x5.6), raw std 1,200 -> 9,500; harmonic
+  # comb at 23.15 Hz multiples up to 300+ Hz. Ephys recorded with the lane ON is unusable for spikes and contaminated for LFP.
+  # Sessions with the lane ON are field-flagged below (SF08 now; the other four loggers' post-14:4x day sessions and the 09-10 night
+  # sessions when offloaded). The battery reading also freezes in this mode (field, 18:45).
+  adc_lane:
+    file: adc.dat
+    dtype: int16
+    rate_hz: 160000
+    on_flag: "CE_params byte 28 == 0x08 (and sampling_rates[2] == 160000)"
+    verdict: "no temperature recorded; amplifier polluted by a 312.5 Hz full-scale pulse train - keep OFF"
+    # Lane-ON windows per logger = mic-ON config write -> mic-OFF config write (field2026-sync
+    # from-field/2026-09-10_adc-lane-contamination-boundaries.csv, ble_messages times, ET). A session whose [start, end] overlaps a
+    # window is contaminated even if its header says OFF (the ON block can land mid-recording: SF08 14:45:13, SF09 14:48:33,
+    # SF10 14:51:32). ephys/quarantine_adc_sessions.py uses these + the header + the pulse train itself, and moves the sessions.
+    on_windows:
+      - {animal: SF07, on_from: "2026-09-10 14:43:45", off_at: "2026-09-10 20:43:57", note: "day 14:43:52-18:39:24, guard stubs 18:40 / 19:32, night piece 19:33:05-20:41:16"}
+      - {animal: SF08, on_from: "2026-09-10 14:45:13", off_at: "2026-09-10 18:43:06", note: "stub 14:42:04-15:09 (ON mid-recording), day 15:09:45-18:42:13, guard stub 18:42:48; the 18:43:16-18:45:37 stub is CLEAN (mic off written 18:43:06)"}
+      - {animal: SF08, on_from: "2026-09-10 19:35:09", off_at: "2026-09-10 21:02:37", note: "night piece 19:35:30-20:46:01"}
+      - {animal: SF09, on_from: "2026-09-10 14:48:33", off_at: "2026-09-10 20:48:05", note: "stub B 14:48:29-~15:00 (ON 4 s after Start), day 15:07:21-18:47:50, guard stubs 19:37-19:41, night piece 19:42:03-~20:47:40 (ended by RESET, no Stop)"}
+      - {animal: SF10, on_from: "2026-09-10 14:51:32", off_at: "2026-09-10 20:55:47", note: "day 14:51:22-18:49:40 (ON 10 s after Start), guard stub 19:43:55, night piece 19:44:42-20:53:23"}
+      - {animal: SF12, on_from: "2026-09-10 15:04:40", off_at: "2026-09-10 21:04:59", note: "day 15:04:57-18:51:05, night piece 19:47:10-20:42:47; the 14:54:09-~15:01 stub is CLEAN (no ON block)"}
+  deglitch: {k_mad: 10.0, floor_adc: 500.0, window: 5}   # field-validated defaults (from-field 2026-09-01)
+  probe_config: ephys/configs/probes_2026c.yaml
+  preprocess_pipeline_root: "C:/Users/Cornell/Documents/GitHub/PreprocessPipeline"   # override: PREPROCESS_PIPELINE_ROOT
+  # Per-cohort derived-data root on the data drive (user decision 2026-09-03; the G: artifact root dropped off the PC on
+  # 09-02). ephys/ scripts write stage/, sort/, pc_time/, tools/, index/ under it and NEVER into a raw session folder.
+  # 2026-09-10: moved from E:/3rd_rat_spikes/analysis to D: (operator decision 2026-09-09: E: stays raw-only so the last cohort days fit;
+  # robocopy 2857 files / 1.33 TB, 0 failed, verified by count/size + head/mid/tail hashes; the E: copy was then deleted).
+  analysis_root: "D:/3rd_rat_spikes/analysis"
+
+notes: >
+  Night 1 (08-30 18:39 -> 08-31 ~04:30) neural data LOST on all six (FM59-62 stop-only commit; batteries pulled
+  without Stop) — recovery.bin images are the only remaining trace. Daytime 08-31 ~11:00-18:00 = troubleshooting
+  window (logger LFP blank, reflashes) -> analysis exclusion. Every session started before 2026-09-01 19:00
+  carries glitch noise -> de-glitch first (ephys/stage_session.py does this by firmware gate). SF10: one shank
+  "super noisy" (8/25 note). WISER: SF12 tag 3058 dropped 08-31 (3059 alone after); 3058 remounted on SF11
+  2026-09-02 ~08:00 after 305a's battery died (SF11 gap 09-02 00:03 -> ~08:00). Probe channel->shank mapping
+  UNVERIFIED (placeholder sequential blocks in ephys/configs/probes_2026c.yaml). Measured 2026-09-02: the FM62
+  08-31 daytime sessions of SF8/SF9 and the 07:0x-07:2x morning-round records sit in a wide-impulse / broadband
+  noise regime the single-sample de-glitch cannot fix (index columns regime + tick_removal_frac); night FM64
+  sessions are the well-behaved single-sample-defect case.
+
+raw_data_roots:
+  analysis_pc:
+    ephys:             "E:/3rd_rat_spikes"          # offloaded WILD sessions + recovery.bin per animal
+    ephys_duplicates:  ["G:/3rd", "D:/SF10"]        # partial earlier copies (G:/3rd/SF10/.../5_20260901_054403.494 holds the field de-glitch validation)
+    wiser_snapshots:   null
+    reolink:           null
+    thermal:           null
+    weather:           null
+  field_pc:
+    reolink:           "E:/Reolink_record"
+    thermal:           "E:/thermal_record"
+    wiser_live:        null
+    weather:           null
+  biohpc:
+    wiser_snapshots:   null
+    reolink:           null
