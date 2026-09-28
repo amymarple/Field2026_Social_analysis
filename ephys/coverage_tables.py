@@ -7,9 +7,10 @@ ephys.field_flags) are NOT counted; they are listed in the hourly md header inst
 
 Outputs (results/<cohort>/ephys_spikes/reports and figures; mirrored under <analysis_root>/index/ when declared):
   ephys_spikes_hourly_coverage_<cohort>.csv / .md   minutes recorded per local hour per logger, every day in range
+  ephys_spikes_coverage_raster_<cohort>.png          loggers x time raster, one panel per day (FM64 vs FM65 coloured)
+Off-repo only (bulk, ~3.4 MB/day; ephys/_common.index_root = <analysis_root>/index/ or <OUT_ROOT>/<cohort>/ephys_index/):
   ephys_spikes_coverage_1s_<cohort>_<date>.csv       one row per local second of that day: time_local, one column per
                                                     logger (firmware version while recording, 0 = not recording), n_loggers
-  ephys_spikes_coverage_raster_<cohort>.png          loggers x time raster, one panel per day (FM64 vs FM65 coloured)
 
 Usage: python ephys/coverage_tables.py --cohort 2026c [--days 2026-09-01 2026-09-02 ...] [--no-1s]
 """
@@ -23,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-from _common import analysis_root, figure_dir, git_commit, report_dir, utc_now_iso
+from _common import analysis_root, figure_dir, git_commit, index_root, report_dir, utc_now_iso
 
 
 def load_sessions(cohort: str) -> tuple[list[dict], list[dict], list[dict]]:
@@ -135,12 +136,13 @@ def main() -> None:
     hourly_md.write_text("\n".join(L) + "\n", encoding="utf-8")
     print(f"hourly -> {hourly_csv}\n          {hourly_md}")
 
-    # ---- per-second coverage per day ----
+    # ---- per-second coverage per day (bulk: off-repo index root only) ----
     if not a.no_1s:
+        idx = index_root(a.cohort)
         for day, arr in per_day_arrays.items():
             if not (arr > 0).any():
                 continue
-            p = rd / f"ephys_spikes_coverage_1s_{a.cohort}_{day:%Y-%m-%d}.csv"
+            p = idx / f"ephys_spikes_coverage_1s_{a.cohort}_{day:%Y-%m-%d}.csv"
             with open(p, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
                 w.writerow(["time_local"] + [f"{x}_fw" for x in animals] + ["n_loggers"])
@@ -148,8 +150,6 @@ def main() -> None:
                 for i in range(86400):
                     w.writerow([f"{day:%Y-%m-%d} {i // 3600:02d}:{(i // 60) % 60:02d}:{i % 60:02d}"] + [int(v) for v in arr[i]] + [int(n_log[i])])
             print(f"1-s coverage -> {p}")
-            if mirror:
-                (mirror / p.name).write_bytes(p.read_bytes())
 
     # ---- raster figure ----
     try:

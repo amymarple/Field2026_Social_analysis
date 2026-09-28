@@ -2,8 +2,8 @@
 
 Combines three sources into one human-readable report (cohort-keyed, regenerable):
 
-  1. the session index (results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.{csv,json},
-     from ephys/build_session_index.py): firmware, RTC-vs-folder agreement, sidecar sizes, the measured
+  1. the session index (results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.csv + its JSON detail
+     in the off-repo index root, ephys/_common.index_root; from ephys/build_session_index.py): firmware, RTC-vs-folder agreement, sidecar sizes, the measured
      multi-window glitch probe (ticks/s, tick_removal_frac, regime), spike-band noise, bad-channel candidates;
   2. per-animal timeline continuity computed here from start/end times:
          gap_min = (start of next session − end of this session) / 60
@@ -41,7 +41,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from _common import PROJECT_ROOT, ephys_block, git_commit, out_root, report_dir, resolve_cohort, utc_now_iso
+from _common import PROJECT_ROOT, ephys_block, git_commit, index_root, out_root, report_dir, resolve_cohort, utc_now_iso
 
 FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -55,7 +55,14 @@ def load_index(cohort: str) -> tuple[list[dict], dict]:
     rd = report_dir(cohort)
     stem = rd / f"ephys_spikes_session_index_{cohort}"
     rows = list(csv.DictReader(open(f"{stem}.csv", encoding="utf-8")))
-    detail = json.loads(Path(f"{stem}.json").read_text(encoding="utf-8")) if Path(f"{stem}.json").exists() else {}
+    # JSON detail is off-repo bulk (index_root); the in-repo path is the pre-2026-09-28 location, kept as a fallback.
+    candidates = [index_root(cohort) / f"{stem.name}.json", Path(f"{stem}.json")]
+    jp = next((p for p in candidates if p.exists()), None)
+    if jp is None:
+        print(f"WARNING: session-index JSON detail not found (looked in {candidates[0].parent}); the report loses the "
+              f"per-channel probe detail. Rerun ephys/build_session_index.py --cohort {cohort}, or restore the last committed copy: "
+              f"git show fcaa792:results/{resolve_cohort(cohort)}/ephys_spikes/reports/{stem.name}.json > {candidates[0]}")
+    detail = json.loads(jp.read_text(encoding="utf-8")) if jp else {}
     return rows, detail
 
 

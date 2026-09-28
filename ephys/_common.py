@@ -76,6 +76,15 @@ def tools_root(cohort: str) -> Path:
     return ar / "tools" if ar else out_root() / "ephys_tools"
 
 
+def index_root(cohort: str) -> Path:
+    """Off-repo home of regenerable index bulk (1-s coverage CSVs, session-index JSON detail): <analysis_root>/index/ when
+    declared, else <OUT_ROOT>/<cohort>/ephys_index/. The in-repo reports/ keep only the tables a reader needs."""
+    ar = analysis_root(cohort)
+    d = ar / "index" if ar else out_root() / resolve_cohort(cohort) / "ephys_index"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def report_dir(cohort: str, direction: str = DEFAULT_DIRECTION) -> Path:
     d = PROJECT_ROOT / "results" / resolve_cohort(cohort) / direction / "reports"
     d.mkdir(parents=True, exist_ok=True)

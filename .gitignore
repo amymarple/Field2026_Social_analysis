@@ -48,3 +48,7 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# ephys regenerable bulk -> <ephys.analysis_root>/index/ (ephys/_common.index_root), never results/ (2026-09-28)
+results/*/ephys_spikes/reports/ephys_spikes_coverage_1s_*.csv
+results/*/ephys_spikes/reports/ephys_spikes_session_index_*.json

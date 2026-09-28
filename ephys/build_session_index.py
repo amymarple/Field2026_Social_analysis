@@ -9,7 +9,8 @@ firmware rule is checked against the data itself (this is how FM65 gets evaluate
 Outputs (cohort-keyed, canonical):
     results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.csv   one row per session
     results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.md    human table + definitions
-    results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.json  per-channel probe detail
+    <index_root>/ephys_spikes_session_index_<cohort>.json   per-channel probe detail (bulk, OFF-repo; ephys/_common.index_root
+                                                            = <analysis_root>/index/ or <OUT_ROOT>/<cohort>/ephys_index/)
 and, unless --no-mirror, the same CSV/MD as SESSION_INDEX.{csv,md} under the cohort's analysis folder
 (<ephys.analysis_root>/index/, e.g. E:/3rd_rat_spikes/analysis/index/) for other agents; never inside a raw session folder.
 
@@ -25,7 +26,7 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from _common import (PROJECT_ROOT, ephys_block, git_commit, iter_raw_sessions, parse_session_name, raw_ephys_root,
+from _common import (PROJECT_ROOT, ephys_block, git_commit, index_root, iter_raw_sessions, parse_session_name, raw_ephys_root,
                      report_dir, utc_now_iso, write_json)
 from signal_probe import probe_window_stats
 from wild_ce_params import parse_ce_params
@@ -219,13 +220,17 @@ def build_index(raw_root: Path, cfg: dict, *, probe_seconds: float = 30.0, probe
 
 
 def write_outputs(rows: list[dict], details: list[dict], animals: dict, *, cohort: str, cfg: dict, raw_root: Path,
-                  out_dir: Path, mirror_dir: Path | None, probe_seconds: float) -> dict:
+                  out_dir: Path, mirror_dir: Path | None, probe_seconds: float, json_dir: Path | None = None) -> dict:
+    """CSV + MD go to ``out_dir``; the bulky JSON detail to ``json_dir`` (defaults to ``out_dir``; main() passes the
+    off-repo index root)."""
     stem = f"ephys_spikes_session_index_{cohort}"
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    json_dir = Path(json_dir) if json_dir else out_dir
+    json_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / f"{stem}.csv"
     md_path = out_dir / f"{stem}.md"
-    json_path = out_dir / f"{stem}.json"
+    json_path = json_dir / f"{stem}.json"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
         w.writeheader()
@@ -347,7 +352,8 @@ def main() -> None:
         ar = cfg.get("analysis_root")
         mirror = (Path(ar) / "index") if ar else raw   # never inside a raw session folder; the cohort's analysis folder when declared
     out = write_outputs(rows, details, animals, cohort=a.cohort, cfg=cfg, raw_root=raw, out_dir=out_dir,
-                        mirror_dir=mirror, probe_seconds=a.probe_seconds)
+                        mirror_dir=mirror, probe_seconds=a.probe_seconds,
+                        json_dir=Path(a.out_dir) if a.out_dir else index_root(a.cohort))
     for k, v in out.items():
         print(f"{k:7s} {v}")
     print(f"{len(rows)} sessions; deglitch required: {sum(1 for r in rows if r.get('deglitch_required') is True)}")

@@ -12,7 +12,8 @@ raw offload (E:\3rd_rat_spikes\<SFxx>\<MAC>\<slot>_<date>_<time>.<ms>\)         
     card: skipped by every script, listed in the index MD; move it to <root>\_other_loggers\<MAC>\)
    |  build_session_index.py   firmware + duration + MEASURED glitch probe per session
    v
-results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.{csv,md,json}   (+ SESSION_INDEX.* mirrored at the data root)
+results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.{csv,md}   (+ SESSION_INDEX.* mirrored at the data root;
+   the per-channel .json detail is bulk and lives OFF-repo in <analysis_root>/index/ — ephys/_common.index_root)
    |  stage_session.py         firmware gate -> deglitch_wild.py (FM < 65) or verbatim copy; XML from probes_<cohort>.yaml
    v
 <OUT_ROOT>/<cohort>/ephys_stage/<SFxx>/<session>/   amplifier.dat (clean) + info.rhd + CE_params.bin + time.dat + <session>.xml + manifests
@@ -22,9 +23,11 @@ results/<cohort>/ephys_spikes/reports/ephys_spikes_session_index_<cohort>.{csv,m
 ```
 
 `<OUT_ROOT>` = `FIELD2026_ANALYSIS_OUT_ROOT` (this machine: `G:\Field2026_analysis_out`) **unless the cohort declares
-`ephys.analysis_root`** — cohort `2026c` does (`E:\3rd_rat_spikes\analysis\`, user decision 2026-09-03 after G: dropped
-off the PC): then `stage/`, `sort/`, `tools/`, `pc_time/` and the `index/` mirror live under that folder. Nothing is ever
-written into a raw session folder.
+`ephys.analysis_root`** — cohort `2026c` does (`D:\3rd_rat_spikes\analysis\`; first `E:\…` by user decision 2026-09-03
+after G: dropped off the PC, moved to `D:` 2026-09-10 — change_log/2026-09-10-analysis-root-moved-to-D.md): then `stage/`,
+`sort/`, `tools/`, `pc_time/` and `index/` live under that folder. `index/` holds the SESSION_INDEX mirror **and the
+regenerable bulk that is kept out of git** (1-s coverage CSVs, session-index JSON detail; since 2026-09-28). Nothing is
+ever written into a raw session folder.
 
 ## Why a cleaning step exists ("artificial spikes")
 
