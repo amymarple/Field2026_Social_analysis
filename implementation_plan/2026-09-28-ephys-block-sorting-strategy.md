@@ -5,13 +5,52 @@
 
 ## Decision
 
-1. **The sorting unit is a *block*:** one stretch of continuous FM65 recording on one logger. A block is one session, or
-   several sessions joined across gaps under 5 min (logger restarts in the middle of a recording). It never spans a
-   battery round (30 min–2 h), a probe move, a firmware change or a field-flagged session.
+1. **The sorting unit is a *block*:** continuous FM65 recording on one logger at one probe position. Blocks are
+   defined from the LFP-estimated position (phase L below). The fallback is one session, or several sessions joined
+   across gaps under 5 min (logger restarts in the middle of a recording), never spanning a battery round, a probe
+   move, a firmware change or a field-flagged session.
 2. **Identity across blocks is recovered afterwards by unit matching**: adjacent blocks per shank, chained within
    one probe position. There is no Kilosort run over a concatenation of days.
 3. **Production runs on server GPUs** as one Slurm job per block, all independent. **This PC runs a pilot** that
    validates the current pipeline version, measures throughput and measures how accurate the matching is.
+
+## Phase L — LFP first, then define the blocks from the probe position (user, 2026-09-28)
+
+The probes moved — by the logged advances, and possibly by slow drift or slipping drives. We do not know in advance
+which spans are position-stable, so the block boundaries should come from the data, not only from gaps and the operator
+log. The LFP is 1/16 of the raw size and needs no sorting, so it goes first for everything:
+
+**L1 — LFP for every session** (`ephys/make_lfp.py`, new).
+- Coverage: 203 sessions, 1,372 h (FM65 1,257 h; FM64 115 h, de-glitched in the stream), about 790 GB at
+  `<analysis_root>/lfp/<SFxx>/<session>.lfp`.
+- Method: the pipeline's filter (Butterworth-5 450 Hz, zero-phase, on raw), polyphase decimation to 1250 Hz, no
+  20 kHz copy.
+- Self-test PASS: chunked output equals the one-shot computation to 0 LSB, the passband is kept, 2 kHz does not
+  alias, glitches are removed.
+- These are also the LFP files for state scoring, SWR and theta.
+
+**L2 — Per-shank position time series.**
+- In sliding windows (e.g. 2 min every 10 min, sleep windows preferred), compute per channel:
+  - the ripple-band (130–200 Hz) envelope at detected ripples;
+  - the sharp-wave polarity (1–50 Hz ripple-triggered);
+  - theta power and phase;
+  - gamma power.
+- Estimate the best along-shank shift and the fingerprint correlation against a reference window. This is
+  `probe_move_timeseries.py` / `lfp_profile_check.py` run on the LFP files continuously instead of on 5-min raw windows.
+- Units are **site index**, not µm: the site spacing is unknown for most probes, and the within-shank order is
+  LFP-derived except SF07/SF10.
+- Validate on the 9 logged advances. Each is either detected as a shift, or confirmed as no displacement, like SF07's
+  (fingerprint r 0.95–1.00, 2026-09-06).
+
+**L3 — Data-driven blocks.**
+- Change-point segmentation of the position series gives the position-stable epochs.
+- A sort block = the continuous FM65 recording inside one stable epoch:
+  - blocks may be joined across battery rounds when the position did not change (capped at ~24 h per Kilosort job,
+    since `nblocks: 0`);
+  - a session is split when the position moved inside it.
+- The rule above (join gaps < 5 min, split at every round) becomes the fallback wherever the LFP is uninformative
+  (no ripples on a shank, SF09's cortical sites).
+- The same epochs define the matching chains: units are matched across rounds only within an epoch.
 
 ## What the data are (session index, 2026-09-28)
 

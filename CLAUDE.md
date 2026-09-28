@@ -177,6 +177,7 @@ be rebuilt.
 | 1c | offload QC report | `offload_qc_report.py` | `reports/…offload_qc_<c>.{md,csv}` |
 | 1d | coverage | `coverage_tables.py` | hourly csv/md + raster (in-repo); 1-s CSVs → `<ar>/index/` |
 | 1e | field request | `field_request.py [--push/--check]` (or the `/offload-field-request` skill) | a task file in field2026-sync (`--push` commits + pushes there) |
+| L | LFP for every session (before sorting; phase L of the plan) | `make_lfp.py [--animal …] [--session …] [--workers 8]` (`--dry-run`, `--selftest`) | `<ar>/lfp/<SFxx>/<session>.lfp` + `.lfp.json` (pipeline filter: Butterworth-5 450 Hz zero-phase on raw, ÷16 → 1250 Hz; FM64 de-glitched in the stream; ~60× real time here) |
 | 2 | stage | `stage_session.py --animal SF10 --session <s> [--window-s S D]` | `<ar>/stage/<SFxx>/<s>/`: clean `amplifier.dat`, sidecars, `<s>.xml`, manifest |
 | 3 | sort | `run_sort_session.py --animal … --session … --partition shank` (`preprocess` env) | `<ar>/sort/<SFxx>/<s>/` (KS4 per shank, `_spi` postprocessed); row in `reports/…sort_runs_<c>.csv` |
 | 4 | yield / curate | `unit_yield_report.py`; `open_phy.py --list` / `--animal --session --shank k [--raw]` | `reports/…ks4_unit_yield_*`; Phy edits in `_spi` |
