@@ -35,6 +35,10 @@ Quick rules (all detailed in CONVENTIONS.md):
 - **One repo, many pipelines — merge to `main` often.** Ephys and CV preprocessing live here side by side because they
   share the cohort registry, `common/`, the ledgers and the cross-modal clock chain. A four-week ephys branch caused the
   2026-09-28 merge conflicts; keep branches short-lived.
+- **Local first, then the server (user rule, 2026-09-28).** Every new ephys / LFP / IMU / sorting step is developed and
+  validated on this PC against the local raw copy `E:rd_rat_spikes` (read-only) before it runs on BioHPC. The server
+  runs only code already validated here, deployed from a commit, and its output is spot-checked against the local result
+  (e.g. the LFP of SF07 `9_20260901_192912.215` is byte-identical on both machines).
 - Medium/large change: `implementation_plan/<date>-topic.md` **before**, `change_log/<date>-topic.md` **after**, and
   both index READMEs updated.
 - `/analysis-definitions` for any deliverable; `/regime-aware-wiser-tracking` / `/regime-aware-cv-measurement` before
@@ -180,6 +184,7 @@ shared SSH connection the user opens in Git Bash (`ssh -M -S ~/.ssh/cm-gpu -o Co
 | 1d | coverage | `coverage_tables.py` | hourly csv/md + raster (in-repo); 1-s CSVs → `<ar>/index/` |
 | 1e | field request | `field_request.py [--push/--check]` (or the `/offload-field-request` skill) | a task file in field2026-sync (`--push` commits + pushes there) |
 | L | LFP for every session (before sorting; phase L of the plan) | `make_lfp.py [--animal …] [--session …] [--workers 8]` (`--dry-run`, `--selftest`) | `<ar>/lfp/<SFxx>/<session>.lfp` + `.lfp.json` (pipeline filter: Butterworth-5 450 Hz zero-phase on raw, ÷16 → 1250 Hz; FM64 de-glitched in the stream; one sequential read stream per worker; ~60× real time on this PC from the USB HDD, ~200× on BioHPC with `--workers 8`; server and PC outputs byte-identical). Whole cohort on BioHPC: `ephys/server/run_make_lfp.sh` → `/workdir/hc997/ephys_2026c/lfp/` + MD5 manifest, then copied to storage `3rd_rat/analysis/lfp/` (never into `WILD/`) |
+| IMU | read the head IMU (read-only) | `read_imu.py --check <session_dir>`; `read_imu(session_dir, start_s, dur_s)` | nothing written; `analogin.dat` lanes 1-3 acc, 4-6 gyro, 7-9 mag at 1250 Hz (frame k ↔ amplifier 16k). **Magnetometer x saturated on all six loggers → no magnetic heading.** Layout, validation and the audit of the lab MATLAB IMU scripts: `docs/methods/wild_ce64_imu.md` |
 | 2 | stage | `stage_session.py --animal SF10 --session <s> [--window-s S D]` | `<ar>/stage/<SFxx>/<s>/`: clean `amplifier.dat`, sidecars, `<s>.xml`, manifest |
 | 3 | sort | `run_sort_session.py --animal … --session … --partition shank` (`preprocess` env) | `<ar>/sort/<SFxx>/<s>/` (KS4 per shank, `_spi` postprocessed); row in `reports/…sort_runs_<c>.csv` |
 | 4 | yield / curate | `unit_yield_report.py`; `open_phy.py --list` / `--animal --session --shank k [--raw]` | `reports/…ks4_unit_yield_*`; Phy edits in `_spi` |
@@ -246,7 +251,17 @@ Rules: motion boxes are proposals, never labels; the frozen test night is never 
 evaluate by center-matching and review "false positives" by eye (test GT is incomplete → recall is a lower bound);
 label only clearly visible rats (Long Evans hoods read darker than grass → `polarity="dark"`). `label_frames`,
 `scan_for_rats`, `train_detector` default to the **shelter** dataset `dataset/rat` — pass `dataset/rat_field`.
-CH01/CH02 daytime color is corrupt (out of scope). Large jobs: BioHPC (`cv/cv_field/REMOTE_COMPUTE.md`).
+CH01/CH02 daytime colour was corrupt in **cohort 1** (keyframe truncation fixed 07-11, VBR cap 07-19 — before cohort 3).
+
+**Cohort 3 (2026c), user decisions 2026-09-28:** start with the **CH01/CH02 panoramas** — they map ~68–69 % of the
+paddock each in the 09-24 calibration (CH03/CH04 ~12 % each, the two ends) and so carry the occupancy map; the existing
+detector and all 255 labels are cohort-1 CH03/CH04, so CH01/CH02 start from zero labels. **Workflow:** local first —
+extract frames with **GPU decode** (ffmpeg NVDEC; CPU seek-decode is ~3 s/frame CH03/CH04, ~6 s/frame panos) from the
+local copy `F:\3rd_rat\` (≈3× faster seeks than Q:), store frames locally, label locally, run a small-scale pilot; only
+then move large batches to BioHPC (`cv/cv_field/REMOTE_COMPUTE.md`). **Camera stability is judged by a person**:
+`cv/cv_field/camera_review.py` lays out daily frames with the 09-18 wall-foot lines for review (an automatic ECC check
+failed — grass, rain, IR/colour changes); weather-driven moves are reported manually. **The agent does not judge
+images** and confirms every test plan with the user first.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 
