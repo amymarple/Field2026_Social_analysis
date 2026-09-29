@@ -65,6 +65,22 @@ Plan: `implementation_plan/2026-09-28-cohort3-ch0102-yolo-pilot.md`. No frames e
 - **Stratum**: zero ($n_{\text{out}}=0$), few ($1\le n_{\text{out}}\le2$), many ($n_{\text{out}}\ge3$).
 - **Snap** (benchmark): frame time − target time, seconds, field-PC time.
 
-## Not done / next
+## Round-0 pool extracted (2026-09-29)
 
-Test-night and time-scope choice (user), extracting the round-0 pool with these tools, labelling.
+User decisions: night only (21:00–04:20), test night = the night of 2026-09-05.
+`select_pano_targets.py --test-night 2026-09-05` → `$OUT_ROOT/2026c/cv_field_pano_select_20260929_1143/`
+(`targets_round0.csv`, `targets_test.csv`, `selection_summary.json`; seed 0, mix 20/40/40, ≥ 10 min apart):
+- **round 0:** 30 frames per camera (CH01, CH02), 11 nights, hours 21–04; strata zero 12 / few 24 / many 24;
+- **test night 09-05:** 20 frames per camera; strata 8 / 16 / 16.
+
+`grab_frames.py` (CPU exact, 3 workers) → `cv/dataset/rat_pano/images/` (60 JPEGs, 231 MB) and
+`cv/dataset/rat_pano_test/images/` (40, 154 MB), each with its `manifest.csv` (target vs frame time and the WISER tag
+string per frame); local only (gitignored). 100/100 frames, 0 errors, |frame − target| ≤ 0.15 s.
+Wall time: round 0 13.7 s/frame (60 frames scattered over ~60 hourly files on the USB HDD, 3 concurrent readers),
+test night 3.0 s/frame (one night's files) — for scattered pools the HDD random access dominates; next time sort targets
+by file and try one worker.
+
+## Next
+
+User labels round 0 and the test night with `cv/label_frames.py --dir cv/dataset/rat_pano[_test]/images`; then the
+training-comparison plan goes to the user.

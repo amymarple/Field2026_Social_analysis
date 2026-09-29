@@ -1,6 +1,6 @@
 # Cohort-3 CH01/CH02 panorama detector — pilot (2026-09-28)
 
-**Status.** Step 1 in progress (user go, 2026-09-28: "抽帧工具先建立起来"; WISER-guided selection approved as the design).
+**Status.** Steps 1–2 done (2026-09-29: tools, benchmark, round-0 + test-night pool — night only, test night 09-05, user decisions); step 3 = user labelling. See `change_log/2026-09-28-cohort3-ch0102-frame-tools.md`.
 
 **Why.** For cohort 3 (2026c) the user put the two Reolink Duo 3 panoramas first: in the 09-24 calibration they map
 ~68–69 % of the paddock each (CH03/CH04 ~12 % each), so they carry the occupancy map. The existing detector and all 255
