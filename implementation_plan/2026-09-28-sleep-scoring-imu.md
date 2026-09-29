@@ -64,6 +64,46 @@ Around it:
    `extracellular.srLfp`, `extracellular.spikeGroups` and `channelTags.Bad.channels`. Dependencies: numpy, scipy,
    matplotlib; standalone.
 
+## The two copies compared (2026-09-28; subagent review, key claims re-verified)
+
+**A** = Sleep_dynamics working tree (uncommitted). **B** = PreprocessPipeline `eb3dad4` (committed).
+
+- **Same core.** Of 50 shared functions, **35 are AST-identical**: power-spectrum-slope/IRASA spectra, the theta
+  metric, the dip statistic, histogram-dip thresholds, MATLAB-style downsample/smooth. The features and thresholds
+  therefore behave the same.
+- **LFP-EMG.** Both compute it **from `.lfp` only**. MATLAB `getEMGFromLFP` has a `fromDat` option (default off) that
+  neither port implements. Both use 300–600 Hz, a 3rd-order Butterworth, 0.5-s windows and a 2 Hz output. Channel
+  choice differs: A the middle channel of each shank, B the first. A adds window-energy QC that preferentially drops
+  the quietest (sleep) windows. That is a risk, and it is not MATLAB.
+- **Memory on a 12-h, 64-ch session.**
+  - A loads every candidate channel as float64 before downsampling (~35 GB).
+  - **B streams one channel at a time** (~86 MB per channel, ≤ 4 threads).
+- **Excluded time.**
+  - **B labels it.** `_intervals_from_mask` ignores timestamp gaps and `_fill_unassigned_states` fills every 0 from its
+    neighbours. In a synthetic test all 349 ignored seconds got labels, and one NREM interval bridged the gap.
+  - A splits at gaps (as MATLAB does). But A's default "recheck" (not in MATLAB) leaks labels back into ignored
+    windows: 190/349 in the same test; 0 with recheck off.
+- **Extras only in A:** scoring windows and ignore intervals, threshold overrides and scales, a manual bad-channel
+  file, the IMU hooks (unusable for WILD, see above), provenance text files.
+- **Extras only in B:** atomic writes, a v7.3 fallback above 2 GB, outputs in the buzcode layout (A defaults to
+  `complex_system/`).
+- **Shared deviations from MATLAB:**
+  - minimum-duration step 5 only converts short WAKE next to NREM (MATLAB converts every short WAKE);
+  - the sticky trigger is stored but never applied;
+  - `dt_spec = window − 1` equals MATLAB's 1-s step only at the default 2-s window (we use the default);
+  - **neither preserves TheStateEditor manual edits on overwrite.**
+
+**Recommendation: B as the base, with runtime shims from our driver; neither repo modified.**
+1. **Gap-aware intervals** (A's `_intervals_from_mask`), and **no filling of excluded bins**. Excluded cohort-3
+   windows — rounds, probe-advance settle time, ADC lane, connector-open — stay unlabelled.
+2. **Exclusions via B's existing `pulses.intsPeriods` (ignoretime).** No port needed.
+3. **The IMU in B's EMG slot:** our per-second VeDBA at 2 Hz on the LFP timeline, used for the REM gate and for
+   NREM → WAKE. The LFP-EMG is kept alongside for comparison. An IMU loading failure is fatal.
+4. **Threshold overrides** (A's `_resolve_threshold`) only for pass 2 (fixed per-animal thresholds).
+5. **Off:** A's recheck and A's EMG-energy QC. Not MATLAB, not validated.
+6. **Protect manual scoring:** automatic output goes to its own folder; the user's edits in `state_editor.py` are
+   saved separately and never overwritten.
+
 ## Integration plan (our driver `ephys/score_sleep.py`; their repo stays unmodified)
 
 1. **Pin the scorer.** The user commits Sleep_dynamics; we record its commit in every output sidecar. Use the
