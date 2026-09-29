@@ -5,7 +5,8 @@ Human labels exported from `cv/cv_field/landmark_gui.py` (one JSON per camera fr
 pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
 `implementation_plan/2026-09-28-cohort3-camera-stability.md`; why: `change_log/2026-09-28-cohort3-camera-stability.md`).
 
-- **Fit set (rigid):** `POLE_<row><col>` (pole centre line, paddock grid names A–C × 0–4), `WALLTOP_*` (top edge of
+- **Fit set (rigid):** `POLE_<row><col>_L` / `_R` (a pole is a vertical cylinder: its LEFT and RIGHT edge as seen in
+  the image, two parallel lines — more points, and their spacing measures the image scale; paddock grid names A–C × 0–4), `WALLTOP_*` (top edge of
   the wall sheet, per side), `TOWER` (water tower outline), `PCBOX` (the PC box facing CH02), and any added structure
   that cannot move.
 - **Validation only:** `HOUSE_B1_*` / `HOUSE_B3_*` — the house next to pole B1 / B3 — as `_ROOF` (outline) and `_BASE`

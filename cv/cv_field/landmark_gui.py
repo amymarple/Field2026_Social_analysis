@@ -11,7 +11,9 @@ from them (point-to-curve distances, so clicks need not correspond point by poin
 VALIDATION only (no record says whether they moved): a correction fitted on the rigid set must also explain them.
 
 Landmark kinds (the side panel groups them):
-  axis     POLE_<row><col>  the pole's vertical centre line where it is visible (its ends usually are not) — 2+ points
+  edge     POLE_<row><col>_L / _R  the pole's LEFT and RIGHT edge as seen in this image (a pole is a vertical cylinder:
+                            two parallel lines), each along its visible length (the ends usually are not visible) —
+                            2+ points each; the centre line and the apparent width follow from the pair
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
   outline  TOWER, PCBOX, HOUSE_<n>_ROOF   closed outline, click round it (validation only for houses)
@@ -43,7 +45,7 @@ import camera_review as cr  # noqa: E402  (frame lookup: segments/locate/grab, P
 
 POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
-DEFAULTS = ([(p, "axis") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
+DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"] + [(w, "polyline") for w in WALLTOPS]
             + [("TOWER", "outline"), ("PCBOX", "outline"),
                ("HOUSE_B1_ROOF", "outline"), ("HOUSE_B1_BASE", "polyline"), ("HOUSE_B3_ROOF", "outline"), ("HOUSE_B3_BASE", "polyline")])
 
@@ -69,8 +71,9 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
  <div id="imgwrap"><div id="stage"><img id="img" src="data:image/jpeg;base64,__B64__"><svg id="ov"></svg></div></div>
  <div id="side">
   <b>1. pick a landmark &nbsp; 2. click along it in the image</b><br>
-  <small><b>POLE_*</b>: click along the pole's vertical CENTRE LINE where you can see it (2 or more points; the ends need not
-  be visible). <b>WALLTOP_*</b>: the TOP edge of the wall sheet, one per side, every ~0.5–1 m. <b>TOWER / PCBOX</b>:
+  <small><b>POLE_*_L / _R</b>: a pole is a vertical cylinder — label BOTH its edges as two parallel lines: _L = the left
+  edge, _R = the right edge as seen in this image, each with 2 or more points along the visible length (the ends need not
+  be visible). The dashed "POLE_xx?" guide is the pole's predicted centre line, only to tell which pole it is. <b>WALLTOP_*</b>: the TOP edge of the wall sheet, one per side, every ~0.5–1 m. <b>TOWER / PCBOX</b>:
   click round the outline (it closes itself). <b>HOUSE_*</b>: roof outline + the visible part of the bottom edge —
   used only to CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
   Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
@@ -79,14 +82,16 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   <b>Drag</b> a point to move it, <b>right-click</b> to delete. Points are kept in this browser between visits.</small>
   <canvas id="mag" width="240" height="240" style="display:block;margin:6px 0;border:1px solid #888"></canvas>
   <div id="list"></div>
-  <div style="margin-top:6px">+ add <input id="newname" size="14" placeholder="NAME"> <select id="newkind"><option>axis</option><option>polyline</option><option>outline</option></select> <button onclick="addLm()">add</button></div>
+  <div style="margin-top:6px">+ add <input id="newname" size="14" placeholder="NAME"> <select id="newkind"><option>edge</option><option>polyline</option><option>outline</option></select> <button onclick="addLm()">add</button></div>
   <b>Export</b> (also copied here) / paste an earlier export and <button onclick="loadJSON()">Load</button>:<br><textarea id="out"></textarea>
  </div></div>
 <script>
 const CAM="__CAM__", TS="__TS__", S=__SCALE__, IMGW=__IMGW__, IMGH=__IMGH__, GUIDES=__GUIDES__;
 let KIND=__KINDS__;
-const GROUP={axis:'Poles (axis)',polyline:'Edges (polyline)',outline:'Outlines (closed)'};
-function col(id,i){if(id.startsWith('HOUSE'))return '#9aa0a6';if(id.startsWith('POLE'))return `hsl(${(i*47)%360},95%,55%)`;
+const GROUP={edge:'Poles (left + right edge)',polyline:'Edges (polyline)',outline:'Outlines (closed)',axis:'Pole centre lines (old)'};
+const POLE_ORDER=['A0','A1','A2','A3','A4','B0','B1','B2','B3','B4','C0','C1','C2','C3','C4'];
+function col(id,i){if(id.startsWith('HOUSE'))return '#9aa0a6';
+  if(id.startsWith('POLE')){const k=POLE_ORDER.indexOf(id.slice(5,7));return `hsl(${((k<0?i:k)*47)%360},95%,55%)`;}
   if(id.startsWith('WALLTOP'))return ['#ff3030','#ff8c00','#ff40ff','#ffffff'][i%4];return i%2?'#00e5ff':'#7CFC00';}
 let COL={};function recol(){Object.keys(KIND).forEach((l,i)=>COL[l]=col(l,i));} recol();
 let lines={}; Object.keys(KIND).forEach(l=>lines[l]=[]); let cur=null, z=0.5;
@@ -95,15 +100,17 @@ function zoom(f){z=f;stage.style.transform='scale('+z+')';stage.style.width=IMGW
 function path(pts,closed){return pts.map((p,i)=>(i?'L':'M')+(p[0]*S).toFixed(1)+' '+(p[1]*S).toFixed(1)).join(' ')+(closed&&pts.length>2?' Z':'');}
 function draw(){ov.setAttribute('width',IMGW);ov.setAttribute('height',IMGH);let h='';
   if(document.getElementById('showg').checked){for(const [id,g] of Object.entries(GUIDES)){if(g.length<2)continue;
-    h+=`<path d="${path(g,KIND[id]==='outline')}" fill="none" stroke="${COL[id]||'#ccc'}" stroke-width="2" stroke-dasharray="14 10" opacity="0.6"/>`;
-    const m=g[Math.floor(g.length/2)];h+=`<text x="${m[0]*S+8}" y="${m[1]*S-8}" font-size="22" font-weight="bold" fill="${COL[id]||'#ccc'}" stroke="#000" stroke-width="4" paint-order="stroke" opacity="0.85">${id}?</text>`;}}
+    const gc=COL[id]||COL[id+'_L']||'#ccc';
+    h+=`<path d="${path(g,KIND[id]==='outline')}" fill="none" stroke="${gc}" stroke-width="2" stroke-dasharray="14 10" opacity="0.6"/>`;
+    const m=g[Math.floor(g.length/2)];h+=`<text x="${m[0]*S+8}" y="${m[1]*S-8}" font-size="22" font-weight="bold" fill="${gc}" stroke="#000" stroke-width="4" paint-order="stroke" opacity="0.85">${id}?</text>`;}}
   for(const [id,pts] of Object.entries(lines)){if(!pts.length)continue;
     if(pts.length>1)h+=`<path d="${path(pts,KIND[id]==='outline')}" fill="none" stroke="${COL[id]}" stroke-width="${id===cur?4:2.5}"/>`;
     pts.forEach(p=>{h+=`<circle cx="${p[0]*S}" cy="${p[1]*S}" r="${id===cur?9:6}" fill="none" stroke="${COL[id]}" stroke-width="3"/>`;});
     const p=pts[pts.length-1];h+=`<text x="${p[0]*S+10}" y="${p[1]*S+8}" font-size="24" font-weight="bold" fill="${COL[id]}" stroke="#000" stroke-width="5" paint-order="stroke">${id}</text>`;}
   ov.innerHTML=h;list();}
-function list(){const L=document.getElementById('list');let h='';for(const k of ['axis','polyline','outline']){h+=`<h4>${GROUP[k]}</h4>`;
-  for(const l of Object.keys(KIND).filter(l=>KIND[l]===k))h+=`<button class="ln${l===cur?' cur':''}" style="border-left:12px solid ${COL[l]}" onclick="pick('${l}')">${l}<span class="n">${lines[l].length} pts</span></button>`;}
+function list(){const L=document.getElementById('list');let h='';for(const k of ['edge','polyline','outline','axis']){
+  const ids=Object.keys(KIND).filter(l=>KIND[l]===k);if(!ids.length)continue;h+=`<h4>${GROUP[k]}</h4>`;
+  for(const l of ids)h+=`<button class="ln${l===cur?' cur':''}" style="border-left:12px solid ${COL[l]}" onclick="pick('${l}')">${l}<span class="n">${lines[l].length} pts</span></button>`;}
   L.innerHTML=h;document.getElementById('curinfo').textContent=cur||'none';
   document.getElementById('stat').textContent=Object.values(lines).reduce((a,b)=>a+b.length,0)+' points on '+Object.values(lines).filter(v=>v.length).length+' landmarks';}
 function pick(l){cur=l;draw();}
@@ -140,7 +147,7 @@ function loadJSON(){try{const d=JSON.parse(document.getElementById('out').value)
   for(const [id,pts] of Object.entries(L)){if(lines[id]===undefined){lines[id]=[];if(!KIND[id])KIND[id]='polyline';}lines[id]=pts.map(p=>[+p[0],+p[1]]);}draw();}catch(e){alert('not valid JSON: '+e);}}
 function exportJSON(){const out={},kind={};for(const [id,pts] of Object.entries(lines)) if(pts.length){out[id]=pts;kind[id]=KIND[id];}
   const data={camera:CAM,time:TS,frame_size_upright:[IMGW/S,IMGH/S],landmarks:out,kind:kind,source:"__SRC__",
-    note:"full-res UPRIGHT px; axis = pole centre line, polyline = open edge, outline = closed; HOUSE_* = validation only"};
+    note:"full-res UPRIGHT px; edge = one straight edge (POLE_xx_L/_R = a pole's left/right edge in this image), polyline = open edge, outline = closed; HOUSE_* = validation only"};
   const txt=JSON.stringify(data);document.getElementById('out').value=txt;
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(txt);
   a.download='landmarks_'+CAM+'_'+TS.replace(/[-: ]/g,'').replace(/^(\d{8})(\d{6})$/,'$1_$2')+'.json';a.click();}

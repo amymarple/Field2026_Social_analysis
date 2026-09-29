@@ -36,7 +36,8 @@ to cohort pixels as is. Plan (approved step by step with the user):
    NVR reboot, cohort end → 09-16 restart, 09-17 → 09-18 (26 h unrecorded, image mode changed), the CH01/CH02
    dawn/dusk restart clusters, the 09-02 storm, the 09-03 rain, the 09-18 hand-held sweeps) —
    `camera_review.py --events`; the user judges each pair → epoch boundaries.
-1. **Landmarks (user):** pole centre lines (`POLE_<grid>`), wall TOP edges (`WALLTOP_*`), the water tower (`TOWER`),
+1. **Landmarks (user):** both edges of each pole (`POLE_<grid>_L/_R`, two parallel lines; their spacing also
+   measures the local image scale — useful for the CH01/CH02 distortion), wall TOP edges (`WALLTOP_*`), the water tower (`TOWER`),
    the PC box facing CH02 (`PCBOX`); houses (`HOUSE_*_ROOF/BASE`) labelled for validation only. Tool:
    `cv/cv_field/landmark_gui.py` (adapted from the recording repo's `calibration_qc/line_gui.py`); labels in
    `cv/configs/landmarks/2026c/`. First: the four 09-18 IR references; then 1–2 frames per cohort epoch.
