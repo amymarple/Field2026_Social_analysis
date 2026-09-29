@@ -8,8 +8,17 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
 - **Fit set (rigid):** `POLE_<row><col>` (pole centre line, paddock grid names A–C × 0–4), `WALLTOP_*` (top edge of
   the wall sheet, per side), `TOWER` (water tower outline), `PCBOX` (the PC box facing CH02), and any added structure
   that cannot move.
-- **Validation only:** `HOUSE_<n>_ROOF` (outline), `HOUSE_<n>_BASE` (visible bottom edge) — no record says whether
-  the houses moved, so they check the correction instead of shaping it.
+- **Validation only:** `HOUSE_B1_*` / `HOUSE_B3_*` — the house next to pole B1 / B3 — as `_ROOF` (outline) and `_BASE`
+  (visible bottom edge). No record says whether the houses moved, so they check the correction instead of shaping it.
+  (Named by the pole, not house_1/house_2, because the documents disagree on which is which.)
+- **Which name is which:** `paddock_schematic.png` here (top view: A0 = origin corner, x along the 40 ft length with
+  columns 0–4, rows A/B/C across; wall sides; houses; each camera's position and bearing from the 09-24 calibration),
+  and the named dashed "NAME?" guides in the GUI = the calibration's prediction of each structure (identification
+  only — click the real structure). Both from `cv/cv_field/landmark_guides.py`; annotated 09-18 IR frames per camera:
+  `$FIELD2026_ANALYSIS_OUT_ROOT/2026c/cv_field_landmarks/guides_CH0x_0918IR.jpg`.
+  Visible per camera (calibration): CH03 → POLE_A0/B0/C0, WALLTOP_X0/Y0/Y240; CH04 → POLE_A4/B4/C4, WALLTOP_X480/Y0;
+  CH01 → mostly rows B/C (+A0), all four wall tops, both houses; CH02 → mostly rows A/B (+C4), WALLTOP_X0/X480/Y0,
+  both houses.
 - Same name = same physical structure in every frame and camera. Outlines/edges are compared point-to-curve, so
   clicks do not have to correspond point by point.
 

@@ -45,7 +45,7 @@ POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(p, "axis") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
             + [("TOWER", "outline"), ("PCBOX", "outline"),
-               ("HOUSE_1_ROOF", "outline"), ("HOUSE_1_BASE", "polyline"), ("HOUSE_2_ROOF", "outline"), ("HOUSE_2_BASE", "polyline")])
+               ("HOUSE_B1_ROOF", "outline"), ("HOUSE_B1_BASE", "polyline"), ("HOUSE_B3_ROOF", "outline"), ("HOUSE_B3_BASE", "polyline")])
 
 HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __CAM__ __TS__</title>
 <style>
@@ -63,7 +63,7 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
 <div id="top"><b>__CAM__ @ __TS__</b><span>landmark: <b id="curinfo">none</b></span>
  <button onclick="undo()">undo last point (u)</button><button onclick="clearLine()">clear this landmark</button>
  <span>zoom <button onclick="zoom(0.25)">25%</button><button onclick="zoom(0.5)">50%</button><button onclick="zoom(1)">100%</button><button onclick="zoom(2)">200%</button></span>
- <label><input type="checkbox" id="showg" checked onchange="draw()"> guides (dashed = an earlier export)</label>
+ <label><input type="checkbox" id="showg" checked onchange="draw()"> guides (dashed "NAME?" = where the calibration / an earlier export puts it)</label>
  <button onclick="exportJSON()" style="background:#3c3;font-weight:bold">Export JSON</button><span id="stat"></span></div>
 <div id="main">
  <div id="imgwrap"><div id="stage"><img id="img" src="data:image/jpeg;base64,__B64__"><svg id="ov"></svg></div></div>
@@ -73,6 +73,9 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   be visible). <b>WALLTOP_*</b>: the TOP edge of the wall sheet, one per side, every ~0.5–1 m. <b>TOWER / PCBOX</b>:
   click round the outline (it closes itself). <b>HOUSE_*</b>: roof outline + the visible part of the bottom edge —
   used only to CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
+  Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
+  click the REAL one) and the top-view map cv/configs/landmarks/2026c/paddock_schematic.png (A0 = origin corner, x
+  along the length, rows A/B/C across; HOUSE_B1 / HOUSE_B3 = the house next to pole B1 / B3).
   <b>Drag</b> a point to move it, <b>right-click</b> to delete. Points are kept in this browser between visits.</small>
   <canvas id="mag" width="240" height="240" style="display:block;margin:6px 0;border:1px solid #888"></canvas>
   <div id="list"></div>
@@ -92,7 +95,8 @@ function zoom(f){z=f;stage.style.transform='scale('+z+')';stage.style.width=IMGW
 function path(pts,closed){return pts.map((p,i)=>(i?'L':'M')+(p[0]*S).toFixed(1)+' '+(p[1]*S).toFixed(1)).join(' ')+(closed&&pts.length>2?' Z':'');}
 function draw(){ov.setAttribute('width',IMGW);ov.setAttribute('height',IMGH);let h='';
   if(document.getElementById('showg').checked){for(const [id,g] of Object.entries(GUIDES)){if(g.length<2)continue;
-    h+=`<path d="${path(g,KIND[id]==='outline')}" fill="none" stroke="${COL[id]||'#ccc'}" stroke-width="2" stroke-dasharray="14 10" opacity="0.55"/>`;}}
+    h+=`<path d="${path(g,KIND[id]==='outline')}" fill="none" stroke="${COL[id]||'#ccc'}" stroke-width="2" stroke-dasharray="14 10" opacity="0.6"/>`;
+    const m=g[Math.floor(g.length/2)];h+=`<text x="${m[0]*S+8}" y="${m[1]*S-8}" font-size="22" font-weight="bold" fill="${COL[id]||'#ccc'}" stroke="#000" stroke-width="4" paint-order="stroke" opacity="0.85">${id}?</text>`;}}
   for(const [id,pts] of Object.entries(lines)){if(!pts.length)continue;
     if(pts.length>1)h+=`<path d="${path(pts,KIND[id]==='outline')}" fill="none" stroke="${COL[id]}" stroke-width="${id===cur?4:2.5}"/>`;
     pts.forEach(p=>{h+=`<circle cx="${p[0]*S}" cy="${p[1]*S}" r="${id===cur?9:6}" fill="none" stroke="${COL[id]}" stroke-width="3"/>`;});
@@ -169,6 +173,11 @@ def main(argv=None) -> int:
     b64 = base64.b64encode(cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 85])[1]).decode()
     kinds = dict(DEFAULTS)
     guides = {}
+    try:                                                    # calibration-predicted, named guides (identification only)
+        import landmark_guides
+        guides.update(landmark_guides.calib_guides(cam))
+    except Exception as e:  # noqa: BLE001 — the GUI works without them
+        print(f"(no calibration guides: {e})")
     if args.guide:
         g = json.loads(Path(args.guide).read_text(encoding="utf-8"))
         guides = g.get("landmarks", {})
