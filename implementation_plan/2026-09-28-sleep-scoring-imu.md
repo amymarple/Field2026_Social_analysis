@@ -106,6 +106,13 @@ Around it:
 
 ## Integration plan (our driver `ephys/score_sleep.py`; their repo stays unmodified)
 
+> **Superseded in part (2026-09-29).** This section predates the comparison above. The pilot follows the
+> recommendation instead: scorer **B** (PreprocessPipeline, pinned by commit in every `score_sleep.json`), and the IMU
+> in B's EMG slot as $\log_{10}(\overline{\text{VeDBA}}_{2s} + 0.01)$ at 2 Hz, with no remapping to 0.5. B's own
+> histogram-dip threshold lands at the still/active valley (see *Pilot* below). Ignore intervals (item 4) and fixed
+> per-animal thresholds (item 5) are not implemented yet, so sessions with frozen/invalid IMU are refused. Items
+> 1–3 and 6 below describe the A-based design and are kept for the record.
+
 1. **Pin the scorer.** The user commits Sleep_dynamics; we record its commit in every output sidecar. Use the
    Sleep_dynamics copy (it has the IMU hooks and ignore intervals); PreprocessPipeline's copy is the fallback.
 2. **Per-session basepath without copying:**
@@ -143,6 +150,27 @@ Around it:
 - **Plausibility:** the REM share of sleep is ~5–20 %; NREM bouts have a sensible duration distribution; states
   follow the light–dark pattern.
 - Then the server: the same commit on the BioHPC LFP, one session compared with the local output.
+
+## Pilot (2026-09-29): 4 local sessions × 3 variants
+
+Driver `ephys/score_sleep.py`, scorer PreprocessPipeline `eb3dad4`. Results:
+`results/2026c/ephys_spikes/reports/ephys_spikes_sleep_pilot_2026c.csv` and `…_agreement_2026c.csv`. Detail and
+definitions: [change_log/2026-09-29-sleep-scoring-pilot.md](../change_log/2026-09-29-sleep-scoring-pilot.md).
+- **The variants barely differ.** κ 0.96–1.00 between any two on the three day sessions. The IMU and the LFP-EMG
+  disagree mainly at WAKE/REM edges.
+- **Sustained movement is WAKE.** Seconds in IMU-moving runs ≥ 30 s are 96–100 % WAKE; 1–4 s movements are mostly
+  scored sleep (twitches, posture shifts), so the anchor "moving ≥ 95 % WAKE" applies to sustained movement only.
+- **The REM share of sleep is 18–23 %**, at or above the expected 5–20 %. To check in the manual review.
+- **The SF08 REM anchor is not met.** At rec 22230 s (± 60 s) all variants give WAKE 65 / NREM 41 / REM 15 epochs.
+  - The head IMU moves there (VeDBA 0.3–5 m/s² at 22215–22295 s), and both EMGs rise.
+  - The nearest clean REM bout is 22045–22135 s, about 95 s earlier.
+  - The observation has minute precision; SF08 was in a five-rat pile and logger work began at 14:40.
+  - Twitch vs arousal is the user's call (video + editor).
+- **Per-session thresholds are fragile.** On the SF07 night session (09-01 19:29, 4.2 h) the automatic SW threshold
+  sits at 0.70 (0.375–0.54 on day sessions) and the SW channel changes (5 vs 11). That result is still right: the IMU
+  shows only 2 % still time, and no still run longer than 18 s. But a night with a little sleep would be misscored. This
+  supports item 5: fixed per-animal thresholds, and fixed channels, from day sessions, on an un-normalised metric (the
+  scorer min-max normalises each session).
 
 ## Questions for the user
 
