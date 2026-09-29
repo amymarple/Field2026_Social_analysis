@@ -1,0 +1,11 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_wiser_calibration_pilot_20260929_1232",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "imu_wiser_calibration_pilot",
+  "report": "wiser_baseline_imu_calibration_pilot_2026c.md",
+  "driver": "wiser/scripts/analyze_imu_wiser_calibration.py",
+  "config": "wiser/configs/imu_wiser_calibration_2026c.json",
+  "git_commit": "c9a5e6f+dirty",
+  "runtime_s": 46.1
+}

@@ -1,0 +1,9 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_cohort3_accuracy_20260928_1405",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_cohort3_accuracy",
+  "report": "wiser_baseline_cohort3_accuracy_2026c.md",
+  "git_commit": "ed9e93ae541dd1c7b8434523e3498ed9ee5e0d79",
+  "drivers": "scripts saved in <run_dir>/scripts (s00..s12); not a repo driver yet"
+}

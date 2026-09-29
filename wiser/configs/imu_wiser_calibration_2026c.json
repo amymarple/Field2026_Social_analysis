@@ -1,0 +1,119 @@
+{
+  "_about": "Inputs of the IMU <-> WISER calibration pilot for cohort 2026c (wiser/scripts/analyze_imu_wiser_calibration.py; plan implementation_plan/2026-09-29-imu-wiser-calibration-pilot.md, approved by the user 2026-09-29). Times are field-PC local (EDT, naive). A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "wiser_db": "D:/Field2026_analysis_out/2026c/wiser_working/3rdcohort_Spike_2026_3_4.sqlite",
+  "wiser_table": "reports",
+  "wiser_db_sha256_prefix_expected": "82ccadfde589",
+  "silences_csv": "D:/Field2026_analysis_out/2026c/wiser_cohort3_accuracy_20260928_1405/csv/c3_all_tag_silences_merged.csv",
+  "silence_pad_s": 120,
+  "handling_json": "cv/configs/cohort3_handling_windows.json",
+  "rois_json": "wiser/configs/wiser_rois.json",
+  "house_rois": [
+    "house_1",
+    "house_2"
+  ],
+  "house_buffer_in": 14.0,
+  "imu_still_thr_source": "ephys/imu_lfp_state_check.py::IMU_STILL_THR",
+  "night": {
+    "label": "regime-B night 2026-09-08/09",
+    "start": "2026-09-08 20:00:00",
+    "end": "2026-09-09 06:00:00",
+    "sessions": {
+      "SF07": "8_20260908_193733.435",
+      "SF08": "8_20260908_193958.035",
+      "SF09": "9_20260908_194312.545",
+      "SF10": "12_20260908_194550.363",
+      "SF12": "8_20260908_194824.915"
+    }
+  },
+  "fixed_tag_reference": {
+    "label": "SF11 dropped implant with tag 3058 in the CH07 box (house_2)",
+    "animal": "SF11",
+    "session": "13_20260906_195234.827",
+    "shortid": 12376,
+    "start": "2026-09-07 06:12:00",
+    "end": "2026-09-07 08:12:00",
+    "handling_overlap_note": "the 09-07 07:24-09:15 'implant retrieval + AM round' handling window overlaps the second half; the device's own IMU decides whether it was disturbed, and the part before 07:24 is reported separately",
+    "source": "accuracy report section 2 (static implant reference 06:12-08:17); field incident log 09-07; cohorts/2026c.yaml ephys.imu_valid_until SF11 06:10:00"
+  },
+  "still_event": {
+    "label": "SF07 motionless at a paddock corner (behaviour log 2026-09-09 22:33-23:06, rec_s 14100-15500)",
+    "animal": "SF07",
+    "session": "2_20260909_183802.795",
+    "shortid": 12409,
+    "start": "2026-09-09 22:33:00",
+    "end": "2026-09-09 23:06:00",
+    "source": "field2026-sync/from-field/behaviour_observations_cohort3.csv (WISER live view + BLE; out of BLE range the whole time)"
+  },
+  "frozen_checks": [
+    {
+      "animal": "SF12",
+      "session": "14_20260902_191103.245",
+      "expected_start": "2026-09-02 19:39:38",
+      "expected_end": "2026-09-03 00:22:00"
+    },
+    {
+      "animal": "SF07",
+      "session": "9_20260906_194035.495",
+      "expected_start": "2026-09-07 07:56:40",
+      "expected_end": "2026-09-07 08:06:06"
+    }
+  ],
+  "baseline": {
+    "source": "results/2026c/wiser_baseline/reports/wiser_baseline_cohort3_accuracy_2026c.md section 5.2",
+    "rest_bouts_p50_in": 3.57,
+    "rest_bouts_p90_in": 8.19,
+    "rest_bouts_rmse_in": 5.87,
+    "rest_bouts_1s_median_p90_in": 6.23,
+    "speed_floor_p95_inps": 6.23,
+    "speed_floor_p99_inps": 10.24,
+    "static_implant_full_p50_p90_rmse_in": [
+      5.26,
+      13.77,
+      9.19
+    ],
+    "pauses_ge60s_night_house_p50_p90_rmse_in": [
+      4.48,
+      10.87,
+      7.46
+    ],
+    "pauses_ge60s_night_outside_p50_p90_rmse_in": [
+      4.6,
+      10.87,
+      7.76
+    ],
+    "rest_bouts_regimeB_by_anchors_p50_p90_in": {
+      "9": [
+        3.3,
+        7.1
+      ],
+      "8": [
+        3.7,
+        8.1
+      ],
+      "7": [
+        4.3,
+        10.1
+      ],
+      "6": [
+        5.3,
+        13.6
+      ],
+      "5": [
+        6.6,
+        17.7
+      ],
+      "4": [
+        9.4,
+        25.5
+      ],
+      "3": [
+        14.8,
+        38.5
+      ]
+    }
+  },
+  "known_issues": [
+    "wiser/configs/rat_identities_2026c.csv puts tag 3059 (12377) on SF12 from 2026-08-30 19:00, but the accuracy report's first 3059 fix is 2026-08-31 06:36 (SF12's first tag 3058 was essentially silent). Does not affect the 09-08/09 night."
+  ]
+}
