@@ -170,6 +170,11 @@ ephys:
   valid_until:
     - {animal: SF11, session: "13_20260906_195234.827", valid_until: "2026-09-07 06:10:00", note: "implant detached 06:10:30-06:15:00; open circuit from 06:15:10 to the 08:12:41 Stop (see loggers.SF11 and logger_notes)"}
     - {animal: SF12, session: "17_20260911_192428.023", valid_until: "2026-09-11 23:30:00", note: "final field night: neural signal to 23:30, then the shank-1/4 contact fails for good - from 23:39 the session alternates BROADBAND noise (raw std 3300-6000 ADC) and OPEN circuit (raw MAD 90-150, theta log10 2.0, 60-Hz fraction up to 23) with only brief returns (23:59-00:09, 07:25); measured 09-13 in 1-min windows. 4.09 h usable of 14.51 h"}
+  # IMU validity (read by ephys/make_imu.py): after an IMPLANT LOSS the logger - and its IMU - is no longer on the animal,
+  # so every later IMU sample is flagged `invalid` and blanked (a detached logger reads as perfect stillness = fake sleep).
+  # Distinct from the neural valid_until above: SF12's final-night contact failure kept the logger on the head.
+  imu_valid_until:
+    - {animal: SF11, until: "2026-09-07 06:10:00", note: "implant (with the logger) came off 06:10:30-06:15:00; video 06:10:45 in CH07, passive, in the huddle; the logger recorded on until the 08:12:41 Stop. Added 2026-09-28 after the IMU bug report (session -ae)"}
   # Sessions the field log marks as not-real recordings (keep them in the index, exclude from analysis). Source: recording
   # repo BATTERY_LOG_cohort3.md.
   field_flags:

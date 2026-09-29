@@ -85,7 +85,10 @@ def main() -> None:
         lfp = np.memmap(ar / "lfp" / an / f"{ses}.lfp", dtype=np.int16, mode="r").reshape(-1, NCH)
         n_s = min(len(imu), lfp.shape[0] // FS_LFP)
         imu = imu.iloc[:n_s]
-        ok = (imu.saturated == 0) & (imu.unreliable == 0)
+        ok = (imu.saturated == 0) & (imu.unreliable == 0) & imu.vedba_mean.notna()   # frozen / invalid seconds are NaN
+        for col in ("frozen", "invalid"):
+            if col in imu:
+                ok &= imu[col] == 0
         still = (imu.vedba_mean < IMU_STILL_THR[an]) & ok
         moving = (~still) & ok
         ch, _ = pick_channel(lfp, np.flatnonzero(moving.to_numpy()[:-2]), rng)

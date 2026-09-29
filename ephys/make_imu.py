@@ -42,7 +42,8 @@ import numpy as np
 from scipy import signal
 from scipy.ndimage import uniform_filter1d
 
-from _common import analysis_root, find_session_dir, git_commit, out_root, raw_ephys_root, resolve_cohort, utc_now_iso
+from _common import (analysis_root, ephys_block, find_session_dir, git_commit, out_root, raw_ephys_root, resolve_cohort,
+                     utc_now_iso)
 from read_imu import ACC_FS_G, ACC_LANES, GYR_FS_DPS, GYR_LANES, LANES, SAT
 from make_lfp import _norm_animal, select_sessions
 
@@ -54,6 +55,7 @@ QUIET_A_FRAC = 0.05           # ... and median | |a| - g | below this fraction o
 BIAS_BLOCK_S = 600.0          # gyro bias block
 BIAS_MIN_QUIET_S = 30         # a block needs >= this many quiet seconds for its own bias estimate
 VEDBA_WIN_S = 2.0             # VeDBA: deviation from the running mean over this window
+FROZEN_MIN_S = 0.5            # all six raw lanes identical for >= this long = hung chip (flagged, blanked)
 FUSION = {"gain": 0.5, "gyroscope_range": 2000.0, "acceleration_rejection": 10.0, "magnetic_rejection": 0.0,
           "rejection_timeout": 5.0}
 TZ = ZoneInfo("America/New_York")
@@ -67,8 +69,26 @@ def imu_root(cohort: str, override: str | None = None) -> Path:
 
 
 # ---------------------------------------------------------------- stages
-def load_raw(session_dir: Path, max_seconds: float | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Raw lanes 1-6 at 1250 Hz -> acc_B (m/s^2), gyr_B (deg/s) as float32, and a per-frame saturation flag."""
+def frozen_mask(six: np.ndarray, min_s: float = FROZEN_MIN_S) -> np.ndarray:
+    """Frames inside a run where all six raw lanes repeat the previous frame for >= min_s. A live sensor never
+    repeats all six 16-bit values for that long (noise alone changes them); a hung chip does (bug report 2026-09-29:
+    SF12 14_20260902_191103.245 frozen 4.7 h; SF07 9_20260906_194035.495 frozen 570 s)."""
+    n = six.shape[0]
+    out = np.zeros(n, bool)
+    if n < 2:
+        return out
+    same = np.all(six[1:] == six[:-1], axis=1)
+    x = np.r_[0, same.astype(np.int8), 0]
+    starts = np.flatnonzero(np.diff(x) == 1)
+    ends = np.flatnonzero(np.diff(x) == -1)
+    for s, e in zip(starts, ends):            # frames s .. e are identical (e - s repeats)
+        if (e - s) >= min_s * FS_RAW:
+            out[s: e + 1] = True
+    return out
+
+
+def load_raw(session_dir: Path, max_seconds: float | None = None):
+    """Raw lanes 1-6 at 1250 Hz -> acc_B (m/s^2), gyr_B (deg/s) as float32, and per-frame saturation and frozen flags."""
     path = Path(session_dir) / "analogin.dat"
     n = os.path.getsize(path) // (2 * LANES)
     if max_seconds is not None:
@@ -76,28 +96,36 @@ def load_raw(session_dir: Path, max_seconds: float | None = None) -> tuple[np.nd
     raw = np.fromfile(path, dtype=np.int16, count=n * LANES).reshape(n, LANES)
     six = raw[:, list(ACC_LANES) + list(GYR_LANES)]
     sat = (np.abs(six.astype(np.int32)) >= SAT).any(axis=1)
+    frz = frozen_mask(six)
     acc = six[:, :3].astype(np.float32) * np.float32(ACC_FS_G * G / 32768)
     gyr = six[:, 3:].astype(np.float32) * np.float32(GYR_FS_DPS / 32768)
-    return acc, gyr, sat
+    return acc, gyr, sat, frz
 
 
-def to_100hz(acc: np.ndarray, gyr: np.ndarray, sat: np.ndarray):
+def _any_per_100hz(mask: np.ndarray, n: int) -> np.ndarray:
+    if not len(mask):
+        return np.zeros(n, bool)
+    starts = np.clip(np.floor(np.arange(n) * FS_RAW / FS).astype(np.int64), 0, len(mask) - 1)
+    return np.maximum.reduceat(mask.astype(np.uint8), starts).astype(bool)[:n]
+
+
+def to_100hz(acc: np.ndarray, gyr: np.ndarray, sat: np.ndarray, frz: np.ndarray):
     a = signal.resample_poly(acc, 2, 25, axis=0).astype(np.float64)
     w = signal.resample_poly(gyr, 2, 25, axis=0).astype(np.float64)
     n = a.shape[0]
-    starts = np.floor(np.arange(n) * FS_RAW / FS).astype(np.int64)
-    starts = np.clip(starts, 0, len(sat) - 1)
-    s = np.maximum.reduceat(sat.astype(np.uint8), starts).astype(bool) if len(sat) else np.zeros(n, bool)
-    return a, w, s[:n]
+    return a, w, _any_per_100hz(sat, n), _any_per_100hz(frz, n)
 
 
-def calibrate(a_H: np.ndarray, w_H: np.ndarray) -> dict:
-    """Quiet 1-s windows -> accelerometer scale k_a and a gyro-bias series (10-min blocks, interpolated)."""
+def calibrate(a_H: np.ndarray, w_H: np.ndarray, exclude: np.ndarray | None = None) -> dict:
+    """Quiet 1-s windows -> accelerometer scale k_a and a gyro-bias series (10-min blocks, interpolated).
+    Windows touching `exclude` (frozen chip, invalid time) are never quiet: a frozen chip looks perfectly still."""
     wlen = int(FS)
     nw = a_H.shape[0] // wlen
     med_w = np.median(np.linalg.norm(w_H[: nw * wlen].reshape(nw, wlen, 3), axis=2), axis=1)
     med_a = np.median(np.linalg.norm(a_H[: nw * wlen].reshape(nw, wlen, 3), axis=2), axis=1)
     quiet0 = med_w < QUIET_W_DPS
+    if exclude is not None and nw:
+        quiet0 &= ~exclude[: nw * wlen].reshape(nw, wlen).any(axis=1)
     k_a = G / float(np.median(med_a[quiet0])) if quiet0.sum() >= 10 else 1.0
     quiet = quiet0 & (np.abs(k_a * med_a - G) < QUIET_A_FRAC * G)
     wins = np.arange(nw)
@@ -179,17 +207,29 @@ def pc_time_ms(amp_sample: np.ndarray, fit: dict | None) -> np.ndarray | None:
 
 # ---------------------------------------------------------------- one session
 def process_session(session_dir: Path, out_dir: Path, name: str, *, fit: dict | None = None, start_local: str | None = None,
-                    max_seconds: float | None = None, meta: dict | None = None) -> dict:
+                    max_seconds: float | None = None, meta: dict | None = None, valid_until_s: float | None = None) -> dict:
+    """`valid_until_s`: logger seconds after which the IMU is not on the animal (implant loss); later samples are
+    flagged `invalid` and blanked."""
     t0 = time.time()
-    acc_B, gyr_B, sat_raw = load_raw(session_dir, max_seconds)
-    a_B, w_B, sat = to_100hz(acc_B, gyr_B, sat_raw)
+    acc_B, gyr_B, sat_raw, frz_raw = load_raw(session_dir, max_seconds)
+    a_B, w_B, sat, frz = to_100hz(acc_B, gyr_B, sat_raw, frz_raw)
+    n = a_B.shape[0]
+    invalid = np.zeros(n, bool)
+    if valid_until_s is not None:
+        invalid[int(max(0.0, valid_until_s) * FS):] = True
     a_H, w_H = a_B @ S, w_B @ S                       # v_H = S^T v_B (row vectors)
-    cal = calibrate(a_H, w_H)
+    cal = calibrate(a_H, w_H, exclude=frz | invalid)
     a_H = a_H * cal["k_a"]
     w_H = w_H - cal["bias"]
     fz = fuse(a_H, w_H)
+    # the filter keeps integrating a frozen gyro value: unreliable through the freeze and the recovery period after it
+    after = np.convolve(frz.astype(np.int32), np.ones(int(FUSION["rejection_timeout"] * FS), np.int32), mode="full")[:n] > 0
+    fz["unreliable"] = fz["unreliable"] | after | invalid
     d = derive(a_H, w_H, fz)
-    n = a_H.shape[0]
+    blank = frz | invalid                             # never let a hung chip or a detached logger read as stillness
+    for key in ("omega_dps", "vedba_ms2", "turn_dps", "pitch_deg", "roll_deg", "up_head", "lin_acc_earth_ms2", "quat_wxyz"):
+        d[key] = d[key].astype(np.float64)
+        d[key][blank] = np.nan
     amp100 = np.arange(n) * 200
     t_pc = pc_time_ms(amp100.astype(np.float64), fit)
 
@@ -207,6 +247,7 @@ def process_session(session_dir: Path, out_dir: Path, name: str, *, fit: dict | 
         "lin_acc_earth_ms2": pair(d["lin_acc_earth_ms2"]).astype(np.float32),
         "saturated": pair(sat.astype(float)) > 0, "unreliable": pair(fz["unreliable"].astype(float)) > 0,
         "quiet_calib": pair(cal["quiet"].astype(float)) > 0.5,
+        "frozen": pair(frz.astype(float)) > 0, "invalid": pair(invalid.astype(float)) > 0,
     }
     if t_pc is not None:
         npz["t_pc_ms"] = every2(t_pc)
@@ -224,10 +265,11 @@ def process_session(session_dir: Path, out_dir: Path, name: str, *, fit: dict | 
                                            np.cos(np.radians(blk(d["roll_deg"]))).mean(axis=1))),
         "saturated": blk(sat).any(axis=1), "unreliable": blk(fz["unreliable"]).mean(axis=1) > 0.5,
         "quiet_calib": blk(cal["quiet"]).mean(axis=1) > 0.5,
+        "frozen": blk(frz).any(axis=1), "invalid": blk(invalid).any(axis=1),
     }
     if t_pc is not None:
         tc = pc_time_ms(rows_1s["amp_sample_center"].astype(np.float64), fit)
-        rows_1s["t_pc_ms"] = tc
+        rows_1s["t_pc_ms"] = np.rint(tc).astype(np.int64)   # integer ms (a float here was written with 4 significant digits)
         day0 = datetime.strptime((start_local or "")[:10], "%Y-%m-%d") if start_local else None
         if day0 is not None:
             base = day0.replace(tzinfo=TZ)
@@ -247,6 +289,8 @@ def process_session(session_dir: Path, out_dir: Path, name: str, *, fit: dict | 
         "thresholds": {"quiet_w_dps": QUIET_W_DPS, "quiet_a_frac_g": QUIET_A_FRAC, "bias_block_s": BIAS_BLOCK_S,
                        "vedba_window_s": VEDBA_WIN_S},
         "saturated_frac": float(sat.mean()), "unreliable_frac": float(fz["unreliable"].mean()),
+        "frozen_s": float(frz.sum() / FS), "frozen_min_run_s": FROZEN_MIN_S,
+        "valid_until_s": valid_until_s, "invalid_s": float(invalid.sum() / FS),
         "pc_time": "pc_time_fit.json formula" if fit else "none (logger time only)",
         "pc_time_fit": {k: fit.get(k) for k in ("verdict", "drift_ppm", "offset_ms", "n_anchors", "native_residual_ms")} if fit else None,
         "elapsed_s": round(time.time() - t0, 1), "git_commit": git_commit(), "written_utc": utc_now_iso(),
@@ -314,6 +358,27 @@ def _selftest() -> int:
                            len(short["bias_blocks"]) == 0))
         except Exception as e:  # noqa: BLE001
             checks.append((f"short session runs ({type(e).__name__}: {e})", False))
+        # hung chip (all six lanes constant 300-305 s) and implant loss (IMU off the animal from 550 s)
+        rf = raw.copy()
+        f0, f1 = int(300 * FS_RAW), int(305 * FS_RAW)
+        rf[f0:f1, 1:7] = rf[f0, 1:7]
+        sf = Path(td) / "sess_frozen"
+        sf.mkdir()
+        rf.tofile(sf / "analogin.dat")
+        fs_ = process_session(sf, Path(td) / "out", "frozen", valid_until_s=550.0)
+        rows = list(csv.DictReader(open(Path(td) / "out" / "frozen.imu_1s.csv", encoding="utf-8")))
+        fr = [int(r["sec"]) for r in rows if r["frozen"] == "1"]
+        blank_ok = all(r["vedba_mean"] == "nan" for r in rows if r["frozen"] == "1" or r["invalid"] == "1")
+        unrel = [int(r["sec"]) for r in rows if r["unreliable"] == "1"]
+        checks += [
+            (f"frozen block flagged: seconds {fr[:1]}..{fr[-1:]} (expect 300..304), frozen_s {fs_['frozen_s']:.1f}",
+             bool(fr) and fr[0] == 300 and fr[-1] in (304, 305) and 4.5 <= fs_["frozen_s"] <= 5.5),
+            ("frozen and invalid seconds blanked (VeDBA nan), never read as stillness", blank_ok),
+            (f"unreliable through the freeze + recovery (up to s {max((s for s in unrel if s < 400), default=-1)})",
+             all(s in unrel for s in range(300, 308))),
+            (f"implant-loss cut: invalid_s {fs_['invalid_s']:.0f} (expect 50)", abs(fs_["invalid_s"] - 50) < 1),
+            (f"calibration unaffected by the freeze: k_a {fs_['k_a']:.3f}", abs(fs_["k_a"] - side["k_a"]) < 0.005),
+        ]
     for name_, c in checks:
         print(f"[{'PASS' if c else 'FAIL'}] {name_}")
         ok &= bool(c)
@@ -322,11 +387,25 @@ def _selftest() -> int:
 
 
 # ---------------------------------------------------------------- CLI
+def _imu_valid_until_s(cfg: dict, animal: str, start_local: str | None) -> float | None:
+    """Logger seconds from the session start after which the IMU is off the animal (ephys.imu_valid_until in the cohort
+    YAML: implant losses; distinct from the neural `valid_until`, e.g. SF12's failing contact kept the IMU on the head)."""
+    if not start_local:
+        return None
+    t0 = datetime.strptime(start_local[:19], "%Y-%m-%d %H" + ":%" + "M:%" + "S")
+    cuts = [datetime.strptime(str(e["until"])[:19], "%Y-%m-%d %H" + ":%" + "M:%" + "S")
+            for e in (cfg.get("imu_valid_until") or []) if _norm_animal(str(e.get("animal", ""))) == animal]
+    if not cuts:
+        return None
+    return max(0.0, (min(cuts) - t0).total_seconds())
+
+
 def _run_one(args: tuple) -> str:
     """One session; an error is reported and the batch goes on (nothing partial is left: the sidecar is written last)."""
-    sd, out_dir, name, fit, start_local, max_seconds, meta = args
+    sd, out_dir, name, fit, start_local, max_seconds, meta, valid_until_s = args
     try:
-        side = process_session(Path(sd), Path(out_dir), name, fit=fit, start_local=start_local, max_seconds=max_seconds, meta=meta)
+        side = process_session(Path(sd), Path(out_dir), name, fit=fit, start_local=start_local, max_seconds=max_seconds,
+                               meta=meta, valid_until_s=valid_until_s)
     except Exception as e:  # noqa: BLE001
         return f"ERROR {meta['animal']} {name}: {type(e).__name__}: {e}"
     return f"{meta['animal']} {name}: {side['duration_s'] / 3600:.2f} h in {side['elapsed_s']} s, k_a {side['k_a']:.3f}, pc_time {side['pc_time']}"
@@ -350,6 +429,7 @@ def main() -> None:
     if a.selftest:
         sys.exit(_selftest())
     raw = raw_ephys_root(a.cohort, a.raw_root)
+    cfg = ephys_block(a.cohort)
     root = imu_root(a.cohort, a.out_root)
     sel = select_sessions(a.cohort, a.animal, a.session, include_flagged=a.include_flagged, include_fm62=False,
                           min_seconds=a.min_seconds)
@@ -363,9 +443,10 @@ def main() -> None:
         if a.pc_time_root:
             fp = Path(a.pc_time_root) / animal / name / "pc_time_fit.json"
             fit = json.loads(fp.read_text(encoding="utf-8")) if fp.exists() else None
+        vu = _imu_valid_until_s(cfg, animal, r.get("start_local"))
         jobs.append((str(find_session_dir(raw, r["animal"], name)), str(root / animal), name, fit, r.get("start_local"),
                      a.max_seconds, {"cohort": resolve_cohort(a.cohort), "animal": animal, "session": name,
-                                     "firmware": int(r.get("firmware") or 0), "start_local": r.get("start_local")}))
+                                     "firmware": int(r.get("firmware") or 0), "start_local": r.get("start_local")}, vu))
     print(f"{len(sel)} selected, {len(jobs)} to process -> {root}")
     with ProcessPoolExecutor(max_workers=max(1, a.workers)) as ex:
         for msg in ex.map(_run_one, jobs):

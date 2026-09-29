@@ -3,6 +3,17 @@
 Reader: [`ephys/read_imu.py`](../../ephys/read_imu.py). It reads the raw session in place and writes nothing;
 `--check` prints the plausibility tests below.
 
+**Failure modes to flag, not interpret** (added 2026-09-29 after a bug report from a parallel session):
+- **Frozen chip.** All six raw lanes 1–6 repeat for ≥ 0.5 s: the IMU hung while the logger kept recording. A live
+  sensor never repeats all six 16-bit values that long; noise alone changes them. `make_imu.py` flags these samples
+  `frozen`, blanks the metrics (NaN), and marks the orientation unreliable through the freeze plus a 5-s recovery
+  period. Otherwise a hung chip reads as perfect stillness, i.e. fake sleep. Seen so far:
+  - SF12 `14_20260902_191103.245`: 4.7 h, 91 % of the session;
+  - SF07 `9_20260906_194035.495`: the last 570 s.
+- **Implant loss.** After it, the logger (and its IMU) is off the animal. `cohorts/2026c.yaml ephys.imu_valid_until`
+  holds the cut (SF11: 2026-09-07 06:10:00); later samples are `invalid` and blanked. This is distinct from the
+  neural `valid_until`: SF12's failing contact did not remove the logger from the head.
+
 ## Where the IMU is
 
 In each raw session folder, `analogin.dat` holds 16 int16 lanes at fs/16 = **1250 Hz**. Frames = amplifier samples
