@@ -256,10 +256,14 @@ CH01/CH02 daytime colour was corrupt in **cohort 1** (keyframe truncation fixed 
 
 **Cohort 3 (2026c), user decisions 2026-09-28:** start with the **CH01/CH02 panoramas** — they map ~68–69 % of the
 paddock each in the 09-24 calibration (CH03/CH04 ~12 % each, the two ends) and so carry the occupancy map; the existing
-detector and all 255 labels are cohort-1 CH03/CH04, so CH01/CH02 start from zero labels. **Workflow:** local first —
-extract frames with **GPU decode** (ffmpeg NVDEC; CPU seek-decode is ~3 s/frame CH03/CH04, ~6 s/frame panos) from the
-local copy `F:\3rd_rat\` (≈3× faster seeks than Q:), store frames locally, label locally, run a small-scale pilot; only
-then move large batches to BioHPC (`cv/cv_field/REMOTE_COMPUTE.md`). **Camera stability is judged by a person**:
+detector and all 255 labels are cohort-1 CH03/CH04, so CH01/CH02 start from zero labels. A rat is ~70–160 px in the
+native upright pano (7680×2160) → never the 1280 default (11–16 px); compare whole pano @2560 vs half @1920 after
+labelling. **Workflow:** local first — frames from the local copy `F:\3rd_rat\` with `cv/cv_field/grab_frames.py`
+(`--targets camera,time[,tag] --out <dir>`; exact CPU decode ≈ 0.9 s/frame — the benchmark showed decode is not the
+bottleneck and NVDEC gives no single-frame gain, so `--decode gpu` is for whole-night inference), times chosen by
+`select_pano_targets.py` (tagged animals outside the houses per 5-s WISER bin → stratified night targets, a held-out
+test night), frames stored locally (`cv/dataset/rat_pano*`), labelled locally, small pilot; only then large batches on
+BioHPC (`cv/cv_field/REMOTE_COMPUTE.md`). Plan: `implementation_plan/2026-09-28-cohort3-ch0102-yolo-pilot.md`. **Camera stability is judged by a person**:
 `cv/cv_field/camera_review.py` lays out daily frames with the 09-18 wall-foot lines for review (an automatic ECC check
 failed — grass, rain, IR/colour changes); weather-driven moves are reported manually. **The agent does not judge
 images** and confirms every test plan with the user first.
