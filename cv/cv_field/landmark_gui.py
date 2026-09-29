@@ -14,6 +14,7 @@ Landmark kinds (the side panel groups them):
   edge     POLE_<row><col>_L / _R  the pole's LEFT and RIGHT edge as seen in this image (a pole is a vertical cylinder:
                             two parallel lines), each along its visible length (the ends usually are not visible) —
                             2+ points each; the centre line and the apparent width follow from the pair
+  outline  BOX_<row><col>   the box mounted on that pole = a WISER UWB anchor (user, 2026-09-29): clear corners, rigid
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
   outline  TOWER, PCBOX, HOUSE_<n>_ROOF   closed outline, click round it (validation only for houses)
@@ -45,7 +46,8 @@ import camera_review as cr  # noqa: E402  (frame lookup: segments/locate/grab, P
 
 POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
-DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"] + [(w, "polyline") for w in WALLTOPS]
+DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
+            + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
             + [("TOWER", "outline"), ("PCBOX", "outline"),
                ("HOUSE_B1_ROOF", "outline"), ("HOUSE_B1_BASE", "polyline"), ("HOUSE_B3_ROOF", "outline"), ("HOUSE_B3_BASE", "polyline")])
 
@@ -73,7 +75,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   <b>1. pick a landmark &nbsp; 2. click along it in the image</b><br>
   <small><b>POLE_*_L / _R</b>: a pole is a vertical cylinder — label BOTH its edges as two parallel lines: _L = the left
   edge, _R = the right edge as seen in this image, each with 2 or more points along the visible length (the ends need not
-  be visible). The dashed "POLE_xx?" guide is the pole's predicted centre line, only to tell which pole it is. <b>WALLTOP_*</b>: the TOP edge of the wall sheet, one per side, every ~0.5–1 m. <b>TOWER / PCBOX</b>:
+  be visible). The dashed "POLE_xx?" guide is the pole's predicted centre line, only to tell which pole it is.
+  <b>BOX_xx</b>: the box on that pole (a WISER anchor) — click round its outline, corners first. <b>WALLTOP_*</b>: the TOP edge of the wall sheet, one per side, every ~0.5–1 m. <b>TOWER / PCBOX</b>:
   click round the outline (it closes itself). <b>HOUSE_*</b>: roof outline + the visible part of the bottom edge —
   used only to CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
   Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
@@ -92,6 +95,7 @@ const GROUP={edge:'Poles (left + right edge)',polyline:'Edges (polyline)',outlin
 const POLE_ORDER=['A0','A1','A2','A3','A4','B0','B1','B2','B3','B4','C0','C1','C2','C3','C4'];
 function col(id,i){if(id.startsWith('HOUSE'))return '#9aa0a6';
   if(id.startsWith('POLE')){const k=POLE_ORDER.indexOf(id.slice(5,7));return `hsl(${((k<0?i:k)*47)%360},95%,55%)`;}
+  if(id.startsWith('BOX_')){const k=POLE_ORDER.indexOf(id.slice(4,6));return `hsl(${((k<0?i:k)*47)%360},95%,70%)`;}
   if(id.startsWith('WALLTOP'))return ['#ff3030','#ff8c00','#ff40ff','#ffffff'][i%4];return i%2?'#00e5ff':'#7CFC00';}
 let COL={};function recol(){Object.keys(KIND).forEach((l,i)=>COL[l]=col(l,i));} recol();
 let lines={}; Object.keys(KIND).forEach(l=>lines[l]=[]); let cur=null, z=0.5;

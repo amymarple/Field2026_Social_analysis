@@ -134,7 +134,13 @@ paddock frame, origin pole A0, 609.6 × 1219.2 cm = 240 × 480 in (`cv/field_coo
 calibration release, `calibration_qc/` in the recording repo, returns inches and is exploratory-only). The WISER↔field
 bridge is the georeference transform (`wiser/src/field_transform.py`); its config
 `wiser/configs/wiser_to_field_transform.json` does not exist yet, so the transform is a no-op. No directional/physical
-WISER claims; only topology and distances ≥ 14 in.
+WISER claims; only topology and distances ≥ 14 in. Known so far (user): the WISER axes point the same way as the
+paddock/calibration axes (2026-09-28; the origin is offset — cohort-3 houses sit near WISER (423, 730) / (614, 730) in
+vs paddock ≈ (135, 120) / (347, 119) in), and **the box on each paddock pole is a WISER UWB anchor** (2026-09-29) — so
+anchors sit at known paddock positions. The DBs hold only tag fixes (up to 9 anchors per fix, arena `DefaultArena`),
+no anchor coordinates: the anchor layout (IDs, WISER-frame XYZ, which pole) is requested from the field PC
+(field2026-sync `tasks/2026-09-28_lab-request-cohort3-weather-and-sync-logs.md`, item 4). With it, the WISER → paddock
+transform is a direct fit on anchor ↔ pole pairs; the same boxes (`BOX_<pole>`) are camera landmarks.
 
 **Identity differs by modality.** WISER = `shortid` tag (resolve via `wiser/configs/rat_identities.csv`, which has
 per-tag `valid_until`; a tag is not an animal). Video: coband color only in color frames; IR frames (night, and
