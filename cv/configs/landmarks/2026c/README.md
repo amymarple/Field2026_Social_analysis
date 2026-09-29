@@ -7,7 +7,9 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
 
 - **Fit set (rigid):** `POLE_<row><col>_L` / `_R` (a pole is a vertical cylinder: its LEFT and RIGHT edge as seen in
   the image, two parallel lines — more points, and their spacing measures the image scale; paddock grid names A–C × 0–4), `WALLTOP_*` (top edge of
-  the wall sheet, per side), `TOWER` (water tower outline), `PCBOX` (the PC box facing CH02), and any added structure
+  the wall sheet, per side), `TOWER_1` / `TOWER_2` (the two water towers outside the paddock: TOWER_1 beyond the row-C wall, y = 240 — the
+  top of the schematic; TOWER_2 beyond the row-A wall, y = 0 — the bottom; user 2026-09-29), `BOX_<pole>` (the box on each pole =
+  a WISER UWB anchor), `PCBOX` (the PC box facing CH02), and any added structure
   that cannot move.
 - **Validation only:** `HOUSE_B1_*` / `HOUSE_B3_*` — the house next to pole B1 / B3 — as `_ROOF` (outline) and `_BASE`
   (visible bottom edge). No record says whether the houses moved, so they check the correction instead of shaping it.

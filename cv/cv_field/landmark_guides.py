@@ -146,12 +146,18 @@ def schematic(path: Path) -> None:
         look = "" if brg is None else f" looks {brg:+.0f}°"
         ax.annotate(f"{cam}{look}", (x, y), xytext=(-40, 14 if cam != "CH01" else -24), textcoords="offset points",
                     fontsize=11, color=col, weight="bold")
-    ax.text(L / 2, -44, "Not placed (location only you know): TOWER = water tower outside the paddock (CH01 and CH02 each see one); "
-            "PCBOX = the PC box that CH02 faces.", ha="center", fontsize=10.5, color="#555")
+    for name, y, va, where in (("TOWER_1", Wd + 26, "bottom", "beyond the row-C wall (y = 240)"),
+                               ("TOWER_2", -30, "top", "beyond the row-A wall (y = 0)")):
+        ax.annotate(f"{name}: water tower {where} — outside the paddock, x position not surveyed", (L * 0.82, y),
+                    ha="center", va=va, fontsize=11, weight="bold", color="#006d77")
+        ax.annotate("", xy=(L * 0.82, y + (14 if va == "bottom" else -12)), xytext=(L * 0.82, y + (2 if va == "bottom" else 2)),
+                    arrowprops=dict(arrowstyle="-|>", lw=2.5, color="#006d77"))
+    ax.text(L / 2, -44, "Not placed: PCBOX = the PC box that CH02 faces (location only you know). "
+            "BOX_<pole> = the box on each pole = a WISER UWB anchor.", ha="center", fontsize=10.5, color="#555")
     ax.text(L / 2, -58, "POLE_* = the pole's vertical CENTRE LINE (ends usually not visible) · WALLTOP_* = TOP edge of the wall sheet "
             "(the foot is hidden by grass) · HOUSE_* = validation only.", ha="center", fontsize=10.5, color="#555")
     ax.set_xlim(-45, L + 45)
-    ax.set_ylim(-70, Wd + 35)
+    ax.set_ylim(-70, Wd + 55)
     ax.set_aspect("equal")
     ax.set_xlabel("x (in) — along the 40 ft length")
     ax.set_ylabel("y (in) — across the 20 ft width")
