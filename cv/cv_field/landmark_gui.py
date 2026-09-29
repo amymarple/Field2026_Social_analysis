@@ -67,7 +67,7 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
  textarea{width:100%;height:90px;font:11px monospace}
 </style></head><body>
 <div id="top"><b>__CAM__ @ __TS__</b><span>landmark: <b id="curinfo">none</b></span>
- <button onclick="undo()">undo last point (u)</button><button onclick="clearLine()">clear this landmark</button>
+ <button onclick="undo()">undo last point (u)</button><button onclick="penUp()">break: hidden gap here (b)</button><button onclick="clearLine()">clear this landmark</button>
  <span>zoom <button onclick="zoom(0.25)">25%</button><button onclick="zoom(0.5)">50%</button><button onclick="zoom(1)">100%</button><button onclick="zoom(2)">200%</button></span>
  <label><input type="checkbox" id="showg" checked onchange="draw()"> guides (dashed "NAME?" = where the calibration / an earlier export puts it)</label>
  <button onclick="exportJSON()" style="background:#3c3;font-weight:bold">Export JSON</button><span id="stat"></span></div>
@@ -85,6 +85,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
   click the REAL one) and the top-view map cv/configs/landmarks/2026c/paddock_schematic.png (A0 = origin corner, x
   along the length, rows A/B/C across; HOUSE_B1 / HOUSE_B3 = the house next to pole B1 / B3).
+  <b>Hidden middle</b> (a wall seen only at both ends, a pole edge cut by something in front): click the first visible
+  piece, press <b>b</b> ("break"), then click the next piece — same landmark, no line across the gap.
   <b>Drag</b> a point to move it, <b>right-click</b> to delete. Points are kept in this browser between visits.</small>
   <canvas id="mag" width="240" height="240" style="display:block;margin:6px 0;border:1px solid #888"></canvas>
   <div id="list"></div>
@@ -104,29 +106,38 @@ let COL={};function recol(){Object.keys(KIND).forEach((l,i)=>COL[l]=col(l,i));} 
 let lines={}; Object.keys(KIND).forEach(l=>lines[l]=[]); let cur=null, z=0.5;
 const ov=document.getElementById('ov'), stage=document.getElementById('stage');
 function zoom(f){z=f;stage.style.transform='scale('+z+')';stage.style.width=IMGW+'px';stage.style.height=IMGH+'px';}
+// A landmark is a list of points in which `null` = pen up: the next point starts a new piece (a wall or an edge whose
+// middle is hidden is labelled as separate pieces, never joined across the gap).
+function segs(pts){const out=[];let c=[];for(const p of pts){if(p===null){if(c.length)out.push(c);c=[];}else c.push(p);}if(c.length)out.push(c);return out;}
+function flat(S_){const out=[];S_.forEach((s,i)=>{if(i)out.push(null);s.forEach(p=>out.push([+p[0],+p[1]]));});return out;}
+function tidy(a){const o=[];for(const p of a){if(p===null&&(!o.length||o[o.length-1]===null))continue;o.push(p);}return o;}
+function nested(v){return Array.isArray(v)&&v.length&&Array.isArray(v[0])&&Array.isArray(v[0][0]);}
+function npts(pts){return pts.filter(p=>p).length;}
 function path(pts,closed){return pts.map((p,i)=>(i?'L':'M')+(p[0]*S).toFixed(1)+' '+(p[1]*S).toFixed(1)).join(' ')+(closed&&pts.length>2?' Z':'');}
 function draw(){ov.setAttribute('width',IMGW);ov.setAttribute('height',IMGH);let h='';
-  if(document.getElementById('showg').checked){for(const [id,g] of Object.entries(GUIDES)){if(g.length<2)continue;
-    const gc=COL[id]||COL[id+'_L']||'#ccc';
-    h+=`<path d="${path(g,KIND[id]==='outline')}" fill="none" stroke="${gc}" stroke-width="2" stroke-dasharray="14 10" opacity="0.6"/>`;
-    const m=g[Math.floor(g.length/2)];h+=`<text x="${m[0]*S+8}" y="${m[1]*S-8}" font-size="22" font-weight="bold" fill="${gc}" stroke="#000" stroke-width="4" paint-order="stroke" opacity="0.85">${id}?</text>`;}}
-  for(const [id,pts] of Object.entries(lines)){if(!pts.length)continue;
-    if(pts.length>1)h+=`<path d="${path(pts,KIND[id]==='outline')}" fill="none" stroke="${COL[id]}" stroke-width="${id===cur?4:2.5}"/>`;
-    pts.forEach(p=>{h+=`<circle cx="${p[0]*S}" cy="${p[1]*S}" r="${id===cur?9:6}" fill="none" stroke="${COL[id]}" stroke-width="3"/>`;});
-    const p=pts[pts.length-1];h+=`<text x="${p[0]*S+10}" y="${p[1]*S+8}" font-size="24" font-weight="bold" fill="${COL[id]}" stroke="#000" stroke-width="5" paint-order="stroke">${id}</text>`;}
+  if(document.getElementById('showg').checked){for(const [id,g] of Object.entries(GUIDES)){
+    const G=nested(g)?g:[g];const gc=COL[id]||COL[id+'_L']||'#ccc';let lab=null;
+    for(const s of G){if(s.length<2)continue;if(!lab||s.length>lab.length)lab=s;
+      h+=`<path d="${path(s,KIND[id]==='outline'&&G.length===1)}" fill="none" stroke="${gc}" stroke-width="2" stroke-dasharray="14 10" opacity="0.6"/>`;}
+    if(lab){const m=lab[Math.floor(lab.length/2)];h+=`<text x="${m[0]*S+8}" y="${m[1]*S-8}" font-size="22" font-weight="bold" fill="${gc}" stroke="#000" stroke-width="4" paint-order="stroke" opacity="0.85">${id}?</text>`;}}}
+  for(const [id,pts] of Object.entries(lines)){const S_=segs(pts);if(!S_.length)continue;
+    for(const s of S_)if(s.length>1)h+=`<path d="${path(s,KIND[id]==='outline'&&S_.length===1)}" fill="none" stroke="${COL[id]}" stroke-width="${id===cur?4:2.5}"/>`;
+    pts.forEach(p=>{if(p)h+=`<circle cx="${p[0]*S}" cy="${p[1]*S}" r="${id===cur?9:6}" fill="none" stroke="${COL[id]}" stroke-width="3"/>`;});
+    const p=S_[S_.length-1].slice(-1)[0];h+=`<text x="${p[0]*S+10}" y="${p[1]*S+8}" font-size="24" font-weight="bold" fill="${COL[id]}" stroke="#000" stroke-width="5" paint-order="stroke">${id}</text>`;
+    if(id===cur&&pts.length&&pts[pts.length-1]===null)h+=`<text x="${p[0]*S+10}" y="${p[1]*S+36}" font-size="20" fill="#ff0" stroke="#000" stroke-width="4" paint-order="stroke">pen up - next click starts a new piece</text>`;}
   ov.innerHTML=h;list();}
 function list(){const L=document.getElementById('list');let h='';for(const k of ['edge','polyline','outline','axis']){
   const ids=Object.keys(KIND).filter(l=>KIND[l]===k);if(!ids.length)continue;h+=`<h4>${GROUP[k]}</h4>`;
-  for(const l of ids)h+=`<button class="ln${l===cur?' cur':''}" style="border-left:12px solid ${COL[l]}" onclick="pick('${l}')">${l}<span class="n">${lines[l].length} pts</span></button>`;}
+  for(const l of ids){const ns=segs(lines[l]).length;h+=`<button class="ln${l===cur?' cur':''}" style="border-left:12px solid ${COL[l]}" onclick="pick('${l}')">${l}<span class="n">${npts(lines[l])} pts${ns>1?' / '+ns+' pieces':''}</span></button>`;}}
   L.innerHTML=h;document.getElementById('curinfo').textContent=cur||'none';
-  document.getElementById('stat').textContent=Object.values(lines).reduce((a,b)=>a+b.length,0)+' points on '+Object.values(lines).filter(v=>v.length).length+' landmarks';}
+  document.getElementById('stat').textContent=Object.values(lines).reduce((a,b)=>a+npts(b),0)+' points on '+Object.values(lines).filter(v=>npts(v)).length+' landmarks';}
 function pick(l){cur=l;draw();}
 function addLm(){const n=document.getElementById('newname').value.trim().toUpperCase().replace(/[^A-Z0-9_]/g,'_');if(!n)return;
   if(!KIND[n]){KIND[n]=document.getElementById('newkind').value;lines[n]=[];recol();}cur=n;draw();}
 function toImg(e){const r=ov.getBoundingClientRect();return [(e.clientX-r.left)/z/S,(e.clientY-r.top)/z/S];}
-function hit(x,y){for(const [id,pts] of Object.entries(lines)){for(let i=0;i<pts.length;i++){if(Math.hypot(pts[i][0]-x,pts[i][1]-y)*S*z<12)return [id,i];}}return null;}
+function hit(x,y){for(const [id,pts] of Object.entries(lines)){for(let i=0;i<pts.length;i++){if(pts[i]&&Math.hypot(pts[i][0]-x,pts[i][1]-y)*S*z<12)return [id,i];}}return null;}
 let drag=null, hover=null;
-ov.addEventListener('contextmenu',e=>{e.preventDefault();const [x,y]=toImg(e);const h=hit(x,y);if(h){lines[h[0]].splice(h[1],1);draw();}});
+ov.addEventListener('contextmenu',e=>{e.preventDefault();const [x,y]=toImg(e);const h=hit(x,y);if(h){lines[h[0]].splice(h[1],1);lines[h[0]]=tidy(lines[h[0]]);draw();}});
 ov.addEventListener('mousedown',e=>{if(e.button!==0)return;const [x,y]=toImg(e);const h=hit(x,y);
   if(h){drag={id:h[0],i:h[1]};cur=h[0];draw();return;}
   if(!cur){alert('pick a landmark first (right panel)');return;}
@@ -136,14 +147,15 @@ ov.addEventListener('mousemove',e=>{const [x,y]=toImg(e);hover=[x,y];
 window.addEventListener('mouseup',()=>{if(drag){drag=null;draw();}});
 ov.addEventListener('mouseleave',()=>{hover=null;mag();});
 function undo(){if(cur&&lines[cur].length){lines[cur].pop();draw();}}
+function penUp(){if(cur&&npts(lines[cur])&&lines[cur][lines[cur].length-1]!==null){lines[cur].push(null);draw();}}
 function clearLine(){if(cur&&confirm('clear all points of '+cur+'?')){lines[cur]=[];draw();}}
-document.addEventListener('keydown',e=>{if(e.key==='u'&&document.activeElement.tagName!=='INPUT')undo();});
+document.addEventListener('keydown',e=>{if(document.activeElement.tagName==='INPUT')return;if(e.key==='u')undo();if(e.key==='b')penUp();});
 const mg=document.getElementById('mag'), mctx=mg.getContext('2d'), im=document.getElementById('img');
 function mag(){if(!hover||!im.complete){mctx.fillStyle='#000';mctx.fillRect(0,0,mg.width,mg.height);return;}
   const Z=4,Sz=mg.width/Z,cx=hover[0]*S,cy=hover[1]*S;mctx.imageSmoothingEnabled=false;
   mctx.fillStyle='#000';mctx.fillRect(0,0,mg.width,mg.height);
   mctx.drawImage(im,cx-Sz/2,cy-Sz/2,Sz,Sz,0,0,mg.width,mg.height);
-  for(const [id,pts] of Object.entries(lines))for(const p of pts){const px=(p[0]*S-cx+Sz/2)*Z,py=(p[1]*S-cy+Sz/2)*Z;
+  for(const [id,pts] of Object.entries(lines))for(const p of pts){if(!p)continue;const px=(p[0]*S-cx+Sz/2)*Z,py=(p[1]*S-cy+Sz/2)*Z;
     if(px>=0&&px<=mg.width&&py>=0&&py<=mg.height){mctx.strokeStyle=COL[id];mctx.lineWidth=2;mctx.beginPath();mctx.arc(px,py,8,0,7);mctx.stroke();}}
   mctx.strokeStyle='#ff0';mctx.lineWidth=1;mctx.beginPath();mctx.moveTo(mg.width/2-14,mg.height/2);mctx.lineTo(mg.width/2+14,mg.height/2);
   mctx.moveTo(mg.width/2,mg.height/2-14);mctx.lineTo(mg.width/2,mg.height/2+14);mctx.stroke();}
@@ -151,10 +163,10 @@ const KEY='landmarks_'+CAM+'_'+TS;
 const _draw=draw;draw=function(){_draw();try{localStorage.setItem(KEY,JSON.stringify({lines:lines,kind:KIND}));}catch(e){}};
 function loadJSON(){try{const d=JSON.parse(document.getElementById('out').value);const L=d.landmarks||d.lines||d;
   if(d.kind)for(const [k,v] of Object.entries(d.kind))if(!KIND[k])KIND[k]=v;recol();
-  for(const [id,pts] of Object.entries(L)){if(lines[id]===undefined){lines[id]=[];if(!KIND[id])KIND[id]='polyline';}lines[id]=pts.map(p=>[+p[0],+p[1]]);}draw();}catch(e){alert('not valid JSON: '+e);}}
-function exportJSON(){const out={},kind={};for(const [id,pts] of Object.entries(lines)) if(pts.length){out[id]=pts;kind[id]=KIND[id];}
-  const data={camera:CAM,time:TS,frame_size_upright:[IMGW/S,IMGH/S],landmarks:out,kind:kind,source:"__SRC__",
-    note:"full-res UPRIGHT px; edge = one straight edge (POLE_xx_L/_R = a pole's left/right edge in this image), polyline = open edge, outline = closed; HOUSE_* = validation only"};
+  for(const [id,pts] of Object.entries(L)){if(lines[id]===undefined){lines[id]=[];if(!KIND[id])KIND[id]='polyline';}lines[id]=nested(pts)?flat(pts):pts.map(p=>[+p[0],+p[1]]);}draw();}catch(e){alert('not valid JSON: '+e);}}
+function exportJSON(){const out={},kind={};for(const [id,pts] of Object.entries(lines)) if(npts(pts)){out[id]=segs(pts);kind[id]=KIND[id];}
+  const data={camera:CAM,time:TS,frame_size_upright:[IMGW/S,IMGH/S],format:"pieces",landmarks:out,kind:kind,source:"__SRC__",
+    note:"full-res UPRIGHT px; landmarks[name] = list of PIECES, each a list of [u,v] (a hidden middle splits a landmark into pieces; never join across pieces); edge = one straight edge (POLE_xx_L/_R = a pole's left/right edge in this image), polyline = open edge, outline = closed (only when it is one piece); HOUSE_* = validation only"};
   const txt=JSON.stringify(data);document.getElementById('out').value=txt;
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(txt);
   a.download='landmarks_'+CAM+'_'+TS.replace(/[-: ]/g,'').replace(/^(\d{8})(\d{6})$/,'$1_$2')+'.json';a.click();}

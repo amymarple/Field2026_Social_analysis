@@ -80,23 +80,35 @@ def physical_landmarks() -> dict[str, tuple[str, list[tuple[float, float, float]
     return out
 
 
-def calib_guides(cam: str) -> dict[str, list[list[float]]]:
-    """Calibration-predicted UPRIGHT pixel polylines of every landmark this camera sees (visible runs only)."""
+def calib_guides(cam: str) -> dict[str, list[list[list[float]]]]:
+    """Calibration-predicted UPRIGHT pixel PIECES of every landmark this camera sees: a piece ends where the structure
+    leaves the frame / goes behind the camera or where the projection jumps (pano wrap), so nothing is joined across a
+    gap (same convention as the labels: landmarks[name] = list of pieces)."""
     sys.path.insert(0, str(calib_dir()))
     import paddock_map as pm
     c = pm.load()[cam]
+    jump = c.upright_size[0] / 4
     guides = {}
     for name, (kind, pts) in physical_landmarks().items():
         if kind == "axis" and np.hypot(pts[0][0] - c.centre[0] / 25.4, pts[0][1] - c.centre[1] / 25.4) < POLE_SKIP_IN:
             continue
-        run = []
+        pieces, run = [], []
         for x, y, z in pts:
+            uv = None
             if bool(c.sees((x, y), z_mm=z, units="in")):
                 u, v = c.to_paddock_inv((x, y), z_mm=z, units="in")
                 if np.isfinite(u) and np.isfinite(v):
-                    run.append([round(float(u), 1), round(float(v), 1)])
+                    uv = [round(float(u), 1), round(float(v), 1)]
+            if uv is None or (run and np.hypot(uv[0] - run[-1][0], uv[1] - run[-1][1]) > jump):
+                if len(run) >= 2:
+                    pieces.append(run)
+                run = [uv] if uv is not None else []
+            else:
+                run.append(uv)
         if len(run) >= 2:
-            guides[name] = run
+            pieces.append(run)
+        if pieces:
+            guides[name] = pieces
     return guides
 
 
@@ -177,12 +189,13 @@ def annotate_frame(cam: str, args, out: Path) -> None:
         return
     img = got[0].copy()
     th = max(3, img.shape[1] // 1200)
-    for i, (name, pts) in enumerate(calib_guides(cam).items()):
+    for name, pieces in calib_guides(cam).items():
         colr = (255, 200, 0) if name.startswith("POLE") else (0, 140, 255) if name.startswith("WALL") else (200, 200, 200)
-        p = np.asarray(pts, float)
-        for a, b in zip(p[:-1], p[1:]):
-            if np.hypot(*(b - a)) < img.shape[1] / 4:                    # skip wrap-around jumps
+        for piece in pieces:
+            p = np.asarray(piece, float)
+            for a, b in zip(p[:-1], p[1:]):
                 cv2.line(img, tuple(np.round(a).astype(int)), tuple(np.round(b).astype(int)), colr, th, cv2.LINE_AA)
+        p = np.asarray(max(pieces, key=len), float)
         m = p[len(p) // 2]
         cv2.putText(img, name, (int(m[0]) + 8, int(m[1])), cv2.FONT_HERSHEY_SIMPLEX, th * 0.9, (0, 0, 0), th * 4, cv2.LINE_AA)
         cv2.putText(img, name, (int(m[0]) + 8, int(m[1])), cv2.FONT_HERSHEY_SIMPLEX, th * 0.9, colr, th, cv2.LINE_AA)
