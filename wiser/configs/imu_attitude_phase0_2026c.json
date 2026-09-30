@@ -1,0 +1,501 @@
+{
+  "_about": "Inputs and pre-registered rules of the head-IMU attitude Phase 0 for cohort 2026c (wiser/scripts/analyze_imu_attitude_phase0.py; plan implementation_plan/2026-09-30-imu-attitude-phase0.md, approved by the user 2026-09-30). IMU only, no WISER fusion. Reads the A1 raw and A3 100-Hz caches written by the V4 scripts (never raw E:). The driver writes the per-animal gyro matrices, the selected model and the attitude-error growth law into `fitted` (matrices fitted on the tuning night 2026-09-08/09 only; growth law fitted on the test night as pre-registered). A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF12"
+  ],
+  "nights": {
+    "tuning": "night_20260908",
+    "test": "night_20260910"
+  },
+  "cache_roots": {
+    "imu_raw": "D:/Field2026_analysis_out/2026c/imu_raw_cache",
+    "imu100": "D:/Field2026_analysis_out/2026c/imu100_cache",
+    "imu16": "D:/Field2026_analysis_out/2026c/imu16_cache"
+  },
+  "audit_reference": {
+    "path": "D:/Field2026_analysis_out/2026c/wiser_ins_fusion_20260930_0016/audit_20260930",
+    "scripts": [
+      "coning_test.py",
+      "v4_audit.py"
+    ],
+    "baseline_gyro_scale": 1.03,
+    "audit_tilt_error_deg_median": {
+      "2-5 s": [
+        1.8,
+        1.9
+      ],
+      "5-15 s": [
+        2.8,
+        3.9
+      ],
+      "15-40 s": [
+        7.5,
+        6.7
+      ],
+      "40-90 s": [
+        11.5,
+        5.1
+      ]
+    },
+    "audit_drift_deg_per_s_median": [
+      0.4,
+      0.5
+    ]
+  },
+  "chain": {
+    "hampel_half_window": 3,
+    "hampel_nsigma": 6.0,
+    "hampel_mad_floor_counts": 2.0,
+    "butter_order": 4,
+    "fc_hz": 40.0,
+    "resample": "resample_poly(2, 25)",
+    "fs_raw": 1250.0,
+    "fs100": 100.0
+  },
+  "bouts": {
+    "min_s": 2.0,
+    "max_s": 90.0,
+    "edge_window_s": 0.5,
+    "bins_s": [
+      2,
+      5,
+      15,
+      40,
+      90
+    ],
+    "bin_labels": [
+      "2-5 s",
+      "5-15 s",
+      "15-40 s",
+      "40-90 s"
+    ],
+    "hf_cut_hz": 20.0
+  },
+  "floor": {
+    "window_s": [
+      0.5,
+      1.0,
+      2.0
+    ],
+    "gate_window_s": 0.5,
+    "bridged_gap_s": [
+      1.0,
+      2.0,
+      5.0
+    ]
+  },
+  "gyro_fit": {
+    "fit_bout_range_s": [
+      2.0,
+      15.0
+    ],
+    "huber_f_deg": 3.0,
+    "omega0_dps": 1000.0,
+    "bounds_E": 0.3,
+    "bounds_c": 1.0,
+    "x0_E_diag": 0.03,
+    "models": [
+      "scalar",
+      "diag",
+      "M",
+      "M_rate"
+    ],
+    "cv_block_s": 600.0,
+    "cv_tie_deg": 0.05,
+    "n_bootstrap": 200,
+    "seed": 20260930,
+    "exploratory_models": [
+      "scalar_gsens",
+      "M_gsens"
+    ],
+    "bounds_K": 1.0,
+    "_exploratory_note": "post-hoc (added 2026-09-30 after the SF09 development run): omega = M (w - b) + K a with K the gyro g-sensitivity matrix ((deg/s)/(m/s^2)); fitted and cross-validated like the others but EXCLUDED from the model selection and the gate"
+  },
+  "saturation": {
+    "rail_counts": 32700,
+    "shoulder_samples": 4,
+    "acc_hf_band_hz": [
+      100.0,
+      625.0
+    ],
+    "acc_hf_fraction_max": 0.5,
+    "acc_window_ms": 40.0,
+    "acc_peak_window_ms": 10.0,
+    "train_max_spacing_ms": 70.0,
+    "shake_spacing_ms": [
+      25.0,
+      70.0
+    ],
+    "shake_alternation_min": 0.5,
+    "acc_2g_ms2": 19.62,
+    "suspect_net_deg": 60.0,
+    "suspect_window_ms": 25.0,
+    "recon_method": "log-quadratic through the 2+2 innermost held readings (centres; fallback 3+3) around the run (Gaussian-shaped), peak capped at recon_peak_max_rails x rail; clipped samples replaced by max(fit, rail); chosen on synthetic held pulses 2026-09-30",
+    "recon_peak_max_rails": 3.0,
+    "a4_treatment": "reconstructed (ii); frozen-across-shake (iii) reported only",
+    "spacing_hist_ms": [
+      0,
+      25,
+      40,
+      70,
+      200,
+      1000000000.0
+    ],
+    "classes": [
+      "impact",
+      "shake_train",
+      "short_broadband",
+      "suspect_monotone",
+      "rotation"
+    ],
+    "short_broadband_max_readings": 1,
+    "imu_update_rate_hz_measured": 190,
+    "_amendment_2026-09-30": "The IMU lanes are sample-and-hold: ~190 updates/s held over ~6.6 raw samples (measured on SF09 09-08 and SF12 09-10, all six lanes, acc and gyro synchronous). Shoulders, slopes and the reconstruction therefore operate on held readings (reading centres), and short_broadband = a single clipped reading.",
+    "imu_hold_samples": 6.6,
+    "recon_shoulder_readings": 2
+  },
+  "attitude": {
+    "tau_quiet_s": 0.25,
+    "fxy_cutoffs_hz": [
+      1.0,
+      2.0,
+      4.0
+    ],
+    "fxy_main_hz": 2.0,
+    "fs16": 16.0,
+    "decimate": "resample_poly(4, 25)",
+    "band_powers_hz": [
+      [
+        2,
+        4
+      ],
+      [
+        4,
+        8
+      ],
+      [
+        8,
+        12
+      ],
+      [
+        12,
+        20
+      ]
+    ],
+    "band_power_window_s": 0.5
+  },
+  "growth": {
+    "bin_edges_s": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      7,
+      10,
+      15,
+      22,
+      30,
+      45,
+      60,
+      90
+    ],
+    "min_bouts_per_bin": 15,
+    "rayleigh_median_factor": 1.1774
+  },
+  "gate": {
+    "bins": {
+      "2-5 s": 1.0,
+      "5-15 s": 2.0
+    },
+    "min_animals_pass": 4,
+    "floor_excess_deg": 0.5,
+    "note": "median end-of-bout tilt error, test night, no-gyro-saturation bouts, calibrated pipeline; both bins must hold pooled AND in >= 4 of 5 animals. Thresholds are not moved.",
+    "posthoc_edge_still_thresholds_deg": [
+      2.0,
+      1.0
+    ]
+  },
+  "fitted": {
+    "fitted_on": {
+      "gyro_matrices": "tuning night night_20260908",
+      "model_selection": "tuning-night 2-fold CV",
+      "growth_law": "test night night_20260910 (pre-registered)"
+    },
+    "selected_model": "diag",
+    "pooled_cv_median_deg": {
+      "scalar": 2.7756308764549416,
+      "diag": 2.6312866513805955,
+      "M": 3.4384955356196754,
+      "M_rate": 3.465149084987078,
+      "scalar_gsens": 3.56111215189612,
+      "M_gsens": 4.469100853366767
+    },
+    "per_animal": {
+      "SF07": {
+        "M": [
+          [
+            0.9410466847512334,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.9974097058862881,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.9937054823736565
+          ]
+        ],
+        "c": 0.0,
+        "theta": [
+          -0.05895331524876661,
+          -0.0025902941137118975,
+          -0.006294517626343478
+        ],
+        "ci95_lo": [
+          -0.24936406608282352,
+          -0.1641905713451501,
+          -0.14202066116065576
+        ],
+        "ci95_hi": [
+          0.005737549580311629,
+          0.04328599220514315,
+          0.021397195959292542
+        ],
+        "n_fit_bouts": 24
+      },
+      "SF08": {
+        "M": [
+          [
+            0.9820693635575445,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.9980264497449343,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.9903956265829038
+          ]
+        ],
+        "c": 0.0,
+        "theta": [
+          -0.017930636442455534,
+          -0.0019735502550657386,
+          -0.009604373417096189
+        ],
+        "ci95_lo": [
+          -0.08555956964072442,
+          -0.046175495523623294,
+          -0.07300519444270852
+        ],
+        "ci95_hi": [
+          0.023015328937649772,
+          0.01643393651841558,
+          0.013593451357029577
+        ],
+        "n_fit_bouts": 52
+      },
+      "SF09": {
+        "M": [
+          [
+            0.9884064989634421,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.9713903993623297,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0018531909063597
+          ]
+        ],
+        "c": 0.0,
+        "theta": [
+          -0.011593501036557909,
+          -0.028609600637670252,
+          0.001853190906359721
+        ],
+        "ci95_lo": [
+          -0.039754728193932345,
+          -0.05230731515666121,
+          -0.03197174481767899
+        ],
+        "ci95_hi": [
+          0.01593545203544635,
+          -0.005546474538787106,
+          0.045668660348547496
+        ],
+        "n_fit_bouts": 141
+      },
+      "SF10": {
+        "M": [
+          [
+            1.0121371429301227,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.018530625558679,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.9450325452593125
+          ]
+        ],
+        "c": 0.0,
+        "theta": [
+          0.012137142930122781,
+          0.01853062555867895,
+          -0.05496745474068751
+        ],
+        "ci95_lo": [
+          -0.06755749585607611,
+          -0.009133405212144043,
+          -0.15077494500501776
+        ],
+        "ci95_hi": [
+          0.04428085102564473,
+          0.0642316174769006,
+          -0.018692525573347597
+        ],
+        "n_fit_bouts": 59
+      },
+      "SF12": {
+        "M": [
+          [
+            0.9440168192651306,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.9633469879392224,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.979148754022292
+          ]
+        ],
+        "c": 0.0,
+        "theta": [
+          -0.05598318073486935,
+          -0.036653012060777604,
+          -0.020851245977708016
+        ],
+        "ci95_lo": [
+          -0.09726641152682039,
+          -0.10263613106065914,
+          -0.04903925708592937
+        ],
+        "ci95_hi": [
+          -0.03174082605917023,
+          -0.0033714162299262017,
+          0.02804488546728451
+        ],
+        "n_fit_bouts": 73
+      }
+    },
+    "growth_law": {
+      "A": {
+        "sigma0_deg": 0.8223765652442234,
+        "k_deg_per_s": 0.19297790160773368,
+        "r2": 0.8804729128083839
+      },
+      "B": {
+        "sigma0_deg": 0.7008590955842608,
+        "k_deg_per_s": 0.17583461763973032,
+        "r2": 0.9252497423809062
+      },
+      "p90": {
+        "p0_deg": 6.60964870198693,
+        "k90_deg_per_s": 0.47728263532950266
+      }
+    },
+    "floor_test_L0.5_median_deg": 0.048303264231119344,
+    "gate": {
+      "verdict": "FAIL",
+      "bins": {
+        "2-5 s": {
+          "threshold_deg": 1.0,
+          "pooled_median_deg": 1.7551942003428378,
+          "ci95": [
+            1.5174944338216108,
+            2.217504758641353
+          ],
+          "n": 244,
+          "pooled_pass": false,
+          "baseline_median_deg": 1.9268956444444845,
+          "excess_over_floor_deg": 1.7068909361117184,
+          "within_floor_excess": false
+        },
+        "5-15 s": {
+          "threshold_deg": 2.0,
+          "pooled_median_deg": 3.2851848661352006,
+          "ci95": [
+            2.5748276732058515,
+            3.696044849800978
+          ],
+          "n": 121,
+          "pooled_pass": false,
+          "baseline_median_deg": 2.962732871560287,
+          "excess_over_floor_deg": 3.236881601904081,
+          "within_floor_excess": false
+        }
+      },
+      "n_animals_pass": 0
+    },
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_attitude_phase0_20260930_1203",
+    "git_commit": "efaced8+dirty",
+    "written": "2026-09-30T12:09:58-04:00"
+  },
+  "literature": {
+    "voluntary_head_turn_peak_dps": 500,
+    "ambulation_sd_omega_dps": 107,
+    "immobility_dps": [
+      12,
+      20
+    ],
+    "shake_hz": [
+      14,
+      18
+    ],
+    "twitch_hz": [
+      30,
+      40
+    ],
+    "scratch_hz": [
+      7,
+      12
+    ],
+    "sources": [
+      "Pasquet 2016 Sci Rep srep35689",
+      "Dickerson 2012 PMID 22904256",
+      "DISSeCT 2025 PLOS Biol 10.1371/journal.pbio.3003431",
+      "Halberstadt & Geyer 2013",
+      "Fayat 2021"
+    ]
+  }
+}
