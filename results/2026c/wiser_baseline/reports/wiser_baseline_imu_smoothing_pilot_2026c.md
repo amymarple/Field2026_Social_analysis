@@ -9,6 +9,8 @@
 
 ## 0. Verdicts
 
+> **Scope (added 2026-09-29, user review):** the IMU entered this pilot only as per-second motion-state labels (still / active / locomoting from VeDBA, |ω|, stride-band fraction). The accelerometer and gyroscope were never integrated into position — a 6-axis inertial (INS/ESKF) fusion with WISER updates was NOT tested; it had been ruled out on paper (no heading; "head ≠ body"), but the tag is on the head with the IMU, so head acceleration is the tag's acceleration, and yaw can become observable from WISER fixes while the rat moves. Read the verdicts below as "the IMU as motion-state labels adds 0.5–1.7 %", not "the IMU cannot improve WISER".
+
 | IMU variant | (a) animals with Δ ≥ 3 % & CI > 0 | (a) control no-gain | (a) pooled moving Δ | (a′) animals | (a′) control no-gain | (a′) pooled moving Δ | **Verdict** |
 |---|---|---|---|---|---|---|---|
 | V1 ZUPT | 0/5 | 5/5 | +0.1 % | 0/5 | 5/5 | +0.1 % | **FAIL** |

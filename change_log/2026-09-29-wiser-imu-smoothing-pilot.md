@@ -1,5 +1,7 @@
 # WISER + head-IMU smoothing pilot (cohort 2026c)
 
+> **Scope (added 2026-09-29, user review):** the IMU entered this pilot only as per-second motion-state labels (still / active / locomoting from VeDBA, |ω|, stride-band fraction). The accelerometer and gyroscope were never integrated into position — a 6-axis inertial (INS/ESKF) fusion with WISER updates was NOT tested; it had been ruled out on paper (no heading; "head ≠ body"), but the tag is on the head with the IMU, so head acceleration is the tag's acceleration, and yaw can become observable from WISER fixes while the rat moves. Read the verdicts below as "the IMU as motion-state labels adds 0.5–1.7 %", not "the IMU cannot improve WISER".
+
 - **Plan:** [`implementation_plan/2026-09-29-wiser-imu-smoothing-pilot.md`](../implementation_plan/2026-09-29-wiser-imu-smoothing-pilot.md)
   (approved by the user 2026-09-29, "开始").
 - **Report:** [`results/2026c/wiser_baseline/reports/wiser_baseline_imu_smoothing_pilot_2026c.md`](../results/2026c/wiser_baseline/reports/wiser_baseline_imu_smoothing_pilot_2026c.md)
