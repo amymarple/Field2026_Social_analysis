@@ -17,7 +17,8 @@ Landmark kinds (the side panel groups them):
   outline  BOX_<row><col>   the box mounted on that pole = a WISER UWB anchor (user, 2026-09-29): clear corners, rigid
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
-  outline  TOWER_1, TOWER_2, PCBOX, HOUSE_<pole>_ROOF   closed outline, click round it (validation only for houses).
+  outline  TOWER_1, TOWER_2, PCBOX, HOUSE_1/2_ROOF   closed outline, click round it (validation only for houses;
+           HOUSE_1 = house_1 by pole B1 under CH05, HOUSE_2 = house_2 by pole B3 under CH06).
            Two water towers outside the paddock (user, 2026-09-29): TOWER_1 beyond the row-C wall (y = 240 side, the
            top of the schematic), TOWER_2 beyond the row-A wall (y = 0 side, the bottom).
 Poles use the paddock grid names (rows A/B/C x columns 0-4, 10 ft grid) so a pole keeps its name in every frame and
@@ -51,7 +52,7 @@ WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
             + [("TOWER_1", "outline"), ("TOWER_2", "outline"), ("PCBOX", "outline"),
-               ("HOUSE_B1_ROOF", "outline"), ("HOUSE_B1_BASE", "polyline"), ("HOUSE_B3_ROOF", "outline"), ("HOUSE_B3_BASE", "polyline")])
+               ("HOUSE_1_ROOF", "outline"), ("HOUSE_1_BASE", "polyline"), ("HOUSE_2_ROOF", "outline"), ("HOUSE_2_BASE", "polyline")])
 
 HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __CAM__ __TS__</title>
 <style>
@@ -84,7 +85,7 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   used only to CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
   Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
   click the REAL one) and the top-view map cv/configs/landmarks/2026c/paddock_schematic.png (A0 = origin corner, x
-  along the length, rows A/B/C across; HOUSE_B1 / HOUSE_B3 = the house next to pole B1 / B3).
+  along the length, rows A/B/C across; HOUSE_1 = house_1 by pole B1, HOUSE_2 = house_2 by pole B3).
   <b>Hidden middle</b> (a wall seen only at both ends, a pole edge cut by something in front): click the first visible
   piece, press <b>b</b> ("break"), then click the next piece — same landmark, no line across the gap.
   <b>Drag</b> a point to move it, <b>right-click</b> to delete. Points are kept in this browser between visits.</small>
@@ -161,17 +162,19 @@ function mag(){if(!hover||!im.complete){mctx.fillStyle='#000';mctx.fillRect(0,0,
   mctx.moveTo(mg.width/2,mg.height/2-14);mctx.lineTo(mg.width/2,mg.height/2+14);mctx.stroke();}
 const KEY='landmarks_'+CAM+'_'+TS;
 const _draw=draw;draw=function(){_draw();try{localStorage.setItem(KEY,JSON.stringify({lines:lines,kind:KIND}));}catch(e){}};
+// earlier names -> current (2026-09-30: houses back to the lab names house_1 / house_2)
+function mig(id){return id.replace(/^HOUSE_B1_/,'HOUSE_1_').replace(/^HOUSE_B3_/,'HOUSE_2_');}
 function loadJSON(){try{const d=JSON.parse(document.getElementById('out').value);const L=d.landmarks||d.lines||d;
-  if(d.kind)for(const [k,v] of Object.entries(d.kind))if(!KIND[k])KIND[k]=v;recol();
-  for(const [id,pts] of Object.entries(L)){if(lines[id]===undefined){lines[id]=[];if(!KIND[id])KIND[id]='polyline';}lines[id]=nested(pts)?flat(pts):pts.map(p=>[+p[0],+p[1]]);}draw();}catch(e){alert('not valid JSON: '+e);}}
+  if(d.kind)for(const [k,v] of Object.entries(d.kind))if(!KIND[mig(k)])KIND[mig(k)]=v;recol();
+  for(const [id0,pts] of Object.entries(L)){const id=mig(id0);if(lines[id]===undefined){lines[id]=[];if(!KIND[id])KIND[id]='polyline';}lines[id]=nested(pts)?flat(pts):pts.map(p=>[+p[0],+p[1]]);}draw();}catch(e){alert('not valid JSON: '+e);}}
 function exportJSON(){const out={},kind={};for(const [id,pts] of Object.entries(lines)) if(npts(pts)){out[id]=segs(pts);kind[id]=KIND[id];}
   const data={camera:CAM,time:TS,frame_size_upright:[IMGW/S,IMGH/S],format:"pieces",landmarks:out,kind:kind,source:"__SRC__",
     note:"full-res UPRIGHT px; landmarks[name] = list of PIECES, each a list of [u,v] (a hidden middle splits a landmark into pieces; never join across pieces); edge = one straight edge (POLE_xx_L/_R = a pole's left/right edge in this image), polyline = open edge, outline = closed (only when it is one piece); HOUSE_* = validation only"};
   const txt=JSON.stringify(data);document.getElementById('out').value=txt;
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(txt);
   a.download='landmarks_'+CAM+'_'+TS.replace(/[-: ]/g,'').replace(/^(\d{8})(\d{6})$/,'$1_$2')+'.json';a.click();}
-try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);if(d.kind)for(const [k,v] of Object.entries(d.kind))if(!KIND[k])KIND[k]=v;recol();
-  for(const [id,pts] of Object.entries(d.lines||{})){lines[id]=pts;}}}catch(e){}
+try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);if(d.kind)for(const [k,v] of Object.entries(d.kind))if(!KIND[mig(k)])KIND[mig(k)]=v;recol();
+  for(const [id,pts] of Object.entries(d.lines||{})){if(npts(pts)||lines[mig(id)]===undefined)lines[mig(id)]=pts;}}}catch(e){}
 zoom(0.5);draw();
 </script></body></html>"""
 

@@ -1,6 +1,6 @@
 """landmark_guides.py — where each rigid landmark name is, on the paddock and in each camera's image.
 
-The landmark labels (cv/cv_field/landmark_gui.py) use paddock names — POLE_<row><col>, WALLTOP_<side>, HOUSE_<pole> —
+The landmark labels (cv/cv_field/landmark_gui.py) use paddock names — POLE_<row><col>, WALLTOP_<side>, HOUSE_1/2 —
 so a structure keeps its name in every frame and camera. This module makes those names concrete:
   * a top-view schematic of the paddock (pole grid, wall sides, houses, and where each camera is and looks, from the
     2026-09-24 calibration's RESULT 1),
@@ -13,7 +13,10 @@ they are expected to be off (that offset is what the labels will measure) — al
 
 Paddock frame (cv/configs/field_layout.json, calibration): origin = corner pole A0, x along the 40 ft length
 (0–480 in, column 0–4 every 120 in), y across the 20 ft width (row A y = 0, B y = 120, C y = 240 in), z up.
-Houses are named by the pole next to them: HOUSE_B1 (centre ≈ (134.9, 120.0) in) and HOUSE_B3 (≈ (347.0, 119.1) in).
+Houses (user, 2026-09-30: keep the lab names): HOUSE_1 = house_1, next to pole B1, under CH05 (centre ≈ (134.9, 120.0)
+in; WISER ROI house_1); HOUSE_2 = house_2, next to pole B3, under CH06 (≈ (347.0, 119.1) in; WISER ROI house_2).
+(Which in-box camera, CH07/CH08, sits in which house is disputed between field_layout.json and the recording repo's
+COLOUR_SAMPLING_LOG_cohort3.md — that does not affect the house names.)
 
 Usage: python cv/cv_field/landmark_guides.py --cohort 2026c   # schematic + per-camera annotated 09-18 IR frames
 """
@@ -39,6 +42,7 @@ CM_PER_IN = 2.54
 POLE_TOP_MM = 2400.0
 WALL_TOP_MM = 977.9
 POLE_SKIP_IN = 20.0                     # the pole a camera is mounted on is too close to draw
+HOUSE_OF_POLE = {"B1": "1", "B3": "2"}  # house_1 by pole B1 (CH05), house_2 by pole B3 (CH06)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30",
           "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}
 
@@ -76,7 +80,7 @@ def physical_landmarks() -> dict[str, tuple[str, list[tuple[float, float, float]
         corners = [(-a, -b), (a, -b), (a, b), (-a, b), (-a, -b)]
         pts = [(cx + u * np.cos(th) - v * np.sin(th), cy + u * np.sin(th) + v * np.cos(th)) for u, v in corners]
         pole = min(lay["poles"], key=lambda n: np.hypot(lay["poles"][n][0] / CM_PER_IN - cx, lay["poles"][n][1] / CM_PER_IN - cy))
-        out[f"HOUSE_{pole}_BASE"] = ("polyline", [(x, y, 0.0) for x, y in pts])
+        out[f"HOUSE_{HOUSE_OF_POLE.get(pole, pole)}_BASE"] = ("polyline", [(x, y, 0.0) for x, y in pts])
     return out
 
 
@@ -148,7 +152,8 @@ def schematic(path: Path) -> None:
         w, h = (b, a) if abs(sh.get("orientation_deg", 0) - 90) < 1 else (a, b)
         pole = min(lay["poles"], key=lambda n: np.hypot(lay["poles"][n][0] / CM_PER_IN - cx, lay["poles"][n][1] / CM_PER_IN - cy))
         ax.add_patch(plt.Rectangle((cx - w / 2, cy - h / 2), w, h, color="#7f7f7f", alpha=0.6))
-        ax.text(cx, cy - h / 2 - 9, f"HOUSE_{pole}", ha="center", fontsize=11, color="#333", weight="bold")
+        n = HOUSE_OF_POLE.get(pole, pole)
+        ax.text(cx, cy - h / 2 - 9, f"HOUSE_{n} (house_{n}, by pole {pole})", ha="center", fontsize=11, color="#333", weight="bold")
     for cam, (x, y, brg) in cameras_from_fit().items():
         col = "#2ca02c" if cam in ("CH01", "CH02") else "#9467bd" if cam in ("CH03", "CH04") else "#bcbd22"
         ax.plot(x, y, "s", ms=13, color=col, zorder=7)

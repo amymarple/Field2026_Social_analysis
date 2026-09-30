@@ -11,11 +11,14 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   top of the schematic; TOWER_2 beyond the row-A wall, y = 0 — the bottom; user 2026-09-29), `BOX_<pole>` (the box on each pole =
   a WISER UWB anchor), `PCBOX` (the PC box facing CH02), and any added structure
   that cannot move.
-- **Validation only:** `HOUSE_B1_*` / `HOUSE_B3_*` — the house next to pole B1 / B3 — as `_ROOF` (outline) and `_BASE`
-  (visible bottom edge). No record says whether the houses moved, so they check the correction instead of shaping it.
-  (Named by the pole, not house_1/house_2, because the documents disagree on which is which.)
+- **Validation only:** `HOUSE_1_*` = house_1 (next to pole B1, under CH05; WISER ROI `house_1`) and `HOUSE_2_*` =
+  house_2 (next to pole B3, under CH06; WISER ROI `house_2`), as `_ROOF` (outline) and `_BASE` (visible bottom edge).
+  No record says whether the houses moved, so they check the correction instead of shaping it. (Briefly named
+  HOUSE_B1/B3 on 2026-09-29; the GUI migrates such labels. What IS disputed is which in-box camera sits in which
+  house: `field_layout.json` says CH07 → house_1, CH08 → house_2; the recording repo's COLOUR_SAMPLING_LOG says
+  CH07 = house_2, CH08 = house_1.)
 - **Which name is which:** `paddock_schematic.png` here (top view: A0 = origin corner, x along the 40 ft length with
-  columns 0–4, rows A/B/C across; wall sides; houses; each camera's position and bearing from the 09-24 calibration),
+  columns 0–4, rows A/B/C across; wall sides; houses (HOUSE_1 / HOUSE_2); each camera's position and bearing from the 09-24 calibration),
   and the named dashed "NAME?" guides in the GUI = the calibration's prediction of each structure (identification
   only — click the real structure). Both from `cv/cv_field/landmark_guides.py`; annotated 09-18 IR frames per camera:
   `$FIELD2026_ANALYSIS_OUT_ROOT/2026c/cv_field_landmarks/guides_CH0x_0918IR.jpg`.
