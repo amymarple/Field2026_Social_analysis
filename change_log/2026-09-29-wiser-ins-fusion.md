@@ -118,3 +118,67 @@ block-bootstrap CI):
 - A3 cache files load and carry their calibration JSON.
 - No raw file, SQLite database or earlier script was modified. Raw data was read only by Phase A, and the WISER copy was
   opened mode=ro with query_only.
+
+## Audit of the V4 result (main session, 2026-09-30, from the cached outputs — no filter re-run)
+
+Scripts and outputs: `D:\Field2026_analysis_out\2026c\wiser_ins_fusion_20260930_0016\audit_20260930\` (`v4_audit.py`,
+`coning_test.py`, `*_output.txt`, per-bout CSVs). The user asked for an audit before any conclusion ("下结论太早").
+
+**What the FAIL is made of (test night, scheme (a), held-out median error, in):**
+
+| IMU state | B2′ | V2 (state-switched noise, no INS) | V4 (full INS) |
+|---|---|---|---|
+| still | 2.79 | 2.70 | 2.71 |
+| locomoting | 5.47 | 5.32 | 5.40 |
+| active in place | 3.76 | 3.73 | 4.23 |
+
+V4 is dominated by V2 in every state: integrating the head's acceleration adds error on top of what the motion-state
+labels already give. The loss grows with head angular speed (−3.4 % at |ω| < 20 °/s → −7 to −9 % at 50–400 → −20 %
+above 400) and is present far from any gyro saturation (−6 to −9 % more than 1 min after the last saturated second;
+−12 % within 2 s of one). |V4 − B2′| excursions > 24 in are short (98 runs on SF09, median 2.8 s, max 6 s, 0.9 % of
+fixes): INS blow-ups between WISER corrections.
+
+**Why the filter could not correct them:** the tuning objective (pooled median) selected σ_a = 0.03 m/s²/√Hz, i.e. a
+between-fix position process SD of 0.085 in — the filter believes its inertial prediction ~10× more than the data
+support (NIS 13–19, held-out z² 120–380; consistent would be 2). The WISER white noise was set to
+max(σ²_ax − σ_b², σ²_ax/4) with σ_b = 2.5 in, which exceeds the measured static SD at 8–9 anchors (1.6–2.9 in): 9-anchor
+x fixes are treated as 0.8-in measurements. The 24 initial-yaw hypotheses are not separated by the pseudo-likelihood
+(19–24 of 24 within 0.01 nat/fix of the best; the +1 h-shifted control is as "peaked"), so yaw comes only from WISER
+during horizontal acceleration, and an overconfident filter learns it slowly. The dynamic gravity update
+(σ_fd = 1.5 m/s², χ²₃ gate) pulls tilt toward the specific force during motion — the standard anti-pattern; it was added
+to mask 20-min tilt losses whose root cause is measured below.
+
+**Root cause (pure-gyro attitude across active bouts, start/end gravity from quasi-static windows):**
+
+| bout length | SF09 median / p90 tilt error (°) | SF12 median / p90 (°) |
+|---|---|---|
+| 2–5 s | 1.8 / 10.4 | 1.9 / 8.7 |
+| 5–15 s | 2.8 / 11.8 | 3.9 / 12.7 |
+| 15–40 s | 7.5 / 20.3 | 6.7 / 10.2 |
+| 40–90 s | 11.5 / 32.1 | 6.3 / 8.2 |
+
+Drift 0.4–0.5 °/s of activity (median; p90 2.5 °/s) — 10–60× the still-run drift (2.3 °/min). It is **not** the
+integration rate (1250 Hz raw = 100 Hz low-passed within 0.1–0.5°), **not** the gyro scale (1.00 / 1.03 / per-animal
+change medians by ≤ 0.5°), and only partly saturation (rare: 12 of 219 bouts; 15–19° when it happens). It scales more
+with the total angle turned (Spearman 0.70 / 0.45) than with duration (0.41 / 0.33): ≈ 1.0–1.4° per 100° of rotation
+(p90 6–7°), error direction not fixed in the head frame (consistency 0.15–0.20) — gyro non-orthogonality / rate
+nonlinearity plus a vibration-rectified bias, on top of the calibrated scale.
+
+**Physics ceiling.** A tilt error δθ leaks ½·g·δθ·t² of position: 1.5° → 0.3 in over one fix interval (0.25 s), 5 in
+over 1 s, 20 in over 2 s. Both held-out schemes ((a) runs of 4–8 hidden fixes = 1–2 s; (a′) 2-s windows) test 1–2 s
+bridging, which this sensor cannot win; they do not test what an INS could deliver here (≤ 0.5 s horizons, single
+dropped fixes, velocity/heading at fix resolution, outlier rejection). 90 % of the head's horizontal-acceleration
+variance is above 2 Hz (SF09: 10 % < 2 Hz, 24 % < 4 Hz) — motion WISER cannot see and that should be low-passed before
+integration.
+
+**Sampling rate (user, 2026-09-30: "100 Hz 太高, 16 Hz 就够").** Gyro integrated at 16 Hz (anti-aliased) matches 100 Hz
+over bouts ≤ 15 s (2–5 s: 1.9° vs 1.8°; 5–15 s: 3.0° vs 2.7°) but coning accumulates over long bouts (SF09 40–90 s:
+20.6° vs 12.2°). Policy adopted for any next step: attitude at 100 Hz, world-frame horizontal specific force
+low-passed (≈ 2 Hz) and decimated to 16 Hz for the fusion.
+
+**Conclusion of the audit.** The registered FAIL stands for this design, but it should be read as: (1) the evaluation
+measured 1–2 s inertial bridging, which the head IMU cannot do (tilt drifts 0.4 °/s in activity); (2) the filter was
+tuned into overconfidence and had a tilt-corrupting update; (3) the achievable gain in position median over B2′ is
+bounded near what V2 already gives (+1.7 %), because WISER fixes every 0.25 s at 2–5 cm leave little room. Whether
+the IMU side can be made good enough for ≤ 0.5-s use is a Phase-0 question (gyro matrix self-calibration, saturation
+handling, honest attitude-error model) with a pre-registered gate — see the plan revision.
