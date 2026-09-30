@@ -26,6 +26,23 @@ until the user checks the candidates in Neuroscope.
 - Mean SPW total variation on the other day's window: 3.08 for the current map, 1.47 for the reference-derived order
   (1 = monotonic).
 
+## SWR gradient check (user: no reversal needed; the SWR must grow and lengthen along the shank)
+
+`ephys/swr_gradient_order.py` works from the saved profiles, with no raw data. Per site it computes SPW amplitude,
+SPW FWHM, ripple amplitude and ripple FWHM of the ripple-triggered averages. It scores each candidate order by
+Spearman ρ(position, feature).
+
+**On the 09-02 window (824 ripples, independent of the 09-01 derivation):**
+- **Order B (derived 09-01):** SPW / ripple amplitude ρ .99/.99, .96/.97, .97/.99, .99/.99 (shanks 1–4).
+- **Current map:** .89/.90, .47/.46, .82/.81, .99/.99.
+- **Widths:** B's SPW / ripple width ρ is .97/.82, .98/.71, .98/.87 on shanks 2–4. Shank 1's SPW width is flat.
+
+**Width features are weak here.** The ripple FWHM is quantized at 0.8 ms, and in the 94-ripple window it is constant on
+shanks 3–4. A mean-rank order over all four features reproduces across days at ρ 0.88–0.97, worse than the
+ripple-amplitude order (0.97–0.99). So ripple amplitude is the most reliable single gradient.
+
+**Outputs on G:** per-site features `profiles/swr_features_*.csv`; combined-order XMLs `SF07_swr_order_*.xml`.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
@@ -35,3 +52,10 @@ until the user checks the candidates in Neuroscope.
 - **Total variation:** $\mathrm{tv}=\sum_k|p_{k+1}-p_k|\,/\,(\max p-\min p)$ of a profile $p$ along a candidate order.
   1 = monotonic, larger = jagged.
 - **Order agreement:** Spearman ρ between the positions of the same 16 columns in two orders. 1 = identical order.
+- **SWR features (per site c, ripple-triggered averages over ±100 ms, baseline = median at |t| ≥ 80 ms):**
+  - $A_{spw}(c)=\max_t s\,(\mathrm{spw}_c(t)-b)$, where $s$ is the dominant SPW sign;
+  - $D_{spw}(c)$ = full width at half maximum (ms) around t = 0;
+  - $A_{rip}(c)=\max_t(\mathrm{env}_c(t)-b)$;
+  - $D_{rip}(c)$ = FWHM of the envelope.
+  Larger / longer = closer to the pyramidal layer. Units: µV, ms.
+- **Monotonicity:** Spearman ρ between position along the order and a feature. 1 = the feature rises steadily.

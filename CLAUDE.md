@@ -201,7 +201,7 @@ Core library: `_common.py` (`ephys_block`, `raw_ephys_root`, `analysis_root`/`st
 `index_root`, `report_dir`/`figure_dir`, `iter_raw_sessions` — skips foreign-MAC cards, `git_commit`, `write_json`),
 `wild_ce_params.py` (header), `signal_probe.py` (glitch probe/regime), `deglitch_wild.py` (vendored field de-glitch),
 `make_session_xml.py`, `resort_shanks.py`, `backup_manifest.py` (SHA-256 tree compare). Everything else is a one-off
-**check**: channel map (`probe_group_check`, `probe_map_check`, `footprint_map_check`, `lfp_profile_check` [`--raw <dir> --offset-min M --minutes N [--no-deglitch] [--derive-xml OUT] --save-profile OUT.npz`: keep the profiles; user reference windows per animal in `configs/lfp_reference_windows_2026c.yaml`],
+**check**: channel map (`probe_group_check`, `probe_map_check`, `footprint_map_check`, `lfp_profile_check` [`--raw <dir> --offset-min M --minutes N [--no-deglitch] [--derive-xml OUT] --save-profile OUT.npz`: keep the profiles; user reference windows per animal in `configs/lfp_reference_windows_2026c.yaml`; `swr_gradient_order.py --profiles *.npz --orders NAME=xml …` scores/derives orders by the SWR gradient — amplitude and width rising along the shank, no polarity reversal needed (user rule)],
 `wiring_pattern_check`, `bridged_pins_check`, `make_probe_xml` → `configs/xml/`), FM64 residue
 (`template_width_check`: reject units with neighbour/peak ratio < 0.4), raw corruption (`integrity_scan`), HPC vs
 cortex (`hpc_signature_check`, `swr_strict_check`), probe advance (`probe_move_check`, `probe_move_timeseries`) — the
