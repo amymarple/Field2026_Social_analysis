@@ -124,7 +124,8 @@ def theta_profile(lfp: np.ndarray, fs: float, live: np.ndarray, win_s: float = 2
     return phase, tp, int(live[ref_i]), len(keep)
 
 
-def load_raw_lfp(raw_dir: Path, minutes: float, offset_min: float, cfg: dict, target_fs: float = 1250.0) -> tuple[np.ndarray, float, int]:
+def load_raw_lfp(raw_dir: Path, minutes: float, offset_min: float, cfg: dict, target_fs: float = 1250.0,
+                 allow_deglitch: bool = True) -> tuple[np.ndarray, float, int]:
     """Read `minutes` of a RAW WILD session (amplifier.dat, int16, 64 ch, 20 kHz) starting at `offset_min`, de-glitch it when the
     firmware is below the clean gate, and decimate to target_fs (anti-aliased, chunked). No staging, no preprocessing needed."""
     cp = parse_ce_params(raw_dir)
@@ -134,7 +135,8 @@ def load_raw_lfp(raw_dir: Path, minutes: float, offset_min: float, cfg: dict, ta
     a0 = int(offset_min * 60 * fs0) if offset_min >= 0 else max(0, ns + int(offset_min * 60 * fs0))   # negative = minutes from the END
     win = int(min(ns - a0, minutes * 60 * fs0))
     mm = np.memmap(raw_dir / "amplifier.dat", dtype=np.int16, mode="r", shape=(ns, nch))
-    deglitch = int(cp.firmware_version) < int(cfg.get("clean_firmware_min", 65))
+    deglitch = allow_deglitch and int(cp.firmware_version) < int(cfg.get("clean_firmware_min", 65))
+    global DEGLITCH_APPLIED; DEGLITCH_APPLIED = bool(deglitch)
     thr = None
     chunks = []
     step = int(60 * fs0)
@@ -213,6 +215,38 @@ def fmt_profile(order, spw, rp, theta, gaps=None) -> str:
     return " ".join(parts)
 
 
+DEGLITCH_APPLIED = None   # set by load_raw_lfp (raw mode)
+
+
+def save_profile_npz(path: Path, *, lfp: np.ndarray, fs: float, peaks: np.ndarray, live: np.ndarray, dead: set, skipped: set,
+                     spw, rp, theta, tpow, ref_col: int, nwin: int, n_rip: int, xml_path: Path, all_groups: list,
+                     new_groups: list | None, meta: dict, wave_ms: float = 100.0) -> Path:
+    """Keep every intermediate LFP profile of one window for later use (user, 2026-09-29):
+    per-column SPW / ripple / theta profiles, the ripple times, ripple-triggered mean waveforms (1-50 Hz LFP and the 130-200 Hz
+    envelope, +-wave_ms), per-column LFP rms, the spike-band correlation (raw mode), and the groupings they were read with."""
+    slow = bp(lfp, fs, 1.0, 50.0)
+    env = np.abs(hilbert(bp(lfp, fs, 130.0, 200.0), axis=0))
+    h = int(wave_ms / 1000 * fs)
+    ok = peaks[(peaks > h) & (peaks < lfp.shape[0] - h)]
+    spw_wave = np.mean([slow[t - h:t + h + 1] for t in ok], axis=0) * UV if len(ok) else np.full((2 * h + 1, lfp.shape[1]), np.nan)
+    env_wave = np.mean([env[t - h:t + h + 1] for t in ok], axis=0) * UV if len(ok) else np.full((2 * h + 1, lfp.shape[1]), np.nan)
+    flat = lambda gs: (np.array([c for g in gs for c in g], dtype=int), np.array([len(g) for g in gs], dtype=int))
+    g_cols, g_len = flat(all_groups)
+    d = dict(meta_json=json.dumps(meta), fs=fs, n_ripples=n_rip, ripple_peaks_samples=peaks.astype(np.int64),
+             ripple_peaks_s_in_window=peaks / fs, live=np.asarray(live, dtype=int), dead=np.array(sorted(dead), dtype=int),
+             skipped=np.array(sorted(skipped), dtype=int), spw_uV=np.asarray(spw), ripple_uV=np.asarray(rp),
+             theta_phase_deg=np.asarray(theta), theta_power_uV2=np.asarray(tpow), theta_ref_col=ref_col, theta_n_windows=nwin,
+             lfp_rms_uV=lfp.std(0) * UV, wave_t_ms=np.arange(-h, h + 1) / fs * 1000.0, spw_wave_uV=spw_wave,
+             ripple_env_wave_uV=env_wave, xml_path=str(xml_path), xml_group_cols=g_cols, xml_group_len=g_len)
+    if C_HP is not None:
+        d["spikeband_corr"] = C_HP
+    if new_groups is not None:
+        d["derived_group_cols"], d["derived_group_len"] = flat(new_groups)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(path, **d)
+    return path
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cohort", required=True); ap.add_argument("--animal", required=True); ap.add_argument("--session", required=True)
@@ -230,6 +264,8 @@ def main() -> None:
     ap.add_argument("--raw", default=None, help="RAW session folder (…/<MAC>/<session>): read amplifier.dat directly and decimate to 1250 Hz; no sort folder needed")
     ap.add_argument("--xml", default=None, help="grouping XML when there is no sort folder (default: the animal's xml: in probes_<cohort>.yaml)")
     ap.add_argument("--no-write", action="store_true")
+    ap.add_argument("--no-deglitch", action="store_true", help="raw mode: do not de-glitch (the folder is an already de-glitched staged copy)")
+    ap.add_argument("--save-profile", default=None, help="write all intermediate profiles of the window to this .npz")
     a = ap.parse_args()
 
     an = a.animal.upper(); an = f"SF{int(an[2:]):02d}" if an.startswith("SF") and an[2:].isdigit() else an
@@ -239,7 +275,7 @@ def main() -> None:
         import yaml
         cfg = ephys_block(a.cohort)
         off = a.offset_min if a.offset_min is not None else 0.0
-        lfp, fs, fw, C_hp = load_raw_lfp(Path(a.raw), a.minutes, off, cfg)
+        lfp, fs, fw, C_hp = load_raw_lfp(Path(a.raw), a.minutes, off, cfg, allow_deglitch=not a.no_deglitch)
         global C_HP; C_HP = C_hp
         nch = lfp.shape[1]; win = lfp.shape[0]; a0 = int(off * 60 * fs); bad = set()
         xml_path = Path(a.xml) if a.xml else PROJECT_ROOT / yaml.safe_load((PROJECT_ROOT / cfg.get("probe_config", f"ephys/configs/probes_{a.cohort}.yaml")).read_text(encoding="utf-8"))["animals"][an]["xml"]
@@ -329,6 +365,15 @@ def main() -> None:
                 f"channels = exported columns")
         out = write_xml(build_session_xml(n_channels=nch, fs=20000.0, groups=new_groups, reject=sorted(dead), layout="linear", description_extra=desc), Path(a.derive_xml))
         print(f"   -> {out}")
+    if a.save_profile:
+        meta = {"animal": an, "session": a.session, "source": a.raw or str(sdir), "window_start_min": float(a0 / fs / 60),
+                "window_min": float(win / fs / 60), "fs": fs, "ripple_thr_z": a.thr, "grouping_xml": str(xml_path),
+                "firmware": (fw if a.raw else None), "deglitch_applied": DEGLITCH_APPLIED if a.raw else None,
+                "units": "uV relative (0.195 uV/count)", "git_commit": git_commit(), "written_utc": utc_now_iso()}
+        out_npz = save_profile_npz(Path(a.save_profile), lfp=lfp, fs=fs, peaks=peaks, live=live, dead=dead, skipped=skipped, spw=spw,
+                                   rp=rp, theta=theta, tpow=tpow, ref_col=ref_col, nwin=nwin, n_rip=n, xml_path=xml_path,
+                                   all_groups=all_groups, new_groups=locals().get("new_groups") if a.derive_xml else None, meta=meta)
+        print(f"   profiles -> {out_npz}")
     if a.profile_only or a.derive_xml or a.permute_tail:
         return
 

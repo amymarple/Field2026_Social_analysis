@@ -94,7 +94,7 @@ def _read(f, nch: int, s0: int, s1: int) -> np.ndarray:
 def _work(args: tuple) -> tuple[int, np.ndarray | None]:
     """Worker: a CONTIGUOUS segment [s_lo, s_hi) of input samples, read front to back chunk by chunk (one sequential
     stream per worker) and written straight into its place in the preallocated output (frame a/16 for chunk start a)."""
-    path, out_path, nch, ns, s_lo, s_hi, thr = args
+    path, out_path, nch, ns, s_lo, s_hi, thr, base = args
     counts = np.zeros(nch, dtype=np.int64) if thr is not None else None
     with open(path, "rb", buffering=0) as f, open(out_path, "r+b") as fo:
         for a in range(s_lo, s_hi, CHUNK):
@@ -105,14 +105,17 @@ def _work(args: tuple) -> tuple[int, np.ndarray | None]:
             n_out = math.ceil((b - a) / DOWN)
             if bad is not None:
                 counts += bad[a - pa:b - pa].sum(axis=0)
-            fo.seek((a // DOWN) * nch * 2)
+            fo.seek(((a - base) // DOWN) * nch * 2)
             fo.write(np.clip(np.rint(z[k0:k0 + n_out]), -32768, 32767).astype(np.int16).tobytes())
     return s_hi - s_lo, counts
 
 
 def convert_session(src: Path, out: Path, *, nch: int = 64, deglitch: bool = False, workers: int = 8,
-                    max_seconds: float | None = None, meta: dict | None = None, progress: bool = True) -> dict:
-    """Stream ``src`` (amplifier.dat) into ``out`` (.lfp); writes ``out`` atomically and a ``.json`` sidecar."""
+                    max_seconds: float | None = None, meta: dict | None = None, progress: bool = True,
+                    start_seconds: float | None = None) -> dict:
+    """Stream ``src`` (amplifier.dat) into ``out`` (.lfp); writes ``out`` atomically and a ``.json`` sidecar.
+    ``start_seconds`` / ``max_seconds`` select a window [start, start + max) of the session (start is floored to a multiple
+    of 16 samples so lfp[k] <-> amplifier sample start + 16k). Filtering still sees MARGIN samples beyond the window edges."""
     src = Path(src)
     if src.is_dir():
         src = src / "amplifier.dat"
@@ -120,11 +123,15 @@ def convert_session(src: Path, out: Path, *, nch: int = 64, deglitch: bool = Fal
     if nbytes % (2 * nch):
         raise ValueError(f"{src}: size {nbytes} not divisible by 2*{nch}")
     ns_file = nbytes // (2 * nch)
-    ns = ns_file if max_seconds is None else min(ns_file, int(max_seconds * FS_IN))
+    s_start = 0 if not start_seconds else (int(start_seconds * FS_IN) // DOWN) * DOWN
+    if s_start >= ns_file:
+        raise ValueError(f"{src}: start {start_seconds} s is beyond the end ({ns_file / FS_IN:.1f} s)")
+    s_end = ns_file if max_seconds is None else min(ns_file, s_start + int(max_seconds * FS_IN))
+    ns = s_end - s_start                                # samples in the window
     t0 = time.time()
     thr = None
     if deglitch:
-        d = np.memmap(src, dtype=np.int16, mode="r").reshape(ns_file, nch)[:ns]
+        d = np.memmap(src, dtype=np.int16, mode="r").reshape(ns_file, nch)[s_start:s_end]
         thr = estimate_thresholds(d, DEFAULT_K, DEFAULT_FLOOR)
         del d
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -132,11 +139,12 @@ def convert_session(src: Path, out: Path, *, nch: int = 64, deglitch: bool = Fal
     expected = math.ceil(ns / DOWN)
     with open(tmp, "wb") as fo:                       # preallocate; every worker writes its own region
         fo.truncate(expected * nch * 2)
-    # One contiguous segment per worker (boundaries on CHUNK multiples, so frames stay aligned to 16*k).
+    # One contiguous segment per worker (boundaries on CHUNK multiples from s_start, so frames stay aligned to s_start + 16*k).
     n_chunks = math.ceil(ns / CHUNK)
     nseg = max(1, min(workers, n_chunks))
-    bounds = [min(ns, (n_chunks * i // nseg) * CHUNK) for i in range(nseg + 1)]
-    jobs = [(str(src), str(tmp), nch, ns_file, bounds[i], bounds[i + 1], thr) for i in range(nseg) if bounds[i] < bounds[i + 1]]
+    bounds = [s_start + min(ns, (n_chunks * i // nseg) * CHUNK) for i in range(nseg + 1)]
+    jobs = [(str(src), str(tmp), nch, ns_file, bounds[i], bounds[i + 1], thr, s_start)
+            for i in range(nseg) if bounds[i] < bounds[i + 1]]
     replaced = np.zeros(nch, dtype=np.int64)
     done_samples = 0
     with ProcessPoolExecutor(max_workers=len(jobs)) as ex:
@@ -157,8 +165,9 @@ def convert_session(src: Path, out: Path, *, nch: int = 64, deglitch: bool = Fal
         "source": str(src), "output": str(out), "n_channels": nch, "dtype": "int16",
         "fs_in": FS_IN, "fs_out": FS_OUT, "n_samples_in": int(ns), "n_frames_out": int(n_frames),
         "truncated_to_s": max_seconds, "duration_s": ns / FS_IN,
+        "start_sample": int(s_start), "start_s": s_start / FS_IN,
         "filter": f"butter order {FILT_ORDER} low-pass {LOWPASS_HZ:g} Hz, sosfiltfilt (zero-phase), on raw; then resample_poly down={DOWN}",
-        "sample_alignment": "lfp[k] <-> amplifier sample 16*k",
+        "sample_alignment": f"lfp[k] <-> amplifier sample {int(s_start)} + 16*k",
         "deglitch": bool(deglitch), "deglitch_k_mad": DEFAULT_K if deglitch else None, "deglitch_floor_adc": DEFAULT_FLOOR if deglitch else None,
         "deglitch_replaced_total": int(replaced.sum()) if deglitch else None,
         "chunk_samples": CHUNK, "margin_samples": MARGIN, "workers": workers,
@@ -226,9 +235,18 @@ def _selftest() -> int:
         aliased = abs(2000 - 2 * FS_OUT)                                # 2 kHz would alias to 500 Hz without the pre-filter
         c4 = amp(aliased) < 2.0
         c5 = side["deglitch_replaced_total"] >= 490 and float(np.max(np.abs(lfp[inner, 1] - lfp[inner, 0]))) < 200
+        # window mode: [20 s, 45 s) must equal the same frames of a full (no de-glitch) conversion, away from the window edges
+        full_s = convert_session(src, Path(td) / "f.lfp", nch=nch, workers=2, progress=False)
+        win_s = convert_session(src, Path(td) / "w.lfp", nch=nch, workers=2, progress=False, start_seconds=20.0, max_seconds=25.0)
+        full = np.fromfile(Path(td) / "f.lfp", dtype=np.int16).reshape(-1, nch)
+        win = np.fromfile(Path(td) / "w.lfp", dtype=np.int16).reshape(-1, nch)
+        k0 = win_s["start_sample"] // DOWN
+        wdiff = int(np.max(np.abs(win[300:-300].astype(int) - full[k0 + 300:k0 + win.shape[0] - 300].astype(int))))
+        c6 = win_s["start_sample"] == 400000 and win.shape[0] == math.ceil(25 * FS_IN / DOWN) and wdiff == 0 and full_s["start_sample"] == 0
     for name, c in [("frame count = ceil(n/16)", c1), (f"chunked == one-shot (max diff {diff:.2f} LSB)", c2),
                     ("8 Hz / 180 Hz amplitude kept", c3), ("2 kHz removed (no alias at 500 Hz)", c4),
-                    ("15k-ADC single-sample glitches removed", c5)]:
+                    ("15k-ADC single-sample glitches removed", c5),
+                    (f"window [20 s, 45 s) == same frames of the full conversion (max diff {wdiff} LSB)", c6)]:
         print(f"[{'PASS' if c else 'FAIL'}] {name}")
         ok &= bool(c)
     print("PASS - make_lfp self-test" if ok else "FAIL - make_lfp self-test")
@@ -245,6 +263,9 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--min-seconds", type=float, default=60.0)
     ap.add_argument("--max-seconds", type=float, default=None, help="convert only the first N s of each session (tests)")
+    ap.add_argument("--start-seconds", type=float, default=None, help="window start in s (with --max-seconds = window length); floored to 16 samples")
+    ap.add_argument("--src", default=None, help="convert this amplifier.dat folder instead of the raw session (e.g. a de-glitched staged copy); requires one --animal and --session")
+    ap.add_argument("--out-name", default=None, help="output basename (default: the session name)")
     ap.add_argument("--include-flagged", action="store_true")
     ap.add_argument("--include-fm62", action="store_true")
     ap.add_argument("--overwrite", action="store_true")
@@ -268,13 +289,20 @@ def main() -> None:
     done = 0
     for r in sel:
         animal = _norm_animal(r["animal"])
-        out = root / animal / f"{r['session']}.lfp"
+        out = root / animal / f"{a.out_name or r['session']}.lfp"
         if out.exists() and out.with_name(out.name + ".json").exists() and not a.overwrite:
             continue
-        src = find_session_dir(raw, r["animal"], r["session"])
+        if a.src:
+            if len(sel) != 1:
+                raise SystemExit("--src needs exactly one selected session (--animal X --session Y)")
+            src = Path(a.src)
+        else:
+            src = find_session_dir(raw, r["animal"], r["session"])
         fw = int(r.get("firmware") or 0)
-        print(f"{animal} {r['session']} FM{fw} {float(r['duration_s']) / 3600:.2f} h{' (de-glitch)' if fw < clean_min else ''}")
-        convert_session(src, out, deglitch=fw < clean_min, workers=a.workers, max_seconds=a.max_seconds,
+        # a staged copy that stage_session.py already de-glitched carries deglitch_manifest.json: never de-glitch twice
+        deglitch = fw < clean_min and not (src / "deglitch_manifest.json").exists()
+        print(f"{animal} {r['session']} FM{fw} {float(r['duration_s']) / 3600:.2f} h from {src}{' (de-glitch)' if deglitch else ''}")
+        convert_session(src, out, deglitch=deglitch, workers=a.workers, max_seconds=a.max_seconds, start_seconds=a.start_seconds,
                         meta={"cohort": resolve_cohort(a.cohort), "animal": animal, "session": r["session"], "firmware": fw,
                               "start_local": r.get("start_local"), "logger_mac": r.get("logger_mac")})
         done += 1

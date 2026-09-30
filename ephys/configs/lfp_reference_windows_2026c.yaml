@@ -1,0 +1,16 @@
+# Reference windows for re-deriving each animal's within-shank site order from the LFP layer profile (cohort 2026c).
+# User, 2026-09-29: the layer-profile gradient (SPW polarity reversal, ripple-power peak, theta phase with depth) does not
+# change when the probe moves, so the order derived on a reference window must reproduce on a cross-check window of another
+# day. Windows are chosen by the user by eye (Neuroscope); minutes are from the start of the STAGED session file.
+# role: reference = derive the order here; crosscheck = score / re-derive here and compare.
+# source_dir: the staged (already de-glitched for FM<65) amplifier.dat folder the window is read from.
+# Outputs (LFP window files, candidate XMLs, saved profiles .npz): G:/3rd_rat_spikes/analysis/inspect/<SFxx>_xml_reorder/
+# Other animals: windows to come from the user.
+
+SF07:
+  - {session: "2_20260901_002100.939", start_min: 271, end_min: 275, role: reference,
+     firmware: 64, source_dir: "G:/3rd_rat_spikes/analysis/stage/SF07/2_20260901_002100.939",
+     note: "user 2026-09-29: current SF07 XML does not look fully right here; derive the order on this day"}
+  - {session: "15_20260902_082418.755", start_min: 56, end_min: 80, role: crosscheck,
+     firmware: 65, source_dir: "G:/3rd_rat_spikes/analysis/stage/SF07/15_20260902_082418.755",
+     note: "user 2026-09-29: cross-check window (next day, before the 09-04 probe advance)"}
