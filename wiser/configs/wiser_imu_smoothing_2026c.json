@@ -1,0 +1,183 @@
+{
+  "_about": "Inputs of the WISER + head-IMU smoothing pilot for cohort 2026c (wiser/scripts/analyze_wiser_imu_smoothing.py; plan implementation_plan/2026-09-29-wiser-imu-smoothing-pilot.md, approved by the user 2026-09-29). Times are field-PC local (EDT, naive). The driver writes the fitted hyperparameters into `tuned` (fitted on the tuning night 2026-09-08/09 only). A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "wiser_db": "D:/Field2026_analysis_out/2026c/wiser_working/3rdcohort_Spike_2026_3_4.sqlite",
+  "wiser_table": "reports",
+  "wiser_db_sha256_prefix_expected": "82ccadfde589",
+  "silences_csv": "D:/Field2026_analysis_out/2026c/wiser_cohort3_accuracy_20260928_1405/csv/c3_all_tag_silences_merged.csv",
+  "silence_pad_s": 120,
+  "handling_json": "cv/configs/cohort3_handling_windows.json",
+  "walls_json": "D:/Field2026_analysis_out/2026c/wiser_cohort3_accuracy_20260928_1405/csv/c3_wall_ridges_regimeB.json",
+  "tau_star_s": {
+    "_source": "results/2026c/wiser_baseline/reports/wiser_baseline_imu_calibration_pilot_2026c.md section 2 (M1, fitted on 2026-09-08 20:00 -> 09-09 06:00); + = WISER later than the IMU",
+    "SF07": 0.2,
+    "SF08": 0.15,
+    "SF09": 0.1,
+    "SF10": 0.2,
+    "SF12": 0.15
+  },
+  "seed": 20260929,
+  "superseded_runs": [
+    {
+      "run_dir": "D:/Field2026_analysis_out/2026c/wiser_imu_smoothing_pilot_20260929_2108",
+      "note": "first run; applied the ADC-lane on-windows of all loggers to every animal (SF12's window to 21:04:59 masked the first 299 s of the test night for all five). Fixed to per-logger windows; the tuning night had no ADC window, so every tuned value is identical. First-run verdicts: V1 FAIL, V2 FAIL (V2 (a) 1/5 animals), V3 skipped."
+    }
+  ],
+  "example_animal": "SF09",
+  "nights": {
+    "tuning": {
+      "label": "tuning night 2026-09-08/09 (regime B)",
+      "start": "2026-09-08 21:00:00",
+      "end": "2026-09-09 04:20:00",
+      "sessions": {
+        "SF07": "8_20260908_193733.435",
+        "SF08": "8_20260908_193958.035",
+        "SF09": "9_20260908_194312.545",
+        "SF10": "12_20260908_194550.363",
+        "SF12": "8_20260908_194824.915"
+      }
+    },
+    "test": {
+      "label": "test night 2026-09-10/11 (regime B), named in the plan before any result",
+      "start": "2026-09-10 21:00:00",
+      "end": "2026-09-11 04:20:00",
+      "sessions": {
+        "SF07": "12_20260910_204411.854",
+        "SF08": "2_20260910_210245.604",
+        "SF09": "15_20260910_204912.017",
+        "SF10": "9_20260910_205611.775",
+        "SF12": "15_20260910_210518.445"
+      },
+      "note": "lane-off restarts after the ADC-lane night pieces (quarantined): SF08 starts 21:02:45 and SF12 21:05:18, so their first minutes have no IMU (nodata); SF07 chain verdict 'inconsistent' but accepted on its native fit (cohorts/2026c.yaml ephys.pc_time_accept)"
+    }
+  },
+  "static_implant": {
+    "label": "SF11 dropped implant with tag 3058 (shortid 12376) in the CH07 box (house_2)",
+    "shortid": 12376,
+    "run_start": "2026-09-07 06:12:00",
+    "run_end": "2026-09-07 08:12:00",
+    "windows": [
+      {
+        "label": "quiet 06:23-06:44",
+        "start": "2026-09-07 06:23:00",
+        "end": "2026-09-07 06:44:00"
+      },
+      {
+        "label": "quiet 06:55-07:24",
+        "start": "2026-09-07 06:55:00",
+        "end": "2026-09-07 07:24:00"
+      }
+    ],
+    "source": "accuracy report static implant reference (bulk csv/c3_static_implant_reference.csv quiet windows); IMU blanked after cohorts/2026c.yaml ephys.imu_valid_until SF11 06:10"
+  },
+  "static_cohort1": {
+    "label": "cohort-1 fixed-position test, 6 tags never moved (wiser/README.md; truth convention = median position)",
+    "db": "D:/Field2026_analysis_out/2026c/wiser_working/tag_reports.sqlite",
+    "table": "reports",
+    "tags": [
+      12378,
+      12380,
+      12386,
+      12395,
+      12407,
+      12409
+    ],
+    "start": "2026-06-21 18:16:00",
+    "end": "2026-06-22 12:06:00",
+    "note": "first fix 06-21 18:11:50, last 06-22 12:16-12:17; the first 4 min and the last 10 min (tag removal, wiser/README.md) are dropped"
+  },
+  "tuned": {
+    "fitted_on": "tuning night 2026-09-08 21:00:00 -> 2026-09-09 04:20:00 (2026-09-08/09) only",
+    "fitted_by": "wiser/scripts/analyze_wiser_imu_smoothing.py",
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_imu_smoothing_pilot_20260929_2119",
+    "written_local": "2026-09-29 21:24:09",
+    "objective": "pooled median held-out error on scheme (a), hidden fixes with >= 7 anchors",
+    "huber_k": 2.5,
+    "gate2": 13.8155,
+    "n_irls": 2,
+    "B2": {
+      "q": 3,
+      "mrej": 1000000000.0,
+      "med": 4.091139972633556
+    },
+    "B2p": {
+      "q": 1.0,
+      "tb": 15,
+      "sb": 2.5,
+      "med": 4.0545503134558905
+    },
+    "V1": {
+      "sv": 0.25,
+      "med": 4.040923512079062
+    },
+    "V2": {
+      "mult": [
+        1.0,
+        0.01,
+        0.3,
+        10.0
+      ],
+      "med": 3.9998887111144885
+    },
+    "loco": {
+      "theta_l": 3.929059435844421,
+      "rho_l": 0.1,
+      "J": 0.601635602967971,
+      "tpr": 0.7514002585092633,
+      "fpr": 0.14976465554129226,
+      "n_pos": 9284,
+      "n_neg": 39729
+    },
+    "anchor_sigma": {
+      "3": {
+        "n": 56,
+        "rsd_x": 6.4829,
+        "sd_x": 46.2156,
+        "rsd_y": 8.5584,
+        "sd_y": 25.4318
+      },
+      "4": {
+        "n": 128,
+        "rsd_x": 4.1969,
+        "sd_x": 16.5296,
+        "rsd_y": 7.2269,
+        "sd_y": 12.016
+      },
+      "5": {
+        "n": 344,
+        "rsd_x": 5.0309,
+        "sd_x": 14.5932,
+        "rsd_y": 7.5891,
+        "sd_y": 9.3014
+      },
+      "6": {
+        "n": 1002,
+        "rsd_x": 3.5481,
+        "sd_x": 10.589,
+        "rsd_y": 5.6419,
+        "sd_y": 7.9157
+      },
+      "7": {
+        "n": 2769,
+        "rsd_x": 2.3242,
+        "sd_x": 2.9393,
+        "rsd_y": 3.2276,
+        "sd_y": 4.6722
+      },
+      "8": {
+        "n": 9944,
+        "rsd_x": 1.7331,
+        "sd_x": 2.0805,
+        "rsd_y": 3.0148,
+        "sd_y": 3.745
+      },
+      "9": {
+        "n": 34554,
+        "rsd_x": 1.3948,
+        "sd_x": 1.6247,
+        "rsd_y": 2.4691,
+        "sd_y": 2.8829
+      }
+    }
+  }
+}
