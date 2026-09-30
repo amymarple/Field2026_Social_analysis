@@ -1,0 +1,24 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_ins_fusion_20260930_0016",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_ins_fusion",
+  "report": "wiser_baseline_ins_fusion_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_ins_fusion.py",
+  "cache_builder": "wiser/scripts/build_imu_wiser_cache.py",
+  "config": "wiser/configs/wiser_ins_fusion_2026c.json",
+  "git_commit": "d051fa8+dirty",
+  "runtime_s": 1520.0,
+  "caches": {
+    "imu_raw": "D:\\Field2026_analysis_out\\2026c\\imu_raw_cache",
+    "wiser_fix": "D:\\Field2026_analysis_out\\2026c\\wiser_fix_cache",
+    "imu100": "D:\\Field2026_analysis_out\\2026c\\imu100_cache"
+  },
+  "figures": [
+    "wiser_baseline_ins_fusion_imu_psd_2026c.png",
+    "wiser_baseline_ins_fusion_imu_quality_2026c.png",
+    "wiser_baseline_ins_fusion_heldout_2026c.png",
+    "wiser_baseline_ins_fusion_heading_2026c.png",
+    "wiser_baseline_ins_fusion_example_2026c.png"
+  ]
+}

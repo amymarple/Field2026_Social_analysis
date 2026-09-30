@@ -1,0 +1,238 @@
+{
+  "_about": "Inputs and pre-registered rules of the head-IMU inertial fusion (V4) for cohort 2026c (wiser/scripts/build_imu_wiser_cache.py = Phase A caches; wiser/scripts/analyze_wiser_ins_fusion.py = Phase B IMU quality/smoothing + Phase C ESKF/RTS; plan implementation_plan/2026-09-29-wiser-ins-fusion.md, approved by the user 2026-09-29). Nights, sessions, tau*, seed, masks, the anchor-noise table and B1/B2/B2' tuned values are taken from the smoothing pilot's config (smoothing_config) unchanged. Times are field-PC local (EDT, naive). The analysis driver writes Phase-B choices and Phase-C tuned values into `tuned` (fitted on the tuning night 2026-09-08/09 only). A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "smoothing_config": "wiser/configs/wiser_imu_smoothing_2026c.json",
+  "pc_time_root": "Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/pc_time",
+  "imu_npz_root": "D:/3rd_rat_spikes/analysis/imu",
+  "cache_roots": {
+    "imu_raw": "D:/Field2026_analysis_out/2026c/imu_raw_cache",
+    "wiser_fix": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+    "imu100": "D:/Field2026_analysis_out/2026c/imu100_cache"
+  },
+  "cache_window": {
+    "_note": "A1 IMU window = [night start - pre_margin_s, night end + post_margin_s]; post margin = 10 min + 1 h so the +1 h-shifted control is served from the cache (declared deviation from 'night + 10 min').",
+    "pre_margin_s": 600,
+    "post_margin_s": 4200,
+    "wiser_margin_s": 600,
+    "sha_head_bytes": 67108864
+  },
+  "phase_b": {
+    "hampel_half_window": 3,
+    "hampel_nsigma": 6.0,
+    "hampel_mad_floor_counts": 2.0,
+    "psd_nperseg": 2500,
+    "noise_band_hz": [
+      150.0,
+      500.0
+    ],
+    "cutoff_ratio": 2.0,
+    "cutoff_smooth_hz": 2.0,
+    "cutoff_search_hz": [
+      5.0,
+      100.0
+    ],
+    "cutoff_clip_hz": [
+      5.0,
+      40.0
+    ],
+    "butter_order": 4,
+    "quasi_static_win_s": 0.5,
+    "quasi_static_omega_dps": 10.0,
+    "quasi_static_acc_sd": 0.15,
+    "ellipsoid_huber_scale": 0.1,
+    "ellipsoid_prior_scale_sd": 0.05,
+    "ellipsoid_prior_offset_sd": 0.5,
+    "cv_block_s": 600,
+    "ellipsoid_min_animals": 4,
+    "bias_running_half_s": 300,
+    "bias_min_windows": 20,
+    "still_run_min_s": 60,
+    "sds_min_static_s": 0.5,
+    "sds_gap_s": [
+      0.2,
+      3.0
+    ],
+    "sds_min_tilt_deg": 20.0,
+    "gyro_scale_grid": [
+      0.8,
+      1.4,
+      0.0025
+    ],
+    "gyro_scale_min_effect": 0.02,
+    "kin_omega_range_dps": [
+      20.0,
+      300.0
+    ],
+    "kin_acc_dev_frac_g": 0.1,
+    "kin_lowpass_hz": 5.0
+  },
+  "phase_c": {
+    "n_yaw_hyp": 24,
+    "yaw0_sd_deg": 10.0,
+    "pseudo_every": 10,
+    "cov_every": 2,
+    "n_irls": 2,
+    "huber_k": 2.5,
+    "gate2": 13.8155,
+    "sigma_ba": 0.001,
+    "sigma_bg": 5e-05,
+    "sigma_a_sat": 20.0,
+    "sigma_g_sat": 1.0,
+    "sigma_omega_floor_dps": 0.5,
+    "sigma_f_floor": 0.05,
+    "p0_pos_in": 3.0,
+    "p0_vel_inps": 10.0,
+    "p0_tilt_deg": 3.0,
+    "p0_ba": 0.2,
+    "p0_bg_dps": 0.5,
+    "default": {
+      "sa": 0.1,
+      "sg": 0.01,
+      "sfd": 1.5,
+      "sv": 0.5,
+      "tb": 15.0,
+      "sb": 2.5,
+      "kr": 1.0
+    },
+    "grid_stage1": {
+      "sa": [
+        0.01,
+        0.03,
+        0.1,
+        0.3
+      ],
+      "sg": [
+        0.003,
+        0.01,
+        0.03
+      ],
+      "sfd": [
+        0.5,
+        1.5
+      ]
+    },
+    "grid_stage2": {
+      "sv": [
+        0.1,
+        0.5,
+        2.0
+      ],
+      "drift": [
+        [
+          15.0,
+          2.5
+        ],
+        [
+          15.0,
+          1.5
+        ],
+        [
+          60.0,
+          2.5
+        ]
+      ],
+      "kr": [
+        1.0,
+        2.0
+      ]
+    },
+    "_units": "sa (m/s^2)/sqrt(Hz) horizontal acceleration noise; sg (rad/s)/sqrt(Hz) gyro noise; sigma_ba (m/s^2)/sqrt(s) and sigma_bg (rad/s)/sqrt(s) bias random walks; sv in/s ZUPT; tb s and sb in WISER drift (AR(1)); sigma_a_sat (m/s^2)/sqrt(Hz), sigma_g_sat (rad/s)/sqrt(Hz) on saturated/unusable IMU samples",
+    "sigma_f_dyn": 1.5,
+    "dyn_omega_max_dps": 100.0,
+    "tilt_reset_deg": 30.0,
+    "_deviation_2026-09-30": "Decided on the TUNING night before any test-night V4 result (diagnostics in the report): the filter lost its attitude for 20-25 min at a time when tilt was corrected only in IMU-still seconds -> added a dynamic gravity update (10 Hz, | |a| - g | < 0.1 g and |w| < 100 deg/s, sigma sfd, soft chi2_3 gate) and a tilt-reset guard (1-s mean specific force ~g but > 30 deg from the filter's up -> tilt re-initialised, yaw kept, attitude covariance reset); grid extended with sfd, sa = 0.01 and a moving-fix white-variance factor kr (NIS while moving was 2.3x the still NIS). Default config changed to sa 0.1 (was 0.3) for the tuning-night yaw selection."
+  },
+  "accept": {
+    "min_gain": 0.03,
+    "min_animals": 4,
+    "moving_max_loss": -0.02
+  },
+  "seed_offsets": {
+    "_note": "hidden sets use the smoothing pilot's seeds (seed + i tuning, seed + 1000 + i test); bootstrap seeds below",
+    "boot_tuning": 7,
+    "boot_test": 11
+  },
+  "tuned": {
+    "fitted_on": "tuning night 2026-09-08 21:00:00 -> 2026-09-09 04:20:00 (2026-09-08/09) only",
+    "fitted_by": "wiser/scripts/analyze_wiser_ins_fusion.py",
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_ins_fusion_20260930_0016",
+    "written_local": "2026-09-30 00:41:36",
+    "phase_b": {
+      "fc": {
+        "acc": 40.0,
+        "gyr": 40.0
+      },
+      "acc_method": "ellipsoid",
+      "n_ellipsoid_better": 5,
+      "bias_method": "running",
+      "drift_med_block": 0.038850674198361614,
+      "drift_med_running": 0.03773729974498875,
+      "gyro_scale": 1.03,
+      "gyro_scale_star": 1.03,
+      "gyro_scale_ci": [
+        1.005,
+        1.0575
+      ],
+      "gyro_scale_applied": true,
+      "gyro_scale_per_animal": {
+        "SF07": 1.0775,
+        "SF08": 1.005,
+        "SF09": 0.9775,
+        "SF10": 1.02,
+        "SF12": 1.1125
+      },
+      "gyro_scale_before_chain": 1.0275,
+      "n_sds_pairs": 52,
+      "noise": {
+        "sigma_omega_dps": 1.242185328411654,
+        "sigma_f_ms2": 0.05242218785062884,
+        "sigma_g_still": 7.400295930205153e-05,
+        "sigma_omega_measured_dps": 1.206005173215198,
+        "sigma_f_measured_ms2": 0.05242218785062884
+      }
+    },
+    "cutoff": {
+      "acc": {
+        "noise_floor": 1.2164086906528014e-06,
+        "fc_raw_hz": 100.0,
+        "fc_hz": 40.0,
+        "ratio_at_5hz": 984514.1135857437,
+        "ratio_at_20hz": 119383.5022724064,
+        "ratio_at_40hz": 17522.535091641883,
+        "per_animal": {
+          "SF07": 100.0,
+          "SF08": 100.0,
+          "SF09": 100.0,
+          "SF10": 100.0,
+          "SF12": 100.0
+        }
+      },
+      "gyr": {
+        "noise_floor": 0.0001016764184793131,
+        "fc_raw_hz": 100.0,
+        "fc_hz": 40.0,
+        "ratio_at_5hz": 24685574.46421589,
+        "ratio_at_20hz": 851348.7795834998,
+        "ratio_at_40hz": 26005.146343862245,
+        "per_animal": {
+          "SF07": 100.0,
+          "SF08": 100.0,
+          "SF09": 100.0,
+          "SF10": 100.0,
+          "SF12": 100.0
+        }
+      }
+    },
+    "phase_c": {
+      "sa": 0.03,
+      "sg": 0.01,
+      "sfd": 1.5,
+      "sv": 0.5,
+      "tb": 15.0,
+      "sb": 2.5,
+      "kr": 1.0,
+      "med": 4.382660685633997
+    },
+    "objective": "pooled median held-out error on scheme (a), hidden fixes with >= 7 anchors (smoothing pilot's scored set)"
+  }
+}
