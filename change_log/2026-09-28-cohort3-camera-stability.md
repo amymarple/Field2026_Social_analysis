@@ -71,6 +71,16 @@ flipbooks; to be recorded as stable periods per camera for the paddock-mapping c
   motion — from rigid structures that do not move over days (user's proposal). Plan to follow.
 - The flipbooks show the reference at the start and the end.
 
+**Resolved (user, 2026-10-01, from the CH05/CH06 pairs and flipbooks — runs `cv_field_camera_events_20261001_1243`,
+`cv_field_camera_review_20261001_1250`, config `cv/configs/cohort3_house_check_events.json`):** **house1 was moved —
+it now stands farther from its pole; house7 never moved; the houses did not move from 08-31 to 09-17.** So house1 moved
+after 09-17 and before the 09-18 calibration (the 26-h unrecorded window). The CH01/CH02 "distortion" (a house's size
+differs) is most likely this move, not a lens/stitching change → CH01/CH02 may need only a small displacement correction.
+To be confirmed with the rigid landmarks (poles, pole boxes = WISER anchors, wall tops, towers): if one small rigid
+correction aligns them between cohort and 09-18 with small residuals, there is no distortion. House landmarks: the
+unmoved house may enter the cohort→calibration fit; house1 only within 08-31→09-17. Anything measured on post-09-17
+imagery about house1 (e.g. its centre in `cv/configs/field_layout.json`) does not hold for cohort 3.
+
 **Event timeline and event-pair review.** The records (field2026-sync incident log, recording repo, file names,
 weather) show no Duo 3 settings/firmware/mount change and no house move logged; one NVR reboot during the cohort
 (09-06 ~13:00→14:04:44, all NVR channels, not in the incident log); PC blue screens 09-01 04:19:56 and 09-03 13:56
