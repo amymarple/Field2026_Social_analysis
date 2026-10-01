@@ -1,0 +1,9 @@
+{
+  "_about": "Did the houses move between cohort 3 and the 2026-09-18 calibration? (user, 2026-10-01: 'in my memory they did not move — check with CH05/CH06', the near-nadir cameras over house_1 / house_2). Before/after IR pairs for camera_review.py --events --cameras CH05 CH06. Times are field-PC time; 'IRREF' = the camera's 09-18 IR reference frame (CH05/CH06 were IR until ~14:34-14:36 on 09-18).",
+  "events": [
+    {"id": "H1", "label": "mid-cohort vs calibration (09-04 noon -> 09-18 IR reference)", "cams": ["CH05", "CH06"], "before": "2026-09-04 12:00:00", "after": "IRREF", "source": "user request 2026-10-01"},
+    {"id": "H2", "label": "teardown window: last cohort morning (09-12 10:00, animals still in) -> after the 09-16 restart", "cams": ["CH05", "CH06"], "before": "2026-09-12 10:00:00", "after": "2026-09-16 12:30:00", "source": "[IL] L1173-1179, L1229-1233"},
+    {"id": "H3", "label": "temperature run 09-16 -> 09-17", "cams": ["CH05", "CH06"], "before": "2026-09-16 12:30:00", "after": "2026-09-17 11:30:00", "source": "[IL] L1229-1233, L1332-1342"},
+    {"id": "H4", "label": "09-17 stop -> 09-18 calibration (26 h unrecorded)", "cams": ["CH05", "CH06"], "before": "2026-09-17 11:30:00", "after": "IRREF", "source": "Ledger C L158"}
+  ]
+}
