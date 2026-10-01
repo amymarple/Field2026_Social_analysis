@@ -27,7 +27,8 @@ Landmark kinds (the side panel groups them):
            no closed outline that cannot extend). Each visible edge = one piece (b between edges). A category holds
            up to ~3 edges and they need NOT be parallel (e.g. the two sloped gable edges) — every piece is its own
            straight line, matched to the nearest same-category line in another frame. Validation only. HOUSE_1 =
-           house_1 by pole B1 under CH05, HOUSE_2 = house_2 by pole B3 under CH06. Only edges that are truly parallel
+           house_1 = roof number 4 (by pole B1, under CH05; MOVED on 09-18, so never compare it with 09-18 frames),
+           HOUSE_2 = house_2 = roof number 7 (by pole B3, under CH06; never moved). Only edges that are truly parallel
            in 3-D share a vanishing point (a distortion check for those).
            Two water towers outside the paddock (user, 2026-09-29): TOWER_1 beyond the row-C wall (y = 240 side, the
            top of the schematic), TOWER_2 beyond the row-A wall (y = 0 side, the bottom).

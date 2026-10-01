@@ -73,8 +73,10 @@ flipbooks; to be recorded as stable periods per camera for the paddock-mapping c
 
 **Resolved (user, 2026-10-01, from the CH05/CH06 pairs and flipbooks — runs `cv_field_camera_events_20261001_1243`,
 `cv_field_camera_review_20261001_1250`, config `cv/configs/cohort3_house_check_events.json`):** **house1 was moved —
-it now stands farther from its pole; house7 never moved; the houses did not move from 08-31 to 09-17.** So house1 moved
-after 09-17 and before the 09-18 calibration (the 26-h unrecorded window). The CH01/CH02 "distortion" (a house's size
+it now stands farther from its pole; house7 never moved; the houses did not move while the rats were in the field.**
+Names (user): house1 = HOUSE_1 = lab `house_1` = **roof number 4** (by pole B1, under CH05); house2 = HOUSE_2 = lab
+`house_2` = **roof number 7** (by pole B3, under CH06) — the 09-18/19 calibration sheets' "house 4" / "house 7".
+**house1 (roof 4) was moved on 09-18**, the calibration day, so the calibration frames show it in its new place. The CH01/CH02 "distortion" (a house's size
 differs) is most likely this move, not a lens/stitching change → CH01/CH02 may need only a small displacement correction.
 To be confirmed with the rigid landmarks (poles, pole boxes = WISER anchors, wall tops, towers): if one small rigid
 correction aligns them between cohort and 09-18 with small residuals, there is no distortion. House landmarks: the

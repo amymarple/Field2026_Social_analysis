@@ -13,7 +13,8 @@ they are expected to be off (that offset is what the labels will measure) — al
 
 Paddock frame (cv/configs/field_layout.json, calibration): origin = corner pole A0, x along the 40 ft length
 (0–480 in, column 0–4 every 120 in), y across the 20 ft width (row A y = 0, B y = 120, C y = 240 in), z up.
-Houses (user, 2026-09-30: keep the lab names): HOUSE_1 = house_1, next to pole B1, under CH05 (centre ≈ (134.9, 120.0)
+Houses (user, 2026-09-30: keep the lab names): HOUSE_1 = house_1 = roof number 4 (MOVED on 09-18 — the guide shows
+the field_layout position, which may be the post-move one), next to pole B1, under CH05 (centre ≈ (134.9, 120.0)
 in; WISER ROI house_1); HOUSE_2 = house_2, next to pole B3, under CH06 (≈ (347.0, 119.1) in; WISER ROI house_2).
 (Which in-box camera, CH07/CH08, sits in which house is disputed between field_layout.json and the recording repo's
 COLOUR_SAMPLING_LOG_cohort3.md — that does not affect the house names.)
@@ -163,7 +164,8 @@ def schematic(path: Path) -> None:
         pole = min(lay["poles"], key=lambda n: np.hypot(lay["poles"][n][0] / CM_PER_IN - cx, lay["poles"][n][1] / CM_PER_IN - cy))
         ax.add_patch(plt.Rectangle((cx - w / 2, cy - h / 2), w, h, color="#7f7f7f", alpha=0.6))
         n = HOUSE_OF_POLE.get(pole, pole)
-        ax.text(cx, cy - h / 2 - 9, f"HOUSE_{n} (house_{n}, by pole {pole})", ha="center", fontsize=11, color="#333", weight="bold")
+        roof = {"1": "roof 4, moved 09-18", "2": "roof 7, never moved"}.get(n, "")
+        ax.text(cx, cy - h / 2 - 9, f"HOUSE_{n} (house_{n}, {roof}, by pole {pole})", ha="center", fontsize=11, color="#333", weight="bold")
     for cam, (x, y, brg) in cameras_from_fit().items():
         col = "#2ca02c" if cam in ("CH01", "CH02") else "#9467bd" if cam in ("CH03", "CH04") else "#bcbd22"
         ax.plot(x, y, "s", ms=13, color=col, zorder=7)

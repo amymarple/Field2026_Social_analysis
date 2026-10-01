@@ -273,7 +273,12 @@ test night), frames stored locally (`cv/dataset/rat_pano*`), labelled locally, s
 BioHPC (`cv/cv_field/REMOTE_COMPUTE.md`). Plan: `implementation_plan/2026-09-28-cohort3-ch0102-yolo-pilot.md`. **Camera stability is judged by a person**:
 `cv/cv_field/camera_review.py` lays out daily frames with the 09-18 wall-foot lines for review (an automatic ECC check
 failed — grass, rain, IR/colour changes); weather-driven moves are reported manually. **The agent does not judge
-images** and confirms every test plan with the user first.
+images** and confirms every test plan with the user first. **Houses (user, checked on CH05/CH06, 2026-10-01):**
+house_1 = `HOUSE_1` = roof number **4** (by pole B1, under CH05) was **moved on 09-18** (calibration day, farther from
+its pole); house_2 = `HOUSE_2` = roof number **7** (by pole B3, under CH06) never moved; neither moved while the rats were
+in the field. So house_1's position from 09-18 imagery or the calibration (e.g. `field_layout.json` shelter "left")
+does not hold for cohort 3, and the CH01/CH02 difference vs the calibration is most likely this move, not distortion
+(to be confirmed with rigid landmarks — `cv/configs/landmarks/2026c/README.md`).
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

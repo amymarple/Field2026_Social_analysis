@@ -36,10 +36,10 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   (add a midday frame per epoch for CH01/CH02) and skip it where saturated. Whether house landmarks may enter the
   cohort→calibration fit depends on whether the houses were moved between 09-12 and 09-18 (asked); within the cohort
   they are fixed, so they serve the day-to-day correction.
-- **House move (user, 2026-10-01, checked on CH05/CH06):** house1 was MOVED (farther from its pole) after 09-17 and
-  before the 09-18 calibration; house7 never moved; neither moved 08-31→09-17. → the unmoved house's landmarks may
-  enter the cohort→calibration fit; house1's only the within-cohort (08-31→09-17) correction. Mapping of the user's
-  house1/house7 (roof numbers?) to HOUSE_1/HOUSE_2 to be confirmed.
+- **Houses (user, 2026-10-01, checked on CH05/CH06):** `HOUSE_1` = house_1 = **roof number 4** (by pole B1, under CH05);
+  `HOUSE_2` = house_2 = **roof number 7** (by pole B3, under CH06). Neither moved while the rats were in the field;
+  **HOUSE_1 (roof 4) was moved on 09-18** (farther from its pole), HOUSE_2 never. → HOUSE_2 landmarks may enter the
+  cohort→calibration fit; HOUSE_1's only the within-cohort correction (never compared with 09-18 frames).
 - **Only what is visible (user, 2026-10-01):** never draw an estimated or guessed line — an edge hidden by grass
   (e.g. a house base) or by anything else is left out, or only its visible stretches are drawn. A missing line
   costs nothing; a guessed one is a false measurement. (Same reason the wall FOOT is not used.)
