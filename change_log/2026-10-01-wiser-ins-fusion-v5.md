@@ -139,3 +139,25 @@
 - Stage-A decisions (13:27:58) and Stage-B tuning (14:01:58) were frozen before the test periods were read (log; `stage_a_decisions.json`,
   `tuned_frozen.json`); test-night tracks hold 103,959–105,524 fixes and the recomputed B2′ (a) pooled median is 3.93 in, as in the pilot; the A3 stream reproduces gate v2's 0.30° / 0.62°.
 - No raw file, existing cache, SQLite database or existing script was modified; caches only; no images opened; not committed.
+
+## Main-session audit of the V5 failure (2026-10-01, after the user asked "V5为啥失败")
+
+The registered FAIL stands, but its reading must be narrowed. **V5 did not test inertial bridging during motion.**
+1. **Root cause — a design error in the main session's V5 brief:** "gravity aiding ONLY inside strict still windows".
+   Strict windows are a *measurement* criterion (gate v2), not an operational aiding rule. At night a rat has only
+   21–67 min of strict stillness per 440-min night; the median time since the last window is 29–92 min (report §3), so
+   Stage A's tilt runs unaided for tens of minutes and the 2-Hz horizontal specific force is leaked gravity
+   (5.8–8 m/s² for > 60 % of the night). The INS mode was therefore usable only within T_max = 15 s of a window —
+   11 % of night fixes, 92 % of them IMU-still. For comparison, the existing make_imu Fusion AHRS (continuous
+   accelerometer aiding with acceleration rejection, gain 0.5) gives a test-night 2-Hz horizontal |f| of median
+   0.25 m/s² (per animal 0.24–0.53; |ω| < 20 °/s 0.01–0.06; |ω| 100–300 °/s 0.49–0.99) — ≤ 1.5° equivalent tilt,
+   20–30× better than V5 Stage A at night (script: session scratchpad `fusion_night_tilt.py`, inputs
+   `D:\3rd_rat_spikes\analysis\imu\<SFxx>\<session>.imu.npz`). The V4 audit's verdict that gated dynamic gravity
+   aiding is an "anti-pattern" was too strong: V4's faults were overconfidence and tilt resets; gated continuous
+   aiding is standard AHRS practice.
+2. The ψ (IMU↔WISER yaw) unobservability follows from (1): no valid f_xy while the head translates.
+3. V5's CV-mode fallback (κ_cv = 10, no drift term) is a different smoother from V2 and is −0.8 % vs V2 on the 89 % of
+   night fixes it covers, cancelling the +1.5–1.9 % INS-mode gain; V5-vs-V2 therefore confounds the smoother change.
+**Corrected reading:** where the IMU is usable (near stillness) V5 beats V2 by 1.5–1.9 %; whether a well-aided attitude
+lets the IMU bridge motion between WISER fixes remains untested. A fair test (V6) needs continuous gated tilt aiding
+(Fusion-style, honest per-sample tilt uncertainty, bias anchored at strict windows) and V2 itself as the fallback.
