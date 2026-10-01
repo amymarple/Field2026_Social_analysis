@@ -103,3 +103,19 @@ but had no sm_120 kernels ("no kernel image"). Reinstalled `torch==2.13.0+cu130`
 satisfying `==2.13.0`); installed the declared `sahi` (0.12.7, + `fire`; no OpenCV/torch change). Verified: GPU matmul,
 ultralytics GPU inference with `rat_field_div3`, and a 1-epoch GPU training smoke run (AMP checks pass).
 `cv/environment.yml`, `cv/requirements.txt`, `cv/cv_field/HANDOFF.md` and `CLAUDE.md` document the install.
+
+**Automatic landmark tracking (2026-10-01, `cv/cv_field/landmark_track.py`, run `cv_field_landmark_track_20261001_1441`,
+report `results/2026c/cv_field/reports/cv_field_landmark_track_2026c.md`).** The user's 09-18 labels were tracked into
+raw daily frames (03:01 / 12:00 / 21:30, 08-30→09-17; 42 frames per camera) by coarse-to-fine NCC on gradient magnitude
+(coarse ~120-px patches at half resolution → affine A0; fine ±8 px around A0 so a point cannot jump to a parallel
+edge — found by the synthetic self-test) and a Huber affine per frame on the fit set; leave-one-landmark-out error only
+where the rest still constrains both directions. Reference self-check: ~0 shift, 0.2 px on all four cameras.
+- **Daytime works:** CH01 12:00 14/14 ok, held-out median 1.35 px; CH02 12/14 ok, 1.0 px. Day-ok CH01/CH02 fits have
+  **scale 0.999–1.001 and rotation < 0.5°**, translations CH01 −11..+19 / −2..+7 px, CH02 −3..+30 / −2..+1 px, and the
+  unmoved house_2 (validation only) agrees at 2.3 / 1.2 px → **no CH01/CH02 distortion; a small per-day shift.** The
+  shift varies from day to day (e.g. CH02 +30 px on 09-01, −3 px on 09-05) → per-day correction needed.
+- **Night fails** (03:01, 21:30: ≤ 2 of 14 ok per camera; half the landmarks unmatched) — the 09-18 reference is
+  daytime and the IR illuminator changes appearance. Proposed: the user labels one night frame per camera; night frames
+  are tracked against it, and that frame is tied to 09-18 geometrically through the two label sets.
+- **CH03/CH04** have too few landmarks (CH04: two poles + two wall tops): 4–6 of 14 day frames ok; more fixed structures
+  would help.
