@@ -57,7 +57,9 @@ CORNER_PREFIXES = ("BOX_", "PCBOX", "NAILS")              # NAILS = unnumbered p
 # PATCH_<wall>_<n> = a visible patch on a wall sheet: an OPEN, bumpy polyline (corrugation; the bottom is often hidden by
 # grass) -> normal-only constraints like the wall tops, in the fit set (user, 2026-10-01)
 # SEAM_<wall>_<n> = a vertical seam between wall panels (straight, vertical): normal-only like the pole edges
-FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_", "NAILS", "PATCHES", "SEAMS")
+# BUILDING = edges of a building wall outside the paddock (CH04; user, 2026-10-01): normal-only like the wall tops
+FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_", "NAILS", "PATCHES", "SEAMS",
+                "BUILDING")
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
 HOUSE1_MOVED = date(2026, 9, 18)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30", "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}
@@ -297,8 +299,8 @@ def selftest() -> int:
     ok = r["A"] is not None and err < 0.5 and r.get("status") == "ok"
     print(f"[{'PASS' if ok else 'FAIL'}] affine recovered: centre error {err:.2f} px, held-out median {r.get('held_med', np.nan):.2f} px, status {r.get('status')}")
     nails = samples("NAILS", "point", pieces_of([[[100, 100]], [[200, 150]], [[300, 120]]]))
-    okn = len(nails) == 3 and all(s[4] for s in nails) and in_fit("NAILS") and in_fit("PATCHES") and in_fit("SEAMS")
-    print(f"[{'PASS' if okn else 'FAIL'}] NAILS: each single point is a 2-D constraint; NAILS/PATCHES/SEAMS in the fit set")
+    okn = len(nails) == 3 and all(s[4] for s in nails) and in_fit("NAILS") and in_fit("PATCHES") and in_fit("SEAMS") and in_fit("BUILDING")
+    print(f"[{'PASS' if okn else 'FAIL'}] NAILS: each single point is a 2-D constraint; NAILS/PATCHES/SEAMS/BUILDING in the fit set")
     house = samples("HOUSE_1_ROOF_X", "edge", pieces_of([[[0, 0], [10, 0]]]))
     ok2 = not usable("HOUSE_1_ROOF_X", date(2026, 9, 4)) and usable("HOUSE_1_ROOF_X", date(2026, 9, 18)) and usable("HOUSE_2_BASE_Z", date(2026, 9, 4)) and len(house) == 1
     print(f"[{'PASS' if ok2 else 'FAIL'}] house_1 excluded before 09-18, house_2 always usable")
