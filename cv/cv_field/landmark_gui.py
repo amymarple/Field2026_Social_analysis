@@ -91,7 +91,10 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   TOWER_2 = the one beyond the row-A wall (y = 0, bottom). <b>HOUSE_n_*</b>: straight edges sorted by 3-D direction — _ROOF_X / _ROOF_Y = roof edges parallel to the paddock
   x (length) / y (width) axis; _BASE_X / _BASE_Y = bottom edges parallel to x / y; _BASE_Z = the vertical corner edges.
   One piece per visible straight edge, press <b>b</b> between edges; a category can hold up to about 3 edges and they
-  need not be parallel (e.g. the two sloped gable edges). Draw the same edges in every frame. Used only to
+  need not be parallel (e.g. the two sloped gable edges). Draw the same edges in every frame.
+  <b>Only what you can SEE — never an estimated or guessed line</b> (an edge hidden by grass or anything else is left
+  out; draw just its visible stretches). A missing line costs nothing, a guessed one biases the result. When grass
+  hides the base, the roof edges and the vertical corners usually stay visible. Used only to
   CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
   Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
   click the REAL one) and the top-view map cv/configs/landmarks/2026c/paddock_schematic.png (A0 = origin corner, x

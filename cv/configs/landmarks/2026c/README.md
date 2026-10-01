@@ -30,6 +30,9 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   Visible per camera (calibration): CH03 → POLE_A0/B0/C0, WALLTOP_X0/Y0/Y240; CH04 → POLE_A4/B4/C4, WALLTOP_X480/Y0;
   CH01 → mostly rows B/C (+A0), all four wall tops, both houses; CH02 → mostly rows A/B (+C4), WALLTOP_X0/X480/Y0,
   both houses.
+- **Only what is visible (user, 2026-10-01):** never draw an estimated or guessed line — an edge hidden by grass
+  (e.g. a house base) or by anything else is left out, or only its visible stretches are drawn. A missing line
+  costs nothing; a guessed one is a false measurement. (Same reason the wall FOOT is not used.)
 - **Hidden middle → pieces:** a wall seen only at both ends, or a pole edge cut by something in front, is labelled as
   separate PIECES of the same landmark (press `b` in the GUI between them); nothing is joined across a gap. Export
   format: `landmarks[name]` = list of pieces, each a list of `[u, v]` (`"format": "pieces"`); an outline is closed
