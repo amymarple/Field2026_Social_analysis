@@ -282,14 +282,17 @@ does not hold for cohort 3, and the CH01/CH02 difference vs the calibration is m
 (to be confirmed with rigid landmarks — `cv/configs/landmarks/2026c/README.md`).
 **Rigid-landmark correction (cohort px → 09-18 calibration-epoch px):** the user labels rigid structures on the 09-18
 reference frames with `landmark_gui.py CHxx "<time>" --cohort 2026c [--guide …]` (poles L/R edges, pole boxes = WISER
-anchors, wall tops, towers, PC box, houses for validation; CH03/CH04 also `NAILS`, `PATCHES`, `SEAMS`, CH04 `BUILDING`)
-→ exports in `cv/configs/landmarks/2026c/`. `landmark_track.py --cohort 2026c [--times 12:00]` tracks them into daily
-frames (coarse-to-fine NCC on gradient magnitude, Huber affine; stable tier first, occludable patches/building gated per
-piece; leave-one-out held-out error) → `$OUT_ROOT/2026c/cv_field_landmark_track_<ts>/` + report
-`results/2026c/cv_field/reports/cv_field_landmark_track_2026c.md`. Night frames need a night reference:
-`landmark_night.py --cohort 2026c --night <dusk date>` makes it automatically (dusk hand-off at the illuminator switch,
-dawn closure as the check) → `cv_field_landmark_night_<ts>/` + `cv_field_landmark_night_2026c.md` (own pointer
-`run_manifest_landmark_night_2026c.json`). Both have `--selftest`; plan revision 3 in
+anchors, wall tops, towers, PC box, houses for validation; CH03/CH04 also `NAILS`, `PATCHES`, `SEAMS`, CH04 `BUILDING`,
+`WOOD`) → exports in `cv/configs/landmarks/2026c/` (also cohort frames, e.g. CH04 09-04 12:00 / 03:01).
+`landmark_track.py --cohort 2026c [--times 12:00]` tracks them into daily frames (coarse-to-fine NCC on gradient
+magnitude, Gaussian sub-pixel peaks, Huber affine with a weak identity prior; stable tier first, occludable pieces gated;
+patches matched as whole masked blocks; leave-one-out held-out error) → `$OUT_ROOT/2026c/cv_field_landmark_track_<ts>/` +
+`results/2026c/cv_field/reports/cv_field_landmark_track_2026c.md`. `--ref-labels <cohort-frame labels> --tie --tag <name>`
+tracks from a user-labelled cohort frame and ties it to 09-18 from the two label sets (`tie_labels`, no image matching)
+→ `…_track_2026c_<tag>.md` + `run_manifest_landmark_track_<tag>_2026c.json`. Night frames need a night reference:
+`landmark_night.py --cohort 2026c --nights <dusk dates…> --cameras CH01 CH02` chains through dusk (direct from 09-18 while
+ok, then from an anchor frame) and checks by dawn closure → `cv_field_landmark_night_<ts>/` + `cv_field_landmark_night_2026c.md`
+(own pointer `run_manifest_landmark_night_2026c.json`). Both have `--selftest`; plan revision 3 in
 `implementation_plan/2026-09-28-cohort3-camera-stability.md`.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction

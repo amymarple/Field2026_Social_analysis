@@ -145,3 +145,33 @@ previous daytime report is archived (`archive/2026c/cv_field/reports/cv_field_la
   because its hand-off frames happened to work. Next step (to agree with the user): a step detector that ignores
   spikes plus a dusk chain for CH01; user-labelled 09-04 references (day 12:00 and night 03:01) for CH03/CH04, whose
   daytime tracking already fails.
+
+**Second round (2026-10-01 evening; the user: "run everything, then give me the conclusion").** Code (commit 5405693):
+patches matched as whole masked blocks (user: a patch is a dark block on the white wall; the dropped CH03 patches were
+mostly in the right place); `tie_labels` (two label sets of a camera → affine, no image matching); `--ref-labels/--tie/
+--tag`; a weak identity prior on the affine's linear part (two vertical poles + one wall top leave the vertical scale
+free — found by the self-test); Gaussian sub-pixel peaks (the parabola under-measured a 0.45-px shift by ~0.2 px, which
+added up over chained frames: 1.65 px after 8 links on synthetic frames, 0.03 px after the fix); `landmark_night.py`
+rewritten as a dusk chain (direct from 09-18 while ok, then from an anchor frame) with dawn closure. User labels: CH04
+09-04 12:00 (`WALLTOP_Y240` renamed `WALLTOP_X480` — user: wrong name picked) and 09-04 03:01; the 09-18 CH04 frame had
+people in view, so the wood is labelled on 09-04 only.
+- **Daytime, 09-18 reference (run `cv_field_landmark_track_20261001_1906`):** CH01 14/14, CH02 12/14 (unchanged), CH03
+  4/14, **CH04 7/14** (was 2/14; the fitted shifts are now −10..+29 / −38..+41 px instead of up to 190 px).
+- **CH04 from its 09-04 day reference (`…_2026c_ch04_ref0904day.md`): 12/14 days ok, held-out median 0.99 px**;
+  from the 09-04 night reference over 21:00 / 00:00 / 03:01 of every night (`…_ch04_ref0904night.md`): 29/42 ok,
+  1.73 px. Within the cohort CH04 tracks well from a cohort reference.
+- **The weak link is tying CH04's cohort labels to 09-18** (labels only): held-out 2.18 / 12.39 px (09-04 day), 10.43
+  / 16.55 px (09-04 night), and 3.26 / 22.88 px between the 09-04 day and night labels themselves. A diagnostic with the
+  09-24 lens model (k1 −0.37; undistorted affine, pure rotation, rotation + focal) does not reduce it; pole A4 is the
+  largest outlier (25–42 px between the two 09-04 label sets), but leaving A4 out leaves only 4 units and p90 11–18 px.
+  Causes not established (no visual judgement): label differences between frames (e.g. IR bloom on the near pole at
+  night), parallax of near structures under a small camera translation, or non-rigid wall sheets.
+- **Occludable pieces:** with the 09-04 reference CH04 patches agree to 3.7 px (median residual of the dropped ones; 7.7
+  px with the 09-18 reference). Dropped building / wood pieces sit at 0.9–2.2 px — they fail the "≥ 60 % of samples
+  matched" rule, not the residual gate.
+- **Night, CH01 / CH02, 14 nights each (run `cv_field_landmark_night_20261001_1938`):** the night frames tracked from
+  the chained night reference are ok in 55 of 56 (held-out 0.3–1.8 px); the shift vs 09-18 varies between nights by
+  up to ±20 px but by ≤ 3 px between 00:00 and 03:01 of a night. **Dawn closure ≤ 2 px (the agreed pass): CH01 3/14,
+  CH02 7/14 nights; median of the first three closure frames ≤ 3 px: 12/14 for each camera.** Clear failures: CH01
+  09-09 night (19.5 px), CH01 09-10 (3.6), CH02 09-06 (3.2), 09-08 (3.9); two first-frame outliers (CH01 09-05 143 px,
+  CH02 09-03 5.1 px) are single dim-dawn direct fits (their three-frame medians 1.76 / 1.29 px).
