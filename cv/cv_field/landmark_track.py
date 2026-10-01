@@ -53,8 +53,8 @@ for _p in (str(HERE), str(HERE.parent)):
 
 H, R, STEP, MAX_PER_LM, S_MIN = 20, 8, 14, 40, 0.45      # fine stage: small patch, +/-8 px around the coarse prediction
 H1, R1, COARSE_SCALE, COARSE_PER_LM = 30, 60, 0.5, 4      # coarse stage (half resolution): ~120 px patches, +/-120 px search
-CORNER_PREFIXES = ("BOX_", "PCBOX")
-FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX")
+CORNER_PREFIXES = ("BOX_", "PCBOX", "PATCH_")
+FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_")   # PATCH_<wall>_<n> = a visible patch on a wall
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
 HOUSE1_MOVED = date(2026, 9, 18)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30", "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}

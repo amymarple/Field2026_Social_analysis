@@ -15,6 +15,8 @@ Landmark kinds (the side panel groups them):
                             two parallel lines), each along its visible length (the ends usually are not visible) —
                             2+ points each; the centre line and the apparent width follow from the pair
   outline  BOX_<row><col>   the box mounted on that pole = a WISER UWB anchor (user, 2026-09-29): clear corners, rigid
+  outline  PATCH_<wall>_<n> a visible patch on a wall sheet (user, 2026-10-01; CH03/CH04 see several) — corners; added
+                            with "+ add"; numbered left to right in each camera's view; fit set like the boxes
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
   outline  TOWER_1, TOWER_2, PCBOX   closed outline, click round it (closes only when it is one piece)
@@ -99,6 +101,9 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   x (length) / y (width) axis; _BASE_X / _BASE_Y = bottom edges parallel to x / y; _BASE_Z = the vertical corner edges.
   One piece per visible straight edge, press <b>b</b> between edges; a category can hold up to about 3 edges and they
   need not be parallel (e.g. the two sloped gable edges). Draw the same edges in every frame.
+  <b>PATCH_&lt;wall&gt;_&lt;n&gt;</b> (add with "+ add", kind outline): a visible patch on a wall sheet, e.g. PATCH_X0_1 — click
+  its corners; number the patches left to right as seen in THIS camera, keep the numbers in every frame, and label
+  them on the 09-18 frame too (that is what ties a frame to the calibration). Fixed, with corners: a strong landmark.
   <b>HOUSE_n_LABEL</b>: the fixed number label on the roof — click its corners (it closes itself). Clear by day; at
   night the IR often saturates it — then skip it.
   <b>Only what you can SEE — never an estimated or guessed line</b> (an edge hidden by grass or anything else is left
