@@ -1,48 +1,44 @@
-"""landmark_night.py — automatic NIGHT reference for the rigid-landmark tracking: dusk hand-off + dawn closure check.
+"""landmark_night.py — automatic NIGHT reference for the rigid-landmark tracking: dusk chain + dawn closure check.
 
 Why: the structures do not move, but at night the camera's own IR illuminator lights the scene, so the daytime
-appearance around each landmark in the 09-18 reference does not match night frames and the tracking of
-landmark_track.py fails there. Instead of labelling a night frame per camera, the night reference is made
-automatically (plan agreed with the user, 2026-10-01; implementation_plan/2026-09-28-cohort3-camera-stability.md):
+appearance around each landmark in the 09-18 reference does not match night frames and landmark_track.py fails there.
+Instead of labelling a night frame per camera, the night reference is made automatically (plan agreed with the user,
+2026-10-01; implementation_plan/2026-09-28-cohort3-camera-stability.md, revision 3):
 
-  1. Switch: mean brightness of every keyframe (~every 2 s; 64x64 grey thumbnails, keyframes only) over DUSK_WIN; the
-     switch = the largest keyframe-to-keyframe jump, extended over neighbouring same-sign jumps > RAMP_Z robust SDs (an
-     exposure ramp). The cohort footage is IR by day too (no colour / IR-cut change; saturation of the hand-off frames is
-     logged to check), so the switch is the illuminator turning on — nothing optical changes, the pose is the same.
-  2. Hand-off: the last keyframe BEFORE the switch (daytime appearance) is tracked from the 09-18 labelled reference with
-     landmark_track.track_frame -> A_pre (if not ok: frames PRE_FALLBACK_S earlier). The frame HANDOFF_POST_S after the
-     switch is the NIGHT REFERENCE; its labels = the 09-18 labels moved by A_pre (pieces kept, names kept).
-  3. Night frames (default 21:00, 00:00, 03:01) are tracked from the night reference -> A_n; the map from the 09-18
-     reference is A_total = A_n o A_pre, reported like the daytime track (tx, ty, rot, scale from landmark_track.params).
-  4. Dawn closure: the dawn switch (DAWN_WIN) is found the same way. The last keyframe before it (still night appearance)
-     is tracked from the night reference -> A_n o A_pre; the frame HANDOFF_POST_S after it (daytime appearance; later
-     fallbacks POST_FALLBACK_S if not ok) from the 09-18 reference -> A_d. Both describe (nearly) the same moment, so
-          closure = median / max over the 09-18 fit-set label points p of |A_n A_pre p - A_d p|   [px, full-res upright]
-     PASS if median <= CLOSURE_MAX px. It checks the dusk hand-off and the night tracking together, without labels.
-     (A pure optical shift at the switch would cancel between dusk and dawn and not show — none is expected, see 1.)
-Definitions: z = |jump| / (1.4826 * MAD of all keyframe-to-keyframe jumps in the window); z2 = the same for the next
-largest jump outside the ramp (z2 close to z = ambiguous switch); gap = time between the two frames compared at dawn [s].
-The agent makes no visual judgement: the user reviews the overlays (night frames, hand-off pairs) and brightness plots.
+  1. Dusk chain: frames every CHAIN_STEP_MIN from DUSK_START to NIGHT_START. Each is tracked DIRECTLY from the 09-18
+     labelled reference (landmark_track.track_frame) while that gives status ok; from the first failure on, frames are
+     tracked from an ANCHOR (a LINK: the last direct frame as reference, its labels = the 09-18 labels moved by its map)
+     -> A_k = T_k o A_anchor; the anchor moves to the last good frame only when a link from it fails (errors add up per
+     anchor change, not per frame). The NIGHT_START frame is the night reference (its map A_night from 09-18).
+  2. Night frames (default 00:00, 03:01) are tracked from the night reference -> A_total = A_n o A_night, reported like
+     the daytime track (tx, ty, rot, scale from landmark_track.params).
+  3. Dawn closure: frames every CHAIN_STEP_MIN from DAWN_START to DAWN_END are chained FORWARD from the night reference
+     (night side) and also tracked DIRECTLY from 09-18 (day side). At the first CLOSURE_N dawn frames where the direct
+     track is ok:  closure = median / max over the 09-18 fit-set label points p of |A_chain p - A_direct p|  [px].
+     PASS if the median closure of the first such frame is <= CLOSURE_MAX px and the night frames are ok. The loop
+     09-18 -> dusk chain -> night -> dawn chain vs 09-18 directly checks the night maps without labels.
+Rejected first version (same day): a hand-off at the "illuminator switch" found as the largest keyframe brightness jump —
+the largest jumps are one-keyframe spikes near stream restarts, and dusk has no abrupt step (only dawn: one at ~07:25 on
+all four cameras); see change_log/2026-09-28-cohort3-camera-stability.md.
+Definitions: link = one frame tracked from the previous good frame; drift grows with the number of links, which the
+dawn closure measures. The agent makes no visual judgement: the user reviews the overlays.
 
-Usage: python cv/cv_field/landmark_night.py --cohort 2026c --night 2026-09-03 [--cameras CH01 CH02 CH03 CH04]
-                                            [--night-times 21:00 00:00 03:01]
-       python cv/cv_field/landmark_night.py --selftest          # offline: synthetic clip (ffmpeg), no field data
-Output: $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_landmark_night_<ts>/ (frames, overlays, brightness_<CH>.png,
-        brightness_<CH>.csv, handoff.csv, night_frames.csv) and
-        results/<cohort>/cv_field/reports/cv_field_landmark_night_<cohort>.md + run_manifest_landmark_night_<cohort>.json
-        (own pointer, so landmark_track's run_manifest.json survives).
+Usage: python cv/cv_field/landmark_night.py --cohort 2026c --nights 2026-09-03 [2026-09-04 ...] [--cameras CH01 CH02]
+                                            [--night-times 00:00 03:01]
+       python cv/cv_field/landmark_night.py --selftest          # offline, synthetic frames
+Output: $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_landmark_night_<ts>/ (frames, overlays, chain.csv,
+        night_frames.csv, closure.csv) and results/<cohort>/cv_field/reports/cv_field_landmark_night_<cohort>.md +
+        run_manifest_landmark_night_<cohort>.json (own pointer, so landmark_track's run_manifest.json survives).
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import json
-import subprocess
 import sys
-import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from types import SimpleNamespace
 
 import cv2
 import numpy as np
@@ -55,72 +51,20 @@ for _p in (str(HERE), str(HERE.parent)):
 import grab_frames as gf  # noqa: E402
 import landmark_track as lt  # noqa: E402
 
-DUSK_WIN = (time(19, 0), time(21, 0))          # early September, Ithaca: sunset ~19:30 EDT (field-PC time)
-DAWN_WIN = (time(5, 30), time(7, 30))          # sunrise ~06:40
-THUMB = 64
-MAX_KEY_GAP_S = 10.0                           # a larger gap between keyframes = a segment boundary: no jump there
-RAMP_Z, SWITCH_Z_MIN = 5.0, 10.0
-HANDOFF_POST_S = 10.0
-PRE_FALLBACK_S = (0, 60, 300, 900)             # pre-switch daytime frame: the keyframe itself, then earlier
-POST_FALLBACK_S = (0, 60, 300, 900)            # dawn daytime frame: HANDOFF_POST_S after the switch, then later
-CLOSURE_MAX = 2.0
+DUSK_START, NIGHT_START = time(18, 30), time(21, 0)      # early September, Ithaca: sunset ~19:30 EDT (field-PC time)
+DAWN_START, DAWN_END = time(5, 30), time(8, 0)           # sunrise ~06:40; the dawn brightness step is at ~07:25
+CHAIN_STEP_MIN = 5
+CLOSURE_MAX, CLOSURE_N = 2.0, 3
+MAX_LINK_FAILS = 3
 
 
-def keyframe_brightness(ffmpeg: str, video: Path, off0: float, dur: float) -> list[tuple[float, float]]:
-    """(pts [s, file time], mean grey) of every keyframe in [off0, off0 + dur) — keyframes only, 64x64 thumbnails."""
-    cmd = [ffmpeg, "-hide_banner", "-nostdin", "-skip_frame", "nokey", "-copyts", "-ss", f"{max(0.0, off0):.3f}",
-           "-t", f"{dur:.3f}", "-i", str(video), "-an", "-vf", f"scale={THUMB}:{THUMB},format=gray,showinfo",
-           "-vsync", "0", "-f", "rawvideo", "-"]
-    p = subprocess.run(cmd, capture_output=True)
-    n = len(p.stdout) // (THUMB * THUMB)
-    pts = [float(v) for v in gf.PTS.findall(p.stderr.decode(errors="replace"))]
-    frames = np.frombuffer(p.stdout[:n * THUMB * THUMB], np.uint8).reshape(n, THUMB * THUMB)
-    return [(t, float(f.mean())) for t, f in zip(pts, frames)]
-
-
-def brightness_series(ffmpeg: str, ffprobe: str, root: Path, cam: str, t_a: datetime, t_b: datetime) -> list[tuple]:
-    """[(time, mean grey, video, pts)] of the camera's keyframes between t_a and t_b (field-PC time)."""
+def frame_times(day: date, t0: time, t1: time, step_min: int = CHAIN_STEP_MIN) -> list[datetime]:
+    a, b = datetime.combine(day, t0), datetime.combine(day, t1)
     out = []
-    for s, e, f in gf.segments(root, cam, t_b.date(), ffprobe):
-        a, b = max(s, t_a), min(e, t_b)
-        if a >= b:
-            continue
-        for pts, m in keyframe_brightness(ffmpeg, f, (a - s).total_seconds(), (b - a).total_seconds()):
-            out.append((s + timedelta(seconds=pts), m, f, pts))
-    return sorted(out, key=lambda r: r[0])
-
-
-def find_switch(series: list[tuple]) -> dict | None:
-    """Largest keyframe-to-keyframe brightness jump, extended over its same-sign ramp. None if too few keyframes."""
-    if len(series) < 10:
-        return None
-    t = [r[0] for r in series]
-    m = np.array([r[1] for r in series], float)
-    dt = np.array([(b - a).total_seconds() for a, b in zip(t[:-1], t[1:])])
-    d = np.where(dt <= MAX_KEY_GAP_S, np.diff(m), 0.0)
-    mad = 1.4826 * float(np.median(np.abs(d - np.median(d)))) + 1e-3
-    i = int(np.argmax(np.abs(d)))
-    sg = np.sign(d[i])
-    s = i
-    while s - 1 >= 0 and np.sign(d[s - 1]) == sg and abs(d[s - 1]) > RAMP_Z * mad:
-        s -= 1
-    e = i
-    while e + 1 < len(d) and np.sign(d[e + 1]) == sg and abs(d[e + 1]) > RAMP_Z * mad:
-        e += 1
-    rest = np.abs(np.concatenate([d[:s], d[e + 1:]]))
-    z = abs(d[i]) / mad
-    return {"t_pre": t[s], "t_post": t[e + 1], "jump": float(m[e + 1] - m[s]), "z": float(z),
-            "z2": float(rest.max() / mad) if len(rest) else 0.0, "ramp_keyframes": e - s + 1,
-            "clear": bool(z >= SWITCH_Z_MIN and (not len(rest) or rest.max() < 0.5 * abs(d[i])))}
-
-
-def to3(A: np.ndarray) -> np.ndarray:
-    return np.vstack([A, [0.0, 0.0, 1.0]])
-
-
-def compose(A2: np.ndarray, A1: np.ndarray) -> np.ndarray:
-    """p -> A2(A1(p))."""
-    return (to3(A2) @ to3(A1))[:2]
+    while a <= b:
+        out.append(a)
+        a += timedelta(minutes=step_min)
+    return out
 
 
 def apply(A: np.ndarray, P: np.ndarray) -> np.ndarray:
@@ -128,7 +72,7 @@ def apply(A: np.ndarray, P: np.ndarray) -> np.ndarray:
 
 
 def move_labels(landmarks: dict, A: np.ndarray, day: date) -> dict:
-    """The labels moved by A (pieces and names kept), only those usable on `day`."""
+    """The 09-18 labels moved by A (pieces and names kept), only those usable on `day`."""
     return {n: [apply(A, p).tolist() for p in lt.pieces_of(v)] for n, v in landmarks.items() if lt.usable(n, day)}
 
 
@@ -141,191 +85,206 @@ def closure(A1: np.ndarray, A2: np.ndarray, P: np.ndarray) -> tuple[float, float
     return float(np.median(e)), float(e.max())
 
 
-def grab(t: datetime, cam: str, root: Path, ff: tuple[str, str], out: Path, tag: str) -> tuple[np.ndarray, datetime] | None:
-    row = gf.grab_one({"camera": cam, "time": t, "tag": tag}, root, ff[0], ff[1], "exact", "cpu", out)
-    if row["error"] or not row["frame_time"]:
-        print(f"  {cam} {t:%m-%d %H:%M:%S} {tag}: {row['error'] or 'no frame time'}")
-        return None
-    return row["_img"], datetime.strptime(row["frame_time"][:19], "%Y-%m-%d %H:%M:%S")
+class Chain:
+    """Maps 09-18 px -> frame px along a sequence of frames: DIRECT from 09-18 while allowed and ok; otherwise from the
+    current ANCHOR frame (the last direct frame, or the night reference). Only when the anchor fails is it moved to the
+    last good frame, so errors accumulate per anchor change, not per frame (each link under-measures a sub-pixel shift a
+    little; chaining every 5-min frame would add that up)."""
+
+    def __init__(self, ref_g, labels, kinds, start=None):
+        self.ref_g, self.labels, self.kinds = ref_g, labels, kinds
+        self.anchor = self.last_good = start   # (frame_g, A 09-18 -> frame, day)
+        self.rows, self.fails, self.anchor_changes = [], 0, 0
+
+    def _from(self, anc, img_g, t):
+        ag, aA, aday = anc
+        r = lt.track_frame(ag, img_g, move_labels(self.labels, aA, aday), self.kinds, t.date(), ref_day=t.date())
+        return r, (lt.compose(r["A"], aA) if r.get("status") == "ok" else None)
+
+    def step(self, img_g, t: datetime, direct: bool) -> dict:
+        row = {"time": f"{t:%Y-%m-%d %H:%M:%S}", "mode": "", "status": "", "held_med_px": np.nan, "held_p90_px": np.nan,
+               "n_fit_units": 0, "anchor_changes": self.anchor_changes, "A": None}
+        if direct:
+            r = lt.track_frame(self.ref_g, img_g, self.labels, self.kinds, t.date())
+            if r.get("status") == "ok":
+                row.update(mode="direct", status="ok", held_med_px=r["held_med"], held_p90_px=r["held_p90"],
+                           n_fit_units=len(r["fit_names"]), A=r["A"])
+                self.anchor = self.last_good = (img_g, r["A"], t.date())
+                self.fails = 0
+                self.rows.append(row)
+                return row
+        if self.anchor is None:
+            row.update(mode="direct", status="unreliable")
+            self.rows.append(row)
+            return row
+        r, A = self._from(self.anchor, img_g, t)
+        mode = "link"
+        if A is None and self.last_good is not None and self.last_good is not self.anchor:
+            self.anchor = self.last_good                       # move the anchor to the last good frame and retry
+            self.anchor_changes += 1
+            r, A = self._from(self.anchor, img_g, t)
+            mode = "relink"
+        row.update(mode=mode, status=r.get("status", "no fit"), held_med_px=r.get("held_med", np.nan),
+                   held_p90_px=r.get("held_p90", np.nan), n_fit_units=len(r["fit_names"]),
+                   anchor_changes=self.anchor_changes, A=A)
+        if A is not None:
+            self.last_good, self.fails = (img_g, A, t.date()), 0
+        else:
+            self.fails += 1
+        self.rows.append(row)
+        return row
 
 
-def track_first_ok(times: list[datetime], cam: str, ref_g, labels, kinds, root, ff, out, tag) -> dict | None:
-    """Track candidate frames in order; the first with status ok, else the one with the lowest held-out median."""
-    best = None
-    for t in times:
-        g = grab(t, cam, root, ff, out, tag)
-        if g is None:
-            continue
-        img, ft = g
-        res = lt.track_frame(ref_g, lt.prep(img), labels, kinds, ft.date())
-        cand = {"res": res, "img": img, "time": ft, "target": t}
-        if res.get("status") == "ok":
-            return cand
-        if res["A"] is not None and (best is None or res.get("held_med", np.inf) < best["res"].get("held_med", np.inf)):
-            best = cand
-    return best
-
-
-def plot_brightness(series_d, sw_d, series_m, sw_m, cam: str, path: Path) -> None:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    fig, axs = plt.subplots(1, 2, figsize=(12, 3.2))
-    for ax, ser, sw, title in ((axs[0], series_d, sw_d, "dusk"), (axs[1], series_m, sw_m, "dawn")):
-        if ser:
-            ax.plot([r[0] for r in ser], [r[1] for r in ser], lw=0.8)
-        if sw:
-            for k, c in (("t_pre", "tab:green"), ("t_post", "tab:red")):
-                ax.axvline(sw[k], color=c, lw=0.8)
-            ax.set_title(f"{cam} {title}: switch {sw['t_pre']:%H:%M:%S}->{sw['t_post']:%H:%M:%S}, z {sw['z']:.0f}, "
-                         f"z2 {sw['z2']:.0f}", fontsize=9)
-        ax.set_ylabel("mean grey (keyframes)")
-        ax.tick_params(labelsize=7)
-    fig.tight_layout()
-    fig.savefig(path, dpi=110)
-    plt.close(fig)
+def grab_all(times: list[datetime], cam: str, root: Path, ff, out: Path, tag: str) -> dict:
+    """Grab frames in parallel to disk; -> {target time: (jpg path, frame time)}."""
+    def one(t):
+        r = gf.grab_one({"camera": cam, "time": t, "tag": tag}, root, ff[0], ff[1], "exact", "cpu", out)
+        r.pop("_img", None)
+        return t, r
+    got = {}
+    with ThreadPoolExecutor(3) as ex:
+        for t, r in ex.map(one, times):
+            if not r["error"] and r["frame_time"]:
+                got[t] = (out / r["out"], datetime.strptime(r["frame_time"][:19], "%Y-%m-%d %H:%M:%S"))
+    return got
 
 
 def save_overlay(run: Path, img, labels, A, day, caption, dropped, name) -> str:
     ov = lt.draw_overlay(img, labels, A, day, caption, dropped)
     s = 2400 / ov.shape[1]
-    p = run / "overlays" / name
-    cv2.imwrite(str(p), cv2.resize(ov, None, fx=s, fy=s, interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 88])
-    return p.name
+    cv2.imwrite(str(run / "overlays" / name), cv2.resize(ov, None, fx=s, fy=s, interpolation=cv2.INTER_AREA),
+                [cv2.IMWRITE_JPEG_QUALITY, 88])
+    return name
 
 
-def run_camera(cam: str, night: date, args, run: Path, ff, ffmpeg_cr: str) -> tuple[dict, list[dict]]:
-    import camera_review as cr
+def run_night(cam: str, night: date, args, run: Path, ff, ref_g, labels, kinds, size) -> tuple[dict, list, list]:
     root = Path(args.cohort_root)
     frames = run / "frames"
-    lab = json.loads(sorted(Path(args.labels_dir).glob(f"landmarks_{cam}_20260918_*.json"))[0].read_text(encoding="utf-8"))
-    labels, kinds = lab["landmarks"], lab.get("kind", {})
-    size = tuple(int(v) for v in lab["frame_size_upright"])
-    got = cr.grab_at(datetime.strptime(lab["time"], "%Y-%m-%d %H:%M:%S"), cam, args, ffmpeg_cr, size)
-    if got is None:
-        return {"camera": cam, "verdict": "no 09-18 reference frame"}, []
-    ref_g = lt.prep(got[0])
     morning = night + timedelta(days=1)
     H = {"camera": cam, "night": f"{night}"}
-    ser_d = brightness_series(ff[0], ff[1], root, cam, datetime.combine(night, DUSK_WIN[0]), datetime.combine(night, DUSK_WIN[1]))
-    ser_m = brightness_series(ff[0], ff[1], root, cam, datetime.combine(morning, DAWN_WIN[0]), datetime.combine(morning, DAWN_WIN[1]))
-    for nm, ser in (("dusk", ser_d), ("dawn", ser_m)):
-        with open(run / f"brightness_{cam}_{nm}.csv", "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(["time", "mean_grey", "video", "pts_s"])
-            w.writerows([(f"{t:%Y-%m-%d %H:%M:%S.%f}"[:-3], f"{m:.3f}", v.name, f"{p:.3f}") for t, m, v, p in ser])
-    sw_d, sw_m = find_switch(ser_d), find_switch(ser_m)
-    plot_brightness(ser_d, sw_d, ser_m, sw_m, cam, run / f"brightness_{cam}.png")
-    H.update({"dusk_keyframes": len(ser_d), "dawn_keyframes": len(ser_m)})
-    for nm, sw in (("dusk", sw_d), ("dawn", sw_m)):
-        if sw:
-            H.update({f"{nm}_pre": f"{sw['t_pre']:%Y-%m-%d %H:%M:%S}", f"{nm}_post": f"{sw['t_post']:%Y-%m-%d %H:%M:%S}",
-                      f"{nm}_jump": round(sw["jump"], 2), f"{nm}_z": round(sw["z"], 1), f"{nm}_z2": round(sw["z2"], 1),
-                      f"{nm}_ramp_keyframes": sw["ramp_keyframes"], f"{nm}_clear": sw["clear"]})
-    if sw_d is None:
-        H["verdict"] = "no dusk switch found"
-        return H, []
-    # 2. hand-off at dusk
-    pre = track_first_ok([sw_d["t_pre"] - timedelta(seconds=s) for s in PRE_FALLBACK_S], cam, ref_g, labels, kinds,
-                         root, ff, frames, "dusk_pre")
-    post = grab(sw_d["t_post"] + timedelta(seconds=HANDOFF_POST_S), cam, root, ff, frames, "dusk_post")
-    if pre is None or post is None or pre["res"]["A"] is None:
-        H["verdict"] = "dusk hand-off failed (no daytime fit before the switch)"
-        return H, []
-    A_pre = pre["res"]["A"]
-    night_img, night_t = post
-    H.update({"pre_frame": f"{pre['time']:%Y-%m-%d %H:%M:%S}", "pre_status": pre["res"]["status"],
-              "pre_held_med_px": round(pre["res"].get("held_med", np.nan), 2),
-              "pre_to_nightref_s": round((night_t - pre["time"]).total_seconds(), 1), "night_ref": f"{night_t:%Y-%m-%d %H:%M:%S}",
-              "sat_pre": round(cr.saturation(pre["img"]), 1), "sat_nightref": round(cr.saturation(night_img), 1)})
-    nlabels = move_labels(labels, A_pre, night_t.date())
-    n_g = lt.prep(night_img)
-    save_overlay(run, pre["img"], labels, A_pre, pre["time"].date(), f"{cam} DUSK pre {pre['time']:%m-%d %H:%M:%S} (09-18 ref) "
-                 f"{pre['res']['status']} held {pre['res'].get('held_med', np.nan):.1f}px", pre["res"].get("dropped", {}),
-                 f"{cam}_{pre['time']:%Y%m%d_%H%M%S}_dusk_pre.jpg")
-    save_overlay(run, night_img, labels, A_pre, night_t.date(), f"{cam} NIGHT REF {night_t:%m-%d %H:%M:%S} = 09-18 labels moved by the pre-switch fit",
-                 {}, f"{cam}_{night_t:%Y%m%d_%H%M%S}_night_ref.jpg")
-    # 3. night frames
-    rows = []
-    for tt in args.night_times:
-        t = datetime.combine(night if tt >= time(12, 0) else morning, tt)
-        g = grab(t, cam, root, ff, frames, "night")
-        if g is None:
+    # 1. dusk chain
+    dusk_t = frame_times(night, DUSK_START, NIGHT_START)
+    got = grab_all(dusk_t, cam, root, ff, frames, "dusk")
+    ch = Chain(ref_g, labels, kinds)
+    chained = False
+    last = None
+    for t in dusk_t:
+        if t not in got:
             continue
-        img, ft = g
-        res = lt.track_frame(n_g, lt.prep(img), nlabels, kinds, ft.date())
-        A_tot = compose(res["A"], A_pre) if res["A"] is not None else None
+        img = cv2.imread(str(got[t][0]))
+        row = ch.step(lt.prep(img), got[t][1], direct=not chained)
+        chained |= row["mode"] in ("link", "relink")
+        if row["A"] is not None:
+            last = (img, row["A"], got[t][1])
+        if ch.fails >= MAX_LINK_FAILS:
+            break
+    links = [r for r in ch.rows if r["mode"] in ("link", "relink")]
+    direct_ok = [r for r in ch.rows if r["mode"] == "direct" and r["status"] == "ok"]
+    H.update({"dusk_frames": len(ch.rows), "dusk_direct_until": direct_ok[-1]["time"][11:16] if direct_ok else "-",
+              "dusk_links": len(links), "dusk_links_failed": sum(r["status"] != "ok" for r in links),
+              "dusk_anchor_changes": ch.anchor_changes})
+    chain_rows = [{"camera": cam, "night": f"{night}", "phase": "dusk", **{k: v for k, v in r.items() if k != "A"}} for r in ch.rows]
+    if last is None or abs((last[2] - datetime.combine(night, NIGHT_START)).total_seconds()) > 60 * CHAIN_STEP_MIN or \
+            ch.fails >= MAX_LINK_FAILS:
+        H["verdict"] = "dusk chain broken"
+        return H, chain_rows, []
+    night_img, A_night, night_t = last
+    H["night_ref"] = f"{night_t:%Y-%m-%d %H:%M:%S}"
+    n_g = lt.prep(night_img)
+    nlabels = move_labels(labels, A_night, night_t.date())
+    save_overlay(run, night_img, labels, A_night, night_t.date(), f"{cam} NIGHT REF {night_t:%m-%d %H:%M} (end of dusk chain)",
+                 {}, f"{cam}_{night_t:%Y%m%d_%H%M%S}_night_ref.jpg")
+    # 2. night frames
+    rows = []
+    nt = [datetime.combine(night if tt >= time(12, 0) else morning, tt) for tt in args.night_times]
+    got_n = grab_all(nt, cam, root, ff, frames, "night")
+    for t in nt:
+        if t not in got_n:
+            continue
+        img = cv2.imread(str(got_n[t][0]))
+        ft = got_n[t][1]
+        res = lt.track_frame(n_g, lt.prep(img), nlabels, kinds, ft.date(), ref_day=ft.date())
+        A_tot = lt.compose(res["A"], A_night) if res["A"] is not None else None
         pr = lt.params(A_tot, size) if A_tot is not None else {k: np.nan for k in ("tx", "ty", "rot_deg", "sx", "sy")}
         cap = (f"{cam} {ft:%m-%d %H:%M} NIGHT (via night ref) {res.get('status')} held {res.get('held_med', np.nan):.1f}/"
                f"{res.get('held_p90', np.nan):.1f}px  vs 09-18 t=({pr['tx']:+.1f},{pr['ty']:+.1f}) rot {pr['rot_deg']:+.2f}")
         ov = save_overlay(run, img, labels, A_tot, ft.date(), cap, res.get("dropped", {}), f"{cam}_{ft:%Y%m%d_%H%M%S}_night.jpg")
-        rows.append({"camera": cam, "frame_time": f"{ft:%Y-%m-%d %H:%M:%S}", "status": res.get("status", "no fit"),
+        rows.append({"camera": cam, "night": f"{night}", "frame_time": f"{ft:%Y-%m-%d %H:%M:%S}", "status": res.get("status", "no fit"),
                      "n_fit_units": len(res["fit_names"]), "held_med_px": res.get("held_med", np.nan),
-                     "held_p90_px": res.get("held_p90", np.nan), **pr, "basis": res.get("basis", ""),
-                     "n_dropped": len(res.get("dropped", {})),
-                     "dropped": "; ".join(f"{u}: {w}" for u, w in sorted(res.get("dropped", {}).items())), "overlay": ov})
+                     "held_p90_px": res.get("held_p90", np.nan), **pr, "n_dropped": len(res.get("dropped", {})), "overlay": ov})
         print(f"  {cap}")
-    # 4. dawn closure
-    if sw_m is None:
-        H["verdict"] = "no dawn switch found (closure not checked)"
-        return H, rows
-    nside = track_first_ok([sw_m["t_pre"] - timedelta(seconds=s) for s in PRE_FALLBACK_S[:3]], cam, n_g, nlabels, kinds,
-                           root, ff, frames, "dawn_night")
-    dside = track_first_ok([sw_m["t_post"] + timedelta(seconds=HANDOFF_POST_S + s) for s in POST_FALLBACK_S], cam, ref_g,
-                           labels, kinds, root, ff, frames, "dawn_day")
-    if nside is None or dside is None or nside["res"]["A"] is None or dside["res"]["A"] is None:
-        H["verdict"] = "dawn closure not computable (a side did not fit)"
-        return H, rows
-    A_n = compose(nside["res"]["A"], A_pre)
-    med, mx = closure(A_n, dside["res"]["A"], fit_points(labels, morning))
-    H.update({"dawn_night_frame": f"{nside['time']:%Y-%m-%d %H:%M:%S}", "dawn_night_status": nside["res"]["status"],
-              "dawn_day_frame": f"{dside['time']:%Y-%m-%d %H:%M:%S}", "dawn_day_status": dside["res"]["status"],
-              "dawn_gap_s": round((dside["time"] - nside["time"]).total_seconds(), 1),
-              "closure_med_px": round(med, 2), "closure_max_px": round(mx, 2)})
-    for side, A, tag in ((nside, A_n, "dawn_night"), (dside, dside["res"]["A"], "dawn_day")):
-        save_overlay(run, side["img"], labels, A, side["time"].date(), f"{cam} {tag} {side['time']:%m-%d %H:%M:%S} "
-                     f"{side['res']['status']} closure {med:.1f}/{mx:.1f}px", side["res"].get("dropped", {}),
-                     f"{cam}_{side['time']:%Y%m%d_%H%M%S}_{tag}.jpg")
-    ok = (med <= CLOSURE_MAX and pre["res"]["status"] == "ok" and nside["res"]["status"] == "ok"
-          and dside["res"]["status"] == "ok")
+    # 3. dawn: chain forward from the night reference + direct from 09-18 -> closure
+    dawn_t = frame_times(morning, DAWN_START, DAWN_END)
+    got_d = grab_all(dawn_t, cam, root, ff, frames, "dawn")
+    chn = Chain(ref_g, labels, kinds, start=(n_g, A_night, night_t.date()))
+    pts = fit_points(labels, morning)
+    clos = []
+    for t in dawn_t:
+        if t not in got_d:
+            continue
+        img = cv2.imread(str(got_d[t][0]))
+        g = lt.prep(img)
+        ft = got_d[t][1]
+        rc = chn.step(g, ft, direct=False)                           # night side: always a link
+        rd = lt.track_frame(ref_g, g, labels, kinds, ft.date())      # day side: direct from 09-18
+        chain_rows.append({"camera": cam, "night": f"{night}", "phase": "dawn", **{k: v for k, v in rc.items() if k != "A"},
+                           "direct_status": rd.get("status"), "direct_held_med_px": rd.get("held_med", np.nan)})
+        if rc["A"] is not None and rd.get("status") == "ok":
+            med, mx = closure(rc["A"], rd["A"], pts)
+            clos.append({"camera": cam, "night": f"{night}", "time": f"{ft:%Y-%m-%d %H:%M:%S}", "closure_med_px": med,
+                         "closure_max_px": mx, "chain_links": sum(r["mode"] in ("link", "relink") for r in chn.rows),
+                         "anchor_changes": chn.anchor_changes})
+            if len(clos) == 1:
+                for A, tag in ((rc["A"], "dawn_chain"), (rd["A"], "dawn_direct")):
+                    save_overlay(run, img, labels, A, ft.date(), f"{cam} {tag} {ft:%m-%d %H:%M} closure {med:.1f}/{mx:.1f}px",
+                                 {}, f"{cam}_{ft:%Y%m%d_%H%M%S}_{tag}.jpg")
+            if len(clos) >= CLOSURE_N:
+                break
+        if chn.fails >= MAX_LINK_FAILS:
+            break
+    if not clos:
+        H["verdict"] = "no closure (dawn chain broken or no direct fit)"
+        return H, chain_rows, rows
+    H.update({"closure_time": clos[0]["time"][11:16], "closure_med_px": round(clos[0]["closure_med_px"], 2),
+              "closure_max_px": round(clos[0]["closure_max_px"], 2),
+              "closure_med_next_px": round(float(np.median([c["closure_med_px"] for c in clos])), 2),
+              "dawn_links": clos[0]["chain_links"], "dawn_anchor_changes": clos[0]["anchor_changes"]})
+    ok = clos[0]["closure_med_px"] <= CLOSURE_MAX and rows and all(r["status"] == "ok" for r in rows)
     H["verdict"] = "PASS" if ok else "FAIL"
-    return H, rows
+    return H, chain_rows, rows
 
 
-def write_report(run: Path, cohort: str, night: date, H: list[dict], R: list[dict]) -> Path:
+def write_report(run: Path, cohort: str, nights: list[date], H: list[dict], R: list[dict]) -> Path:
     import output_paths as op
     rep = op.report_dir(cohort, "cv_field")
     f2 = lambda v: "-" if v is None or (isinstance(v, float) and not np.isfinite(v)) else (f"{v:.2f}" if isinstance(v, float) else str(v))  # noqa: E731
-    L = [f"# Night reference by dusk hand-off + dawn closure (cohort `{cohort}`, night {night} -> {night + timedelta(days=1)})\n",
-         f"Generated {datetime.now():%Y-%m-%d %H:%M} by `cv/cv_field/landmark_night.py` (method and definitions in its docstring). "
-         f"Bulk: `{run}` (brightness plots/CSVs, frames, overlays, `handoff.csv`, `night_frames.csv`). Test plan agreed with the "
-         "user 2026-10-01: pass = dawn closure median <= 2 px with all three fits ok; the user reviews the 03:01 overlays. "
-         "**This report makes no visual claim.**\n",
-         "## Hand-off and dawn closure\n",
-         "| camera | dusk switch (pre -> post) | z / z2 | pre frame (status, held px) | night ref | sat pre / ref | dawn switch | dawn frames (night / day, gap s) | closure median / max px | verdict |",
-         "|---|---|---|---|---|---|---|---|---|---|"]
+    L = [f"# Night reference by dusk chain + dawn closure (cohort `{cohort}`, nights {', '.join(str(n) for n in nights)})\n",
+         f"Generated {datetime.now():%Y-%m-%d %H:%M} by `cv/cv_field/landmark_night.py` (method and definitions in its "
+         f"docstring). Bulk: `{run}` (frames, overlays, `chain.csv`, `night_frames.csv`, `closure.csv`). Pass = dawn closure "
+         f"median <= {CLOSURE_MAX} px with the night frames ok (agreed with the user 2026-10-01). **This report makes no visual claim.**\n",
+         "## Per camera and night\n",
+         "| camera | night | dusk: direct until / links (failed, anchor changes) | night ref | dawn links (anchor changes) | closure at (median / max px; median of first 3) | verdict |",
+         "|---|---|---|---|---|---|---|"]
     for h in H:
-        L.append(f"| {h['camera']} | {h.get('dusk_pre', '-')[11:]} -> {h.get('dusk_post', '-')[11:]} | {f2(h.get('dusk_z'))} / "
-                 f"{f2(h.get('dusk_z2'))} | {h.get('pre_frame', '-')[11:]} ({h.get('pre_status', '-')}, {f2(h.get('pre_held_med_px'))}) | "
-                 f"{h.get('night_ref', '-')[11:]} | {f2(h.get('sat_pre'))} / {f2(h.get('sat_nightref'))} | "
-                 f"{h.get('dawn_pre', '-')[11:]} -> {h.get('dawn_post', '-')[11:]} | {h.get('dawn_night_frame', '-')[11:]} "
-                 f"({h.get('dawn_night_status', '-')}) / {h.get('dawn_day_frame', '-')[11:]} ({h.get('dawn_day_status', '-')}), "
-                 f"{f2(h.get('dawn_gap_s'))} | {f2(h.get('closure_med_px'))} / {f2(h.get('closure_max_px'))} | **{h.get('verdict')}** |")
+        L.append(f"| {h['camera']} | {h['night']} | {h.get('dusk_direct_until', '-')} / {h.get('dusk_links', '-')} "
+                 f"({h.get('dusk_links_failed', '-')}, {h.get('dusk_anchor_changes', '-')}) | {h.get('night_ref', '-')[11:16]} | "
+                 f"{h.get('dawn_links', '-')} ({h.get('dawn_anchor_changes', '-')}) | "
+                 f"{h.get('closure_time', '-')} ({f2(h.get('closure_med_px'))} / {f2(h.get('closure_max_px'))}; "
+                 f"{f2(h.get('closure_med_next_px'))}) | **{h.get('verdict')}** |")
     L += ["\n## Night frames (tracked from the night reference; shift vs the 09-18 reference)\n",
-          "| camera | frame | status | fit units | held-out median / p90 px | tx px | ty px | rot deg | scale | dropped | overlay |",
-          "|---|---|---|---|---|---|---|---|---|---|---|"]
+          "| camera | frame | status | fit units | held-out median / p90 px | tx px | ty px | rot deg | scale | overlay |",
+          "|---|---|---|---|---|---|---|---|---|---|"]
     for r in R:
         L.append(f"| {r['camera']} | {r['frame_time']} | {r['status']} | {r['n_fit_units']} | {f2(r['held_med_px'])} / "
                  f"{f2(r['held_p90_px'])} | {r['tx']:+.1f} | {r['ty']:+.1f} | {r['rot_deg']:+.3f} | {(r['sx'] + r['sy']) / 2:.4f} | "
-                 f"{r['n_dropped']} | `overlays/{r['overlay']}` |")
+                 f"`overlays/{r['overlay']}` |")
     L.append("\nOverlays: red = the 09-18 labels as drawn, green = fit units moved by the total map, cyan = houses "
-             "(validation), orange = occludable pieces dropped in that frame; nails are circles. sat = mean HSV saturation "
-             "(IR / monochrome ~0-6, colour > 12).")
+             "(validation), orange = occludable pieces dropped in that frame; nails are circles.")
     out = rep / f"cv_field_landmark_night_{cohort}.md"
     out.write_text("\n".join(L) + "\n", encoding="utf-8")
     (rep / f"run_manifest_landmark_night_{cohort}.json").write_text(json.dumps(
         {"run_dir": str(run.resolve()), "cohort": cohort, "direction": "cv_field", "analysis": "landmark_night",
-         "night": str(night), "report": out.name}, indent=2) + "\n", encoding="utf-8")
+         "nights": [str(n) for n in nights], "report": out.name}, indent=2) + "\n", encoding="utf-8")
     return out
 
 
@@ -337,32 +296,47 @@ def selftest() -> int:
         ok &= bool(cond)
         print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
 
-    t0 = datetime(2026, 9, 3, 19, 0)
-    rng = np.random.default_rng(0)
-    m = np.r_[np.linspace(60, 30, 300), [45, 80], np.full(200, 95.0)] + rng.normal(0, 0.2, 502)
-    ser = [(t0 + timedelta(seconds=2 * k), float(v), None, 2.0 * k) for k, v in enumerate(m)]
-    sw = find_switch(ser)
-    rec("switch: ramp of two keyframes found", sw and sw["t_pre"] == ser[299][0] and sw["t_post"] == ser[302][0] and sw["clear"],
-        f"(pre {sw['t_pre']:%H:%M:%S}, post {sw['t_post']:%H:%M:%S}, z {sw['z']:.0f})" if sw else "")
+    rng = np.random.default_rng(3)
+    h, w = 700, 1300
+    day = cv2.GaussianBlur((rng.random((h, w)) * 90).astype(np.uint8), (0, 0), 2)
+    night = cv2.GaussianBlur((rng.random((h, w)) * 90).astype(np.uint8), (0, 0), 2)      # other texture = other light
+    for im in (day, night):
+        for x in (250, 600, 1000):
+            cv2.line(im, (x, 100), (x + 8, 600), 250, 9)
+        cv2.line(im, (80, 330), (1220, 315), 230, 5)
+        cv2.rectangle(im, (650, 160), (720, 210), 255, -1)
+    labels = {"POLE_A0_L": [[[246, 140], [254, 560]]], "POLE_A1_L": [[[596, 140], [604, 560]]],
+              "POLE_A2_L": [[[996, 140], [1004, 560]]], "WALLTOP_Y0": [[[120, 329], [1180, 316]]],
+              "BOX_A1": [[[650, 160], [720, 160], [720, 210], [650, 210]]]}
+    kinds = {"POLE_A0_L": "edge", "POLE_A1_L": "edge", "POLE_A2_L": "edge", "WALLTOP_Y0": "polyline", "BOX_A1": "outline"}
+
+    def frame(k, alpha):                       # camera drifts 0.4 px / step right, 0.2 px up; appearance day -> night
+        M = np.array([[1, 0, 0.4 * k], [0, 1, -0.2 * k]], float)
+        im = cv2.addWeighted(day, 1 - alpha, night, alpha, 0)
+        return cv2.warpAffine(cv2.cvtColor(im, cv2.COLOR_GRAY2BGR), M, (w, h), borderMode=cv2.BORDER_REFLECT), M
+    ref_g = lt.prep(cv2.cvtColor(day, cv2.COLOR_GRAY2BGR))
+    ch = Chain(ref_g, labels, kinds)
+    t0 = datetime(2026, 9, 3, 18, 30)
+    chained = False
+    alphas = list(np.linspace(0, 1, 8)) + [1.0] * 3 + list(np.linspace(1, 0, 8))
+    out = []
+    for k, a in enumerate(alphas):
+        im, M = frame(k, a)
+        r = ch.step(lt.prep(im), t0 + timedelta(minutes=5 * k), direct=not chained if k < 11 else False)
+        chained |= r["mode"] in ("link", "relink")
+        out.append((r, M))
+    errs = [float(np.abs(apply(r["A"], np.array([[650.0, 350.0]])) - apply(M, np.array([[650.0, 350.0]]))).max())
+            for r, M in out if r["A"] is not None]
+    rec("chain: every step mapped, end-to-end error small", len(errs) == len(alphas) and max(errs) < 0.6,
+        f"({len(errs)}/{len(alphas)} mapped, max error {max(errs) if errs else np.inf:.2f} px, "
+        f"{sum(r['mode'] != 'direct' for r, _ in out)} linked, {ch.anchor_changes} anchor changes)")
+    rd = lt.track_frame(ref_g, lt.prep(frame(len(alphas) - 1, 0.0)[0]), labels, kinds, date(2026, 9, 4))
+    med, mx = closure(out[-1][0]["A"], rd["A"], fit_points(labels, date(2026, 9, 4)))
+    rec("closure of the chain vs a direct fit at the end", med < 0.6, f"({med:.2f} / {mx:.2f} px)")
     A1 = np.array([[1.001, 0.004, 5.0], [-0.004, 0.999, -3.0]])
-    A2 = np.array([[0.998, -0.002, -1.5], [0.002, 1.002, 2.0]])
-    P = rng.uniform(0, 4000, (20, 2))
-    rec("compose = sequential application", np.allclose(apply(compose(A2, A1), P), apply(A2, apply(A1, P))))
-    rec("closure of a map with itself = 0", closure(A1, A1, P)[1] < 1e-9)
     mv = move_labels({"POLE_A0_L": [[[0, 0], [0, 100]]], "HOUSE_1_ROOF_X": [[[5, 5], [50, 5]]]}, A1, date(2026, 9, 4))
     rec("move_labels keeps pieces, drops house_1 before 09-18", list(mv) == ["POLE_A0_L"] and len(mv["POLE_A0_L"][0]) == 2)
-    ffmpeg, _ = gf.find_ffmpeg()
-    with tempfile.TemporaryDirectory() as tmp:
-        clip = Path(tmp) / "step.mp4"
-        subprocess.run([ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=0x202020:s=64x64:r=10:d=12", "-f", "lavfi",
-                        "-i", "color=c=0xa0a0a0:s=64x64:r=10:d=8", "-filter_complex", "[0][1]concat=n=2:v=1",
-                        "-c:v", "libx264", "-g", "10", "-keyint_min", "10", "-sc_threshold", "0", "-pix_fmt", "yuv420p",
-                        str(clip)], check=True)
-        kb = keyframe_brightness(ffmpeg, clip, 0.0, 30.0)
-        sw2 = find_switch([(t0 + timedelta(seconds=p), v, clip, p) for p, v in kb])
-        rec("keyframe brightness from a real clip: 20 keyframes, step between 11 and 12 s",
-            len(kb) == 20 and sw2 is not None and abs((sw2["t_post"] - t0).total_seconds() - 12.0) < 0.05
-            and abs((sw2["t_pre"] - t0).total_seconds() - 11.0) < 0.05, f"({len(kb)} keyframes)")
+    rec("frame times every 5 min, both ends", len(frame_times(date(2026, 9, 3), DUSK_START, NIGHT_START)) == 31)
     print(("PASS" if ok else "FAIL") + " — landmark_night self-test")
     return 0 if ok else 1
 
@@ -371,18 +345,18 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0], allow_abbrev=False)
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--cohort", default=None)
-    ap.add_argument("--night", type=date.fromisoformat, help="date of the DUSK (the night runs to the next morning)")
-    ap.add_argument("--cameras", nargs="+", default=["CH01", "CH02", "CH03", "CH04"])
+    ap.add_argument("--nights", nargs="+", type=date.fromisoformat, help="dates of the DUSK (each night runs to the next morning)")
+    ap.add_argument("--cameras", nargs="+", default=["CH01", "CH02"])
     ap.add_argument("--night-times", nargs="+", type=lambda s: datetime.strptime(s, "%H:%M").time(),
-                    default=[time(21, 0), time(0, 0), time(3, 1)])
+                    default=[time(0, 0), time(3, 1)])
     ap.add_argument("--labels-dir", default=str(REPO / "cv" / "configs" / "landmarks" / "2026c"))
     ap.add_argument("--cohort-root", default=r"F:\3rd_rat")
     ap.add_argument("--ref-session", default=r"F:\calibration\session_2026-09-18_13-54-34")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
-    if args.night is None:
-        ap.error("--night is required")
+    if not args.nights:
+        ap.error("--nights is required")
     import camera_review as cr
     import output_paths as op
     args.session = None
@@ -390,22 +364,32 @@ def main(argv=None) -> int:
     run = op.run_dir("cv_field_landmark_night", cohort, make_figures=False)
     (run / "frames").mkdir(parents=True, exist_ok=True)
     (run / "overlays").mkdir(exist_ok=True)
-    ff, ffmpeg_cr = gf.find_ffmpeg(), cr.find_ffmpeg()
-    H, R = [], []
+    ff = gf.find_ffmpeg()
+    H, C, R = [], [], []
     for cam in args.cameras:
-        print(f"{cam}:")
-        h, rows = run_camera(cam, args.night, args, run, ff, ffmpeg_cr)
-        print(f"  -> {h.get('verdict')}  closure {h.get('closure_med_px', '-')} / {h.get('closure_max_px', '-')} px")
-        H.append(h)
-        R += rows
-    for name, rows in (("handoff.csv", H), ("night_frames.csv", R)):
+        lab = json.loads(sorted(Path(args.labels_dir).glob(f"landmarks_{cam}_20260918_*.json"))[0].read_text(encoding="utf-8"))
+        labels, kinds = lab["landmarks"], lab.get("kind", {})
+        size = tuple(int(v) for v in lab["frame_size_upright"])
+        got = cr.grab_at(datetime.strptime(lab["time"], "%Y-%m-%d %H:%M:%S"), cam, args, cr.find_ffmpeg(), size)
+        if got is None:
+            H.append({"camera": cam, "night": "-", "verdict": "no 09-18 reference frame"})
+            continue
+        ref_g = lt.prep(got[0])
+        for night in args.nights:
+            print(f"{cam} night {night}:")
+            h, c, rows = run_night(cam, night, args, run, ff, ref_g, labels, kinds, size)
+            print(f"  -> {h.get('verdict')}  closure {h.get('closure_med_px', '-')} / {h.get('closure_max_px', '-')} px")
+            H.append(h)
+            C += c
+            R += rows
+    for name, rows in (("handoff.csv", H), ("chain.csv", C), ("night_frames.csv", R)):
         if rows:
             keys = list(dict.fromkeys(k for r in rows for k in r))
             with open(run / name, "w", newline="", encoding="utf-8") as f:
                 w = csv.DictWriter(f, fieldnames=keys)
                 w.writeheader()
                 w.writerows(rows)
-    out = write_report(run, cohort, args.night, H, R)
+    out = write_report(run, cohort, args.nights, H, R)
     print(f"report -> {out}\nbulk -> {run}")
     return 0
 

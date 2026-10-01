@@ -23,6 +23,9 @@ Method (no visual judgement; the user reviews the overlays):
        occludable  PATCH_* / PATCHES, BUILDING, WOOD -> every PIECE is its own unit ("NAME#k"), at most OCC_CAP samples, and
                    enters the final fit only if >= OCC_MATCH_MIN of its samples matched and its median residual under
                    A_s is <= OCC_RES_MAX px; otherwise it is DROPPED for that frame (listed per frame).
+     PATCHES are matched as BLOCKS (user, 2026-10-01: a patch is a dark block on the white wall): the labelled outline
+     is closed (ends joined; an end gap > BLOCK_OPEN_GAP px = a grass-hidden bottom, whose joining band is masked out),
+     and the whole block plus a BLOCK_MARGIN-px rim is one masked NCC template -> one 2-D displacement per patch.
      If the stable tier alone does not pin both image directions, a provisional fit on both tiers stands in for A_s
      (basis = "all"). Houses are VALIDATION only (HOUSE_1 = roof 4 was moved on 09-18 -> used only on frames dated
      >= 09-18; HOUSE_2 = roof 7 never moved -> all frames).
@@ -35,10 +38,19 @@ status = ok if >= 4 fit units matched, both near-vertical and near-horizontal co
 and held_p90 <= 6 px; else unreliable. tx, ty = A applied to the frame centre minus the centre [px]; rot = mean rotation
 of A's columns [deg]; sx, sy = column norms of A's linear part.
 
+Cohort reference + tie (user, 2026-10-01; CH04's 09-18 frame had people in view and daily tracking from it failed):
+  --ref-labels <landmarks_CHxx_<date>_<time>.json> makes a user-labelled COHORT frame the reference for its camera, and
+  --tie fits the map 09-18 px -> reference px directly from the two label sets (tie_labels: ICP point-to-curve on the
+  named landmarks, then unnamed items — nails, patches, seams, building, wood — paired by nearest neighbour and gated at
+  TIE_GATE px; leave-one-unit-out held-out error). The reported shift is then that of A_track o A_tie (09-18 -> frame).
+  house_1 is usable only when the reference and the frame lie on the same side of its 09-18 move.
+
 Usage: python cv/cv_field/landmark_track.py --cohort 2026c [--cameras CH01 CH02 CH03 CH04] [--start 2026-08-30 --end 2026-09-17]
+                                            [--times 12:00] [--ref-labels <json> ...] [--tie] [--tag <name>]
        python cv/cv_field/landmark_track.py --selftest
-Output: $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_landmark_track_<ts>/ (frames, overlays, <CH>_track.mp4, CSVs) and
-results/<cohort>/cv_field/reports/cv_field_landmark_track_<cohort>.md (+ run_manifest.json).
+Output: $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_landmark_track[_<tag>]_<ts>/ (frames, overlays, <CH>_track.mp4,
+CSVs) and results/<cohort>/cv_field/reports/cv_field_landmark_track_<cohort>[_<tag>].md (+ run_manifest.json, or
+run_manifest_landmark_track_<tag>_<cohort>.json with --tag).
 """
 from __future__ import annotations
 
@@ -73,7 +85,14 @@ FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_
 # distant building -> each piece is checked against the stable tier before it may enter the fit
 OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING", "WOOD")       # PATCH_<wall>_<n>, PATCHES, BUILDING, WOOD
 OCC_CAP, OCC_MATCH_MIN, OCC_RES_MAX = 12, 0.6, 3.0
+# Patches = dark blocks on the white wall (user, 2026-10-01) -> one masked 2-D template per patch
+BLOCK_PREFIXES = ("PATCH",)
+BLOCK_MARGIN, BLOCK_OPEN_GAP = 6, 30
+# Label-to-label tie (--tie): items without a correspondence across frames are paired by nearest neighbour
+UNNAMED_PREFIXES = ("NAILS", "PATCH", "SEAM", "BUILDING", "WOOD")
+TIE_STEP, TIE_PAIR_MAX, TIE_GATE = 10.0, 15.0, 3.0
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
+PRIOR_W = 1e4                                             # weak identity prior on the affine's linear part
 HOUSE1_MOVED = date(2026, 9, 18)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30", "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}
 
@@ -96,16 +115,74 @@ def occludable(name: str) -> bool:
     return base(name).startswith(OCCLUDABLE_PREFIXES)
 
 
-def usable(name: str, frame_day: date) -> bool:
-    return not (base(name).startswith("HOUSE_1_") and frame_day < HOUSE1_MOVED)
+def usable(name: str, frame_day: date, ref_day: date = HOUSE1_MOVED) -> bool:
+    """house_1 was moved on 09-18: its labels hold only for frames on the same side of the move as the reference."""
+    return not (base(name).startswith("HOUSE_1_") and (frame_day >= HOUSE1_MOVED) != (ref_day >= HOUSE1_MOVED))
 
 
-def units_of(landmarks: dict, frame_day: date) -> dict[str, list[np.ndarray]]:
+def is_block(name: str) -> bool:
+    return base(name).startswith(BLOCK_PREFIXES)
+
+
+def block_of(p: np.ndarray) -> dict | None:
+    """A patch piece as a block: the labelled outline closed by joining its ends; centroid = polygon centroid. An end
+    gap > BLOCK_OPEN_GAP px = an open (grass-hidden) bottom: the joining segment is not a real edge."""
+    if len(p) < 3:
+        return None
+    m = cv2.moments(p.astype(np.float32))
+    c = np.array([m["m10"] / m["m00"], m["m01"] / m["m00"]]) if abs(m["m00"]) > 1.0 else p.mean(0)
+    return {"poly": p, "c": c, "open": float(np.hypot(*(p[-1] - p[0]))) > BLOCK_OPEN_GAP}
+
+
+def block_template(ref_g: np.ndarray, blk: dict):
+    """(template, mask, top-left) of a block: its bounding box + BLOCK_MARGIN; mask = the closed outline filled and
+    dilated by BLOCK_MARGIN (so the rim of white wall and the outline's edges are in), minus a band along the joining
+    segment of an open block (grass there)."""
+    P = blk["poly"]
+    Hh, Ww = ref_g.shape
+    x0, y0 = (np.floor(P.min(0)) - BLOCK_MARGIN).astype(int)
+    x1, y1 = (np.ceil(P.max(0)) + BLOCK_MARGIN + 1).astype(int)
+    if x0 < 0 or y0 < 0 or x1 > Ww or y1 > Hh:
+        return None
+    mask = np.zeros((y1 - y0, x1 - x0), np.uint8)
+    q = np.round(P - (x0, y0)).astype(np.int32).reshape(-1, 1, 2)
+    cv2.fillPoly(mask, [q], 255)
+    cv2.polylines(mask, [q], False, 255, 1)
+    mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * BLOCK_MARGIN + 1,) * 2))
+    if blk["open"]:
+        cv2.line(mask, tuple(int(v) for v in q[-1, 0]), tuple(int(v) for v in q[0, 0]), 0, 3 * BLOCK_MARGIN)
+    return ref_g[y0:y1, x0:x1], (mask > 0).astype(np.float32), (x0, y0)
+
+
+def match_block(ref_g: np.ndarray, tgt_g: np.ndarray, blk: dict, pred_c, r: int = R) -> tuple[float, float, float] | None:
+    """Masked NCC of the whole block within +/-r px of its predicted position -> displacement of its centroid + score."""
+    bt = block_template(ref_g, blk)
+    if bt is None:
+        return None
+    tpl, mask, (x0, y0) = bt
+    if mask.sum() < 50 or float(tpl[mask > 0].std()) < 0.02:
+        return None
+    h, w = tpl.shape
+    ox, oy = int(round(x0 + pred_c[0] - blk["c"][0])) - r, int(round(y0 + pred_c[1] - blk["c"][1])) - r
+    Hh, Ww = tgt_g.shape
+    if ox < 0 or oy < 0 or ox + w + 2 * r > Ww or oy + h + 2 * r > Hh:
+        return None
+    res = np.nan_to_num(cv2.matchTemplate(tgt_g[oy:oy + h + 2 * r, ox:ox + w + 2 * r], tpl, cv2.TM_CCOEFF_NORMED, mask=mask),
+                        nan=-1.0, posinf=-1.0, neginf=-1.0)
+    _, score, _, (px, py) = cv2.minMaxLoc(res)
+
+    sub = subpix
+    fx = px + (sub(res[py, px], res[py, px - 1], res[py, px + 1]) if 0 < px < res.shape[1] - 1 else 0.0)
+    fy = py + (sub(res[py, px], res[py - 1, px], res[py + 1, px]) if 0 < py < res.shape[0] - 1 else 0.0)
+    return float(ox + fx - x0), float(oy + fy - y0), float(score)
+
+
+def units_of(landmarks: dict, frame_day: date, ref_day: date = HOUSE1_MOVED) -> dict[str, list[np.ndarray]]:
     """Fit units: a landmark is one unit, except that every piece of a multi-piece occludable landmark is its own unit
     ("NAME#k", k from 1), so one hidden patch or building edge is dropped without losing the others."""
     out = {}
     for name, v in landmarks.items():
-        if not usable(name, frame_day):
+        if not usable(name, frame_day, ref_day):
             continue
         ps = pieces_of(v)
         if occludable(name) and len(ps) > 1:
@@ -161,6 +238,19 @@ def samples(name: str, kind: str, pieces: list[np.ndarray], cap: int | None = No
     return out
 
 
+def subpix(c: float, l: float, rr: float) -> float:
+    """Sub-pixel offset of a correlation peak c between neighbours l and rr: 3-point Gaussian fit when all three are
+    positive (a parabola pulls small shifts towards the integer pixel — "pixel locking", ~0.2 px at a 0.45-px shift,
+    which accumulates over chained frames), else a parabola."""
+    if c > 0 and l > 0 and rr > 0:
+        a, b, d = np.log(l), np.log(c), np.log(rr)
+        den = a - 2 * b + d
+        if den < -1e-12:
+            return float(np.clip(0.5 * (a - d) / den, -0.5, 0.5))
+    den = l - 2 * c + rr
+    return 0.0 if abs(den) < 1e-9 else float(np.clip(0.5 * (l - rr) / den, -0.5, 0.5))
+
+
 def match(ref_g: np.ndarray, tgt_g: np.ndarray, x: float, y: float, cx: float | None = None, cy: float | None = None,
           h: int = H, r: int = R) -> tuple[float, float, float] | None:
     """NCC of the (2h+1)^2 reference patch at (x, y) searched within +/-r px of (cx, cy) in the target (default: the same
@@ -178,15 +268,14 @@ def match(ref_g: np.ndarray, tgt_g: np.ndarray, x: float, y: float, cx: float | 
     res = cv2.matchTemplate(win, tpl, cv2.TM_CCOEFF_NORMED)
     _, score, _, (px, py) = cv2.minMaxLoc(res)
 
-    def sub(c, l, rr):
-        den = l - 2 * c + rr
-        return 0.0 if abs(den) < 1e-9 else 0.5 * (l - rr) / den
+    sub = subpix
     ox = px + (sub(res[py, px], res[py, px - 1], res[py, px + 1]) if 0 < px < res.shape[1] - 1 else 0.0) - r
     oy = py + (sub(res[py, px], res[py - 1, px], res[py + 1, px]) if 0 < py < res.shape[0] - 1 else 0.0) - r
     return float(ci + ox - x), float(cj + oy - y), float(score)
 
 
-def coarse_affine(ref_g, tgt_g, landmarks: dict, frame_day: date, stable_only: bool = True) -> np.ndarray:
+def coarse_affine(ref_g, tgt_g, landmarks: dict, frame_day: date, stable_only: bool = True,
+                  ref_day: date = HOUSE1_MOVED) -> np.ndarray:
     """Stage 1: a few large patches per fit-set landmark (they include ends/corners/context, so parallel edges cannot be
     confused) matched at half resolution over +/-R1/scale px, treated as 2-D matches -> Huber affine. Stable tier first,
     both tiers if that gives too few; identity if still too few."""
@@ -195,7 +284,7 @@ def coarse_affine(ref_g, tgt_g, landmarks: dict, frame_day: date, stable_only: b
     ts = cv2.resize(tgt_g, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
     obs = []
     for name, v in landmarks.items():
-        if not (in_fit(name) and usable(name, frame_day)) or (stable_only and occludable(name)):
+        if not (in_fit(name) and usable(name, frame_day, ref_day)) or (stable_only and occludable(name)):
             continue
         pts = np.vstack([p for p in pieces_of(v) if len(p)])
         for q in pts[np.linspace(0, len(pts) - 1, min(COARSE_PER_LM, len(pts))).round().astype(int)]:
@@ -204,7 +293,7 @@ def coarse_affine(ref_g, tgt_g, landmarks: dict, frame_day: date, stable_only: b
                 obs.append(((float(q[0]), float(q[1]), 0.0, 0.0, True), (m[0] / s, m[1] / s), m[2]))
     A = fit_affine(obs) if len({o[0][:2] for o in obs}) >= 3 else None
     if A is None and stable_only:
-        return coarse_affine(ref_g, tgt_g, landmarks, frame_day, stable_only=False)
+        return coarse_affine(ref_g, tgt_g, landmarks, frame_day, stable_only=False, ref_day=ref_day)
     return A if A is not None else np.array([[1.0, 0, 0], [0, 1.0, 0]])
 
 
@@ -226,10 +315,14 @@ def rows_for(s, d):
 
 
 def fit_affine(obs: list) -> np.ndarray | None:
-    """obs = [(sample, (dx, dy), weight)] -> 2x3 affine by Huber IRLS (k = 2 px)."""
+    """obs = [(sample, (dx, dy), weight)] -> 2x3 affine by Huber IRLS (k = 2 px), with a weak prior (PRIOR_W) pulling the
+    linear part to the identity: negligible where the data constrain it (hundreds of samples with ~1000-px lever arms),
+    it keeps a direction the data leave free (e.g. vertical scale from two vertical poles and one wall top) from drifting."""
     rows = [(r, b, w) for s, d, w in obs for r, b in rows_for(s, d)]
     if len(rows) < 6:
         return None
+    rows += [([1, 0, 0, 0, 0, 0], 1.0, PRIOR_W), ([0, 1, 0, 0, 0, 0], 0.0, PRIOR_W),
+             ([0, 0, 0, 1, 0, 0], 0.0, PRIOR_W), ([0, 0, 0, 0, 1, 0], 1.0, PRIOR_W)]
     M = np.array([r for r, _, _ in rows], float)
     b = np.array([v for _, v, _ in rows], float)
     w0 = np.array([w for _, _, w in rows], float)
@@ -251,19 +344,28 @@ def residual(A: np.ndarray, s, d) -> float:
     return float(np.hypot(*e)) if corner else float(abs(nx * e[0] + ny * e[1]))
 
 
-def track_frame(ref_g, tgt_g, landmarks: dict, kinds: dict, frame_day: date) -> dict:
-    A0 = coarse_affine(ref_g, tgt_g, landmarks, frame_day)                       # stage 1
+def track_frame(ref_g, tgt_g, landmarks: dict, kinds: dict, frame_day: date, ref_day: date = HOUSE1_MOVED) -> dict:
+    A0 = coarse_affine(ref_g, tgt_g, landmarks, frame_day, ref_day=ref_day)       # stage 1
     per, n_samp = {}, {}
-    for u, ps in units_of(landmarks, frame_day).items():                          # stage 2: fine, around A0's prediction
+    for u, ps in units_of(landmarks, frame_day, ref_day).items():                 # stage 2: fine, around A0's prediction
         name = base(u)
-        ss = samples(name, kinds.get(name, "polyline"), ps, cap=OCC_CAP if occludable(name) else None)
-        n_samp[u] = len(ss)
         obs = []
-        for s in ss:
-            pc = A0[:, :2] @ np.array(s[:2]) + A0[:, 2]
-            m = match(ref_g, tgt_g, s[0], s[1], pc[0], pc[1])
-            if m and m[2] >= S_MIN:
-                obs.append((s, (m[0], m[1]), m[2]))
+        if is_block(name):                                                        # a patch: one 2-D block match
+            blks = [b for b in (block_of(p) for p in ps) if b is not None]
+            n_samp[u] = len(blks)
+            for b in blks:
+                pc = A0[:, :2] @ b["c"] + A0[:, 2]
+                m = match_block(ref_g, tgt_g, b, pc)
+                if m and m[2] >= S_MIN:
+                    obs.append(((float(b["c"][0]), float(b["c"][1]), 0.0, 0.0, True), (m[0], m[1]), m[2]))
+        else:
+            ss = samples(name, kinds.get(name, "polyline"), ps, cap=OCC_CAP if occludable(name) else None)
+            n_samp[u] = len(ss)
+            for s in ss:
+                pc = A0[:, :2] @ np.array(s[:2]) + A0[:, 2]
+                m = match(ref_g, tgt_g, s[0], s[1], pc[0], pc[1])
+                if m and m[2] >= S_MIN:
+                    obs.append((s, (m[0], m[1]), m[2]))
         if obs:
             per[u] = obs
     stable = [u for u in per if in_fit(u) and not occludable(u)]                  # tier 1, then gate tier 2 against it
@@ -308,6 +410,153 @@ def track_frame(ref_g, tgt_g, landmarks: dict, kinds: dict, frame_day: date) -> 
     return out
 
 
+def unnamed(name: str) -> bool:
+    return base(name).startswith(UNNAMED_PREFIXES)
+
+
+def _closest(pieces: list[np.ndarray], q: np.ndarray):
+    """Closest point on a set of polylines to q -> (point, unit normal, distance, at_end). at_end = the projection is
+    clipped to a polyline's first or last vertex (labelled extents differ there -> no constraint)."""
+    best = None
+    for P in pieces:
+        if len(P) < 2:
+            continue
+        a, b = P[:-1], P[1:]
+        d = b - a
+        L2 = np.maximum((d ** 2).sum(1), 1e-9)
+        t = np.clip(((q - a) * d).sum(1) / L2, 0.0, 1.0)
+        c = a + t[:, None] * d
+        dist = np.hypot(*(c - q).T)
+        i = int(np.argmin(dist))
+        if best is None or dist[i] < best[2]:
+            n = np.array([-d[i][1], d[i][0]]) / np.sqrt(L2[i])
+            at_end = (i == 0 and t[i] <= 0.0) or (i == len(a) - 1 and t[i] >= 1.0)
+            best = (c[i], n, float(dist[i]), bool(at_end))
+    return best
+
+
+def _curve_pts(p: np.ndarray, step: float = TIE_STEP) -> np.ndarray:
+    out = []
+    for a, b in zip(p[:-1], p[1:]):
+        k = max(1, int(np.hypot(*(b - a)) // step))
+        out += [a + t * (b - a) for t in np.arange(k) / k]
+    out.append(p[-1])
+    return np.array(out)
+
+
+def _tie_obs(A: np.ndarray, R_pieces: list[np.ndarray], T_pieces: list[np.ndarray], corner: bool) -> list:
+    """Constraints mapping R onto T under the current A: point pairs (corner) or point-to-curve (normal) rows."""
+    obs = []
+    if corner:
+        for p, q in zip(R_pieces, T_pieces):
+            obs.append(((float(p[0]), float(p[1]), 0.0, 0.0, True), (float(q[0] - p[0]), float(q[1] - p[1])), 1.0))
+        return obs
+    for P in R_pieces:
+        for p in _curve_pts(P) if len(P) >= 2 else []:
+            hit = _closest(T_pieces, A[:, :2] @ p + A[:, 2])
+            if hit is None or hit[3] or hit[2] > 3 * TIE_PAIR_MAX:
+                continue
+            c, n, _, _ = hit
+            obs.append(((float(p[0]), float(p[1]), float(n[0]), float(n[1]), False), (float(c[0] - p[0]), float(c[1] - p[1])), 1.0))
+    return obs
+
+
+def _pair_unnamed(A: np.ndarray, Rl: dict, Tl: dict, day_R: date, day_T: date) -> dict:
+    """Unnamed items paired by nearest neighbour after A: each R nail / block centroid / curve piece -> the closest T item
+    of the same landmark (mutual, within TIE_PAIR_MAX px). Returns unit -> (R pieces, T pieces, corner?)."""
+    out = {}
+    for name, v in Rl.items():
+        if not (unnamed(name) and name in Tl and in_fit(name) and usable(name, day_T, day_R)):
+            continue
+        Rp, Tp = pieces_of(v), pieces_of(Tl[name])
+        if name.startswith("NAILS"):                         # patches: outline point-to-curve (extents differ)
+            rc = [p[0] if len(p) == 1 else (block_of(p) or {"c": p.mean(0)})["c"] for p in Rp]
+            tc = [p[0] if len(p) == 1 else (block_of(p) or {"c": p.mean(0)})["c"] for p in Tp]
+            if not rc or not tc:
+                continue
+            rm = np.array([A[:, :2] @ c + A[:, 2] for c in rc])
+            D = np.hypot(rm[:, None, 0] - np.array(tc)[None, :, 0], rm[:, None, 1] - np.array(tc)[None, :, 1])
+            for i in range(len(rc)):
+                j = int(np.argmin(D[i]))
+                if D[i, j] <= TIE_PAIR_MAX and int(np.argmin(D[:, j])) == i:
+                    out[f"{name}#{i + 1}"] = ([rc[i]], [tc[j]], True)
+        else:
+            for i, P in enumerate(Rp):
+                if len(P) < 2:
+                    continue
+                pts = np.array([A[:, :2] @ p + A[:, 2] for p in _curve_pts(P)])
+                best, bj = np.inf, None
+                for j, Q in enumerate(Tp):
+                    ds = [h[2] for h in (_closest([Q], q) for q in pts) if h is not None and not h[3]]
+                    if len(ds) >= 2 and np.median(ds) < best:
+                        best, bj = float(np.median(ds)), j
+                if bj is not None and best <= TIE_PAIR_MAX:
+                    out[f"{name}#{i + 1}"] = ([P], [Tp[bj]], False)
+    return out
+
+
+def tie_labels(Rl: dict, Tl: dict, day_R: date, day_T: date) -> dict:
+    """Affine map R px -> T px from two label sets of the same camera (no image matching). Named fit-set landmarks:
+    ICP point-to-curve (R samples every TIE_STEP px onto T's same-named curve, normal constraints, Huber), from the median
+    centroid offset. Then unnamed items paired by nearest neighbour and kept if their median residual under the named fit
+    is <= TIE_GATE px; final fit on both; leave-one-unit-out held-out error."""
+    named = [n for n in Rl if n in Tl and in_fit(n) and not unnamed(n) and usable(n, day_T, day_R)]
+    if not named:
+        return {"A": None, "status": "no common named landmarks"}
+    off = np.median([np.vstack(pieces_of(Tl[n])).mean(0) - np.vstack(pieces_of(Rl[n])).mean(0) for n in named], axis=0)
+    A = np.array([[1.0, 0.0, off[0]], [0.0, 1.0, off[1]]])
+
+    def icp(A, units):
+        for _ in range(40):
+            obs = [o for u, (rp, tp, cn) in units.items() for o in _tie_obs(A, rp, tp, cn)]
+            if not constrained(obs):
+                return None, obs
+            A_new = fit_affine(obs)
+            if A_new is None:
+                return None, obs
+            done = np.abs(A_new - A).max() < 1e-3
+            A = A_new
+            if done:
+                break
+        return A, [o for u, (rp, tp, cn) in units.items() for o in _tie_obs(A, rp, tp, cn)]
+
+    units = {n: (pieces_of(Rl[n]), pieces_of(Tl[n]), False) for n in named}
+    A_named, _ = icp(A, units)
+    if A_named is None:
+        return {"A": None, "status": "named landmarks do not constrain both directions"}
+    cand = _pair_unnamed(A_named, Rl, Tl, day_R, day_T)
+    accepted, rejected = {}, {}
+    for u, (rp, tp, cn) in cand.items():
+        ob = _tie_obs(A_named, rp, tp, cn)
+        med = float(np.median([residual(A_named, s, d) for s, d, _ in ob])) if ob else np.inf
+        (accepted if med <= TIE_GATE else rejected)[u] = (rp, tp, cn) if med <= TIE_GATE else round(med, 1)
+    units.update(accepted)
+    A_all, _ = icp(A_named, units)
+    A_all = A_named if A_all is None else A_all
+    held = {}
+    for u in units:
+        rest = {k: v for k, v in units.items() if k != u}
+        A_lo, _ = icp(A_all, rest)
+        ob = _tie_obs(A_all, *units[u])
+        if A_lo is not None and ob:
+            held[u] = float(np.median([residual(A_lo, s, d) for s, d, _ in ob]))
+    hv = np.array(list(held.values())) if held else np.array([np.inf])
+    out = {"A": A_all, "A_named": A_named, "named": named, "units": list(units), "rejected": rejected, "held": held,
+           "held_med": float(np.median(hv)), "held_p90": float(np.percentile(hv, 90))}
+    out["status"] = ("ok" if len(units) >= 4 and len(held) >= 2 and out["held_med"] <= HELD_MED_MAX
+                     and out["held_p90"] <= HELD_P90_MAX else "unreliable")
+    return out
+
+
+def apply_A(A: np.ndarray, P: np.ndarray) -> np.ndarray:
+    return np.asarray(P, float) @ A[:, :2].T + A[:, 2]
+
+
+def compose(A2: np.ndarray, A1: np.ndarray) -> np.ndarray:
+    """p -> A2(A1(p))."""
+    return (np.vstack([A2, [0, 0, 1.0]]) @ np.vstack([A1, [0, 0, 1.0]]))[:2]
+
+
 def params(A: np.ndarray, size) -> dict:
     W, Hh = size
     c = np.array([W / 2, Hh / 2])
@@ -318,13 +567,13 @@ def params(A: np.ndarray, size) -> dict:
 
 
 def draw_overlay(img: np.ndarray, landmarks: dict, A: np.ndarray | None, frame_day: date, caption: str,
-                 dropped=()) -> np.ndarray:
+                 dropped=(), ref_day: date = HOUSE1_MOVED) -> np.ndarray:
     """red = labels as drawn on the reference; moved by A: green = fit, cyan = validation, orange = dropped occludable
     piece. Single points (NAILS) are circles."""
     out = img.copy()
     th = max(2, img.shape[1] // 1600)
     for name, v in landmarks.items():
-        if not usable(name, frame_day):
+        if not usable(name, frame_day, ref_day):
             continue
         ps = pieces_of(v)
         for k, p in enumerate(ps, 1):
@@ -369,34 +618,72 @@ def selftest() -> int:
     nails = samples("NAILS", "point", pieces_of([[[100, 100]], [[200, 150]], [[300, 120]]]))
     okn = len(nails) == 3 and all(s[4] for s in nails) and in_fit("NAILS") and in_fit("PATCHES") and in_fit("SEAMS") and in_fit("BUILDING") and occludable("WOOD")
     print(f"[{'PASS' if okn else 'FAIL'}] NAILS: each single point is a 2-D constraint; NAILS/PATCHES/SEAMS/BUILDING in the fit set")
-    # occlusion: two bumpy patches + a building edge; in the target a "rat" (noise blob) covers patch 2 and a "person"
-    # covers the building edge -> both dropped, the affine still exact, patch 1 kept
+    # occlusion + blocks: two dark bumpy patches on a white wall band (patch 2 open at the bottom = grass) and a building
+    # edge; in the target a "rat" (noise) covers patch 1's twin, a "person" the building edge -> both dropped, the affine
+    # still exact, the visible patch measured as one 2-D block
     occ = base.copy()
-    bump1 = [[400 + 20 * i, 640 + (8 if i % 2 else 0)] for i in range(8)]
-    bump2 = [[1000 + 20 * i, 660 + (8 if i % 2 else 0)] for i in range(8)]
-    for b in (bump1, bump2):
-        cv2.polylines(occ, [np.array(b, np.int32).reshape(-1, 1, 2)], False, 250, 4)
+    cv2.rectangle(occ, (330, 560), (1400, 760), 215, -1)
+    cv2.line(occ, (330, 560), (1400, 560), 255, 3)
+    blob1 = np.array([[420 + 6 * np.cos(a) * (8 + 2 * (k % 2)), 650 + 6 * np.sin(a) * (7 + 2 * (k % 2))]
+                      for k, a in enumerate(np.linspace(0, 2 * np.pi, 24, endpoint=False))])
+    blob2 = blob1 + (600, -10)
+    for b in (blob1, blob2):
+        cv2.fillPoly(occ, [np.round(b).astype(np.int32).reshape(-1, 1, 2)], 70)
     cv2.line(occ, (1450, 120), (1450, 330), 240, 6)
     occ_img = cv2.cvtColor(occ, cv2.COLOR_GRAY2BGR)
     tgt2 = cv2.warpAffine(occ_img, true, (w, h), borderMode=cv2.BORDER_REFLECT)
-    tb = (true[:, :2] @ np.array(bump2, float).T + true[:, 2:]).T
+    tb = (true[:, :2] @ blob2.T + true[:, 2:]).T
     x0, y0 = tb.min(0).astype(int) - 25
     x1, y1 = tb.max(0).astype(int) + 25
     tgt2[y0:y1, x0:x1] = rng.integers(0, 255, (y1 - y0, x1 - x0, 1), dtype=np.uint8)
     tq = (true[:, :2] @ np.array([[1450, 120], [1450, 330]], float).T + true[:, 2:]).T
     tgt2[int(tq[:, 1].min()) - 25:int(tq[:, 1].max()) + 25, int(tq[:, 0].min()) - 25:int(tq[:, 0].max()) + 25] = 90
-    lms2 = dict(lms, PATCHES=[bump1, bump2], BUILDING=[[[1450, 130], [1450, 320]]])
+    open1 = blob1[[k for k in range(24) if not 3 <= k <= 9]]            # bottom arc (sin > 0 side) left out = grass
+    lms2 = dict(lms, PATCHES=[np.roll(open1, -3, axis=0).tolist(), blob2.tolist()], BUILDING=[[[1450, 130], [1450, 320]]])
     kinds2 = dict(kinds, PATCHES="polyline", BUILDING="polyline")
     r2 = track_frame(prep(occ_img), prep(tgt2), lms2, kinds2, date(2026, 9, 4))
     err2 = float(np.abs(r2["A"] @ np.array([w / 2, h / 2, 1.0]) - true @ np.array([w / 2, h / 2, 1.0])).max()) if r2["A"] is not None else np.inf
+    b1 = r2["per"].get("PATCHES#1", [])
+    berr = (float(np.hypot(*(np.array(b1[0][0][:2]) + b1[0][1] - (true[:, :2] @ np.array(b1[0][0][:2]) + true[:, 2]))))
+            if len(b1) == 1 else np.inf)
     oko = (err2 < 0.5 and "PATCHES#2" in r2["dropped"] and "BUILDING" in r2["dropped"] and "PATCHES#1" in r2["fit_names"]
-           and r2["basis"] == "stable")
-    print(f"[{'PASS' if oko else 'FAIL'}] occlusion: dropped {sorted(r2['dropped'])}, kept PATCHES#1 "
-          f"{'PATCHES#1' in r2['fit_names']}, centre error {err2:.2f} px")
+           and r2["basis"] == "stable" and berr < 0.3 and block_of(np.array(lms2["PATCHES"][0]))["open"])
+    print(f"[{'PASS' if oko else 'FAIL'}] blocks + occlusion: open-bottom patch matched as one block ({berr:.2f} px), "
+          f"dropped {sorted(r2['dropped'])}, centre error {err2:.2f} px")
+    # label-to-label tie: T = the same structures (points taken ON R's curves, other extents and click spacing) moved by
+    # a known affine + 0.4-px click noise; nails / patches in another order, one unmatched nail on each side
+    Rl = {"POLE_A0_L": [[[296, 200], [304, 700]]], "POLE_A2_L": [[[1196, 250], [1204, 690]]],
+          "WALLTOP_Y0": [[[150, 419], [800, 410], [1450, 401]]], "NAILS": [[[500, 300]], [[900, 320]], [[1300, 280]], [[50, 50]]],
+          "PATCHES": [blob1.tolist(), blob2.tolist()], "SEAMS": [[[640, 560], [642, 700]]]}
+    At = np.array([[1.002, 0.006, 24.0], [-0.005, 0.998, -11.0]])
+
+    def on(pl, a, b, n):                       # n points along polyline pl between length fractions a and b
+        pl = np.asarray(pl, float)
+        L = np.r_[0, np.cumsum(np.hypot(*np.diff(pl, axis=0).T))]
+        f = np.linspace(a, b, n) * L[-1]
+        return np.c_[np.interp(f, L, pl[:, 0]), np.interp(f, L, pl[:, 1])]
+
+    def mv(pts):
+        return (np.asarray(pts, float) @ At[:, :2].T + At[:, 2] + rng.normal(0, 0.4, np.shape(pts))).tolist()
+    Tl = {"POLE_A0_L": [mv(on(Rl["POLE_A0_L"][0], 0.1, 0.9, 3))], "POLE_A2_L": [mv(on(Rl["POLE_A2_L"][0], 0.05, 1.0, 4))],
+          "WALLTOP_Y0": [mv(on(Rl["WALLTOP_Y0"][0], 0.15, 0.85, 5))],
+          "NAILS": [mv([[1300, 280]]), mv([[500, 300]]), mv([[900, 320]]), mv([[1500, 900]])],
+          "PATCHES": [mv(blob2), mv(blob1)], "SEAMS": [mv(on(Rl["SEAMS"][0], 0.2, 0.9, 3))]}
+    tie = tie_labels(Rl, Tl, date(2026, 9, 18), date(2026, 9, 4))
+    inside = np.array([[300, 300], [800, 450], [1200, 650], [500, 600], [1300, 300]])      # within the labelled area
+    terr = float(np.hypot(*(apply_A(tie["A"], inside) - apply_A(At, inside)).T).max()) if tie["A"] is not None else np.inf
+    okt = terr < 0.6 and tie["status"] == "ok" and sum(u.startswith("NAILS") for u in tie["units"]) == 3 and \
+        sum(u.startswith("PATCHES") for u in tie["units"]) == 2
+    print(f"[{'PASS' if okt else 'FAIL'}] label tie: affine recovered to {terr:.2f} px within the labelled area, "
+          f"{len(tie.get('units', []))} units (3 nails, 2 patches paired), held-out {tie.get('held_med', np.nan):.2f}/"
+          f"{tie.get('held_p90', np.nan):.2f} px")
     house = samples("HOUSE_1_ROOF_X", "edge", pieces_of([[[0, 0], [10, 0]]]))
-    ok2 = not usable("HOUSE_1_ROOF_X", date(2026, 9, 4)) and usable("HOUSE_1_ROOF_X", date(2026, 9, 18)) and usable("HOUSE_2_BASE_Z", date(2026, 9, 4)) and len(house) == 1
-    print(f"[{'PASS' if ok2 else 'FAIL'}] house_1 excluded before 09-18, house_2 always usable")
-    allok = ok and ok2 and okn and oko
+    ok2 = (not usable("HOUSE_1_ROOF_X", date(2026, 9, 4)) and usable("HOUSE_1_ROOF_X", date(2026, 9, 18))
+           and usable("HOUSE_2_BASE_Z", date(2026, 9, 4)) and len(house) == 1
+           and usable("HOUSE_1_ROOF_X", date(2026, 9, 4), ref_day=date(2026, 9, 4))
+           and not usable("HOUSE_1_ROOF_X", date(2026, 9, 18), ref_day=date(2026, 9, 4)))
+    print(f"[{'PASS' if ok2 else 'FAIL'}] house_1 only on the reference's side of the 09-18 move, house_2 always usable")
+    allok = ok and ok2 and okn and oko and okt
     print(("PASS" if allok else "FAIL") + " — landmark_track self-test")
     return 0 if allok else 1
 
@@ -414,13 +701,21 @@ def main(argv=None) -> int:
     ap.add_argument("--ref-session", default=r"F:\calibration\session_2026-09-18_13-54-34")
     ap.add_argument("--session", default=None)
     ap.add_argument("--fps", type=float, default=2.0)
+    ap.add_argument("--ref-labels", nargs="+", default=[],
+                    help="user-labelled reference(s) other than 09-18 (landmarks_CHxx_<date>_<time>.json; camera from the file)")
+    ap.add_argument("--tie", action="store_true", help="tie each --ref-labels reference to the camera's 09-18 labels")
+    ap.add_argument("--tag", default=None, help="name suffix of the run folder and report (keeps the canonical report)")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
     import output_paths as op
     import camera_review as cr
     args.cohort = op.resolve_cohort(args.cohort)
-    run = op.run_dir("cv_field_landmark_track", args.cohort, make_figures=False)
+    run = op.run_dir("cv_field_landmark_track" + (f"_{args.tag}" if args.tag else ""), args.cohort, make_figures=False)
+    ref_files = {}
+    for f in args.ref_labels:
+        ref_files[json.loads(Path(f).read_text(encoding="utf-8"))["camera"]] = Path(f)
+    ties = {}
     frames_dir = run / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     targets = run / "targets.csv"
@@ -443,27 +738,47 @@ def main(argv=None) -> int:
         if not lab_files:
             print(f"{cam}: no 09-18 labels")
             continue
-        lab = json.loads(lab_files[0].read_text(encoding="utf-8"))
-        landmarks, kinds = lab["landmarks"], lab.get("kind", {})
+        lab18 = json.loads(lab_files[0].read_text(encoding="utf-8"))
+        lab = json.loads(ref_files[cam].read_text(encoding="utf-8")) if cam in ref_files else lab18
+        landmarks, kinds = lab["landmarks"], {**lab18.get("kind", {}), **lab.get("kind", {})}
         size = tuple(int(v) for v in lab["frame_size_upright"])
-        got = cr.grab_at(datetime.strptime(lab["time"], "%Y-%m-%d %H:%M:%S"), cam, args, ffmpeg, size)
+        ref_t = datetime.strptime(lab["time"], "%Y-%m-%d %H:%M:%S")
+        ref_day = ref_t.date()
+        got = cr.grab_at(ref_t, cam, args, ffmpeg, size)
         if got is None:
             print(f"{cam}: reference frame not found")
             continue
         ref = got[0]
         ref_g = prep(ref)
+        A_tie = None
+        if cam in ref_files and args.tie:                       # 09-18 px -> reference px, from the two label sets
+            tie = tie_labels(lab18["landmarks"], landmarks, HOUSE1_MOVED, ref_day)
+            A_tie = tie["A"]
+            ties[cam] = tie
+            if A_tie is None:
+                print(f"{cam}: tie to 09-18 failed ({tie['status']})")
+                continue
+            (run / "overlays").mkdir(exist_ok=True)
+            cap = (f"{cam} TIE 09-18 labels -> {ref_t:%m-%d %H:%M} labels: {tie['status']} held {tie['held_med']:.2f}/"
+                   f"{tie['held_p90']:.2f}px, {len(tie['units'])} units, rejected {len(tie['rejected'])}")
+            ov = draw_overlay(ref, lab18["landmarks"], A_tie, ref_day, cap)
+            sc = 2400 / ov.shape[1]
+            cv2.imwrite(str(run / "overlays" / f"{cam}_TIE_0918_to_{ref_t:%Y%m%d_%H%M%S}.jpg"),
+                        cv2.resize(ov, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 88])
+            print(f"  {cap}")
         cv2.imwrite(str(frames_dir / f"{cam}_REF_{lab['time'].replace(':', '').replace(' ', '_')}.jpg"), ref, [cv2.IMWRITE_JPEG_QUALITY, 95])
         items = []
         (run / "overlays").mkdir(exist_ok=True)
-        todo = [("REF", datetime.strptime(lab["time"], "%Y-%m-%d %H:%M:%S"), ref)] + [
+        todo = [("REF", ref_t, ref)] + [
             (r["out"], datetime.strptime(r["frame_time"][:19], "%Y-%m-%d %H:%M:%S"), None)
             for r in sorted((m for m in manifest if m["camera"] == cam), key=lambda m: m["frame_time"])]
         for tag, ft, img in todo:
             if img is None:
                 img = cv2.imread(str(frames_dir / tag))
-            res = track_frame(ref_g, prep(img), landmarks, kinds, ft.date())
+            res = track_frame(ref_g, prep(img), landmarks, kinds, ft.date(), ref_day=ref_day)
             A = res["A"]
-            pr = params(A, size) if A is not None else {k: np.nan for k in ("tx", "ty", "rot_deg", "sx", "sy")}
+            A_tot = A if A_tie is None or A is None else compose(A, A_tie)          # shift vs 09-18 when tied
+            pr = params(A_tot, size) if A_tot is not None else {k: np.nan for k in ("tx", "ty", "rot_deg", "sx", "sy")}
             row = {"camera": cam, "frame_time": f"{ft:%Y-%m-%d %H:%M:%S}", "frame": tag, "n_fit_landmarks": len(res["fit_names"]),
                    "held_med_px": res.get("held_med", np.nan), "held_p90_px": res.get("held_p90", np.nan),
                    "status": res.get("status", "no fit"), **pr,
@@ -480,10 +795,11 @@ def main(argv=None) -> int:
                                "median_shift_px": float(np.median([np.hypot(*o[1]) for o in obs])),
                                "fit_residual_px": res.get("fit_res", {}).get(n, res.get("valid", {}).get(n, res.get("dropped_res", {}).get(n, np.nan))),
                                "held_out_px": res.get("held", {}).get(n, np.nan)})
-            cap = (f"{cam} {ft:%m-%d %H:%M} {'REF 09-18' if tag == 'REF' else ''} {row['status']} held {row['held_med_px']:.1f}/"
-                   f"{row['held_p90_px']:.1f}px  t=({pr['tx']:+.1f},{pr['ty']:+.1f}) rot {pr['rot_deg']:+.2f}"
+            cap = (f"{cam} {ft:%m-%d %H:%M} {f'REF {ref_t:%m-%d %H:%M}' if tag == 'REF' else ''} {row['status']} held "
+                   f"{row['held_med_px']:.1f}/{row['held_p90_px']:.1f}px  {'vs 09-18 ' if A_tie is not None else ''}"
+                   f"t=({pr['tx']:+.1f},{pr['ty']:+.1f}) rot {pr['rot_deg']:+.2f}"
                    + (f"  dropped {row['n_dropped']}" if row["n_dropped"] else ""))
-            ov = draw_overlay(img, landmarks, A, ft.date(), cap, res.get("dropped", {}))
+            ov = draw_overlay(img, landmarks, A, ft.date(), cap, res.get("dropped", {}), ref_day=ref_day)
             s = 2400 / ov.shape[1]
             op_path = run / "overlays" / f"{cam}_{ft:%Y%m%d_%H%M%S}.jpg"
             cv2.imwrite(str(op_path), cv2.resize(ov, None, fx=s, fy=s, interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 88])
@@ -498,7 +814,15 @@ def main(argv=None) -> int:
                 wr.writeheader()
                 wr.writerows(rows)
     rep = op.report_dir(args.cohort, "cv_field")
-    L = [f"# Landmark tracking: cohort frames vs the 09-18 calibration reference (cohort `{args.cohort}`)\n",
+    refs_txt = "; ".join(f"{c}: `{f.name}`" + (f" tied to 09-18 by the label sets — {ties[c]['status']}, held-out "
+                                                 f"{ties[c]['held_med']:.2f} / {ties[c]['held_p90']:.2f} px over "
+                                                 f"{len(ties[c]['units'])} units, rejected {ties[c]['rejected'] or 'none'}"
+                                                 if c in ties and ties[c]['A'] is not None else "")
+                         for c, f in ref_files.items())
+    L = [f"# Landmark tracking: cohort frames vs the 09-18 calibration reference (cohort `{args.cohort}`"
+         f"{f', run `{args.tag}`' if args.tag else ''})\n",
+         *([f"Reference other than 09-18 — {refs_txt}. Shifts below are vs 09-18 (A_track o A_tie) where tied; held-out "
+            "errors are those of the tracking from that reference.\n"] if ref_files else []),
          f"Generated {datetime.now():%Y-%m-%d %H:%M} by `cv/cv_field/landmark_track.py` (method, definitions and status rule in its "
          f"docstring). Bulk: `{run}` (frames, overlays, `<CH>_track.mp4`, `track_frames.csv`, `track_landmarks.csv`). "
          "Overlays: red = the 09-18 labels as drawn, green = fit-set labels moved by the fitted affine, cyan = houses "
@@ -523,10 +847,21 @@ def main(argv=None) -> int:
                  f"{(f'{sc.min():.4f}..{sc.max():.4f}' if len(sc) else '-')} | {(f'{np.median(hv):.2f}' if len(hv) else '-')} | "
                  f"{sum(r['n_dropped'] for r in rs)} ({sum(r['n_dropped'] > 0 for r in rs)}) |")
     L.append("\nReference self-check rows (frame = REF) should give ~0 shift. Per-frame values: `track_frames.csv`.")
-    (rep / f"cv_field_landmark_track_{args.cohort}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
-    op.write_run_manifest(rep, run, cohort=args.cohort, direction="cv_field", analysis="landmark_track",
-                          cameras=args.cameras, labels_dir=args.labels_dir, start=str(args.start), end=str(args.end))
-    print(f"report -> {rep / f'cv_field_landmark_track_{args.cohort}.md'}\nbulk -> {run}")
+    name = f"cv_field_landmark_track_{args.cohort}" + (f"_{args.tag}" if args.tag else "") + ".md"
+    (rep / name).write_text("\n".join(L) + "\n", encoding="utf-8")
+    meta = dict(cohort=args.cohort, direction="cv_field", analysis="landmark_track", cameras=args.cameras,
+                labels_dir=args.labels_dir, start=str(args.start), end=str(args.end), times=[str(t) for t in args.times],
+                ref_labels=[str(f) for f in ref_files.values()], tie=args.tie, report=name)
+    if args.tag:                                   # own pointer: the canonical run_manifest.json stays the daytime run's
+        (rep / f"run_manifest_landmark_track_{args.tag}_{args.cohort}.json").write_text(
+            json.dumps({"run_dir": str(run.resolve()), **meta}, indent=2) + "\n", encoding="utf-8")
+    else:
+        op.write_run_manifest(rep, run, **meta)
+    if ties:
+        with open(run / "tie.json", "w", encoding="utf-8") as f:
+            json.dump({c: {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in t.items()} for c, t in ties.items()},
+                      f, indent=2, default=str)
+    print(f"report -> {rep / name}\nbulk -> {run}")
     return 0
 
 
