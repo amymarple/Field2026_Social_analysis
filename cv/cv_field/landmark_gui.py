@@ -217,8 +217,10 @@ function exportJSON(){const out={},kind={};for(const [id,pts] of Object.entries(
   const txt=JSON.stringify(data);document.getElementById('out').value=txt;
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(txt);
   a.download='landmarks_'+CAM+'_'+TS.replace(/[-: ]/g,'').replace(/^(\d{8})(\d{6})$/,'$1_$2')+'.json';a.click();}
-try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);if(d.kind)for(const [k,v] of Object.entries(d.kind))if(!KIND[mig(k)])KIND[mig(k)]=v;recol();
-  for(const [id,pts] of Object.entries(d.lines||{})){if(npts(pts)||lines[mig(id)]===undefined)lines[mig(id)]=pts;}}}catch(e){}
+// restore only entries that hold points: empty slots saved by older pages (PATCH_<wall>_1..6, SEAM_…) stay out of the list
+try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s),K=d.kind||{};
+  for(const [id0,pts] of Object.entries(d.lines||{})){const id=mig(id0);if(!npts(pts))continue;
+    if(!KIND[id])KIND[id]=K[id0]||'polyline';lines[id]=pts;}recol();}}catch(e){}
 zoom(0.5);draw();
 </script></body></html>"""
 
