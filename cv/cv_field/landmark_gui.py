@@ -65,6 +65,7 @@ for _p in (str(HERE), str(HERE.parent)):
 import camera_review as cr  # noqa: E402  (frame lookup: segments/locate/grab, PANO)
 
 POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
+PATCH_CAMS, PATCH_SLOTS = ("CH03", "CH04"), 6       # wall patches: PATCH_<wall>_1..6 per visible wall (more via "+ add")
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
@@ -239,6 +240,11 @@ def main(argv=None) -> int:
         guides.update(landmark_guides.calib_guides(cam))
     except Exception as e:  # noqa: BLE001 — the GUI works without them
         print(f"(no calibration guides: {e})")
+    if cam in PATCH_CAMS:                                   # several patches per wall: ready-made slots (user, 2026-10-01)
+        walls = [k.split("_", 1)[1] for k in guides if k.startswith("WALLTOP_")] or ["X0", "X480", "Y0", "Y240"]
+        for w in walls:
+            for i in range(1, PATCH_SLOTS + 1):
+                kinds.setdefault(f"PATCH_{w}_{i}", "polyline")
     if args.guide:
         g = json.loads(Path(args.guide).read_text(encoding="utf-8"))
         guides = g.get("landmarks", {})
