@@ -12,7 +12,9 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   a WISER UWB anchor), `PCBOX` (the PC box facing CH02), and any added structure
   that cannot move.
 - **Validation only:** `HOUSE_1_*` = house_1 (next to pole B1, under CH05; WISER ROI `house_1`) and `HOUSE_2_*` =
-  house_2 (next to pole B3, under CH06; WISER ROI `house_2`), as `_ROOF` (outline) and `_BASE` (visible bottom edge).
+  house_2 (next to pole B3, under CH06; WISER ROI `house_2`), as `_ROOF` and `_BASE` — both OPEN lines (a house is
+  3-D with a two-plane gable roof): the roof edges you can see (ridge, eaves, sloped gable edges) and the visible bottom
+  edges, one piece per edge, the same edges in every frame (user, 2026-10-01).
   No record says whether the houses moved, so they check the correction instead of shaping it. (Briefly named
   HOUSE_B1/B3 on 2026-09-29; the GUI migrates such labels. What IS disputed is which in-box camera sits in which
   house: `field_layout.json` says CH07 → house_1, CH08 → house_2; the recording repo's COLOUR_SAMPLING_LOG says

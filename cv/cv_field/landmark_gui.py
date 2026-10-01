@@ -17,8 +17,11 @@ Landmark kinds (the side panel groups them):
   outline  BOX_<row><col>   the box mounted on that pole = a WISER UWB anchor (user, 2026-09-29): clear corners, rigid
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
-  outline  TOWER_1, TOWER_2, PCBOX, HOUSE_1/2_ROOF   closed outline, click round it (validation only for houses;
-           HOUSE_1 = house_1 by pole B1 under CH05, HOUSE_2 = house_2 by pole B3 under CH06).
+  outline  TOWER_1, TOWER_2, PCBOX   closed outline, click round it (closes only when it is one piece)
+  polyline HOUSE_1/2_ROOF, HOUSE_1/2_BASE   validation only, OPEN: a house is 3-D with a two-plane (gable) roof, so
+           draw the edges you can see — ridge, eaves, the sloped gable edges; the visible bottom edges — one piece per
+           edge (b between them), the same edges in every frame (HOUSE_1 = house_1 by pole B1 under CH05, HOUSE_2 =
+           house_2 by pole B3 under CH06).
            Two water towers outside the paddock (user, 2026-09-29): TOWER_1 beyond the row-C wall (y = 240 side, the
            top of the schematic), TOWER_2 beyond the row-A wall (y = 0 side, the bottom).
 Poles use the paddock grid names (rows A/B/C x columns 0-4, 10 ft grid) so a pole keeps its name in every frame and
@@ -52,7 +55,7 @@ WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
             + [("TOWER_1", "outline"), ("TOWER_2", "outline"), ("PCBOX", "outline"),
-               ("HOUSE_1_ROOF", "outline"), ("HOUSE_1_BASE", "polyline"), ("HOUSE_2_ROOF", "outline"), ("HOUSE_2_BASE", "polyline")])
+               ("HOUSE_1_ROOF", "polyline"), ("HOUSE_1_BASE", "polyline"), ("HOUSE_2_ROOF", "polyline"), ("HOUSE_2_BASE", "polyline")])
 
 HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __CAM__ __TS__</title>
 <style>
@@ -81,8 +84,9 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   be visible). The dashed "POLE_xx?" guide is the pole's predicted centre line, only to tell which pole it is.
   <b>BOX_xx</b>: the box on that pole (a WISER anchor) — click round its outline, corners first. <b>WALLTOP_*</b>: the TOP edge of the wall sheet, one per side, every ~0.5–1 m. <b>TOWER_1 / TOWER_2 / PCBOX</b>:
   click round the outline (it closes itself); TOWER_1 = the water tower beyond the row-C wall (y = 240, top of the map),
-  TOWER_2 = the one beyond the row-A wall (y = 0, bottom). <b>HOUSE_*</b>: roof outline + the visible part of the bottom edge —
-  used only to CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
+  TOWER_2 = the one beyond the row-A wall (y = 0, bottom). <b>HOUSE_*</b> (open lines, never auto-closed): _ROOF = the roof
+  edges you can see (ridge, eaves, the sloped gable edges), _BASE = the visible bottom edges — one piece per edge, press
+  <b>b</b> between edges; draw the same edges in every frame. Used only to CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
   Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
   click the REAL one) and the top-view map cv/configs/landmarks/2026c/paddock_schematic.png (A0 = origin corner, x
   along the length, rows A/B/C across; HOUSE_1 = house_1 by pole B1, HOUSE_2 = house_2 by pole B3).
