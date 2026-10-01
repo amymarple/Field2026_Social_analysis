@@ -155,7 +155,7 @@ added up over chained frames: 1.65 px after 8 links on synthetic frames, 0.03 px
 rewritten as a dusk chain (direct from 09-18 while ok, then from an anchor frame) with dawn closure. User labels: CH04
 09-04 12:00 (`WALLTOP_Y240` renamed `WALLTOP_X480` — user: wrong name picked) and 09-04 03:01; the 09-18 CH04 frame had
 people in view, so the wood is labelled on 09-04 only.
-- **Daytime, 09-18 reference (run `cv_field_landmark_track_20261001_1906`):** CH01 14/14, CH02 12/14 (unchanged), CH03
+- **Daytime, 09-18 reference (run `cv_field_landmark_track_20261001_1819`):** CH01 14/14, CH02 12/14 (unchanged), CH03
   4/14, **CH04 7/14** (was 2/14; the fitted shifts are now −10..+29 / −38..+41 px instead of up to 190 px).
 - **CH04 from its 09-04 day reference (`…_2026c_ch04_ref0904day.md`): 12/14 days ok, held-out median 0.99 px**;
   from the 09-04 night reference over 21:00 / 00:00 / 03:01 of every night (`…_ch04_ref0904night.md`): 29/42 ok,
@@ -169,7 +169,7 @@ people in view, so the wood is labelled on 09-04 only.
 - **Occludable pieces:** with the 09-04 reference CH04 patches agree to 3.7 px (median residual of the dropped ones; 7.7
   px with the 09-18 reference). Dropped building / wood pieces sit at 0.9–2.2 px — they fail the "≥ 60 % of samples
   matched" rule, not the residual gate.
-- **Night, CH01 / CH02, 14 nights each (run `cv_field_landmark_night_20261001_1938`):** the night frames tracked from
+- **Night, CH01 / CH02, 14 nights each (run `cv_field_landmark_night_20261001_1822`):** the night frames tracked from
   the chained night reference are ok in 55 of 56 (held-out 0.3–1.8 px); the shift vs 09-18 varies between nights by
   up to ±20 px but by ≤ 3 px between 00:00 and 03:01 of a night. **Dawn closure ≤ 2 px (the agreed pass): CH01 3/14,
   CH02 7/14 nights; median of the first three closure frames ≤ 3 px: 12/14 for each camera.** Clear failures: CH01
