@@ -17,13 +17,21 @@ Method (no visual judgement; the user reviews the overlays):
      local NORMAL is informative (aperture problem) -> one equation n.(A p) = n.(p + d); at the labelled corners of BOX_*,
      PCBOX and HOUSE_*_LABEL the full 2-D displacement -> two equations A p = p + d. Samples with NCC < S_MIN are dropped.
   4. Fit an affine map A (ref -> target, 6 parameters) by iteratively re-weighted least squares (Huber, k = 2 px) on the
-     FIT SET (POLE_*, BOX_*, WALLTOP_*, TOWER_*, PCBOX). Houses are VALIDATION only (HOUSE_1 = roof 4 was moved on 09-18 ->
-     used only on frames dated >= 09-18; HOUSE_2 = roof 7 never moved -> all frames).
+     FIT SET, in two tiers (user, 2026-10-01: nails are very stable; patches sit low on the wall and a rat can hide them;
+     people can stand in front of the distant building):
+       stable      POLE_*, BOX_*, WALLTOP_*, TOWER_*, PCBOX, NAILS, SEAM(S)  -> fitted first (A_s; also the coarse stage)
+       occludable  PATCH_* / PATCHES, BUILDING -> every PIECE is its own unit ("NAME#k"), at most OCC_CAP samples, and
+                   enters the final fit only if >= OCC_MATCH_MIN of its samples matched and its median residual under
+                   A_s is <= OCC_RES_MAX px; otherwise it is DROPPED for that frame (listed per frame).
+     If the stable tier alone does not pin both image directions, a provisional fit on both tiers stands in for A_s
+     (basis = "all"). Houses are VALIDATION only (HOUSE_1 = roof 4 was moved on 09-18 -> used only on frames dated
+     >= 09-18; HOUSE_2 = roof 7 never moved -> all frames).
   5. Held-out error: leave-one-landmark-out over the fit set — refit without landmark L, residuals of L's samples; per
      frame the median and p90 over landmarks of their median |residual|.
 Definitions: residual r = n.(A p - (p + d)) for line samples, |A p - (p + d)| for corners [px, full-res upright];
-held_med / held_p90 = median / 90th percentile over fit-set landmarks of median|r| under leave-one-out [px];
-status = ok if >= 4 fit landmarks matched, both near-vertical and near-horizontal constraints present, held_med <= 3 px
+held_med / held_p90 = median / 90th percentile over fit units (landmarks; occludable pieces count singly) of median|r|
+under leave-one-out [px]; dropped = occludable pieces left out of the fit in that frame;
+status = ok if >= 4 fit units matched, both near-vertical and near-horizontal constraints present, held_med <= 3 px
 and held_p90 <= 6 px; else unreliable. tx, ty = A applied to the frame centre minus the centre [px]; rot = mean rotation
 of A's columns [deg]; sx, sy = column norms of A's linear part.
 
@@ -60,21 +68,50 @@ CORNER_PREFIXES = ("BOX_", "PCBOX", "NAILS")              # NAILS = unnumbered p
 # BUILDING = edges of a building wall outside the paddock (CH04; user, 2026-10-01): normal-only like the wall tops
 FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_", "NAILS", "PATCHES", "SEAMS",
                 "BUILDING")
+# Occludable tier (user, 2026-10-01): patches sit low on the wall (a rat can hide one), people can stand in front of the
+# distant building -> each piece is checked against the stable tier before it may enter the fit
+OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING")               # PATCH_<wall>_<n>, PATCHES, BUILDING
+OCC_CAP, OCC_MATCH_MIN, OCC_RES_MAX = 12, 0.6, 3.0
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
 HOUSE1_MOVED = date(2026, 9, 18)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30", "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}
 
 
+def base(unit: str) -> str:
+    """Landmark name of a fit unit ("PATCHES#2" -> "PATCHES")."""
+    return unit.split("#")[0]
+
+
 def is_corner_lm(name: str) -> bool:
+    name = base(name)
     return name.startswith(CORNER_PREFIXES) or name.endswith("_LABEL")
 
 
 def in_fit(name: str) -> bool:
-    return name.startswith(FIT_PREFIXES)
+    return base(name).startswith(FIT_PREFIXES)
+
+
+def occludable(name: str) -> bool:
+    return base(name).startswith(OCCLUDABLE_PREFIXES)
 
 
 def usable(name: str, frame_day: date) -> bool:
-    return not (name.startswith("HOUSE_1_") and frame_day < HOUSE1_MOVED)
+    return not (base(name).startswith("HOUSE_1_") and frame_day < HOUSE1_MOVED)
+
+
+def units_of(landmarks: dict, frame_day: date) -> dict[str, list[np.ndarray]]:
+    """Fit units: a landmark is one unit, except that every piece of a multi-piece occludable landmark is its own unit
+    ("NAME#k", k from 1), so one hidden patch or building edge is dropped without losing the others."""
+    out = {}
+    for name, v in landmarks.items():
+        if not usable(name, frame_day):
+            continue
+        ps = pieces_of(v)
+        if occludable(name) and len(ps) > 1:
+            out.update({f"{name}#{k}": [p] for k, p in enumerate(ps, 1)})
+        else:
+            out[name] = ps
+    return out
 
 
 def prep(img: np.ndarray) -> np.ndarray:
@@ -90,7 +127,7 @@ def pieces_of(v) -> list[np.ndarray]:
     return [np.asarray(p, float) for p in ps if len(p) >= 1]
 
 
-def samples(name: str, kind: str, pieces: list[np.ndarray]) -> list[tuple[float, float, float, float, bool]]:
+def samples(name: str, kind: str, pieces: list[np.ndarray], cap: int | None = None) -> list[tuple[float, float, float, float, bool]]:
     """(x, y, nx, ny, is_corner) along a landmark. Corners: the labelled vertices of BOX_/PCBOX/_LABEL outlines."""
     out = []
     corner_lm = is_corner_lm(name)
@@ -115,7 +152,7 @@ def samples(name: str, kind: str, pieces: list[np.ndarray]) -> list[tuple[float,
         if corner_lm:
             segs += [(float(x), float(y), 0.0, 0.0, True) for x, y in p]
         out += segs
-    cap = max(MAX_PER_LM, 12 * len(pieces))                   # multi-item landmarks (PATCHES, SEAMS) keep ~12 per item
+    cap = cap or max(MAX_PER_LM, 12 * len(pieces))            # multi-item landmarks (NAILS, SEAMS) keep ~12 per item
     if len(out) > cap:
         keep = np.linspace(0, len(out) - 1, cap).round().astype(int)
         corners = [s for s in out if s[4]]
@@ -148,15 +185,16 @@ def match(ref_g: np.ndarray, tgt_g: np.ndarray, x: float, y: float, cx: float | 
     return float(ci + ox - x), float(cj + oy - y), float(score)
 
 
-def coarse_affine(ref_g, tgt_g, landmarks: dict, frame_day: date) -> np.ndarray:
+def coarse_affine(ref_g, tgt_g, landmarks: dict, frame_day: date, stable_only: bool = True) -> np.ndarray:
     """Stage 1: a few large patches per fit-set landmark (they include ends/corners/context, so parallel edges cannot be
-    confused) matched at half resolution over +/-R1/scale px, treated as 2-D matches -> Huber affine. Identity if too few."""
+    confused) matched at half resolution over +/-R1/scale px, treated as 2-D matches -> Huber affine. Stable tier first,
+    both tiers if that gives too few; identity if still too few."""
     s = COARSE_SCALE
     rs = cv2.resize(ref_g, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
     ts = cv2.resize(tgt_g, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
     obs = []
     for name, v in landmarks.items():
-        if not (in_fit(name) and usable(name, frame_day)):
+        if not (in_fit(name) and usable(name, frame_day)) or (stable_only and occludable(name)):
             continue
         pts = np.vstack([p for p in pieces_of(v) if len(p)])
         for q in pts[np.linspace(0, len(pts) - 1, min(COARSE_PER_LM, len(pts))).round().astype(int)]:
@@ -164,6 +202,8 @@ def coarse_affine(ref_g, tgt_g, landmarks: dict, frame_day: date) -> np.ndarray:
             if m and m[2] >= S_MIN:
                 obs.append(((float(q[0]), float(q[1]), 0.0, 0.0, True), (m[0] / s, m[1] / s), m[2]))
     A = fit_affine(obs) if len({o[0][:2] for o in obs}) >= 3 else None
+    if A is None and stable_only:
+        return coarse_affine(ref_g, tgt_g, landmarks, frame_day, stable_only=False)
     return A if A is not None else np.array([[1.0, 0, 0], [0, 1.0, 0]])
 
 
@@ -212,22 +252,39 @@ def residual(A: np.ndarray, s, d) -> float:
 
 def track_frame(ref_g, tgt_g, landmarks: dict, kinds: dict, frame_day: date) -> dict:
     A0 = coarse_affine(ref_g, tgt_g, landmarks, frame_day)                       # stage 1
-    per = {}
-    for name, v in landmarks.items():                                             # stage 2: fine, around A0's prediction
-        if not usable(name, frame_day):
-            continue
+    per, n_samp = {}, {}
+    for u, ps in units_of(landmarks, frame_day).items():                          # stage 2: fine, around A0's prediction
+        name = base(u)
+        ss = samples(name, kinds.get(name, "polyline"), ps, cap=OCC_CAP if occludable(name) else None)
+        n_samp[u] = len(ss)
         obs = []
-        for s in samples(name, kinds.get(name, "polyline"), pieces_of(v)):
+        for s in ss:
             pc = A0[:, :2] @ np.array(s[:2]) + A0[:, 2]
             m = match(ref_g, tgt_g, s[0], s[1], pc[0], pc[1])
             if m and m[2] >= S_MIN:
                 obs.append((s, (m[0], m[1]), m[2]))
         if obs:
-            per[name] = obs
-    fit_names = [n for n in per if in_fit(n)]
+            per[u] = obs
+    stable = [u for u in per if in_fit(u) and not occludable(u)]                  # tier 1, then gate tier 2 against it
+    occ = [u for u in per if in_fit(u) and occludable(u)]
+    st_obs = [o for u in stable for o in per[u]]
+    basis, A_s = "stable", (fit_affine(st_obs) if constrained(st_obs) else None)
+    if A_s is None:
+        all_obs = st_obs + [o for u in occ for o in per[u]]
+        basis, A_s = "all", (fit_affine(all_obs) if constrained(all_obs) else None)
+    dropped = {u: "no match" for u, n in n_samp.items() if n and in_fit(u) and occludable(u) and u not in per}
+    accepted = []
+    for u in occ:
+        frac = len(per[u]) / max(1, n_samp[u])
+        med = float(np.median([residual(A_s, s, d) for s, d, _ in per[u]])) if A_s is not None else np.inf
+        if frac >= OCC_MATCH_MIN and med <= OCC_RES_MAX:
+            accepted.append(u)
+        else:
+            dropped[u] = f"matched {frac:.0%}, residual {med:.1f} px"
+    fit_names = stable + accepted
     fit_obs = [o for n in fit_names for o in per[n]]
-    A = fit_affine(fit_obs) if constrained(fit_obs) else None
-    out = {"A": A, "A0": A0, "per": per, "fit_names": fit_names}
+    A = fit_affine(fit_obs) if A_s is not None and constrained(fit_obs) else None
+    out = {"A": A, "A0": A0, "per": per, "fit_names": fit_names, "dropped": dropped, "basis": basis}
     if A is None:
         out["status"] = "unreliable"
         return out
@@ -240,6 +297,7 @@ def track_frame(ref_g, tgt_g, landmarks: dict, kinds: dict, frame_day: date) -> 
                 held[n] = float(np.median([residual(A_lo, s, d) for s, d, _ in per[n]]))
     out["held"] = held
     out["valid"] = {n: float(np.median([residual(A, s, d) for s, d, _ in per[n]])) for n in per if not in_fit(n)}
+    out["dropped_res"] = {n: float(np.median([residual(A, s, d) for s, d, _ in per[n]])) for n in dropped if n in per}
     out["fit_res"] = {n: float(np.median([residual(A, s, d) for s, d, _ in per[n]])) for n in fit_names}
     hv = np.array(list(held.values())) if held else np.array([np.inf])
     out["held_med"], out["held_p90"] = float(np.median(hv)), float(np.percentile(hv, 90))
@@ -258,21 +316,30 @@ def params(A: np.ndarray, size) -> dict:
     return {"tx": float(t[0]), "ty": float(t[1]), "rot_deg": rot, "sx": sx, "sy": sy}
 
 
-def draw_overlay(img: np.ndarray, landmarks: dict, A: np.ndarray | None, frame_day: date, caption: str) -> np.ndarray:
+def draw_overlay(img: np.ndarray, landmarks: dict, A: np.ndarray | None, frame_day: date, caption: str,
+                 dropped=()) -> np.ndarray:
+    """red = labels as drawn on the reference; moved by A: green = fit, cyan = validation, orange = dropped occludable
+    piece. Single points (NAILS) are circles."""
     out = img.copy()
     th = max(2, img.shape[1] // 1600)
     for name, v in landmarks.items():
         if not usable(name, frame_day):
             continue
-        for p in pieces_of(v):
-            if len(p) < 2:
-                continue
-            q = p.reshape(-1, 1, 2)
-            cv2.polylines(out, [np.round(q).astype(np.int32)], False, (0, 0, 255), max(1, th // 2), cv2.LINE_AA)
+        ps = pieces_of(v)
+        for k, p in enumerate(ps, 1):
+            unit = f"{name}#{k}" if occludable(name) and len(ps) > 1 else name
+            if len(p) == 1:
+                cv2.circle(out, tuple(np.round(p[0]).astype(int)), 4 * th, (0, 0, 255), max(1, th // 2), cv2.LINE_AA)
+            else:
+                q = p.reshape(-1, 1, 2)
+                cv2.polylines(out, [np.round(q).astype(np.int32)], False, (0, 0, 255), max(1, th // 2), cv2.LINE_AA)
             if A is not None:
-                pa = (p @ A[:, :2].T + A[:, 2]).reshape(-1, 1, 2)
-                col = (0, 255, 0) if in_fit(name) else (255, 255, 0)
-                cv2.polylines(out, [np.round(pa).astype(np.int32)], False, col, th, cv2.LINE_AA)
+                pa = p @ A[:, :2].T + A[:, 2]
+                col = (0, 165, 255) if unit in dropped else (0, 255, 0) if in_fit(name) else (255, 255, 0)
+                if len(p) == 1:
+                    cv2.circle(out, tuple(np.round(pa[0]).astype(int)), 6 * th, col, th, cv2.LINE_AA)
+                else:
+                    cv2.polylines(out, [np.round(pa.reshape(-1, 1, 2)).astype(np.int32)], False, col, th, cv2.LINE_AA)
     (tw, tht), _ = cv2.getTextSize(caption, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)
     cv2.rectangle(out, (0, 0), (tw + 24, tht + 24), (0, 0, 0), -1)
     cv2.putText(out, caption, (12, tht + 12), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3, cv2.LINE_AA)
@@ -301,11 +368,36 @@ def selftest() -> int:
     nails = samples("NAILS", "point", pieces_of([[[100, 100]], [[200, 150]], [[300, 120]]]))
     okn = len(nails) == 3 and all(s[4] for s in nails) and in_fit("NAILS") and in_fit("PATCHES") and in_fit("SEAMS") and in_fit("BUILDING")
     print(f"[{'PASS' if okn else 'FAIL'}] NAILS: each single point is a 2-D constraint; NAILS/PATCHES/SEAMS/BUILDING in the fit set")
+    # occlusion: two bumpy patches + a building edge; in the target a "rat" (noise blob) covers patch 2 and a "person"
+    # covers the building edge -> both dropped, the affine still exact, patch 1 kept
+    occ = base.copy()
+    bump1 = [[400 + 20 * i, 640 + (8 if i % 2 else 0)] for i in range(8)]
+    bump2 = [[1000 + 20 * i, 660 + (8 if i % 2 else 0)] for i in range(8)]
+    for b in (bump1, bump2):
+        cv2.polylines(occ, [np.array(b, np.int32).reshape(-1, 1, 2)], False, 250, 4)
+    cv2.line(occ, (1450, 120), (1450, 330), 240, 6)
+    occ_img = cv2.cvtColor(occ, cv2.COLOR_GRAY2BGR)
+    tgt2 = cv2.warpAffine(occ_img, true, (w, h), borderMode=cv2.BORDER_REFLECT)
+    tb = (true[:, :2] @ np.array(bump2, float).T + true[:, 2:]).T
+    x0, y0 = tb.min(0).astype(int) - 25
+    x1, y1 = tb.max(0).astype(int) + 25
+    tgt2[y0:y1, x0:x1] = rng.integers(0, 255, (y1 - y0, x1 - x0, 1), dtype=np.uint8)
+    tq = (true[:, :2] @ np.array([[1450, 120], [1450, 330]], float).T + true[:, 2:]).T
+    tgt2[int(tq[:, 1].min()) - 25:int(tq[:, 1].max()) + 25, int(tq[:, 0].min()) - 25:int(tq[:, 0].max()) + 25] = 90
+    lms2 = dict(lms, PATCHES=[bump1, bump2], BUILDING=[[[1450, 130], [1450, 320]]])
+    kinds2 = dict(kinds, PATCHES="polyline", BUILDING="polyline")
+    r2 = track_frame(prep(occ_img), prep(tgt2), lms2, kinds2, date(2026, 9, 4))
+    err2 = float(np.abs(r2["A"] @ np.array([w / 2, h / 2, 1.0]) - true @ np.array([w / 2, h / 2, 1.0])).max()) if r2["A"] is not None else np.inf
+    oko = (err2 < 0.5 and "PATCHES#2" in r2["dropped"] and "BUILDING" in r2["dropped"] and "PATCHES#1" in r2["fit_names"]
+           and r2["basis"] == "stable")
+    print(f"[{'PASS' if oko else 'FAIL'}] occlusion: dropped {sorted(r2['dropped'])}, kept PATCHES#1 "
+          f"{'PATCHES#1' in r2['fit_names']}, centre error {err2:.2f} px")
     house = samples("HOUSE_1_ROOF_X", "edge", pieces_of([[[0, 0], [10, 0]]]))
     ok2 = not usable("HOUSE_1_ROOF_X", date(2026, 9, 4)) and usable("HOUSE_1_ROOF_X", date(2026, 9, 18)) and usable("HOUSE_2_BASE_Z", date(2026, 9, 4)) and len(house) == 1
     print(f"[{'PASS' if ok2 else 'FAIL'}] house_1 excluded before 09-18, house_2 always usable")
-    print(("PASS" if ok and ok2 and okn else "FAIL") + " — landmark_track self-test")
-    return 0 if ok and ok2 and okn else 1
+    allok = ok and ok2 and okn and oko
+    print(("PASS" if allok else "FAIL") + " — landmark_track self-test")
+    return 0 if allok else 1
 
 
 def main(argv=None) -> int:
@@ -374,17 +466,23 @@ def main(argv=None) -> int:
             row = {"camera": cam, "frame_time": f"{ft:%Y-%m-%d %H:%M:%S}", "frame": tag, "n_fit_landmarks": len(res["fit_names"]),
                    "held_med_px": res.get("held_med", np.nan), "held_p90_px": res.get("held_p90", np.nan),
                    "status": res.get("status", "no fit"), **pr,
-                   "house_valid_med_px": float(np.median(list(res["valid"].values()))) if res.get("valid") else np.nan}
+                   "house_valid_med_px": float(np.median(list(res["valid"].values()))) if res.get("valid") else np.nan,
+                   "basis": res.get("basis", ""), "n_dropped": len(res.get("dropped", {})),
+                   "dropped": "; ".join(f"{u}: {why}" for u, why in sorted(res.get("dropped", {}).items()))}
             rows_f.append(row)
             for n, obs in res["per"].items():
-                rows_l.append({"camera": cam, "frame_time": row["frame_time"], "landmark": n, "role": "fit" if in_fit(n) else "validation",
+                role = ("dropped" if n in res.get("dropped", {}) else "fit" if n in res["fit_names"]
+                        else "validation" if not in_fit(n) else "unused")
+                rows_l.append({"camera": cam, "frame_time": row["frame_time"], "landmark": n, "role": role,
+                               "tier": "occludable" if occludable(n) else "stable" if in_fit(n) else "validation",
                                "n_samples": len(obs), "mean_ncc": float(np.mean([o[2] for o in obs])),
                                "median_shift_px": float(np.median([np.hypot(*o[1]) for o in obs])),
-                               "fit_residual_px": res.get("fit_res", {}).get(n, res.get("valid", {}).get(n, np.nan)),
+                               "fit_residual_px": res.get("fit_res", {}).get(n, res.get("valid", {}).get(n, res.get("dropped_res", {}).get(n, np.nan))),
                                "held_out_px": res.get("held", {}).get(n, np.nan)})
             cap = (f"{cam} {ft:%m-%d %H:%M} {'REF 09-18' if tag == 'REF' else ''} {row['status']} held {row['held_med_px']:.1f}/"
-                   f"{row['held_p90_px']:.1f}px  t=({pr['tx']:+.1f},{pr['ty']:+.1f}) rot {pr['rot_deg']:+.2f}")
-            ov = draw_overlay(img, landmarks, A, ft.date(), cap)
+                   f"{row['held_p90_px']:.1f}px  t=({pr['tx']:+.1f},{pr['ty']:+.1f}) rot {pr['rot_deg']:+.2f}"
+                   + (f"  dropped {row['n_dropped']}" if row["n_dropped"] else ""))
+            ov = draw_overlay(img, landmarks, A, ft.date(), cap, res.get("dropped", {}))
             s = 2400 / ov.shape[1]
             op_path = run / "overlays" / f"{cam}_{ft:%Y%m%d_%H%M%S}.jpg"
             cv2.imwrite(str(op_path), cv2.resize(ov, None, fx=s, fy=s, interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 88])
@@ -403,9 +501,10 @@ def main(argv=None) -> int:
          f"Generated {datetime.now():%Y-%m-%d %H:%M} by `cv/cv_field/landmark_track.py` (method, definitions and status rule in its "
          f"docstring). Bulk: `{run}` (frames, overlays, `<CH>_track.mp4`, `track_frames.csv`, `track_landmarks.csv`). "
          "Overlays: red = the 09-18 labels as drawn, green = fit-set labels moved by the fitted affine, cyan = houses "
-         "(validation). **The user reviews the overlays; this report makes no visual claim.**\n",
-         "| camera | frames | ok | unreliable | held-out median px (median over frames) | tx px (min..max) | ty px (min..max) | rot deg (min..max) | scale (min..max) | houses (validation) median px |",
-         "|---|---|---|---|---|---|---|---|---|---|"]
+         "(validation), orange = occludable pieces (patches, building) dropped in that frame; nails are circles. "
+         "**The user reviews the overlays; this report makes no visual claim.**\n",
+         "| camera | frames | ok | unreliable | held-out median px (median over frames) | tx px (min..max) | ty px (min..max) | rot deg (min..max) | scale (min..max) | houses (validation) median px | occludable pieces dropped (frames with any) |",
+         "|---|---|---|---|---|---|---|---|---|---|---|"]
     for cam, rows in report.items():
         rs = [r for r in rows if r["frame"] != "REF"]
         if not rs:
@@ -420,7 +519,8 @@ def main(argv=None) -> int:
         hv = hv[np.isfinite(hv)]
         L.append(f"| {cam} | {len(rs)} | {sum(r['status'] == 'ok' for r in rs)} | {sum(r['status'] != 'ok' for r in rs)} | "
                  f"{np.nanmedian([r['held_med_px'] for r in rs]):.2f} | {rng('tx')} | {rng('ty')} | {rng('rot_deg')} | "
-                 f"{(f'{sc.min():.4f}..{sc.max():.4f}' if len(sc) else '-')} | {(f'{np.median(hv):.2f}' if len(hv) else '-')} |")
+                 f"{(f'{sc.min():.4f}..{sc.max():.4f}' if len(sc) else '-')} | {(f'{np.median(hv):.2f}' if len(hv) else '-')} | "
+                 f"{sum(r['n_dropped'] for r in rs)} ({sum(r['n_dropped'] > 0 for r in rs)}) |")
     L.append("\nReference self-check rows (frame = REF) should give ~0 shift. Per-frame values: `track_frames.csv`.")
     (rep / f"cv_field_landmark_track_{args.cohort}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     op.write_run_manifest(rep, run, cohort=args.cohort, direction="cv_field", analysis="landmark_track",

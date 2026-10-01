@@ -88,6 +88,7 @@ python ephys\selftest.py                         # 20 checks: CE_params, de-glit
 python cv\view_quality.py --selftest             # shelter glass/view-quality decision logic
 python cv\cv_field\selftest_field_select.py      # + selftest_field_mask.py, selftest_field_motion.py
 python cv\cv_field\dino_gate.py --selftest       # + stratify_test.py / mask_field.py --selftest (cv env)
+python cv\cv_field\landmark_track.py --selftest  # + landmark_night.py --selftest (ffmpeg), grab_frames.py --selftest
 python thermal\detect_blobs.py --selftest        # + thermal\detect_traces.py --selftest
 python audio\scripts\selftest_features.py
 python episode_browser\selftest.py
@@ -279,6 +280,17 @@ its pole); house_2 = `HOUSE_2` = roof number **7** (by pole B3, under CH06) neve
 in the field. So house_1's position from 09-18 imagery or the calibration (e.g. `field_layout.json` shelter "left")
 does not hold for cohort 3, and the CH01/CH02 difference vs the calibration is most likely this move, not distortion
 (to be confirmed with rigid landmarks — `cv/configs/landmarks/2026c/README.md`).
+**Rigid-landmark correction (cohort px → 09-18 calibration-epoch px):** the user labels rigid structures on the 09-18
+reference frames with `landmark_gui.py CHxx "<time>" --cohort 2026c [--guide …]` (poles L/R edges, pole boxes = WISER
+anchors, wall tops, towers, PC box, houses for validation; CH03/CH04 also `NAILS`, `PATCHES`, `SEAMS`, CH04 `BUILDING`)
+→ exports in `cv/configs/landmarks/2026c/`. `landmark_track.py --cohort 2026c [--times 12:00]` tracks them into daily
+frames (coarse-to-fine NCC on gradient magnitude, Huber affine; stable tier first, occludable patches/building gated per
+piece; leave-one-out held-out error) → `$OUT_ROOT/2026c/cv_field_landmark_track_<ts>/` + report
+`results/2026c/cv_field/reports/cv_field_landmark_track_2026c.md`. Night frames need a night reference:
+`landmark_night.py --cohort 2026c --night <dusk date>` makes it automatically (dusk hand-off at the illuminator switch,
+dawn closure as the check) → `cv_field_landmark_night_<ts>/` + `cv_field_landmark_night_2026c.md` (own pointer
+`run_manifest_landmark_night_2026c.json`). Both have `--selftest`; plan revision 3 in
+`implementation_plan/2026-09-28-cohort3-camera-stability.md`.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

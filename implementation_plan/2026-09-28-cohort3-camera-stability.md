@@ -50,3 +50,24 @@ to cohort pixels as is. Plan (approved step by step with the user):
    known poles / wall top vs design, CH01–CH02 agreement in the overlap, later WISER.
    Proposed acceptance: held-out landmark error median ≤ 3 px, p90 ≤ 6 px; known structures within the calibration's
    own error (CH01 p90 216 mm, CH02 152 mm).
+
+## Revision 3 (2026-10-01): occlusion tiers + automatic night reference (test plan agreed with the user)
+
+Context: daytime tracking (`cv/cv_field/landmark_track.py`) works for CH01/CH02; night frames fail against the daytime
+09-18 reference — the structures do not move, but the camera's IR illuminator changes their appearance. CH03/CH04 got
+extra wall landmarks (user): `NAILS` (points), `PATCHES` / `PATCH_*`, `SEAMS` / `SEAM_*`, CH04 `BUILDING` (a building
+wall outside the paddock). User on reliability: nails very stable; patches low on the wall (a rat can hide one); people
+can stand in front of the building.
+
+1. **Tiers** (`landmark_track.py`): stable tier (poles, boxes, wall tops, towers, PC box, nails, seams) fitted first;
+   every piece of an occludable landmark (patches, building) is its own unit and enters the fit only if ≥ 60 % of its
+   samples match and its median residual under the stable fit is ≤ 3 px — otherwise dropped for that frame and listed.
+2. **Night reference without labels** (`cv/cv_field/landmark_night.py`): the dusk switch (illuminator on) from keyframe
+   brightness; the last daytime keyframe before it is tracked from the 09-18 reference; the frame 10 s after it becomes
+   the night reference with the 09-18 labels moved by that fit. Night frames are tracked from it; the map to 09-18 is the
+   composition. **Dawn closure** (the same at dawn, night side vs day side, seconds apart) checks it without labels.
+   The user labels a night frame only for a camera whose closure fails.
+3. **Tests (agreed 2026-10-01):** (a) daytime, all four cameras, 12:00 each day 08-30 → 09-17 vs the 09-18 labels: per
+   day shift / rotation / scale, leave-one-out held-out error (median ≤ 3 px, p90 ≤ 6 px), dropped pieces, overlays for
+   the user. (b) one night first, 09-03 dusk → 09-04 dawn, all four cameras: hand-off → 21:00 / 00:00 / 03:01 → dawn
+   closure; pass = closure median ≤ 2 px; the user reviews the 03:01 overlays; all nights only after it passes.
