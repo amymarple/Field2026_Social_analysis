@@ -59,8 +59,9 @@ def layout() -> dict:
     return json.loads((REPO / "cv" / "configs" / "field_layout.json").read_text(encoding="utf-8"))
 
 
-def physical_landmarks() -> dict[str, tuple[str, list[tuple[float, float, float]]]]:
-    """name -> (kind, [(x_in, y_in, z_mm), ...]) for every structure a guide can be computed for."""
+def physical_landmarks() -> dict[str, tuple[str, list]]:
+    """name -> (kind, points) for every structure a guide can be computed for; points = [(x_in, y_in, z_mm), ...] or,
+    for a landmark made of several edges (a house's parallel bottom edges), a list of such pieces."""
     lay, out = layout(), {}
     for name, (x_cm, y_cm) in lay["poles"].items():
         x, y = x_cm / CM_PER_IN, y_cm / CM_PER_IN
@@ -80,7 +81,13 @@ def physical_landmarks() -> dict[str, tuple[str, list[tuple[float, float, float]
         corners = [(-a, -b), (a, -b), (a, b), (-a, b), (-a, -b)]
         pts = [(cx + u * np.cos(th) - v * np.sin(th), cy + u * np.sin(th) + v * np.cos(th)) for u, v in corners]
         pole = min(lay["poles"], key=lambda n: np.hypot(lay["poles"][n][0] / CM_PER_IN - cx, lay["poles"][n][1] / CM_PER_IN - cy))
-        out[f"HOUSE_{HOUSE_OF_POLE.get(pole, pole)}_BASE"] = ("polyline", [(x, y, 0.0) for x, y in pts])
+        n = HOUSE_OF_POLE.get(pole, pole)
+        # the footprint's four bottom edges, sorted by 3-D direction (one piece per edge, like the labels);
+        # roof and vertical edges have no guide (heights unknown)
+        for (x0, y0), (x1, y1) in zip(pts[:-1], pts[1:]):
+            axis = "X" if abs(x1 - x0) >= abs(y1 - y0) else "Y"
+            out.setdefault(f"HOUSE_{n}_BASE_{axis}", ("edge", []))[1].append(
+                [(x0 + t * (x1 - x0), y0 + t * (y1 - y0), 0.0) for t in np.linspace(0, 1, 11)])
     return out
 
 
@@ -94,23 +101,26 @@ def calib_guides(cam: str) -> dict[str, list[list[list[float]]]]:
     jump = c.upright_size[0] / 4
     guides = {}
     for name, (kind, pts) in physical_landmarks().items():
-        if kind == "axis" and np.hypot(pts[0][0] - c.centre[0] / 25.4, pts[0][1] - c.centre[1] / 25.4) < POLE_SKIP_IN:
+        pieces3d = pts if isinstance(pts[0], list) else [pts]          # a landmark may already be several 3-D pieces
+        if kind == "axis" and np.hypot(pieces3d[0][0][0] - c.centre[0] / 25.4, pieces3d[0][0][1] - c.centre[1] / 25.4) < POLE_SKIP_IN:
             continue
-        pieces, run = [], []
-        for x, y, z in pts:
-            uv = None
-            if bool(c.sees((x, y), z_mm=z, units="in")):
-                u, v = c.to_paddock_inv((x, y), z_mm=z, units="in")
-                if np.isfinite(u) and np.isfinite(v):
-                    uv = [round(float(u), 1), round(float(v), 1)]
-            if uv is None or (run and np.hypot(uv[0] - run[-1][0], uv[1] - run[-1][1]) > jump):
-                if len(run) >= 2:
-                    pieces.append(run)
-                run = [uv] if uv is not None else []
-            else:
-                run.append(uv)
-        if len(run) >= 2:
-            pieces.append(run)
+        pieces = []
+        for p3 in pieces3d:
+            run = []
+            for x, y, z in p3:
+                uv = None
+                if bool(c.sees((x, y), z_mm=z, units="in")):
+                    u, v = c.to_paddock_inv((x, y), z_mm=z, units="in")
+                    if np.isfinite(u) and np.isfinite(v):
+                        uv = [round(float(u), 1), round(float(v), 1)]
+                if uv is None or (run and np.hypot(uv[0] - run[-1][0], uv[1] - run[-1][1]) > jump):
+                    if len(run) >= 2:
+                        pieces.append(run)
+                    run = [uv] if uv is not None else []
+                else:
+                    run.append(uv)
+            if len(run) >= 2:
+                pieces.append(run)
         if pieces:
             guides[name] = pieces
     return guides
