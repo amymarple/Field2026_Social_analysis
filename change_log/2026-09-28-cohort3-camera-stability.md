@@ -119,3 +119,29 @@ where the rest still constrains both directions. Reference self-check: ~0 shift,
   are tracked against it, and that frame is tied to 09-18 geometrically through the two label sets.
 - **CH03/CH04** have too few landmarks (CH04: two poles + two wall tops): 4–6 of 14 day frames ok; more fixed structures
   would help.
+
+**Occlusion tiers, extra wall landmarks, automatic night reference (2026-10-01, plan revision 3; tests agreed with the
+user).** The user added CH03/CH04 wall landmarks on the 09-18 references (`NAILS` points; `PATCHES`/`PATCH_*`;
+`SEAMS`/`SEAM_*`; CH04 `BUILDING`, later `WOOD`) and noted their reliability (nails very stable; patches low on the
+wall, a rat can hide one; people can stand in front of the building). `landmark_track.py` now fits a stable tier first
+and admits each occludable piece only if it matches (≥ 60 % of samples, median residual ≤ 3 px under the stable fit);
+new `cv/cv_field/landmark_night.py` makes a night reference by a dusk hand-off and checks it by dawn closure. The
+previous daytime report is archived (`archive/2026c/cv_field/reports/cv_field_landmark_track_2026c_run20261001_1441.md`).
+- **Daytime, 12:00 daily 08-31→09-17 (run `cv_field_landmark_track_20261001_1624`; 14 frames per camera, no 12:00 video
+  on 08-30 and 09-12→09-15):** CH01 14/14 ok (held-out median 1.35 px, house_2 validation 2.3 px), CH02 12/14 (09-02 and
+  09-03 miss only on p90 6.9 / 7.1 px; house_2 1.5 px) — unchanged. **CH03 5/14, CH04 2/14** even with the new landmarks;
+  their fits report shifts up to 55 px (CH03) and 190 px / 7.4° / scale 0.93–1.05 (CH04), beyond the coarse search
+  (±120 px) — tracking failures or real moves, for the user to judge on the overlays. Patches are dropped in most CH03
+  frames (residual 3–24 px); the building matches only on 09-17. Hypotheses (unverified): moves larger than the search
+  window; wide-angle lens → an affine is the wrong model near the image edges.
+- **Night 09-03 → 09-04 (run `cv_field_landmark_night_20261001_1627`, report
+  `results/2026c/cv_field/reports/cv_field_landmark_night_2026c.md`): CH02 PASS** — dawn closure median 1.42 / max
+  3.51 px, the three night frames ok (held-out 0.35–1.54 px), shift vs 09-18 +2 → +18 px over the night. **CH01, CH03,
+  CH04 FAIL** (CH01: night frames do not fit at all; CH03 / CH04 closure 92 / 54 px). Cause found in the brightness
+  series (numbers, not images): the "largest keyframe jump" is a **one-keyframe spike** (a single much brighter or
+  darker keyframe, mostly near stream restarts; persistent 30-s step ≈ 0), not the illuminator switch; at dusk the
+  level falls gradually (persistent steps only 3–9 grey levels), while at dawn all four cameras show one persistent
+  step at **07:25 ± 1 min**. All hand-off frames are monochrome (saturation 0.0), confirming IR by day. CH02 passed
+  because its hand-off frames happened to work. Next step (to agree with the user): a step detector that ignores
+  spikes plus a dusk chain for CH01; user-labelled 09-04 references (day 12:00 and night 03:01) for CH03/CH04, whose
+  daytime tracking already fails.
