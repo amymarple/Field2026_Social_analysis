@@ -1,0 +1,486 @@
+{
+  "_about": "Pre-registered rules of the head-IMU attitude gate v2 for cohort 2026c (wiser/scripts/analyze_imu_attitude_gate_v2.py; plan implementation_plan/2026-10-01-imu-attitude-gate-v2.md, approved by the user 2026-10-01). Strict accelerometer-led still windows, centre-to-centre gravity propagation, nights + day sleep, Phase-0 model set re-chosen on the tuning periods and frozen before the test periods are read, chained-anchor linearity test. Phase-0 functions are imported unchanged and run with the Phase-0 config (phase0_config). Times are field-PC local (EDT, naive). The driver writes the frozen model selection and the results into `fitted`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "phase0_config": "wiser/configs/imu_attitude_phase0_2026c.json",
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF12"
+  ],
+  "periods": {
+    "night_20260908": {
+      "role": "tuning",
+      "kind": "night",
+      "start": "2026-09-08 21:00:00",
+      "end": "2026-09-09 04:20:00"
+    },
+    "day_20260908": {
+      "role": "tuning",
+      "kind": "day",
+      "start": "2026-09-08 08:00:00",
+      "end": "2026-09-08 18:30:00",
+      "sessions": {
+        "SF07": "5_20260908_071513.175",
+        "SF08": "5_20260908_071754.325",
+        "SF09": "6_20260908_072057.385",
+        "SF10": "8_20260908_072352.245",
+        "SF12": "5_20260908_072624.615"
+      }
+    },
+    "night_20260910": {
+      "role": "test",
+      "kind": "night",
+      "start": "2026-09-10 21:00:00",
+      "end": "2026-09-11 04:20:00"
+    },
+    "day_20260911": {
+      "role": "test",
+      "kind": "day",
+      "start": "2026-09-11 10:00:00",
+      "end": "2026-09-11 17:30:00",
+      "sessions": {
+        "SF07": "2_20260911_091615.116",
+        "SF08": "3_20260911_091931.245",
+        "SF09": "2_20260911_092224.167",
+        "SF10": "2_20260911_092441.104",
+        "SF12": "3_20260911_094747.706"
+      },
+      "_note": "SF12 3_20260911_094747.706 is field-flagged for its neural connector only (open 09:47:47 -> ~17:50); the IMU is usable (user instruction 2026-10-01)."
+    }
+  },
+  "cache_roots": {
+    "imu_raw": "D:/Field2026_analysis_out/2026c/imu_raw_cache",
+    "imu100": "D:/Field2026_analysis_out/2026c/imu100_cache",
+    "wiser_fix": "D:/Field2026_analysis_out/2026c/wiser_fix_cache"
+  },
+  "day_cache": {
+    "margin_s": 600,
+    "sha_head_bytes": 67108864,
+    "pc_time_root": "Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/pc_time",
+    "raw_ephys_root": "E:/3rd_rat_spikes",
+    "reference_a3_night": "night_20260908",
+    "wiser_db": "D:/Field2026_analysis_out/2026c/wiser_working/3rdcohort_Spike_2026_3_4.sqlite",
+    "wiser_table": "reports",
+    "wiser_db_sha256_prefix_expected": "82ccadfde589",
+    "silences_csv": "D:/Field2026_analysis_out/2026c/wiser_cohort3_accuracy_20260928_1405/csv/c3_all_tag_silences_merged.csv",
+    "silence_pad_s": 120,
+    "a3_chain": "V4 after-chain as decided on the tuning night and stored in the night A3 calib_json: Hampel (3, 6 sigma, floor 2 counts) -> Butterworth-4 zero-phase fc (acc, gyr) -> resample_poly(2, 25) -> head frame S; ellipsoid acc calibration from 0.5-s quasi-static windows (|w| median < 10 deg/s, per-axis acc SD < 0.15 m/s^2, >= 50 windows); running-median gyro bias +-300 s (>= 20 quiet s); gyr = gyro_scale (w - b); flags dilated ceil(2/fc*100) samples"
+  },
+  "handling_json": "cv/configs/cohort3_handling_windows.json",
+  "strict": {
+    "block_s": 0.1,
+    "min_len_s": [
+      1.0,
+      2.0
+    ],
+    "gate_min_len_s": 1.0,
+    "dir_max_deg": 0.3,
+    "mag_tol_g": 0.03,
+    "omega_max_dps": 3.0,
+    "_text": "0.1-s blocks of calibrated acc; greedy left-to-right growth inside runs of candidate blocks (all samples valid, no sat_acc/sat_gyr, every sample |omega_A3| < 3 deg/s); a window grows while max angle(block direction, window-mean direction) < 0.3 deg and | |window mean| - g | < 0.03 g"
+  },
+  "wiser": {
+    "pad_s": 2.0,
+    "radius_in": 6.0,
+    "min_bins": 3,
+    "min_coverage": 0.5,
+    "filter": "drop contradicted, keep confirmed + unavailable"
+  },
+  "floor": {
+    "min_window_s": 4.0,
+    "L_s": [
+      1.0,
+      2.0
+    ],
+    "gate_L_s": 1.0
+  },
+  "bouts": {
+    "bins_s": [
+      2,
+      5,
+      15,
+      40,
+      90
+    ],
+    "bin_labels": [
+      "2-5 s",
+      "5-15 s",
+      "15-40 s",
+      "40-90 s"
+    ],
+    "min_s": 2.0,
+    "max_s": 90.0,
+    "active_rule": "the gap [e_i, s_{i+1}) contains >= 1 A3 non-quiet sample"
+  },
+  "gyro_fit": {
+    "models": [
+      "scalar",
+      "diag",
+      "M",
+      "M_rate"
+    ],
+    "fit_bout_range_s": [
+      2.0,
+      15.0
+    ],
+    "cv_block_s": 600.0,
+    "cv_min_train": 20,
+    "cv_tie_deg": 0.05,
+    "n_bootstrap": 200,
+    "baseline_gyro_scale": 1.03,
+    "_note": "fit objective, bounds, start values and omega0 are Phase 0's (phase0_config.gyro_fit)"
+  },
+  "gate": {
+    "bins": {
+      "2-5 s": 1.0,
+      "5-15 s": 2.0
+    },
+    "min_animals_pass": 4,
+    "floor_excess_deg": 0.5,
+    "n_boot": 1000,
+    "seed": 20261001,
+    "note": "median centre-to-centre tilt error, test night + test day pooled, active strict no-saturation bouts (>= 1.0-s windows, WISER-filtered), model selected on the tuning periods; both bins pooled AND in >= 4 of 5 animals. Thresholds unchanged from Phase 0."
+  },
+  "chains": {
+    "anchor_min_spacing_s": 30.0,
+    "max_s": 600.0,
+    "models": [
+      "L_t",
+      "RW_t",
+      "R",
+      "LR_t",
+      "L_a",
+      "RW_a",
+      "LR_a"
+    ],
+    "exploratory_models": [
+      "RWR",
+      "RW_t+R"
+    ],
+    "boot_block_s": 600.0,
+    "n_boot": 1000,
+    "inc_min_spacing_s": 30.0,
+    "inc_min_n": 3,
+    "n_null": 200,
+    "bias_min_window_s": 10.0,
+    "bias_loo_half_s": 300.0,
+    "bias_loo_min_n": 20,
+    "seed": 20261001
+  },
+  "growth": {
+    "bin_edges_s": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      7,
+      10,
+      15,
+      22,
+      30,
+      45,
+      60,
+      90
+    ],
+    "chain_bin_edges_s": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      7,
+      10,
+      15,
+      22,
+      30,
+      45,
+      60,
+      90,
+      120,
+      180,
+      300,
+      600
+    ],
+    "min_bouts_per_bin": 15,
+    "rayleigh_median_factor": 1.1774
+  },
+  "human_checks": {
+    "n_still": 20,
+    "n_shake": 20,
+    "n_worst": 10,
+    "min_still_s": 3.0,
+    "seed": 20261001,
+    "video_root": "F:/3rd_rat",
+    "channels": [
+      "CH01",
+      "CH02",
+      "CH03",
+      "CH04",
+      "CH05",
+      "CH06",
+      "CH07",
+      "CH08"
+    ]
+  },
+  "phase0_reference": {
+    "gate_test_medians_deg": {
+      "2-5 s": 1.76,
+      "5-15 s": 3.29
+    },
+    "baseline_test_medians_deg": {
+      "2-5 s": 1.93,
+      "5-15 s": 2.96
+    },
+    "floor_L0.5_deg": 0.048,
+    "growth_A": {
+      "sigma0_deg": 0.822,
+      "k_deg_per_s": 0.193
+    },
+    "growth_p90": {
+      "p0_deg": 6.61,
+      "k90_deg_per_s": 0.477
+    },
+    "edge_rot_median_deg": 8.45,
+    "run_dir": "D:/Field2026_analysis_out/2026c/imu_attitude_phase0_20260930_1203"
+  },
+  "fitted": {
+    "selection": {
+      "selected_model": "scalar",
+      "pooled_cv_median_deg": {
+        "scalar": 0.347989798140269,
+        "diag": 0.3434154484745909,
+        "M": 0.34802322710503775,
+        "M_rate": 0.34699978752576344
+      },
+      "n_fit_bouts": {
+        "SF07": 483,
+        "SF08": 340,
+        "SF09": 228,
+        "SF10": 187,
+        "SF12": 555
+      },
+      "per_animal": {
+        "SF07": {
+          "M": [
+            [
+              0.9621279902093307,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.9621279902093307,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.9621279902093307
+            ]
+          ],
+          "c": 0.0,
+          "theta": [
+            -0.037872009790669334
+          ],
+          "ci95_lo": [
+            -0.07549299837681141
+          ],
+          "ci95_hi": [
+            -0.021870917454146488
+          ]
+        },
+        "SF08": {
+          "M": [
+            [
+              0.9513964541449569,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.9513964541449569,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.9513964541449569
+            ]
+          ],
+          "c": 0.0,
+          "theta": [
+            -0.048603545855043125
+          ],
+          "ci95_lo": [
+            -0.08921917991828265
+          ],
+          "ci95_hi": [
+            -0.027969194492802395
+          ]
+        },
+        "SF09": {
+          "M": [
+            [
+              0.9953995056205837,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.9953995056205837,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.9953995056205837
+            ]
+          ],
+          "c": 0.0,
+          "theta": [
+            -0.004600494379416304
+          ],
+          "ci95_lo": [
+            -0.008989300436093119
+          ],
+          "ci95_hi": [
+            -0.00017193587629739683
+          ]
+        },
+        "SF10": {
+          "M": [
+            [
+              1.000672431578111,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.000672431578111,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.000672431578111
+            ]
+          ],
+          "c": 0.0,
+          "theta": [
+            0.000672431578110976
+          ],
+          "ci95_lo": [
+            -0.008508377128356776
+          ],
+          "ci95_hi": [
+            0.0066121512777225265
+          ]
+        },
+        "SF12": {
+          "M": [
+            [
+              0.9998865653824546,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.9998865653824546,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.9998865653824546
+            ]
+          ],
+          "c": 0.0,
+          "theta": [
+            -0.00011343461754542398
+          ],
+          "ci95_lo": [
+            -0.006279276748602973
+          ],
+          "ci95_hi": [
+            0.004880955219936027
+          ]
+        }
+      },
+      "frozen_local": "2026-10-01T08:54:33-04:00",
+      "test_periods_read": false
+    },
+    "gate": {
+      "verdict": "PASS",
+      "role": "test",
+      "bins": {
+        "2-5 s": {
+          "threshold_deg": 1.0,
+          "pooled_median_deg": 0.2978426172206373,
+          "ci95": [
+            0.27208390510317,
+            0.3196507290694998
+          ],
+          "n": 812,
+          "pooled_pass": true,
+          "p90_deg": 1.065521224617947,
+          "excess_over_floor_deg": 0.26928363940286737,
+          "at_limit": true
+        },
+        "5-15 s": {
+          "threshold_deg": 2.0,
+          "pooled_median_deg": 0.6239853580154946,
+          "ci95": [
+            0.5852017612043385,
+            0.6865078416975198
+          ],
+          "n": 930,
+          "pooled_pass": true,
+          "p90_deg": 2.1590884305642426,
+          "excess_over_floor_deg": 0.5954263801977246,
+          "at_limit": false
+        }
+      },
+      "n_animals_pass": 5
+    },
+    "floor_phi1_median_deg": 0.02855897781776994,
+    "linearity_verdicts": {
+      "pooled": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.2286); in active time: unresolved (L_a-RW_a -0.0309); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30",
+      "day": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.2320); in active time: unresolved (L_a-RW_a -0.0283); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30",
+      "night": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.1567); in active time: linear (L_a-RW_a +0.3860); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30",
+      "through_saturation": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.2254); in active time: unresolved (L_a-RW_a -0.0312); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30"
+    },
+    "growth_tact": {
+      "A": {
+        "sigma0_deg": 0.3045157925022028,
+        "k_deg_per_s": 0.03675599049883856,
+        "r2": 0.8351355615553409
+      },
+      "B": {
+        "sigma0_deg": 0.22447136892357228,
+        "k_deg_per_s": 0.0318622930616219,
+        "r2": 0.8759320742177737
+      },
+      "p90": {
+        "p0_deg": 1.5434076955034157,
+        "k90_deg_per_s": 0.15050116096640412
+      }
+    },
+    "growth_chain_tact": {
+      "A": {
+        "sigma0_deg": 3.991269243910092,
+        "k_deg_per_s": 0.035391682766333046,
+        "r2": 0.9212998043732196
+      },
+      "p90": {
+        "p0_deg": 15.531090694623483,
+        "k90_deg_per_s": 0.15071629244773802
+      }
+    },
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_attitude_gate_v2_20261001_0847",
+    "git_commit": "9dd73e4+dirty",
+    "written": "2026-10-01T08:59:49-04:00"
+  }
+}

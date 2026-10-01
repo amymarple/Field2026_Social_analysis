@@ -1,0 +1,32 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_attitude_gate_v2_20261001_0847",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "imu_attitude_gate_v2",
+  "report": "wiser_baseline_imu_attitude_gate_v2_2026c.md",
+  "driver": "wiser/scripts/analyze_imu_attitude_gate_v2.py",
+  "config": "wiser/configs/imu_attitude_gate_v2_2026c.json",
+  "git_commit": "9dd73e4+dirty",
+  "runtime_s": 732.0039553642273,
+  "caches": {
+    "imu_raw": "D:/Field2026_analysis_out/2026c/imu_raw_cache",
+    "imu100": "D:/Field2026_analysis_out/2026c/imu100_cache",
+    "wiser_fix": "D:/Field2026_analysis_out/2026c/wiser_fix_cache"
+  },
+  "gate": "PASS",
+  "selected_model": "scalar",
+  "linearity": {
+    "pooled": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.2286); in active time: unresolved (L_a-RW_a -0.0309); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30",
+    "day": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.2320); in active time: unresolved (L_a-RW_a -0.0283); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30",
+    "night": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.1567); in active time: linear (L_a-RW_a +0.3860); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30",
+    "through_saturation": "LINEAR IN TIME (bias-like); shape in clock time: linear (L_t-RW_t +0.2254); in active time: unresolved (L_a-RW_a -0.0312); driver: clock time (L_t beats L_a and R); best registered L_t; increments C_inc 0.82 vs null 0.30"
+  },
+  "figures": [
+    "wiser_baseline_imu_attitude_gate_v2_tilt_by_bin_2026c.png",
+    "wiser_baseline_imu_attitude_gate_v2_still_windows_2026c.png",
+    "wiser_baseline_imu_attitude_gate_v2_edge_effect_2026c.png",
+    "wiser_baseline_imu_attitude_gate_v2_chain_growth_2026c.png",
+    "wiser_baseline_imu_attitude_gate_v2_linearity_2026c.png",
+    "wiser_baseline_imu_attitude_gate_v2_growth_law_2026c.png"
+  ]
+}
