@@ -14,8 +14,10 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
 - **Validation only:** `HOUSE_1_*` = house_1 (next to pole B1, under CH05; WISER ROI `house_1`) and `HOUSE_2_*` =
   house_2 (next to pole B3, under CH06; WISER ROI `house_2`), as straight edges sorted by 3-D direction (user, 2026-10-01: no closed outline that
   cannot extend): `_ROOF_X` / `_ROOF_Y` = roof edges parallel to the paddock x / y axis, `_BASE_X` / `_BASE_Y` =
-  bottom edges parallel to x / y, `_BASE_Z` = the vertical corner edges; one piece per visible edge, the same edges
-  in every frame. Parallel 3-D edges share a vanishing point in the image — a direct distortion check.
+  bottom edges parallel to x / y, `_BASE_Z` = the vertical corner edges; one piece per visible straight edge, the
+  same edges in every frame. A category holds up to ~3 edges that need NOT be parallel (e.g. the two sloped gable
+  edges; user, 2026-10-01): each piece is its own straight line, matched to the nearest same-category line in
+  another frame. Only truly parallel 3-D edges share a vanishing point (a distortion check for those).
   No record says whether the houses moved, so they check the correction instead of shaping it. (Briefly named
   HOUSE_B1/B3 on 2026-09-29; the GUI migrates such labels. What IS disputed is which in-box camera sits in which
   house: `field_layout.json` says CH07 → house_1, CH08 → house_2; the recording repo's COLOUR_SAMPLING_LOG says

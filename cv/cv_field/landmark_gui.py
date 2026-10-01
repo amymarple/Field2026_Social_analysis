@@ -21,9 +21,11 @@ Landmark kinds (the side panel groups them):
   edge     HOUSE_n_ROOF_X / _ROOF_Y   roof edges parallel to the paddock x / y axis (ridge, eaves, ...)
            HOUSE_n_BASE_X / _BASE_Y   bottom edges parallel to x / y;  HOUSE_n_BASE_Z  the vertical corner edges
            (user, 2026-10-01: a house is 3-D with a gable roof, so it is labelled as straight edges by 3-D direction —
-           no closed outline that cannot extend). Each visible edge = one piece (b between parallel edges). Validation
-           only. HOUSE_1 = house_1 by pole B1 under CH05, HOUSE_2 = house_2 by pole B3 under CH06. Parallel 3-D edges
-           meet at one vanishing point in the image — a direct check on the distortion.
+           no closed outline that cannot extend). Each visible edge = one piece (b between edges). A category holds
+           up to ~3 edges and they need NOT be parallel (e.g. the two sloped gable edges) — every piece is its own
+           straight line, matched to the nearest same-category line in another frame. Validation only. HOUSE_1 =
+           house_1 by pole B1 under CH05, HOUSE_2 = house_2 by pole B3 under CH06. Only edges that are truly parallel
+           in 3-D share a vanishing point (a distortion check for those).
            Two water towers outside the paddock (user, 2026-09-29): TOWER_1 beyond the row-C wall (y = 240 side, the
            top of the schematic), TOWER_2 beyond the row-A wall (y = 0 side, the bottom).
 Poles use the paddock grid names (rows A/B/C x columns 0-4, 10 ft grid) so a pole keeps its name in every frame and
@@ -88,7 +90,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   click round the outline (it closes itself); TOWER_1 = the water tower beyond the row-C wall (y = 240, top of the map),
   TOWER_2 = the one beyond the row-A wall (y = 0, bottom). <b>HOUSE_n_*</b>: straight edges sorted by 3-D direction — _ROOF_X / _ROOF_Y = roof edges parallel to the paddock
   x (length) / y (width) axis; _BASE_X / _BASE_Y = bottom edges parallel to x / y; _BASE_Z = the vertical corner edges.
-  One piece per visible edge (press <b>b</b> between two parallel edges); draw the same edges in every frame. Used only to
+  One piece per visible straight edge, press <b>b</b> between edges; a category can hold up to about 3 edges and they
+  need not be parallel (e.g. the two sloped gable edges). Draw the same edges in every frame. Used only to
   CHECK the correction, not to fit it. Use the same name for the same structure in every frame.
   Which name is which: the dashed "NAME?" guides (the 09-24 calibration's prediction — only to identify the structure;
   click the REAL one) and the top-view map cv/configs/landmarks/2026c/paddock_schematic.png (A0 = origin corner, x
