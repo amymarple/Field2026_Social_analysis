@@ -30,6 +30,12 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   Visible per camera (calibration): CH03 → POLE_A0/B0/C0, WALLTOP_X0/Y0/Y240; CH04 → POLE_A4/B4/C4, WALLTOP_X480/Y0;
   CH01 → mostly rows B/C (+A0), all four wall tops, both houses; CH02 → mostly rows A/B (+C4), WALLTOP_X0/X480/Y0,
   both houses.
+- **Roof number labels (user, 2026-10-01):** `HOUSE_1_LABEL` / `HOUSE_2_LABEL` = the fixed number label on each
+  roof, outline through its corners — an excellent landmark: clear in DAYTIME frames (the cohort footage is IR even
+  by day, but without the IR illuminator it is not blown out), often saturated at night → label it on daytime frames
+  (add a midday frame per epoch for CH01/CH02) and skip it where saturated. Whether house landmarks may enter the
+  cohort→calibration fit depends on whether the houses were moved between 09-12 and 09-18 (asked); within the cohort
+  they are fixed, so they serve the day-to-day correction.
 - **Only what is visible (user, 2026-10-01):** never draw an estimated or guessed line — an edge hidden by grass
   (e.g. a house base) or by anything else is left out, or only its visible stretches are drawn. A missing line
   costs nothing; a guessed one is a false measurement. (Same reason the wall FOOT is not used.)

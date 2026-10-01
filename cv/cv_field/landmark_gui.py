@@ -18,6 +18,9 @@ Landmark kinds (the side panel groups them):
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
   outline  TOWER_1, TOWER_2, PCBOX   closed outline, click round it (closes only when it is one piece)
+           HOUSE_1_LABEL, HOUSE_2_LABEL   the fixed NUMBER label on each house roof: its corners (user, 2026-10-01: an
+           excellent landmark — clear in daytime frames, often saturated by the IR at night, so label it on daytime
+           frames and skip it where it is blown out)
   edge     HOUSE_n_ROOF_X / _ROOF_Y   roof edges parallel to the paddock x / y axis (ridge, eaves, ...)
            HOUSE_n_BASE_X / _BASE_Y   bottom edges parallel to x / y;  HOUSE_n_BASE_Z  the vertical corner edges
            (user, 2026-10-01: a house is 3-D with a gable roof, so it is labelled as straight edges by 3-D direction —
@@ -59,6 +62,7 @@ WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
             + [("TOWER_1", "outline"), ("TOWER_2", "outline"), ("PCBOX", "outline"),
+               ("HOUSE_1_LABEL", "outline"), ("HOUSE_2_LABEL", "outline"),
                ] + [(f"HOUSE_{n}_{part}", "edge") for n in (1, 2) for part in ("ROOF_X", "ROOF_Y", "BASE_X", "BASE_Y", "BASE_Z")])
 
 HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __CAM__ __TS__</title>
@@ -92,6 +96,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   x (length) / y (width) axis; _BASE_X / _BASE_Y = bottom edges parallel to x / y; _BASE_Z = the vertical corner edges.
   One piece per visible straight edge, press <b>b</b> between edges; a category can hold up to about 3 edges and they
   need not be parallel (e.g. the two sloped gable edges). Draw the same edges in every frame.
+  <b>HOUSE_n_LABEL</b>: the fixed number label on the roof — click its corners (it closes itself). Clear by day; at
+  night the IR often saturates it — then skip it.
   <b>Only what you can SEE — never an estimated or guessed line</b> (an edge hidden by grass or anything else is left
   out; draw just its visible stretches). A missing line costs nothing, a guessed one biases the result. When grass
   hides the base, the roof edges and the vertical corners usually stay visible. Used only to
