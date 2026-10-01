@@ -15,14 +15,16 @@ Landmark kinds (the side panel groups them):
                             two parallel lines), each along its visible length (the ends usually are not visible) —
                             2+ points each; the centre line and the apparent width follow from the pair
   outline  BOX_<row><col>   the box mounted on that pole = a WISER UWB anchor (user, 2026-09-29): clear corners, rigid
-  polyline PATCH_<wall>_<n> a visible patch on a wall sheet (user, 2026-10-01; CH03/CH04 see several) — an OPEN line
-                            along its visible edges, following the corrugation bumps (not straight, not closed; the
-                            bottom is often hidden by grass -> pieces); added with "+ add" as polyline; numbered left to
-                            right in each camera's view; fit set
-  edge     SEAM_<wall>_<n>  a VERTICAL seam between wall panels (user, 2026-10-01): straight, 2+ points along its visible
-                            length; numbered left to right per camera; only seams that look clearly different from the
-                            regular corrugation ridges (overlap edge, bolts, colour change) — ridges repeat and can be
-                            confused by the matcher; fit set (constrains the horizontal position like a pole edge)
+  point    NAILS            nails on the wall: just click each one (every click is its own point, no numbering) — a
+                            2-D constraint each (user, 2026-10-01)
+  polyline PATCHES          every visible wall patch, one piece each (b between patches): an OPEN line along its visible
+                            edges following the corrugation bumps (not straight, not closed; grass-hidden parts left out)
+  edge     SEAMS            every vertical seam between wall panels, one piece each (b between seams), 2+ points along
+                            its visible length; only seams clearly different from the regular corrugation ridges
+                            (overlap edge, bolts, colour change) — ridges repeat and can be confused by the matcher
+  NAILS/PATCHES/SEAMS are NOT numbered (numbering made the GUI too long): automatic tracking needs no correspondence,
+  and the tie between two labelled frames pairs them by nearest neighbour once the named landmarks have aligned the
+  frames. All three are in the fit set. (Older numbered PATCH_<wall>_<n> / SEAM_<wall>_<n> labels still load and count.)
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
   outline  TOWER_1, TOWER_2, PCBOX   closed outline, click round it (closes only when it is one piece)
@@ -69,8 +71,10 @@ for _p in (str(HERE), str(HERE.parent)):
 import camera_review as cr  # noqa: E402  (frame lookup: segments/locate/grab, PANO)
 
 POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
-PATCH_CAMS, PATCH_SLOTS = ("CH03", "CH04"), 6       # wall patches: PATCH_<wall>_1..6 per visible wall (more via "+ add")
-SEAM_SLOTS = 8                                       # vertical wall seams: SEAM_<wall>_1..8 per visible wall (same cameras)
+# Unnumbered multi-item landmarks (user, 2026-10-01: numbering makes the GUI too long; just click): every nail is one
+# point of NAILS, every patch / seam one piece of PATCHES / SEAMS. Automatic tracking needs no correspondence; the tie
+# between two labelled frames pairs them by nearest neighbour after the named landmarks have aligned the frames.
+MULTI = [("NAILS", "point"), ("PATCHES", "polyline"), ("SEAMS", "edge")]
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
@@ -109,12 +113,11 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   x (length) / y (width) axis; _BASE_X / _BASE_Y = bottom edges parallel to x / y; _BASE_Z = the vertical corner edges.
   One piece per visible straight edge, press <b>b</b> between edges; a category can hold up to about 3 edges and they
   need not be parallel (e.g. the two sloped gable edges). Draw the same edges in every frame.
-  <b>PATCH_&lt;wall&gt;_&lt;n&gt;</b> (add with "+ add", kind <b>polyline</b>): a visible patch on a wall sheet, e.g. PATCH_X0_1 —
-  trace its VISIBLE edges as an open line that follows the corrugation bumps (not a box, not straight); where grass
-  hides the bottom, leave it out (b between visible pieces). Number the patches left to right as seen in THIS camera,
-  keep the numbers in every frame, and label them on the 09-18 frame too (that is what ties a frame to the calibration).
-  <b>SEAM_&lt;wall&gt;_&lt;n&gt;</b>: a vertical seam between wall panels — 2+ points along it (b where hidden), numbered left to
-  right, in every frame incl. 09-18. Only seams that look clearly different from the regular corrugation ridges.
+  <b>NAILS</b>: just click every nail you see (each click = one point, no numbering). <b>PATCHES</b>: every wall patch
+  as one piece (press <b>b</b> between patches) — trace its VISIBLE edges as an open line following the corrugation bumps,
+  leave out what grass hides. <b>SEAMS</b>: every vertical seam between wall panels as one piece (b between seams), 2+
+  points each, only seams clearly different from the regular corrugation ridges. None of these is numbered; label them
+  on the 09-18 frame too where you can (that ties a frame to the calibration).
   <b>HOUSE_n_LABEL</b>: the fixed number label on the roof — click its corners (it closes itself). Clear by day; at
   night the IR often saturates it — then skip it.
   <b>Only what you can SEE — never an estimated or guessed line</b> (an edge hidden by grass or anything else is left
@@ -129,13 +132,13 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   <b>Drag</b> a point to move it, <b>right-click</b> to delete. Points are kept in this browser between visits.</small>
   <canvas id="mag" width="240" height="240" style="display:block;margin:6px 0;border:1px solid #888"></canvas>
   <div id="list"></div>
-  <div style="margin-top:6px">+ add <input id="newname" size="14" placeholder="NAME"> <select id="newkind"><option>edge</option><option>polyline</option><option>outline</option></select> <button onclick="addLm()">add</button></div>
+  <div style="margin-top:6px">+ add <input id="newname" size="14" placeholder="NAME"> <select id="newkind"><option>point</option><option>edge</option><option>polyline</option><option>outline</option></select> <button onclick="addLm()">add</button></div>
   <b>Export</b> (also copied here) / paste an earlier export and <button onclick="loadJSON()">Load</button>:<br><textarea id="out"></textarea>
  </div></div>
 <script>
 const CAM="__CAM__", TS="__TS__", S=__SCALE__, IMGW=__IMGW__, IMGH=__IMGH__, GUIDES=__GUIDES__;
 let KIND=__KINDS__;
-const GROUP={edge:'Straight edges (pole L/R edges, house edges by direction)',polyline:'Edges (polyline)',outline:'Outlines (closed)',axis:'Pole centre lines (old)'};
+const GROUP={point:'Points (click each one: NAILS)',edge:'Straight edges (pole L/R edges, house edges by direction, SEAMS)',polyline:'Edges (polyline)',outline:'Outlines (closed)',axis:'Pole centre lines (old)'};
 const POLE_ORDER=['A0','A1','A2','A3','A4','B0','B1','B2','B3','B4','C0','C1','C2','C3','C4'];
 function col(id,i){if(id.startsWith('HOUSE'))return '#9aa0a6';
   if(id.startsWith('POLE')){const k=POLE_ORDER.indexOf(id.slice(5,7));return `hsl(${((k<0?i:k)*47)%360},95%,55%)`;}
@@ -165,7 +168,7 @@ function draw(){ov.setAttribute('width',IMGW);ov.setAttribute('height',IMGH);let
     const p=S_[S_.length-1].slice(-1)[0];h+=`<text x="${p[0]*S+10}" y="${p[1]*S+8}" font-size="24" font-weight="bold" fill="${COL[id]}" stroke="#000" stroke-width="5" paint-order="stroke">${id}</text>`;
     if(id===cur&&pts.length&&pts[pts.length-1]===null)h+=`<text x="${p[0]*S+10}" y="${p[1]*S+36}" font-size="20" fill="#ff0" stroke="#000" stroke-width="4" paint-order="stroke">pen up - next click starts a new piece</text>`;}
   ov.innerHTML=h;list();}
-function list(){const L=document.getElementById('list');let h='';for(const k of ['edge','polyline','outline','axis']){
+function list(){const L=document.getElementById('list');let h='';for(const k of ['point','edge','polyline','outline','axis']){
   const ids=Object.keys(KIND).filter(l=>KIND[l]===k);if(!ids.length)continue;h+=`<h4>${GROUP[k]}</h4>`;
   for(const l of ids){const ns=segs(lines[l]).length;h+=`<button class="ln${l===cur?' cur':''}" style="border-left:12px solid ${COL[l]}" onclick="pick('${l}')">${l}<span class="n">${npts(lines[l])} pts${ns>1?' / '+ns+' pieces':''}</span></button>`;}}
   L.innerHTML=h;document.getElementById('curinfo').textContent=cur||'none';
@@ -180,12 +183,15 @@ ov.addEventListener('contextmenu',e=>{e.preventDefault();const [x,y]=toImg(e);co
 ov.addEventListener('mousedown',e=>{if(e.button!==0)return;const [x,y]=toImg(e);const h=hit(x,y);
   if(h){drag={id:h[0],i:h[1]};cur=h[0];draw();return;}
   if(!cur){alert('pick a landmark first (right panel)');return;}
-  lines[cur].push([Math.round(x*10)/10,Math.round(y*10)/10]);drag={id:cur,i:lines[cur].length-1};draw();});
+  lines[cur].push([Math.round(x*10)/10,Math.round(y*10)/10]);drag={id:cur,i:lines[cur].length-1};
+  if(KIND[cur]==='point')lines[cur].push(null);                 // a point landmark: every click is its own item
+  draw();});
 ov.addEventListener('mousemove',e=>{const [x,y]=toImg(e);hover=[x,y];
   if(drag){lines[drag.id][drag.i]=[Math.round(x*10)/10,Math.round(y*10)/10];draw();}else mag();});
 window.addEventListener('mouseup',()=>{if(drag){drag=null;draw();}});
 ov.addEventListener('mouseleave',()=>{hover=null;mag();});
-function undo(){if(cur&&lines[cur].length){lines[cur].pop();draw();}}
+function undo(){if(!cur||!lines[cur].length)return;const a=lines[cur];
+  if(KIND[cur]==='point'){while(a.length&&a[a.length-1]===null)a.pop();a.pop();}else a.pop();draw();}
 function penUp(){if(cur&&npts(lines[cur])&&lines[cur][lines[cur].length-1]!==null){lines[cur].push(null);draw();}}
 function clearLine(){if(cur&&confirm('clear all points of '+cur+'?')){lines[cur]=[];draw();}}
 document.addEventListener('keydown',e=>{if(document.activeElement.tagName==='INPUT')return;if(e.key==='u')undo();if(e.key==='b')penUp();});
@@ -247,13 +253,8 @@ def main(argv=None) -> int:
         guides.update(landmark_guides.calib_guides(cam))
     except Exception as e:  # noqa: BLE001 — the GUI works without them
         print(f"(no calibration guides: {e})")
-    if cam in PATCH_CAMS:                                   # several patches per wall: ready-made slots (user, 2026-10-01)
-        walls = [k.split("_", 1)[1] for k in guides if k.startswith("WALLTOP_")] or ["X0", "X480", "Y0", "Y240"]
-        for w in walls:
-            for i in range(1, PATCH_SLOTS + 1):
-                kinds.setdefault(f"PATCH_{w}_{i}", "polyline")
-            for i in range(1, SEAM_SLOTS + 1):
-                kinds.setdefault(f"SEAM_{w}_{i}", "edge")
+    for name, kind in MULTI:
+        kinds.setdefault(name, kind)
     if args.guide:
         g = json.loads(Path(args.guide).read_text(encoding="utf-8"))
         guides = g.get("landmarks", {})

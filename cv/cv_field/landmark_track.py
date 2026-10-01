@@ -53,11 +53,11 @@ for _p in (str(HERE), str(HERE.parent)):
 
 H, R, STEP, MAX_PER_LM, S_MIN = 20, 8, 14, 40, 0.45      # fine stage: small patch, +/-8 px around the coarse prediction
 H1, R1, COARSE_SCALE, COARSE_PER_LM = 30, 60, 0.5, 4      # coarse stage (half resolution): ~120 px patches, +/-120 px search
-CORNER_PREFIXES = ("BOX_", "PCBOX")
+CORNER_PREFIXES = ("BOX_", "PCBOX", "NAILS")              # NAILS = unnumbered points (each a 2-D constraint)
 # PATCH_<wall>_<n> = a visible patch on a wall sheet: an OPEN, bumpy polyline (corrugation; the bottom is often hidden by
 # grass) -> normal-only constraints like the wall tops, in the fit set (user, 2026-10-01)
 # SEAM_<wall>_<n> = a vertical seam between wall panels (straight, vertical): normal-only like the pole edges
-FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_")
+FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_", "NAILS", "PATCHES", "SEAMS")
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
 HOUSE1_MOVED = date(2026, 9, 18)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30", "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}
@@ -95,6 +95,8 @@ def samples(name: str, kind: str, pieces: list[np.ndarray]) -> list[tuple[float,
     closed = kind == "outline" and len(pieces) == 1
     for p in pieces:
         if len(p) < 2:
+            if corner_lm and len(p) == 1:                     # a single labelled point (NAILS): a 2-D constraint
+                out.append((float(p[0][0]), float(p[0][1]), 0.0, 0.0, True))
             continue
         pts = np.vstack([p, p[:1]]) if closed and len(p) > 2 else p
         segs = []
@@ -111,8 +113,9 @@ def samples(name: str, kind: str, pieces: list[np.ndarray]) -> list[tuple[float,
         if corner_lm:
             segs += [(float(x), float(y), 0.0, 0.0, True) for x, y in p]
         out += segs
-    if len(out) > MAX_PER_LM:
-        keep = np.linspace(0, len(out) - 1, MAX_PER_LM).round().astype(int)
+    cap = max(MAX_PER_LM, 12 * len(pieces))                   # multi-item landmarks (PATCHES, SEAMS) keep ~12 per item
+    if len(out) > cap:
+        keep = np.linspace(0, len(out) - 1, cap).round().astype(int)
         corners = [s for s in out if s[4]]
         out = [out[i] for i in keep if not out[i][4]] + corners
     return out
@@ -293,11 +296,14 @@ def selftest() -> int:
     err = float(np.abs(r["A"] @ np.array([w / 2, h / 2, 1.0]) - true @ np.array([w / 2, h / 2, 1.0])).max())
     ok = r["A"] is not None and err < 0.5 and r.get("status") == "ok"
     print(f"[{'PASS' if ok else 'FAIL'}] affine recovered: centre error {err:.2f} px, held-out median {r.get('held_med', np.nan):.2f} px, status {r.get('status')}")
+    nails = samples("NAILS", "point", pieces_of([[[100, 100]], [[200, 150]], [[300, 120]]]))
+    okn = len(nails) == 3 and all(s[4] for s in nails) and in_fit("NAILS") and in_fit("PATCHES") and in_fit("SEAMS")
+    print(f"[{'PASS' if okn else 'FAIL'}] NAILS: each single point is a 2-D constraint; NAILS/PATCHES/SEAMS in the fit set")
     house = samples("HOUSE_1_ROOF_X", "edge", pieces_of([[[0, 0], [10, 0]]]))
     ok2 = not usable("HOUSE_1_ROOF_X", date(2026, 9, 4)) and usable("HOUSE_1_ROOF_X", date(2026, 9, 18)) and usable("HOUSE_2_BASE_Z", date(2026, 9, 4)) and len(house) == 1
     print(f"[{'PASS' if ok2 else 'FAIL'}] house_1 excluded before 09-18, house_2 always usable")
-    print(("PASS" if ok and ok2 else "FAIL") + " — landmark_track self-test")
-    return 0 if ok and ok2 else 1
+    print(("PASS" if ok and ok2 and okn else "FAIL") + " — landmark_track self-test")
+    return 0 if ok and ok2 and okn else 1
 
 
 def main(argv=None) -> int:
