@@ -289,9 +289,11 @@ def render_video(items: list[tuple[Path, str]], out: Path, fps: float = 2.0, wid
 
 
 def grab_at(t: datetime, cam: str, args, ffmpeg: str, size) -> tuple[np.ndarray, datetime, Path] | None:
-    """Frame of `cam` at field-PC time t: the 09-18 calibration session for 09-18, else the cohort copy (date folder
-    and the previous one)."""
-    if t.date() == date(2026, 9, 18):
+    """Frame of `cam` at field-PC time t: an explicit `args.session` folder when given (any calibration session, any
+    date), else the 09-18 calibration session for 09-18, else the cohort copy (date folder and the previous one)."""
+    if getattr(args, "session", None):
+        segs = segments(Path(args.session), cam)
+    elif t.date() == date(2026, 9, 18):
         segs = segments(Path(args.ref_session), cam)
     else:
         segs = segments(Path(args.cohort_root) / f"{t:%Y-%m-%d}" / cam, cam) + \

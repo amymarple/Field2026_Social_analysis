@@ -36,8 +36,10 @@ Poles use the paddock grid names (rows A/B/C x columns 0-4, 10 ft grid) so a pol
 camera; add any other structure with "+ add".
 
 Usage: python cv/cv_field/landmark_gui.py CHxx "YYYY-MM-DD HH:MM:SS" --cohort 2026c [--guide <earlier export.json>] [--half]
+                                          [--session <calibration session folder>]
   09-18 times are read from the calibration session (F:\calibration\session_2026-09-18_13-54-34), other times from the
-  cohort copy (F:\3rd_rat). -> $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_landmarks/landmark_gui_CHxx_<ts>.html
+  cohort copy (F:\3rd_rat); --session reads any date from that session folder instead (e.g. the 2026-09-30 supplement,
+  F:\calibration\session_2026-09-30_15-49-39). -> $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_landmarks/landmark_gui_CHxx_<ts>.html
   Export -> landmarks_CHxx_<ts>.json; keep exports in cv/configs/landmarks/<cohort>/ (they are human labels: commit them).
   --guide draws an earlier export (e.g. the 09-18 reference of the same camera) as dashed lines, to identify structures.
 """
@@ -208,6 +210,8 @@ def main(argv=None) -> int:
     ap.add_argument("--cohort", required=True, help="e.g. 2026c (no default: the repo-wide default is 2026a)")
     ap.add_argument("--cohort-root", default=r"F:\3rd_rat")
     ap.add_argument("--ref-session", default=r"F:\calibration\session_2026-09-18_13-54-34")
+    ap.add_argument("--session", default=None,
+                    help="read the frame from this calibration session folder whatever the date (overrides the two above)")
     args = ap.parse_args(argv)
     import output_paths as op
     cohort = op.resolve_cohort(args.cohort)
