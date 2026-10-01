@@ -42,7 +42,8 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   cohort→calibration fit; HOUSE_1's only the within-cohort correction (never compared with 09-18 frames).
 - **Wall details and the building (user, 2026-10-01), mainly for CH03/CH04 (few poles in view):** `NAILS` (points,
   just click), `PATCHES` / older numbered `PATCH_<wall>_<n>` (open bumpy polylines), `SEAMS` / `SEAM_<wall>_<n>`
-  (vertical panel seams), `BUILDING` (CH04 only: edges of a building wall outside the paddock). **Reliability (user):
+  (vertical panel seams), `BUILDING` (CH04 only: edges of a building wall outside the paddock), `WOOD` (CH04 only: a
+  piece of wood in view; near the ground, so treated like the patches). **Reliability (user):
   nails are very stable; patches sit low on the wall and can be hidden by a rat; people can stand in front of the
   distant building** — so patches and the building may be missing or occluded in any frame and must be checked
   against the stable set (nails, poles, wall tops), never trusted on their own.

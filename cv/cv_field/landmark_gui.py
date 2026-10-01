@@ -25,7 +25,9 @@ Landmark kinds (the side panel groups them):
   polyline BUILDING         CH04 only: the wall of a building OUTSIDE the paddock (user, 2026-10-01) — its visible
                             straight edges (corners, roof line, eaves, window/door frames), one piece per edge (b
                             between edges); far away, so it moves only with the camera's rotation
-  NAILS/PATCHES/SEAMS/BUILDING are NOT numbered (numbering made the GUI too long): automatic tracking needs no correspondence,
+  polyline WOOD             CH04 only: a piece of wood in view (user, 2026-10-01) — its visible edges, one piece per edge
+                            (b between edges); near the ground, so it is checked against the stable landmarks first
+  NAILS/PATCHES/SEAMS/BUILDING/WOOD are NOT numbered (numbering made the GUI too long): automatic tracking needs no correspondence,
   and the tie between two labelled frames pairs them by nearest neighbour once the named landmarks have aligned the
   frames. All three are in the fit set. (Older numbered PATCH_<wall>_<n> / SEAM_<wall>_<n> labels still load and count.)
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
@@ -78,7 +80,8 @@ POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
 # point of NAILS, every patch / seam one piece of PATCHES / SEAMS. Automatic tracking needs no correspondence; the tie
 # between two labelled frames pairs them by nearest neighbour after the named landmarks have aligned the frames.
 MULTI = [("NAILS", "point"), ("PATCHES", "polyline"), ("SEAMS", "edge")]
-EXTRA = {"CH04": [("BUILDING", "polyline")]}   # per camera: CH04 sees a building wall outside the paddock (user, 2026-10-01)
+# per camera (user, 2026-10-01): CH04 sees a building wall outside the paddock and a piece of wood
+EXTRA = {"CH04": [("BUILDING", "polyline"), ("WOOD", "polyline")]}
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
@@ -123,7 +126,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   points each, only seams clearly different from the regular corrugation ridges. None of these is numbered; label them
   on the 09-18 frame too where you can (that ties a frame to the calibration).
   <b>BUILDING</b> (CH04): the wall of the building outside the paddock — its visible straight edges (corners, roof line,
-  eaves, window / door frames), one piece per edge, <b>b</b> between edges.
+  eaves, window / door frames), one piece per edge, <b>b</b> between edges. <b>WOOD</b> (CH04): the piece of wood —
+  its visible edges, one piece per edge, <b>b</b> between edges.
   <b>HOUSE_n_LABEL</b>: the fixed number label on the roof — click its corners (it closes itself). Clear by day; at
   night the IR often saturates it — then skip it.
   <b>Only what you can SEE — never an estimated or guessed line</b> (an edge hidden by grass or anything else is left

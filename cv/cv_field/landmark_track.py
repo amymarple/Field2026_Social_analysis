@@ -20,7 +20,7 @@ Method (no visual judgement; the user reviews the overlays):
      FIT SET, in two tiers (user, 2026-10-01: nails are very stable; patches sit low on the wall and a rat can hide them;
      people can stand in front of the distant building):
        stable      POLE_*, BOX_*, WALLTOP_*, TOWER_*, PCBOX, NAILS, SEAM(S)  -> fitted first (A_s; also the coarse stage)
-       occludable  PATCH_* / PATCHES, BUILDING -> every PIECE is its own unit ("NAME#k"), at most OCC_CAP samples, and
+       occludable  PATCH_* / PATCHES, BUILDING, WOOD -> every PIECE is its own unit ("NAME#k"), at most OCC_CAP samples, and
                    enters the final fit only if >= OCC_MATCH_MIN of its samples matched and its median residual under
                    A_s is <= OCC_RES_MAX px; otherwise it is DROPPED for that frame (listed per frame).
      If the stable tier alone does not pin both image directions, a provisional fit on both tiers stands in for A_s
@@ -66,11 +66,12 @@ CORNER_PREFIXES = ("BOX_", "PCBOX", "NAILS")              # NAILS = unnumbered p
 # grass) -> normal-only constraints like the wall tops, in the fit set (user, 2026-10-01)
 # SEAM_<wall>_<n> = a vertical seam between wall panels (straight, vertical): normal-only like the pole edges
 # BUILDING = edges of a building wall outside the paddock (CH04; user, 2026-10-01): normal-only like the wall tops
+# WOOD = a piece of wood in CH04's view (user, 2026-10-01): near the ground -> occludable tier
 FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_", "NAILS", "PATCHES", "SEAMS",
-                "BUILDING")
+                "BUILDING", "WOOD")
 # Occludable tier (user, 2026-10-01): patches sit low on the wall (a rat can hide one), people can stand in front of the
 # distant building -> each piece is checked against the stable tier before it may enter the fit
-OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING")               # PATCH_<wall>_<n>, PATCHES, BUILDING
+OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING", "WOOD")       # PATCH_<wall>_<n>, PATCHES, BUILDING, WOOD
 OCC_CAP, OCC_MATCH_MIN, OCC_RES_MAX = 12, 0.6, 3.0
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
 HOUSE1_MOVED = date(2026, 9, 18)
@@ -366,7 +367,7 @@ def selftest() -> int:
     ok = r["A"] is not None and err < 0.5 and r.get("status") == "ok"
     print(f"[{'PASS' if ok else 'FAIL'}] affine recovered: centre error {err:.2f} px, held-out median {r.get('held_med', np.nan):.2f} px, status {r.get('status')}")
     nails = samples("NAILS", "point", pieces_of([[[100, 100]], [[200, 150]], [[300, 120]]]))
-    okn = len(nails) == 3 and all(s[4] for s in nails) and in_fit("NAILS") and in_fit("PATCHES") and in_fit("SEAMS") and in_fit("BUILDING")
+    okn = len(nails) == 3 and all(s[4] for s in nails) and in_fit("NAILS") and in_fit("PATCHES") and in_fit("SEAMS") and in_fit("BUILDING") and occludable("WOOD")
     print(f"[{'PASS' if okn else 'FAIL'}] NAILS: each single point is a 2-D constraint; NAILS/PATCHES/SEAMS/BUILDING in the fit set")
     # occlusion: two bumpy patches + a building edge; in the target a "rat" (noise blob) covers patch 2 and a "person"
     # covers the building edge -> both dropped, the affine still exact, patch 1 kept
