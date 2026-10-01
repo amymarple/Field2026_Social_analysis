@@ -40,6 +40,14 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   `HOUSE_2` = house_2 = **roof number 7** (by pole B3, under CH06). Neither moved while the rats were in the field;
   **HOUSE_1 (roof 4) was moved on 09-18** (farther from its pole), HOUSE_2 never. → HOUSE_2 landmarks may enter the
   cohort→calibration fit; HOUSE_1's only the within-cohort correction (never compared with 09-18 frames).
+- **Wall details and the building (user, 2026-10-01), mainly for CH03/CH04 (few poles in view):** `NAILS` (points,
+  just click), `PATCHES` / older numbered `PATCH_<wall>_<n>` (open bumpy polylines), `SEAMS` / `SEAM_<wall>_<n>`
+  (vertical panel seams), `BUILDING` (CH04 only: edges of a building wall outside the paddock). **Reliability (user):
+  nails are very stable; patches sit low on the wall and can be hidden by a rat; people can stand in front of the
+  distant building** — so patches and the building may be missing or occluded in any frame and must be checked
+  against the stable set (nails, poles, wall tops), never trusted on their own.
+  Labelled on the 09-18 references: CH03 17 nails, 4 patches, 3 seams (SEAM_X0_3 has one point → unused);
+  CH04 12 nails, 3 patches, 2 seams, 4 building edges.
 - **Only what is visible (user, 2026-10-01):** never draw an estimated or guessed line — an edge hidden by grass
   (e.g. a house base) or by anything else is left out, or only its visible stretches are drawn. A missing line
   costs nothing; a guessed one is a false measurement. (Same reason the wall FOOT is not used.)
