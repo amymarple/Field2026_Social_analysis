@@ -1,0 +1,34 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_ins_fusion_v5_20261001_1325",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_ins_fusion_v5",
+  "report": "wiser_baseline_ins_fusion_v5_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_ins_fusion_v5.py",
+  "config": "wiser/configs/wiser_ins_fusion_v5_2026c.json",
+  "git_commit": "32f4292+dirty",
+  "runtime_s": 3304.798632621765,
+  "caches": {
+    "imu_raw": "D:/Field2026_analysis_out/2026c/imu_raw_cache",
+    "imu100": "D:/Field2026_analysis_out/2026c/imu100_cache",
+    "imu16": "D:/Field2026_analysis_out/2026c/imu16_cache",
+    "wiser_fix": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+    "attitude16": "D:/Field2026_analysis_out/2026c/attitude16_cache"
+  },
+  "verdict_test_night": "FAIL",
+  "tuned": {
+    "sig_res": 8.0,
+    "tau_b": 2.0,
+    "t_max": 15.0,
+    "sig_v": 0.1,
+    "sig_vr": 4.0,
+    "kappa_cv": 10.0
+  },
+  "figures": [
+    "wiser_baseline_ins_fusion_v5_stage_a_2026c.png",
+    "wiser_baseline_ins_fusion_v5_heldout_2026c.png",
+    "wiser_baseline_ins_fusion_v5_tuning_2026c.png",
+    "wiser_baseline_ins_fusion_v5_by_mode_2026c.png",
+    "wiser_baseline_ins_fusion_v5_example_2026c.png"
+  ]
+}

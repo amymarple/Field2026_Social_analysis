@@ -1,0 +1,538 @@
+{
+  "_about": "Pre-registered rules of the head-IMU inertial fusion V5 for cohort 2026c (wiser/scripts/analyze_wiser_ins_fusion_v5.py; plan implementation_plan/2026-10-01-wiser-ins-fusion-v5.md, approved by the user 2026-10-01 'start v5'). Stage A = IMU-only attitude (gate-v2 strict still windows without the WISER veto, per-animal gyro scale, bias piecewise-linear in clock time anchored at every strict window, gravity aiding only in strict windows with linear closure, world-frame f_xy low-passed 2 Hz -> 16 Hz, sigma_theta from the gate-v2 clock-time law) -> attitude16_cache. Stage B = 16-Hz EKF + RTS (p, v, world-frame acceleration bias, yaw offset psi, WISER drift if the measured variogram justifies it) with WISER updates at the fix times. Times are field-PC local (EDT, naive). The driver writes `tuned` (fitted on the tuning periods 2026-09-08/09 night + 2026-09-08 day only) and `fitted` (Stage-A decisions, measured noise model). A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "smoothing_config": "wiser/configs/wiser_imu_smoothing_2026c.json",
+  "ins_config": "wiser/configs/wiser_ins_fusion_2026c.json",
+  "gate_v2_config": "wiser/configs/imu_attitude_gate_v2_2026c.json",
+  "gate_v2_selection": "D:/Field2026_analysis_out/2026c/imu_attitude_gate_v2_20261001_0847/selection.json",
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF12"
+  ],
+  "periods": {
+    "night_20260908": {
+      "role": "tuning",
+      "kind": "night",
+      "start": "2026-09-08 21:00:00",
+      "end": "2026-09-09 04:20:00",
+      "smoothing_night": "tuning",
+      "index": 0
+    },
+    "day_20260908": {
+      "role": "tuning",
+      "kind": "day",
+      "start": "2026-09-08 08:00:00",
+      "end": "2026-09-08 18:30:00",
+      "index": 1
+    },
+    "night_20260910": {
+      "role": "test",
+      "kind": "night",
+      "start": "2026-09-10 21:00:00",
+      "end": "2026-09-11 04:20:00",
+      "smoothing_night": "test",
+      "index": 2
+    },
+    "day_20260911": {
+      "role": "test",
+      "kind": "day",
+      "start": "2026-09-11 10:00:00",
+      "end": "2026-09-11 17:30:00",
+      "index": 3
+    }
+  },
+  "cache_roots": {
+    "imu_raw": "D:/Field2026_analysis_out/2026c/imu_raw_cache",
+    "imu100": "D:/Field2026_analysis_out/2026c/imu100_cache",
+    "imu16": "D:/Field2026_analysis_out/2026c/imu16_cache",
+    "wiser_fix": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+    "attitude16": "D:/Field2026_analysis_out/2026c/attitude16_cache"
+  },
+  "stage_a": {
+    "sigma_law": {
+      "sigma0_deg": 0.78,
+      "k_deg_per_s": 0.0227,
+      "_source": "gate v2 chain records vs clock time t since the last strict window (report section 9)"
+    },
+    "p90_law": {
+      "p0_deg": 3.07,
+      "k90_deg_per_s": 0.0921
+    },
+    "lp_hz": 2.0,
+    "butter_order": 4,
+    "ok_pad_s": 0.5,
+    "bias_rules": [
+      "raw",
+      "smoothed"
+    ],
+    "bias_rule_tie_deg": 0.02,
+    "smoother_nu_clip": 5.0,
+    "band_powers_hz": [
+      [
+        2,
+        4
+      ],
+      [
+        4,
+        8
+      ],
+      [
+        8,
+        12
+      ],
+      [
+        12,
+        20
+      ]
+    ],
+    "band_power_window_s": 0.5,
+    "vedba_window_samples": 201,
+    "lwo_bins_s": [
+      0,
+      0.01,
+      2,
+      5,
+      10,
+      20,
+      30,
+      60,
+      120,
+      300,
+      600,
+      1800,
+      1000000000.0
+    ],
+    "day_seconds": {
+      "min_samples_per_s": 80,
+      "omega_still_dps": 10.0
+    }
+  },
+  "stage_b": {
+    "q_psi_deg2_per_s": 0.0309,
+    "psi0_min_sd_deg": 10.0,
+    "psi_reacq_sd_deg": 20.0,
+    "psi_obs_max_sd_deg": 10.0,
+    "psi_obs_min_sd_deg": 5.0,
+    "p0_pos_in2": 10000.0,
+    "p0_vel_in2s2": 400.0,
+    "cv_q_in2_s3": 1.0,
+    "cv_mult": [
+      1.0,
+      0.01,
+      0.3,
+      10.0
+    ],
+    "_cv_note": "V2's tuned process noise (smoothing pilot: B2' q = 1, multipliers unusable/still/active/locomoting) used where the IMU is not usable",
+    "huber_k": 2.5,
+    "gate2": 13.8155,
+    "n_irls": 2,
+    "rhythm_pmin_dps2": 400.0,
+    "grid_margin_s": 30.0,
+    "q_psi_note": "q_psi(t) = max(q_psi_deg2_per_s, 2 k^2 t_since), k = stage_a.sigma_law.k_deg_per_s (amendment 3)"
+  },
+  "psi_reg": {
+    "lag_s": [
+      0.4,
+      0.75
+    ],
+    "min_dv_inps": 8.0,
+    "half_window_s": 150.0,
+    "grid_step_s": 10.0,
+    "min_pairs": 10,
+    "sd_bounds_deg": [
+      3.0,
+      180.0
+    ],
+    "b2_q": 3.0,
+    "handed_min_periods": 6,
+    "max_tsw_s": 60.0
+  },
+  "noise_model": {
+    "min_run_s": 20,
+    "max_pair_dt_s": 0.5,
+    "min_pairs": 50,
+    "lags_s": [
+      0.25,
+      0.5,
+      1.0,
+      2.0,
+      5.0,
+      10.0,
+      20.0,
+      30.0
+    ],
+    "lag_tol": 0.15,
+    "max_pairs_per_lag": 400000,
+    "keep_min_share": 0.1,
+    "keep_T_range_s": [
+      1.0,
+      120.0
+    ],
+    "white_floor_frac": 0.25,
+    "seed": 20261001
+  },
+  "schemes": {
+    "s_every": 5,
+    "g_frac": 0.1,
+    "g_windows_s": {
+      "g05": 0.5,
+      "g10": 1.0
+    },
+    "a_seed_offsets": {
+      "night_20260908": 0,
+      "night_20260910": 1000,
+      "day_20260908": 2000,
+      "day_20260911": 3000
+    },
+    "s_seed_offset": 5000,
+    "g05_seed_offset": 6000,
+    "g10_seed_offset": 7000
+  },
+  "tuning": {
+    "objective": "pooled held-out RMSE over the scored fixes of schemes (s) and (g05) on the tuning night and the tuning day",
+    "schemes": [
+      "s",
+      "g05"
+    ],
+    "nis_range": [
+      1.5,
+      3.0
+    ],
+    "nis_trim": 13.8155,
+    "tie_J_in": 0.001,
+    "stage1": {
+      "sig_res": [
+        4.0,
+        8.0,
+        16.0,
+        32.0
+      ],
+      "tau_b": [
+        2.0,
+        5.0,
+        10.0
+      ],
+      "t_max": [
+        15.0,
+        60.0,
+        300.0,
+        "inf"
+      ],
+      "sig_v": 0.25,
+      "sig_vr": "inf",
+      "kappa_cv": [
+        1.0,
+        3.0,
+        10.0
+      ]
+    },
+    "stage2": {
+      "sig_v": [
+        0.1,
+        0.25,
+        1.0,
+        "inf"
+      ],
+      "sig_vr": [
+        0.25,
+        1.0,
+        4.0,
+        "inf"
+      ]
+    },
+    "stage3": {
+      "sig_res_factor": [
+        0.7,
+        1.0,
+        1.4
+      ]
+    },
+    "_amendments": "plan section 11 (2026-10-01, before any test-period computation): kappa_cv added to stage 1; psi regression restricted to usable pairs within 60 s of a strict window; psi process noise follows the clock-time law; V5_unc secondary"
+  },
+  "accept": {
+    "min_gain": 0.03,
+    "min_animals": 4,
+    "alpha": 0.025,
+    "moving_max_loss": -0.02,
+    "primary_schemes": [
+      "s",
+      "g05"
+    ],
+    "references": [
+      "B2p",
+      "V2"
+    ]
+  },
+  "boot": {
+    "n": 1000,
+    "block_s": 300,
+    "seed_offsets": {
+      "night_20260908": 11,
+      "day_20260908": 12,
+      "night_20260910": 13,
+      "day_20260911": 14
+    }
+  },
+  "example_animal": "SF09",
+  "tuned": {
+    "fitted_on": "tuning night 2026-09-08 21:00 -> 2026-09-09 04:20 + tuning day 2026-09-08 08:00 -> 18:30 only",
+    "fitted_by": "wiser/scripts/analyze_wiser_ins_fusion_v5.py",
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_ins_fusion_v5_20261001_1325",
+    "frozen_local": "2026-10-01T14:01:58-04:00",
+    "objective": "pooled held-out RMSE over the scored fixes of schemes (s) and (g05) on the tuning night and the tuning day",
+    "constraint": "trimmed NIS in [1.5, 3.0]",
+    "values": {
+      "sig_res": 8.0,
+      "tau_b": 2.0,
+      "t_max": 15.0,
+      "sig_v": 0.1,
+      "sig_vr": 4.0,
+      "kappa_cv": 10.0
+    },
+    "J_in": 4.98819691558539,
+    "nis": 2.803706901420796,
+    "unconstrained_V5_unc": {
+      "sig_res": 8.0,
+      "tau_b": 2.0,
+      "t_max": 15.0,
+      "sig_v": 0.1,
+      "sig_vr": 4.0,
+      "kappa_cv": 10.0
+    },
+    "on_grid_edge": {
+      "sig_res": false,
+      "tau_b": true,
+      "t_max": true,
+      "kappa_cv": true,
+      "sig_v": true,
+      "sig_vr": false
+    },
+    "frame": "normal"
+  },
+  "fitted": {
+    "stage_a": {
+      "bias_rule": "smoothed",
+      "smoother": {
+        "x": {
+          "qb": 3.143400776835666e-06,
+          "sr": 0.12374464465254556,
+          "sw": 2.5376501761946664e-08,
+          "nll": -59887.52367215444,
+          "n": 23364,
+          "converged": true,
+          "qb_rate_dps_per_min_at_1min": 0.8239991309440222
+        },
+        "y": {
+          "qb": 3.285314966013285e-06,
+          "sr": 0.1471403202394819,
+          "sw": 2.6153377747002e-08,
+          "nll": -56211.564920172576,
+          "n": 23364,
+          "converged": true,
+          "qb_rate_dps_per_min_at_1min": 0.8423942263921741
+        },
+        "z": {
+          "qb": 2.0474812862354294e-06,
+          "sr": 0.1600176520931212,
+          "sw": 3.053188279360236e-08,
+          "nll": -54948.7023579269,
+          "n": 23364,
+          "converged": true,
+          "qb_rate_dps_per_min_at_1min": 0.6650232761541905
+        }
+      },
+      "lwo_tuning_median_deg": {
+        "a3": 0.05131830012982705,
+        "raw": 0.08742999359899745,
+        "smoothed": 0.051251581132838474
+      },
+      "gyro_scales": {
+        "SF07": 0.9621279902093307,
+        "SF08": 0.9513964541449569,
+        "SF09": 0.9953995056205837,
+        "SF10": 1.000672431578111,
+        "SF12": 0.9998865653824546
+      },
+      "config_hash": "7fac19d1460e"
+    },
+    "noise_models": {
+      "night": {
+        "drift_on": false,
+        "sigma_d_x": 0.42268356863430906,
+        "sigma_d_y": 0.5272993910882825,
+        "T_d_s": 10.525552597667554,
+        "nugget_fit_x": 1.6641687989552187,
+        "nugget_fit_y": 5.667805004192681,
+        "share_x": 0.09694946358754145,
+        "share_y": 0.04676281172816447,
+        "pair_dt_median_s": 0.17700000000149885,
+        "nugget_pairs": {
+          "3": {
+            "n_pairs": 21,
+            "x": 6.227591285898442,
+            "y": 20.005380769106438,
+            "x_filled": true,
+            "y_filled": true
+          },
+          "4": {
+            "n_pairs": 54,
+            "x": 6.227591285898442,
+            "y": 14.23224317442882
+          },
+          "5": {
+            "n_pairs": 99,
+            "x": 5.431071147129605,
+            "y": 12.068788759747488
+          },
+          "6": {
+            "n_pairs": 295,
+            "x": 6.180265059063868,
+            "y": 20.005380769106438
+          },
+          "7": {
+            "n_pairs": 955,
+            "x": 2.809783525556174,
+            "y": 5.520634179566539
+          },
+          "8": {
+            "n_pairs": 4442,
+            "x": 2.3225763681802762,
+            "y": 7.172390062295343
+          },
+          "9": {
+            "n_pairs": 30527,
+            "x": 1.562517551873267,
+            "y": 5.301261157918712
+          }
+        },
+        "white_var": {
+          "3": {
+            "x": 45.37649454349954,
+            "y": 86.45028286471992
+          },
+          "4": {
+            "x": 21.09305145949479,
+            "y": 59.270770895953376
+          },
+          "5": {
+            "x": 22.37807379333101,
+            "y": 54.87961471435551
+          },
+          "6": {
+            "x": 12.677793672882721,
+            "y": 31.383537969838738
+          },
+          "7": {
+            "x": 5.8239090722674405,
+            "y": 11.380891951832986
+          },
+          "8": {
+            "x": 3.11220280234822,
+            "y": 8.975907942337095
+          },
+          "9": {
+            "x": 2.0010739523045706,
+            "y": 6.3098215396930835
+          }
+        },
+        "n_pairs_total": 36393,
+        "n_fix_9": 40783
+      },
+      "day": {
+        "drift_on": true,
+        "sigma_d_x": 0.45917939133529745,
+        "sigma_d_y": 0.7181699624474344,
+        "T_d_s": 22.827656802527944,
+        "nugget_fit_x": 1.841306327658052,
+        "nugget_fit_y": 5.334797422920301,
+        "share_x": 0.10274370963058196,
+        "share_y": 0.08815696420889947,
+        "pair_dt_median_s": 0.17700000000331784,
+        "nugget_pairs": {
+          "3": {
+            "n_pairs": 379,
+            "x": 3.5592223202185176,
+            "y": 16.093355882278264
+          },
+          "4": {
+            "n_pairs": 634,
+            "x": 3.357720975883477,
+            "y": 17.88639682061205
+          },
+          "5": {
+            "n_pairs": 2108,
+            "x": 2.887809896257646,
+            "y": 15.196369433425868
+          },
+          "6": {
+            "n_pairs": 4597,
+            "x": 3.5488326988443584,
+            "y": 11.113249040822124
+          },
+          "7": {
+            "n_pairs": 16027,
+            "x": 3.663109230886324,
+            "y": 9.284235433474118
+          },
+          "8": {
+            "n_pairs": 63065,
+            "x": 2.678331991109826,
+            "y": 7.406495443555452
+          },
+          "9": {
+            "n_pairs": 277128,
+            "x": 1.7503796955154802,
+            "y": 5.106941188417274
+          }
+        },
+        "white_var": {
+          "3": {
+            "x": 3.557593796494042,
+            "y": 16.089372208314394
+          },
+          "4": {
+            "x": 3.3560924521590016,
+            "y": 17.88241314664818
+          },
+          "5": {
+            "x": 2.8861813725331706,
+            "y": 15.192385759461999
+          },
+          "6": {
+            "x": 3.547204175119883,
+            "y": 11.109265366858255
+          },
+          "7": {
+            "x": 3.6614807071618483,
+            "y": 9.280251759510248
+          },
+          "8": {
+            "x": 2.6767034673853503,
+            "y": 7.402511769591584
+          },
+          "9": {
+            "x": 1.7487511717910047,
+            "y": 5.102957514453405
+          }
+        },
+        "n_pairs_total": 363938,
+        "n_fix_9": 385107
+      }
+    },
+    "handedness": {
+      "votes": {
+        "normal": 6,
+        "mirrored": 4,
+        "none": 0
+      },
+      "rule": "normal",
+      "frame_mirror": false
+    },
+    "verdict_test_night": "FAIL",
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_ins_fusion_v5_20261001_1325",
+    "written_local": "2026-10-01T14:20:48-04:00"
+  }
+}
