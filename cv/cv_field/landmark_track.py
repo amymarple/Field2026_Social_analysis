@@ -56,7 +56,8 @@ H1, R1, COARSE_SCALE, COARSE_PER_LM = 30, 60, 0.5, 4      # coarse stage (half r
 CORNER_PREFIXES = ("BOX_", "PCBOX")
 # PATCH_<wall>_<n> = a visible patch on a wall sheet: an OPEN, bumpy polyline (corrugation; the bottom is often hidden by
 # grass) -> normal-only constraints like the wall tops, in the fit set (user, 2026-10-01)
-FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_")
+# SEAM_<wall>_<n> = a vertical seam between wall panels (straight, vertical): normal-only like the pole edges
+FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_")
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
 HOUSE1_MOVED = date(2026, 9, 18)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30", "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}

@@ -19,6 +19,10 @@ Landmark kinds (the side panel groups them):
                             along its visible edges, following the corrugation bumps (not straight, not closed; the
                             bottom is often hidden by grass -> pieces); added with "+ add" as polyline; numbered left to
                             right in each camera's view; fit set
+  edge     SEAM_<wall>_<n>  a VERTICAL seam between wall panels (user, 2026-10-01): straight, 2+ points along its visible
+                            length; numbered left to right per camera; only seams that look clearly different from the
+                            regular corrugation ridges (overlap edge, bolts, colour change) — ridges repeat and can be
+                            confused by the matcher; fit set (constrains the horizontal position like a pole edge)
   polyline WALLTOP_*        the top edge of the wall sheet, one per side (the foot is hidden by grass)
            HOUSE_<n>_BASE   the visible part of a house's bottom edge (validation only)
   outline  TOWER_1, TOWER_2, PCBOX   closed outline, click round it (closes only when it is one piece)
@@ -66,6 +70,7 @@ import camera_review as cr  # noqa: E402  (frame lookup: segments/locate/grab, P
 
 POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
 PATCH_CAMS, PATCH_SLOTS = ("CH03", "CH04"), 6       # wall patches: PATCH_<wall>_1..6 per visible wall (more via "+ add")
+SEAM_SLOTS = 8                                       # vertical wall seams: SEAM_<wall>_1..8 per visible wall (same cameras)
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
@@ -108,6 +113,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   trace its VISIBLE edges as an open line that follows the corrugation bumps (not a box, not straight); where grass
   hides the bottom, leave it out (b between visible pieces). Number the patches left to right as seen in THIS camera,
   keep the numbers in every frame, and label them on the 09-18 frame too (that is what ties a frame to the calibration).
+  <b>SEAM_&lt;wall&gt;_&lt;n&gt;</b>: a vertical seam between wall panels — 2+ points along it (b where hidden), numbered left to
+  right, in every frame incl. 09-18. Only seams that look clearly different from the regular corrugation ridges.
   <b>HOUSE_n_LABEL</b>: the fixed number label on the roof — click its corners (it closes itself). Clear by day; at
   night the IR often saturates it — then skip it.
   <b>Only what you can SEE — never an estimated or guessed line</b> (an edge hidden by grass or anything else is left
@@ -245,6 +252,8 @@ def main(argv=None) -> int:
         for w in walls:
             for i in range(1, PATCH_SLOTS + 1):
                 kinds.setdefault(f"PATCH_{w}_{i}", "polyline")
+            for i in range(1, SEAM_SLOTS + 1):
+                kinds.setdefault(f"SEAM_{w}_{i}", "edge")
     if args.guide:
         g = json.loads(Path(args.guide).read_text(encoding="utf-8"))
         guides = g.get("landmarks", {})
