@@ -1,0 +1,229 @@
+{
+  "_about": "Inputs and pre-registered rule for choosing the default WISER smoother of cohort 2026c (wiser/scripts/analyze_wiser_default_smoother.py; plan implementation_plan/2026-10-02-wiser-default-smoother.md, approved by the user 2026-10-02 'do 1st first'). Periods, animals, exclusions and certified still segments are the failure audit's (audit_config / audit_run). Smoother parameters are the smoothing pilot's tuned values (smoothing_config -> tuned), unchanged; V2b_rt is retuned here on the pilot's tuning night only. The run writes its result into `decision`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "smoothing_config": "wiser/configs/wiser_imu_smoothing_2026c.json",
+  "fix_cache_root": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+  "candidates": [
+    "B1",
+    "B2",
+    "B2p",
+    "V1",
+    "V2",
+    "V2b"
+  ],
+  "secondary": [
+    "V2b_rt"
+  ],
+  "complexity": {
+    "_rule": "simplicity order for ties, lexicographic: (1) no drift state, (2) fewer tuned parameters, (3) no IMU dependence",
+    "B1": {
+      "drift": false,
+      "n_params": 1,
+      "imu": false
+    },
+    "B2": {
+      "drift": false,
+      "n_params": 2,
+      "imu": false
+    },
+    "B2p": {
+      "drift": true,
+      "n_params": 4,
+      "imu": false
+    },
+    "V1": {
+      "drift": true,
+      "n_params": 5,
+      "imu": true
+    },
+    "V2": {
+      "drift": true,
+      "n_params": 7,
+      "imu": true
+    },
+    "V2b": {
+      "drift": false,
+      "n_params": 5,
+      "imu": true
+    },
+    "V2b_rt": {
+      "drift": false,
+      "n_params": 5,
+      "imu": true
+    }
+  },
+  "imu_fallback": "B2",
+  "s1": {
+    "schemes": [
+      "a",
+      "s"
+    ],
+    "s_every": 5,
+    "min_anchors": 7,
+    "max_loss": 0.02,
+    "seed": 20261004,
+    "predictor": "delivered track (p for drift methods); p + b reported as a sensitivity"
+  },
+  "s2": {
+    "wiser_speed_thr_inps": 10.0,
+    "max_rel": 0.1,
+    "quantiles": [
+      50,
+      95
+    ],
+    "max_gap_s": 1.0
+  },
+  "s3": {
+    "rule": "rain crazy-drift (>= 12 in for >= 10 s) event count in primary >= 30-s segments <= raw's"
+  },
+  "s4": {
+    "jump_in": 30.0,
+    "jump_dt_s": 0.35
+  },
+  "s5": {
+    "speed_thr_inps": 3.0,
+    "onset_pre_s": 5.0,
+    "onset_post_s": 20.0,
+    "offset_pre_s": 20.0,
+    "offset_post_s": 10.0,
+    "grid_s": 0.25,
+    "max_gap_s": 1.0,
+    "still_run_min_s": 10,
+    "loco_search_s": 60,
+    "edge_s": 10.0
+  },
+  "tie_tol": 0.05,
+  "bootstrap": {
+    "block_s": 600,
+    "n_boot": 1000,
+    "seed": 20261005,
+    "_note": "10-min animal-period blocks drawn with replacement within each set (calm, rain); paired = the same draw for every method"
+  },
+  "retune": {
+    "period": "night_20260908",
+    "pilot_seed": 20260929,
+    "grid": {
+      "m_still": [
+        0.01,
+        0.03,
+        0.1,
+        0.3,
+        1.0
+      ],
+      "m_active": [
+        0.3,
+        1.0,
+        3.0
+      ],
+      "m_loco": [
+        1.0,
+        3.0,
+        10.0
+      ]
+    },
+    "objective": "pooled median held-out error on scheme (a) of the tuning night (pilot seeds), hidden fixes with >= 7 anchors and the aligned second QC-ok for the IMU and the +1 h IMU; ties -> RMSE",
+    "repro_tol_in": 0.005,
+    "pilot_B2_med": 4.091139972633556,
+    "pilot_V2_med": 3.9998887111144885,
+    "pilot_V2_mult": [
+      1.0,
+      0.01,
+      0.3,
+      10.0
+    ]
+  },
+  "workers": 5,
+  "decision": {
+    "default": "B2",
+    "label": "B2 robust CV",
+    "fallback_where_imu_qc_fails": "itself",
+    "chosen_by": "no-survivor fallback (fewest failed criteria)",
+    "survivors": [],
+    "failed_criteria": {
+      "B1": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "B2": [
+        "S3"
+      ],
+      "B2p": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "V1": [
+        "S1",
+        "S2"
+      ],
+      "V2": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "V2b": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "V2b_rt": [
+        "S2",
+        "S3",
+        "S4"
+      ]
+    },
+    "tied_calm": [
+      "B2"
+    ],
+    "rain_choice": "B2",
+    "calm_fake_path_in_per_min": {
+      "B1": 107.032,
+      "B2": 38.903,
+      "B2p": 27.064,
+      "V1": 1.219,
+      "V2": 3.113,
+      "V2b": 8.184,
+      "V2b_rt": 8.184
+    },
+    "rain_fake_path_in_per_min": {
+      "B1": 158.426,
+      "B2": 50.823,
+      "B2p": 35.614,
+      "V1": 1.353,
+      "V2": 4.036,
+      "V2b": 10.535,
+      "V2b_rt": 10.535
+    },
+    "S3_rain_events": {
+      "B1": 9,
+      "B2": 7,
+      "B2p": 14,
+      "V1": 5,
+      "V2": 7,
+      "V2b": 8,
+      "V2b_rt": 8,
+      "raw": 6
+    },
+    "v2b_rt_multipliers": [
+      1.0,
+      0.01,
+      0.3,
+      10.0
+    ],
+    "fallback_share_window_fixes": {
+      "calm": 0.06759,
+      "rain": 0.15962
+    },
+    "sensitivity": {
+      "S3_by_CI": "B2",
+      "S1_with_p_plus_b": "V1"
+    },
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_default_smoother_20261002_1626",
+    "report": "results/2026c/wiser_baseline/reports/wiser_baseline_default_smoother_2026c.md",
+    "decided_local": "2026-10-02 17:21:36"
+  }
+}

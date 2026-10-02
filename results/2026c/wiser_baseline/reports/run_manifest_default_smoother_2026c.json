@@ -1,0 +1,18 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_default_smoother_20261002_1626",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_default_smoother",
+  "report": "wiser_baseline_default_smoother_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_default_smoother.py",
+  "config": "wiser/configs/wiser_default_smoother_2026c.json",
+  "plan": "implementation_plan/2026-10-02-wiser-default-smoother.md",
+  "git_commit": "530f413+dirty",
+  "figures": [
+    "wiser_baseline_default_smoother_decision_2026c.png",
+    "wiser_baseline_default_smoother_lags_2026c.png",
+    "wiser_baseline_default_smoother_speed_2026c.png"
+  ],
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "default": "B2"
+}
