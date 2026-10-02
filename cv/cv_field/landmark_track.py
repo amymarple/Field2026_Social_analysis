@@ -73,14 +73,14 @@ for _p in (str(HERE), str(HERE.parent)):
 
 H, R, STEP, MAX_PER_LM, S_MIN = 20, 8, 14, 40, 0.45      # fine stage: small patch, +/-8 px around the coarse prediction
 H1, R1, COARSE_SCALE, COARSE_PER_LM = 30, 60, 0.5, 4      # coarse stage (half resolution): ~120 px patches, +/-120 px search
-CORNER_PREFIXES = ("BOX_", "PCBOX", "NAILS")              # NAILS = unnumbered points (each a 2-D constraint)
+CORNER_PREFIXES = ("BOX_", "PCBOX", "NAILS", "CORNERS", "LABELS")              # NAILS = unnumbered points (each a 2-D constraint)
 # PATCH_<wall>_<n> = a visible patch on a wall sheet: an OPEN, bumpy polyline (corrugation; the bottom is often hidden by
 # grass) -> normal-only constraints like the wall tops, in the fit set (user, 2026-10-01)
 # SEAM_<wall>_<n> = a vertical seam between wall panels (straight, vertical): normal-only like the pole edges
 # BUILDING = edges of a building wall outside the paddock (CH04; user, 2026-10-01): normal-only like the wall tops
 # WOOD = a piece of wood in CH04's view (user, 2026-10-01): near the ground -> occludable tier
 FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_", "NAILS", "PATCHES", "SEAMS",
-                "BUILDING", "WOOD")
+                "BUILDING", "WOOD", "FOODBOX", "INNER_EDGES", "CORNERS", "LABELS")   # CH07/CH08 in-box items (user, 2026-10-02)
 # Occludable tier (user, 2026-10-01): patches sit low on the wall (a rat can hide one), people can stand in front of the
 # distant building -> each piece is checked against the stable tier before it may enter the fit
 OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING", "WOOD")       # PATCH_<wall>_<n>, PATCHES, BUILDING, WOOD
