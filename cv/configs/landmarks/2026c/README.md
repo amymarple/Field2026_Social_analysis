@@ -49,6 +49,10 @@ pixels to the calibration-epoch pixels of the 2026-09-24 calibration (plan:
   against the stable set (nails, poles, wall tops), never trusted on their own.
   Labelled on the 09-18 references: CH03 17 nails, 4 patches, 3 seams (SEAM_X0_3 has one point → unused);
   CH04 12 nails, 3 patches, 2 seams, 4 building edges.
+- **`_L` / `_R` are IMAGE sides (user, 2026-10-02):** `POLE_xx_L` / `_R` = the pole's left / right edge as seen in THAT
+  camera's image, not a paddock direction. So they are consistent across frames of the same camera (every comparison
+  in `landmark_track` / `tie_labels` is within one camera) but the same name can be physically opposite faces in two
+  cameras — never pair L/R across cameras; the pole centre line (`pole_centrelines`) is side-independent.
 - **Only what is visible (user, 2026-10-01):** never draw an estimated or guessed line — an edge hidden by grass
   (e.g. a house base) or by anything else is left out, or only its visible stretches are drawn. A missing line
   costs nothing; a guessed one is a false measurement. (Same reason the wall FOOT is not used.)
