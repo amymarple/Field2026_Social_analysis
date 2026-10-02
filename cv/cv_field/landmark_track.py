@@ -83,7 +83,8 @@ FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_
                 "BUILDING", "WOOD", "FOODBOX", "DOORFRAME", "INNER_EDGES", "CORNERS", "LABELS")   # CH07/CH08 in-box items (user, 2026-10-02)
 # Occludable tier (user, 2026-10-01): patches sit low on the wall (a rat can hide one), people can stand in front of the
 # distant building -> each piece is checked against the stable tier before it may enter the fit
-OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING", "WOOD")       # PATCH_<wall>_<n>, PATCHES, BUILDING, WOOD
+OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING", "WOOD",       # PATCH_<wall>_<n>, PATCHES, BUILDING, WOOD
+                       "FOODBOX", "DOORFRAME", "INNER_EDGES")  # in-box (CH07/CH08): rats sit on / pass through them
 OCC_CAP, OCC_MATCH_MIN, OCC_RES_MAX = 12, 0.6, 3.0
 # Patches = dark blocks on the white wall (user, 2026-10-01) -> one masked 2-D template per patch
 BLOCK_PREFIXES = ("PATCH",)
@@ -806,11 +807,12 @@ def main(argv=None) -> int:
     for cam in args.cameras:
         set_camera(cam)
         lab_files = sorted(Path(args.labels_dir).glob(f"landmarks_{cam}_20260918_*.json"))
-        if not lab_files:
+        if not lab_files and cam not in ref_files:
             print(f"{cam}: no 09-18 labels")
             continue
-        lab18 = json.loads(lab_files[0].read_text(encoding="utf-8"))
-        lab = json.loads(ref_files[cam].read_text(encoding="utf-8")) if cam in ref_files else lab18
+        lab = json.loads(ref_files[cam].read_text(encoding="utf-8")) if cam in ref_files else \
+            json.loads(lab_files[0].read_text(encoding="utf-8"))
+        lab18 = json.loads(lab_files[0].read_text(encoding="utf-8")) if lab_files else lab   # CH07/CH08: no 09-18 labels
         landmarks, kinds = lab["landmarks"], {**lab18.get("kind", {}), **lab.get("kind", {})}
         size = tuple(int(v) for v in lab["frame_size_upright"])
         ref_t = datetime.strptime(lab["time"], "%Y-%m-%d %H:%M:%S")
@@ -822,13 +824,13 @@ def main(argv=None) -> int:
         ref = got[0]
         ref_g = prep(ref)
         A_tie = None
-        if cam in ref_files and args.tie:                       # 09-18 px -> reference px, from the two label sets
+        if cam in ref_files and args.tie and lab_files:          # 09-18 px -> reference px, from the two label sets
             tie = tie_labels(lab18["landmarks"], landmarks, HOUSE1_MOVED, ref_day)
             A_tie = tie["A"]
             ties[cam] = tie
-            if A_tie is None:
-                print(f"{cam}: tie to 09-18 failed ({tie['status']})")
-                continue
+            if A_tie is None:                                    # e.g. CH05: house_1 moved on 09-18, its pole is on the camera
+                print(f"{cam}: tie to 09-18 failed ({tie['status']}) - shifts are vs the reference frame")
+        if A_tie is not None:
             (run / "overlays").mkdir(exist_ok=True)
             cap = (f"{cam} TIE 09-18 labels -> {ref_t:%m-%d %H:%M} labels: {tie['status']} held {tie['held_med']:.2f}/"
                    f"{tie['held_p90']:.2f}px, {len(tie['units'])} units, rejected {len(tie['rejected'])}")
