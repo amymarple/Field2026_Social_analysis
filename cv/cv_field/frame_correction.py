@@ -13,7 +13,9 @@ frame px -> 09-18 px (what a detection needs); source; status / held-out error o
 (CH01/CH02: dawn closure = median of the first three dawn frames and the verdict, pass <= 3 px; CH03/CH04: the tie's
 held-out error); the night's rain (AWN console, 21:00 -> 04:20) and a flag:
   ok            sample fitted (status ok) and the night passes (CH01/CH02) / tie computed (CH03/CH04)
-  sample        this sample's fit is unreliable (held-out above 3 / 6 px) — the lookup skips it if the night has others
+  sample        this sample's fit fails the camera's sample rule (SAMPLE_RULE: held-out median / p90 <= 3 / 6 px for
+                CH01/CH02 = the tracker's own status; <= 5 / 10 px for CH03/CH04, whose precision the user accepted at
+                ~5-10 px, 2026-10-02) — the lookup skips it if the night has others
   night         CH01/CH02 night failing the dawn-closure rule (closure > 3 px or a night frame unreliable)
 Lookup: Corrections.correction(cam, t) -> (B, info) for any time inside a sampled night (a night = 12:00 -> 12:00, named
 by its dusk date): the six parameters of A interpolated linearly between the two nearest usable samples of that night
@@ -50,6 +52,8 @@ for _p in (str(HERE), str(HERE.parent)):
 
 NIGHT_START, NIGHT_END = time(20, 30), time(5, 0)          # samples kept: the 21:00 -> 04:20 window with a margin
 CLOSURE_MAX = 3.0
+# sample rule per camera: (held-out median max, held-out p90 max) in px (user, 2026-10-02: CH03/CH04 at 5 / 10 px)
+SAMPLE_RULE = {"CH01": (3.0, 6.0), "CH02": (3.0, 6.0), "CH03": (5.0, 10.0), "CH04": (5.0, 10.0)}
 A_KEYS = ("a11", "a12", "a13", "a21", "a22", "a23")
 B_KEYS = ("b11", "b12", "b13", "b21", "b22", "b23")
 FMT = "%Y-%m-%d %H" + ":" + "%M" + ":" + "%S"
@@ -100,7 +104,8 @@ def rain_by_night(weather_dir: str | None, nights: list[date]) -> dict:
     out = {}
     for n in nights:
         a, b = datetime.combine(n, time(21, 0)), datetime.combine(n + timedelta(days=1), time(4, 20))
-        v = [np.nanmean(x) for t, x in bins.items() if a <= t <= b]
+        v = [np.nanmean(x) if np.isfinite(x).any() else np.nan for t, x in ((t, np.asarray(x, float)) for t, x in bins.items())
+             if a <= t <= b]
         out[n] = float(np.nansum(v) * 5 / 60) if v else np.nan
     return out
 
@@ -144,7 +149,14 @@ def build(cohort: str, night_run: Path | None, track_run: Path | None, weather_d
         r.update({k: float(v) for k, v in zip(B_KEYS, invert(A).ravel())})
         r["rain_mm_night"] = rain.get(date.fromisoformat(r["night"]), np.nan)
         night_bad = r["night_quality"] == "dawn closure" and r["night_verdict"] != "PASS"
-        r["flag"] = "sample" if r["status"] != "ok" else "night" if night_bad else "ok"
+        mx_med, mx_p90 = SAMPLE_RULE.get(r["camera"], (3.0, 6.0))
+        try:
+            hm, hp = float(r["held_med_px"]), float(r["held_p90_px"])
+        except (TypeError, ValueError):
+            hm = hp = np.nan
+        r["sample_ok"] = bool(np.isfinite(hm) and hm <= mx_med and hp <= mx_p90)
+        r["sample_rule_px"] = f"{mx_med:g}/{mx_p90:g}"
+        r["flag"] = "sample" if not r["sample_ok"] else "night" if night_bad else "ok"
     rows.sort(key=lambda r: (r["camera"], r["time"]))
     return rows, src
 
@@ -209,7 +221,7 @@ def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
     import output_paths as op
     rep = op.report_dir(cohort, "cv_field")
     out = rep / f"cv_field_frame_corrections_{cohort}.csv"
-    keys = ["camera", "night", "time", "source", "flag", "status", "held_med_px", "held_p90_px", "night_quality",
+    keys = ["camera", "night", "time", "source", "flag", "sample_rule_px", "status", "held_med_px", "held_p90_px", "night_quality",
             "night_quality_px", "night_verdict", "rain_mm_night", *A_KEYS, *B_KEYS]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
@@ -222,7 +234,12 @@ def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
          "frame px -> 09-18 px; full-resolution upright pixels). Use `Corrections(cohort).to_paddock(cam, t, uv, z_mm=60)`.\n",
          "Sources: " + "; ".join(f"{k}: `{v}`" for k, v in src.items()) + ".\n",
          "Precision (user, 2026-10-02): CH01/CH02 dawn closure <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px "
-         "(~1-2 cm). The 09-24 calibration's own error (76 mm median cross-camera) is separate and not reduced here.\n",
+         "(~1-2 cm). Sample rule (held-out median / p90): CH01/CH02 3 / 6 px, CH03/CH04 5 / 10 px. The 09-24 calibration's "
+         "own error (76 mm median cross-camera) is separate and not reduced here.\n",
+         "Summary: " + "; ".join(f"{c} {sum(r['flag'] == 'ok' for r in rows if r['camera'] == c)} ok / "
+                                  f"{sum(r['flag'] == 'sample' for r in rows if r['camera'] == c)} sample / "
+                                  f"{sum(r['flag'] == 'night' for r in rows if r['camera'] == c)} night of "
+                                  f"{sum(r['camera'] == c for r in rows)}" for c in sorted({r['camera'] for r in rows})) + ".\n",
          "| camera | night | samples | ok / sample / night flags | held-out median px (median) | night quality px | verdict | rain mm (21:00-04:20) | shift range tx, ty px |",
          "|---|---|---|---|---|---|---|---|---|"]
     for cam in sorted({r["camera"] for r in rows}):

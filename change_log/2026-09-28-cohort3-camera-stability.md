@@ -224,3 +224,7 @@ the user's 09-04 03:01 labels tied to 09-18 (run tag `ch0304_ref0904night_hourly
 - CH03: 124 samples, held-out median 2.72 px (90 % of samples <= 4.78 px), but only 35 pass the 3 / 6 px sample rule
   (53 median > 3, 36 p90 > 6); CH04: 126 samples, 1.58 px, 89 ok. The sample rule is the CH01/CH02 one; CH03/CH04
   were accepted at ~5-10 px (open question to the user: judge their samples at 5 / 10 px).
+- **Sample rule per camera (user, 2026-10-02):** CH03/CH04 samples are judged at held-out median / p90 <= 5 / 10 px
+  (their accepted precision), CH01/CH02 stay at 3 / 6 px. Rebuilt table: CH01 98 ok / 26 failing-night; CH02 116 ok /
+  1 sample / 8 failing-night; **CH03 102 ok / 22 sample; CH04 124 ok / 2 sample** (of 124-126 each). End-to-end lookup
+  checked (`Corrections("2026c").to_paddock` returns paddock inches for CH01-CH03 test pixels).
