@@ -228,3 +228,18 @@ the user's 09-04 03:01 labels tied to 09-18 (run tag `ch0304_ref0904night_hourly
   (their accepted precision), CH01/CH02 stay at 3 / 6 px. Rebuilt table: CH01 98 ok / 26 failing-night; CH02 116 ok /
   1 sample / 8 failing-night; **CH03 102 ok / 22 sample; CH04 124 ok / 2 sample** (of 124-126 each). End-to-end lookup
   checked (`Corrections("2026c").to_paddock` returns paddock inches for CH01-CH03 test pixels).
+
+**CH05-CH08 (2026-10-02).** User labels: CH05 / CH06 on 09-18 14:10, 09-04 12:00, 09-04 03:01 (their house's roof
+edges, two roof number labels each as pieces, the pole next to the camera, nails on the roof; CH06 a Bluetooth antenna;
+names unified on filing); CH07 / CH08 (inside house_2 / house_1) on 09-04 12:00 / 03:01 (food box, door frame, inner
+edges). The user: CH05 / CH06 hang from a crossbeam on top of pole B1 / B3, so that pole moves with the camera (CH06:
+house_2 label -28 px between 09-18 and 09-04, pole B3 ~0) -> per-camera rules in `landmark_track` (houses + antenna in
+the fit, crossbeam pole validation only). CH05 cannot be tied to 09-18 from its own view (house_1 and its roof nails
+moved on 09-18; the pole is on the camera beam) -> to be tied through CH01/CH02 (house_1's cohort position).
+- Labels only: CH05 day -> night 1.73 / 2.52 px ok; CH06 day -> night 1.49 / 3.82, 09-18 -> day 2.36 / 3.07, 09-18 ->
+  night 2.54 / 3.63 px ok; CH07 / CH08 day -> night 3.89 / 8.08 and 4.55 / 5.65 px (only 3 units).
+- Tracking from the 09-04 references (tags `ch0508_ref0904day` 12:00 daily, `ch0508_ref0904night` 03:01 nightly):
+  **CH05 13/14 and 13/14 ok (held-out 0.42 / 0.45 px); CH06 13/14 and 14/14 (1.44 / 1.79 px; tied to 09-18)**; the
+  crossbeam poles deviate from the house-based fit by 1.7-5.7 px (they move with the camera). CH07 3/14 and 6/14,
+  CH08 8/14 and 11/14; at noon CH07 matches a median of 1 unit (the box interior is likely occupied by day); CH08's
+  fitted shifts reach 65-79 px (tracking failures or the in-box camera moving — not established).
