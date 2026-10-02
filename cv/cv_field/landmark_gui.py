@@ -93,7 +93,7 @@ SIZE = {"CH01": (7680, 2160), "CH02": (7680, 2160), "CH03": (4512, 2512), "CH04"
 HOUSE_OF_CAM = {"CH05": "1", "CH06": "2"}
 # the pole right next to each house camera (~20 in away; the calibration guides skip it as too close): CH05 B1, CH06 B3
 NEAR_POLE = {"CH05": "B1", "CH06": "B3"}
-INBOX = [("FOODBOX", "edge"), ("INNER_EDGES", "edge"), ("CORNERS", "point"), ("LABELS", "outline")]   # LABELS: number labels seen in the box (user)
+INBOX = [("FOODBOX", "edge"), ("DOORFRAME", "edge"), ("INNER_EDGES", "edge"), ("CORNERS", "point"), ("LABELS", "outline")]   # LABELS: number labels seen in the box (user)
 
 
 def default_kinds(cam: str) -> dict:
@@ -151,8 +151,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   points each, only seams clearly different from the regular corrugation ridges. None of these is numbered; label them
   on the 09-18 frame too where you can (that ties a frame to the calibration).
   <b>CH07 / CH08 (inside a house)</b>: <b>FOODBOX</b> = each visible straight edge of the food box, one piece per edge
-  (<b>b</b> between edges); <b>INNER_EDGES</b> = the house's inner straight edges (wall joints, floor / wall lines, the
-  door frame), one piece per edge; <b>CORNERS</b> = click each clear corner point (food-box corners, inner corners);
+  (<b>b</b> between edges); <b>DOORFRAME</b> = each visible straight edge of the door frame, one piece per edge (user,
+  2026-10-02); <b>INNER_EDGES</b> = the house's other inner straight edges (wall joints, floor / wall lines), one piece per edge; <b>CORNERS</b> = click each clear corner point (food-box corners, inner corners);
   <b>LABELS</b> = any number label in view: click round its corners, <b>b</b> before the next label.
   Two roof number labels in CH05: both in HOUSE_1_LABEL, <b>b</b> between them (each corner is used as a point).
   <b>CH05 / CH06</b>: the house below (roof / base edges, roof number label), the poles, their boxes, the wall tops.

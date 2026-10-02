@@ -80,7 +80,7 @@ CORNER_PREFIXES = ("BOX_", "PCBOX", "NAILS", "CORNERS", "LABELS")              #
 # BUILDING = edges of a building wall outside the paddock (CH04; user, 2026-10-01): normal-only like the wall tops
 # WOOD = a piece of wood in CH04's view (user, 2026-10-01): near the ground -> occludable tier
 FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_", "NAILS", "PATCHES", "SEAMS",
-                "BUILDING", "WOOD", "FOODBOX", "INNER_EDGES", "CORNERS", "LABELS")   # CH07/CH08 in-box items (user, 2026-10-02)
+                "BUILDING", "WOOD", "FOODBOX", "DOORFRAME", "INNER_EDGES", "CORNERS", "LABELS")   # CH07/CH08 in-box items (user, 2026-10-02)
 # Occludable tier (user, 2026-10-01): patches sit low on the wall (a rat can hide one), people can stand in front of the
 # distant building -> each piece is checked against the stable tier before it may enter the fit
 OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING", "WOOD")       # PATCH_<wall>_<n>, PATCHES, BUILDING, WOOD
