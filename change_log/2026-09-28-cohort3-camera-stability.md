@@ -175,3 +175,32 @@ people in view, so the wood is labelled on 09-04 only.
   CH02 7/14 nights; median of the first three closure frames ≤ 3 px: 12/14 for each camera.** Clear failures: CH01
   09-09 night (19.5 px), CH01 09-10 (3.6), CH02 09-06 (3.2), 09-08 (3.9); two first-frame outliers (CH01 09-05 143 px,
   CH02 09-03 5.1 px) are single dim-dawn direct fits (their three-frame medians 1.76 / 1.29 px).
+
+**Third round (2026-10-01 night): best-anchor chain, pole centre lines, CH03 cohort references, the drift's cause.**
+Code 3b59a1f / 8c84bde: label ties use pole CENTRE lines (user: at night a pole's edges are unclear, its labelled
+thickness unreliable — CH04 ties 09-18 → 09-04 day 2.18/12.39 → 1.89/4.79 px, 09-04 day → night 3.26/22.88 → 1.98/5.33
+px); the night chain anchors on the best direct frame of the last 30 min (CH01 09-09: rain from 19:10 had degraded the
+direct fits and the marginal last one carried its error into the night); CH01 `POLE_A4_R` and CH03 `SEAM_X0_3`
+removed (single mis-clicks, user; never used, but drawn as circles). User labels CH03 09-04 12:00 / 03:01 (seams not
+visible under IR, C0 dark; `WALLTOP_X480` renamed `WALLTOP_X0`, same image region as X0 on the other frames).
+- **CH01 / CH02 nights (run `cv_field_landmark_night_20261001_2215`, 14 nights each):** night frames ok 27/27 and
+  27/28 (held-out 0.3–1.8 px). Dawn closure (median of the first three frames): **CH01 ≤ 3.24 px on all 14 nights
+  (≤ 2 px on 6), CH02 ≤ 2.93 px on all 14 (≤ 2 px on 8)**; CH01 09-09 19.5 → 2.5 px. On the agreed first-frame
+  ≤ 2 px rule: 3/14 and 6/14.
+- **CH04** (tie with centre lines): from the 09-04 day reference 12/14 days ok (0.99 px), tie to 09-18 ok (1.89 / 4.79
+  px); from the 09-04 night reference 29/42 night frames, its tie 3.05 / 3.75 px (median just above 3).
+- **CH03:** from the 09-04 day reference 8/14 days ok (was 4/14 from 09-18; 2.27 px), from the night reference 12/41;
+  ties to 09-18 unreliable (4.16 / 8.11 and 2.16 / 8.86 px).
+- **Why the views move (records, recording-inquiry agent):** nobody logged touching CH01–CH04 during cohort 3 (the
+  physical-event ledger has no cohort-3 row); the cameras are pole-mounted at ~2.3 m (CH03 ~11 in from B1, CH04 ~9 in
+  from B3); the 08-24 → 08-29 reset plan included turning topsoil (not confirmed done); 08-31 → 09-03 was wet (13, 13,
+  storm 26 mm/h, 18 mm) and the drift (CH03 ~90 px, CH04 ~0.8°) runs 08-31 → 09-05 then stops; after the 09-09 rain
+  CH01/CH02 shifted ~18 px and CH02 shifted back by 09-11; between 09-18 and 09-30 CH03/CH04 moved 20–50 px although
+  the operator reports no camera move. Working hypothesis (not established): the poles lean with soil moisture.
+  All reference frames are IR (saturation 0.0), so the 10–18-px IR-cut shift of CH03/CH04 does not enter.
+- **Model diagnostics (labels only):** neither the lens model (undistorted affine / pure rotation) nor a full camera
+  pose change (rotation + translation with 3-D landmarks from the calibration) ties CH03/CH04 better than the affine:
+  nails stay 10–14 px off what poles and wall tops predict in every model, also between day and night of the same date;
+  with named landmarks only (3 poles + 2 wall tops) a 6-parameter model is not constrained. Unresolved: wall-sheet
+  items may not be rigid relative to the poles, or labels differ between frames. In ground units ~10 px ≈ 2 cm for
+  CH03/CH04 (≈ 2 mm/px at 3–6 m), against the calibration's own 76 mm median error.

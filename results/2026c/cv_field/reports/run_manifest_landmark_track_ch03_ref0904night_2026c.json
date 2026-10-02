@@ -1,20 +1,22 @@
 {
-  "run_dir": "D:\\Field2026_analysis_out\\2026c\\cv_field_landmark_track_ch04_ref0904day_20261001_2205",
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\cv_field_landmark_track_ch03_ref0904night_20261001_2246",
   "cohort": "2026c",
   "direction": "cv_field",
   "analysis": "landmark_track",
   "cameras": [
-    "CH04"
+    "CH03"
   ],
   "labels_dir": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\cv\\configs\\landmarks\\2026c",
   "start": "2026-08-30",
   "end": "2026-09-17",
   "times": [
-    "12:00:00"
+    "21:00:00",
+    "00:00:00",
+    "03:01:00"
   ],
   "ref_labels": [
-    "cv\\configs\\landmarks\\2026c\\landmarks_CH04_20260904_120002.json"
+    "cv\\configs\\landmarks\\2026c\\landmarks_CH03_20260904_030100.json"
   ],
   "tie": true,
-  "report": "cv_field_landmark_track_2026c_ch04_ref0904day.md"
+  "report": "cv_field_landmark_track_2026c_ch03_ref0904night.md"
 }
