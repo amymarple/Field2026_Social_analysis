@@ -1,0 +1,18 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_failure_audit_20261002_1511",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_failure_audit",
+  "report": "wiser_baseline_failure_audit_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_failure_audit.py",
+  "config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "plan": "implementation_plan/2026-10-02-wiser-failure-audit.md",
+  "git_commit": "98a8391+dirty",
+  "figures": [
+    "wiser_baseline_failure_audit_examples_2026c.png",
+    "wiser_baseline_failure_audit_motion_2026c.png",
+    "wiser_baseline_failure_audit_rain_effect_2026c.png",
+    "wiser_baseline_failure_audit_still_by_period_2026c.png",
+    "wiser_baseline_failure_audit_strata_2026c.png"
+  ]
+}
