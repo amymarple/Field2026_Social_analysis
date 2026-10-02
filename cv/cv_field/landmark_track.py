@@ -580,6 +580,12 @@ def compose(A2: np.ndarray, A1: np.ndarray) -> np.ndarray:
     return (np.vstack([A2, [0, 0, 1.0]]) @ np.vstack([A1, [0, 0, 1.0]]))[:2]
 
 
+def affine_cols(A: np.ndarray | None) -> dict:
+    """a11..a23 of a 2x3 affine (NaN when there is no fit), for CSV rows."""
+    v = np.full(6, np.nan) if A is None else np.asarray(A, float).ravel()
+    return {k: float(x) for k, x in zip(("a11", "a12", "a13", "a21", "a22", "a23"), v)}
+
+
 def params(A: np.ndarray, size) -> dict:
     W, Hh = size
     c = np.array([W / 2, Hh / 2])
@@ -821,6 +827,7 @@ def main(argv=None) -> int:
                    "status": res.get("status", "no fit"), **pr,
                    "house_valid_med_px": float(np.median(list(res["valid"].values()))) if res.get("valid") else np.nan,
                    "basis": res.get("basis", ""), "n_dropped": len(res.get("dropped", {})),
+                   **affine_cols(A_tot), "map": "09-18 px -> frame px" + (" (A_track o A_tie)" if A_tie is not None else ""),
                    "dropped": "; ".join(f"{u}: {why}" for u, why in sorted(res.get("dropped", {}).items()))}
             rows_f.append(row)
             for n, obs in res["per"].items():

@@ -217,8 +217,12 @@ def run_night(cam: str, night: date, args, run: Path, ff, ref_g, labels, kinds, 
     nlabels = move_labels(labels, A_night, night_t.date())
     save_overlay(run, night_img, labels, A_night, night_t.date(), f"{cam} NIGHT REF {night_t:%m-%d %H:%M} (end of dusk chain)",
                  {}, f"{cam}_{night_t:%Y%m%d_%H%M%S}_night_ref.jpg")
-    # 2. night frames
-    rows = []
+    # 2. night frames (the night reference itself is the first row: its map is the end of the dusk chain)
+    last_row = next(r for r in reversed(ch.rows) if r["A"] is not None)
+    rows = [{"camera": cam, "night": f"{night}", "frame_time": f"{night_t:%Y-%m-%d %H:%M:%S}", "source": "night_ref",
+             "status": last_row["status"], "n_fit_units": last_row["n_fit_units"], "held_med_px": last_row["held_med_px"],
+             "held_p90_px": last_row["held_p90_px"], **lt.params(A_night, size), "n_dropped": 0,
+             "overlay": f"{cam}_{night_t:%Y%m%d_%H%M%S}_night_ref.jpg", **lt.affine_cols(A_night)}]
     nt = [datetime.combine(night if tt >= time(12, 0) else morning, tt) for tt in args.night_times]
     got_n = grab_all(nt, cam, root, ff, frames, "night")
     for t in nt:
@@ -232,9 +236,11 @@ def run_night(cam: str, night: date, args, run: Path, ff, ref_g, labels, kinds, 
         cap = (f"{cam} {ft:%m-%d %H:%M} NIGHT (via night ref) {res.get('status')} held {res.get('held_med', np.nan):.1f}/"
                f"{res.get('held_p90', np.nan):.1f}px  vs 09-18 t=({pr['tx']:+.1f},{pr['ty']:+.1f}) rot {pr['rot_deg']:+.2f}")
         ov = save_overlay(run, img, labels, A_tot, ft.date(), cap, res.get("dropped", {}), f"{cam}_{ft:%Y%m%d_%H%M%S}_night.jpg")
-        rows.append({"camera": cam, "night": f"{night}", "frame_time": f"{ft:%Y-%m-%d %H:%M:%S}", "status": res.get("status", "no fit"),
+        rows.append({"camera": cam, "night": f"{night}", "frame_time": f"{ft:%Y-%m-%d %H:%M:%S}", "source": "night",
+                     "status": res.get("status", "no fit"),
                      "n_fit_units": len(res["fit_names"]), "held_med_px": res.get("held_med", np.nan),
-                     "held_p90_px": res.get("held_p90", np.nan), **pr, "n_dropped": len(res.get("dropped", {})), "overlay": ov})
+                     "held_p90_px": res.get("held_p90", np.nan), **pr, "n_dropped": len(res.get("dropped", {})), "overlay": ov,
+                     **lt.affine_cols(A_tot)})
         print(f"  {cap}")
     # 3. dawn: chain forward from the night reference + direct from 09-18 -> closure
     dawn_t = frame_times(morning, DAWN_START, DAWN_END)
@@ -272,7 +278,7 @@ def run_night(cam: str, night: date, args, run: Path, ff, ref_g, labels, kinds, 
               "closure_max_px": round(clos[0]["closure_max_px"], 2),
               "closure_med_next_px": round(float(np.median([c["closure_med_px"] for c in clos])), 2),
               "dawn_links": clos[0]["chain_links"], "dawn_anchor_changes": clos[0]["anchor_changes"]})
-    H["verdict"] = verdict(H["closure_med_next_px"], rows)
+    H["verdict"] = verdict(H["closure_med_next_px"], [r for r in rows if r.get("source") != "night_ref"])
     return H, chain_rows, rows
 
 
@@ -295,7 +301,8 @@ def rerender(run: Path, cohort: str) -> Path:
     R = [{k: num(v) for k, v in r.items()} for r in csv.DictReader(open(run / "night_frames.csv", encoding="utf-8"))]
     for h in H:
         if isinstance(h.get("closure_med_next_px"), float):
-            h["verdict"] = verdict(h["closure_med_next_px"], [r for r in R if r["camera"] == h["camera"] and r["night"] == h["night"]])
+            h["verdict"] = verdict(h["closure_med_next_px"], [r for r in R if r["camera"] == h["camera"] and r["night"] == h["night"]
+                                                              and r.get("source") != "night_ref"])
     nights = sorted({date.fromisoformat(h["night"]) for h in H if h.get("night", "-") != "-"})
     return write_report(run, cohort, nights, H, R)
 
