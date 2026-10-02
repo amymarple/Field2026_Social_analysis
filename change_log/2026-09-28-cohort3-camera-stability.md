@@ -210,3 +210,17 @@ night frame ok (`landmark_night.py`: CLOSURE_MAX 3.0, new `--report-only <run>` 
 third-round run re-judged: **CH01 11/14 nights pass** (fails 09-04 3.03, 09-07 3.11, 09-10 3.24 px), **CH02 13/14**
 (09-02 fails only on its 09-03 00:00 night frame, held-out p90 6.39 px > 6; closure 2.72 px). (2) CH03/CH04 accepted at
 ~5-10 px (~1-2 cm) from their 09-04 cohort references; no further model refinement.
+
+**Night correction table (2026-10-02; user: the whole-field cameras are used only at night, so nights first).** New
+`cv/cv_field/frame_correction.py` (build + `Corrections(cohort).correction / to_09_18 / to_paddock`), the drivers now
+write the full affine per frame, and the nights were re-sampled HOURLY 21:00 → 04:20: CH01/CH02 from the dusk chain
+(run `cv_field_landmark_night_20261002_0417`; verdicts unchanged, CH01 11/14, CH02 13/14 nights pass), CH03/CH04 from
+the user's 09-04 03:01 labels tied to 09-18 (run tag `ch0304_ref0904night_hourly`). Table
+`results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv`: 499 samples, 14 nights per camera.
+- CH01: 124 samples, held-out median 0.43 px, 98 ok / 26 on the three failing nights; within-night range of the
+  image-centre shift median 1.3 px, max 9.0 px.
+- CH02: 125 samples, 0.53 px, 116 ok / 8 failing night / 1 unreliable sample; within-night range median 6.6 px, max
+  16.8 px — CH02 moves within nights, so the hourly sampling matters.
+- CH03: 124 samples, held-out median 2.72 px (90 % of samples <= 4.78 px), but only 35 pass the 3 / 6 px sample rule
+  (53 median > 3, 36 p90 > 6); CH04: 126 samples, 1.58 px, 89 ok. The sample rule is the CH01/CH02 one; CH03/CH04
+  were accepted at ~5-10 px (open question to the user: judge their samples at 5 / 10 px).

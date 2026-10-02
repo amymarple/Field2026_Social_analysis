@@ -1,0 +1,30 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\cv_field_landmark_track_ch0304_ref0904night_hourly_20261002_0402",
+  "cohort": "2026c",
+  "direction": "cv_field",
+  "analysis": "landmark_track",
+  "cameras": [
+    "CH03",
+    "CH04"
+  ],
+  "labels_dir": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\cv\\configs\\landmarks\\2026c",
+  "start": "2026-08-30",
+  "end": "2026-09-17",
+  "times": [
+    "21:00:00",
+    "22:00:00",
+    "23:00:00",
+    "00:00:00",
+    "01:00:00",
+    "02:00:00",
+    "03:00:00",
+    "04:00:00",
+    "04:20:00"
+  ],
+  "ref_labels": [
+    "cv\\configs\\landmarks\\2026c\\landmarks_CH03_20260904_030100.json",
+    "cv\\configs\\landmarks\\2026c\\landmarks_CH04_20260904_030100.json"
+  ],
+  "tie": true,
+  "report": "cv_field_landmark_track_2026c_ch0304_ref0904night_hourly.md"
+}
