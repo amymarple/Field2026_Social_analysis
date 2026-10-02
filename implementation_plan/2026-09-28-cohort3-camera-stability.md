@@ -71,3 +71,11 @@ can stand in front of the building.
    day shift / rotation / scale, leave-one-out held-out error (median ≤ 3 px, p90 ≤ 6 px), dropped pieces, overlays for
    the user. (b) one night first, 09-03 dusk → 09-04 dawn, all four cameras: hand-off → 21:00 / 00:00 / 03:01 → dawn
    closure; pass = closure median ≤ 2 px; the user reviews the 03:01 overlays; all nights only after it passes.
+
+**Decisions (user, 2026-10-02), after three rounds:**
+1. Night pass rule: the median of the first three dawn closure frames <= 3 px, with every night frame ok (replaces
+   "first frame <= 2 px"; 3 px is < 1 cm in the panoramas, far below the calibration's 76-mm median error).
+2. CH03 / CH04 are used at their present precision (~5-10 px, ~1-2 cm on the ground): corrections from the user's 09-04
+   cohort references (12:00 for days, 03:01 for nights), tied to 09-18 through the label sets with pole centre lines.
+   No further model refinement (lens, full camera pose — tried, no gain; see the change log).
+Next: per-camera, per-time correction tables (cohort px -> 09-18 px) for mapping detections to the paddock.

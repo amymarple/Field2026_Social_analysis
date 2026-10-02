@@ -204,3 +204,9 @@ visible under IR, C0 dark; `WALLTOP_X480` renamed `WALLTOP_X0`, same image regio
   with named landmarks only (3 poles + 2 wall tops) a 6-parameter model is not constrained. Unresolved: wall-sheet
   items may not be rigid relative to the poles, or labels differ between frames. In ground units ~10 px ≈ 2 cm for
   CH03/CH04 (≈ 2 mm/px at 3–6 m), against the calibration's own 76 mm median error.
+
+**Decisions (user, 2026-10-02).** (1) Night pass rule = median of the first three dawn closure frames <= 3 px with every
+night frame ok (`landmark_night.py`: CLOSURE_MAX 3.0, new `--report-only <run>` re-judges a run from its CSVs). The
+third-round run re-judged: **CH01 11/14 nights pass** (fails 09-04 3.03, 09-07 3.11, 09-10 3.24 px), **CH02 13/14**
+(09-02 fails only on its 09-03 00:00 night frame, held-out p90 6.39 px > 6; closure 2.72 px). (2) CH03/CH04 accepted at
+~5-10 px (~1-2 cm) from their 09-04 cohort references; no further model refinement.

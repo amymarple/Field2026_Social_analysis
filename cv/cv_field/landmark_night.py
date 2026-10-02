@@ -16,7 +16,9 @@ Instead of labelling a night frame per camera, the night reference is made autom
   3. Dawn closure: frames every CHAIN_STEP_MIN from DAWN_START to DAWN_END are chained FORWARD from the night reference
      (night side) and also tracked DIRECTLY from 09-18 (day side). At the first CLOSURE_N dawn frames where the direct
      track is ok:  closure = median / max over the 09-18 fit-set label points p of |A_chain p - A_direct p|  [px].
-     PASS if the median closure of the first such frame is <= CLOSURE_MAX px and the night frames are ok. The loop
+     PASS if the MEDIAN over those first CLOSURE_N frames of their median closure is <= CLOSURE_MAX px and the night
+     frames are ok (user, 2026-10-02: 3 px; the first rule — first frame <= 2 px — failed nights on single dim-dawn
+     direct fits, and 3 px is < 1 cm in the panoramas, far below the calibration's own 76-mm median error). The loop
      09-18 -> dusk chain -> night -> dawn chain vs 09-18 directly checks the night maps without labels.
 Rejected first version (same day): a hand-off at the "illuminator switch" found as the largest keyframe brightness jump —
 the largest jumps are one-keyframe spikes near stream restarts, and dusk has no abrupt step (only dawn: one at ~07:25 on
@@ -26,6 +28,7 @@ dawn closure measures. The agent makes no visual judgement: the user reviews the
 
 Usage: python cv/cv_field/landmark_night.py --cohort 2026c --nights 2026-09-03 [2026-09-04 ...] [--cameras CH01 CH02]
                                             [--night-times 00:00 03:01]
+       python cv/cv_field/landmark_night.py --cohort 2026c --report-only <run folder>   # re-judge an earlier run
        python cv/cv_field/landmark_night.py --selftest          # offline, synthetic frames
 Output: $FIELD2026_ANALYSIS_OUT_ROOT/<cohort>/cv_field_landmark_night_<ts>/ (frames, overlays, chain.csv,
         night_frames.csv, closure.csv) and results/<cohort>/cv_field/reports/cv_field_landmark_night_<cohort>.md +
@@ -55,7 +58,7 @@ import landmark_track as lt  # noqa: E402
 DUSK_START, NIGHT_START = time(18, 30), time(21, 0)      # early September, Ithaca: sunset ~19:30 EDT (field-PC time)
 DAWN_START, DAWN_END = time(5, 30), time(8, 0)           # sunrise ~06:40; the dawn brightness step is at ~07:25
 CHAIN_STEP_MIN = 5
-CLOSURE_MAX, CLOSURE_N = 2.0, 3
+CLOSURE_MAX, CLOSURE_N = 3.0, 3                           # pass: median of the first 3 closure frames <= 3 px (user, 2026-10-02)
 # Anchor = the BEST direct frame of the last ANCHOR_WINDOW_MIN (lowest held-out p90 among those with >= ANCHOR_UNITS of
 # the most units seen), not the last one: on 09-09 rain from 19:10 degraded the direct fits and the last "ok" frame
 # (held-out 2.94 px, 15 of 20 units) carried its error into the whole night (dawn closure 19.5 px).
@@ -269,9 +272,32 @@ def run_night(cam: str, night: date, args, run: Path, ff, ref_g, labels, kinds, 
               "closure_max_px": round(clos[0]["closure_max_px"], 2),
               "closure_med_next_px": round(float(np.median([c["closure_med_px"] for c in clos])), 2),
               "dawn_links": clos[0]["chain_links"], "dawn_anchor_changes": clos[0]["anchor_changes"]})
-    ok = clos[0]["closure_med_px"] <= CLOSURE_MAX and rows and all(r["status"] == "ok" for r in rows)
-    H["verdict"] = "PASS" if ok else "FAIL"
+    H["verdict"] = verdict(H["closure_med_next_px"], rows)
     return H, chain_rows, rows
+
+
+def verdict(closure_med3: float, night_rows: list[dict]) -> str:
+    """PASS = median closure of the first CLOSURE_N dawn frames <= CLOSURE_MAX px and every night frame ok."""
+    ok = closure_med3 <= CLOSURE_MAX and bool(night_rows) and all(r["status"] == "ok" for r in night_rows)
+    return "PASS" if ok else "FAIL"
+
+
+def rerender(run: Path, cohort: str) -> Path:
+    """Rebuild the report of an earlier run from its CSVs with the current pass rule (no frames re-read)."""
+    def num(v):
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return v
+        return int(f) if str(v).lstrip("-").isdigit() else f
+    H = [{k: num(v) if k not in ("camera", "night", "night_ref", "closure_time", "verdict", "dusk_direct_until") else v
+          for k, v in r.items()} for r in csv.DictReader(open(run / "handoff.csv", encoding="utf-8"))]
+    R = [{k: num(v) for k, v in r.items()} for r in csv.DictReader(open(run / "night_frames.csv", encoding="utf-8"))]
+    for h in H:
+        if isinstance(h.get("closure_med_next_px"), float):
+            h["verdict"] = verdict(h["closure_med_next_px"], [r for r in R if r["camera"] == h["camera"] and r["night"] == h["night"]])
+    nights = sorted({date.fromisoformat(h["night"]) for h in H if h.get("night", "-") != "-"})
+    return write_report(run, cohort, nights, H, R)
 
 
 def write_report(run: Path, cohort: str, nights: list[date], H: list[dict], R: list[dict]) -> Path:
@@ -280,8 +306,11 @@ def write_report(run: Path, cohort: str, nights: list[date], H: list[dict], R: l
     f2 = lambda v: "-" if v is None or (isinstance(v, float) and not np.isfinite(v)) else (f"{v:.2f}" if isinstance(v, float) else str(v))  # noqa: E731
     L = [f"# Night reference by dusk chain + dawn closure (cohort `{cohort}`, nights {', '.join(str(n) for n in nights)})\n",
          f"Generated {datetime.now():%Y-%m-%d %H:%M} by `cv/cv_field/landmark_night.py` (method and definitions in its "
-         f"docstring). Bulk: `{run}` (frames, overlays, `chain.csv`, `night_frames.csv`, `closure.csv`). Pass = dawn closure "
-         f"median <= {CLOSURE_MAX} px with the night frames ok (agreed with the user 2026-10-01). **This report makes no visual claim.**\n",
+         f"docstring). Bulk: `{run}` (frames, overlays, `chain.csv`, `night_frames.csv`, `closure.csv`). Pass = the median of "
+         f"the first {CLOSURE_N} dawn closure frames <= {CLOSURE_MAX} px with every night frame ok (user, 2026-10-02; the first "
+         "rule, first frame <= 2 px, is superseded). **This report makes no visual claim.**\n",
+         f"Summary: " + "; ".join(f"{c} {sum(h.get('verdict') == 'PASS' for h in H if h['camera'] == c)}/"
+                                    f"{sum(h['camera'] == c for h in H)} nights pass" for c in sorted({h['camera'] for h in H})) + ".\n",
          "## Per camera and night\n",
          "| camera | night | dusk: direct until / links (failed, anchor changes) | night ref | dawn links (anchor changes) | closure at (median / max px; median of first 3) | verdict |",
          "|---|---|---|---|---|---|---|"]
@@ -377,9 +406,15 @@ def main(argv=None) -> int:
     ap.add_argument("--labels-dir", default=str(REPO / "cv" / "configs" / "landmarks" / "2026c"))
     ap.add_argument("--cohort-root", default=r"F:\3rd_rat")
     ap.add_argument("--ref-session", default=r"F:\calibration\session_2026-09-18_13-54-34")
+    ap.add_argument("--report-only", default=None, help="rebuild the report of this run folder from its CSVs (current rule)")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
+    if args.report_only:
+        import output_paths as op
+        out = rerender(Path(args.report_only), op.resolve_cohort(args.cohort))
+        print(f"report -> {out}")
+        return 0
     if not args.nights:
         ap.error("--nights is required")
     import camera_review as cr
