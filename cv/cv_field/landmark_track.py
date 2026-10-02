@@ -495,11 +495,34 @@ def _pair_unnamed(A: np.ndarray, Rl: dict, Tl: dict, day_R: date, day_T: date) -
     return out
 
 
-def tie_labels(Rl: dict, Tl: dict, day_R: date, day_T: date) -> dict:
+def pole_centrelines(lab: dict) -> dict:
+    """POLE_xx_L + POLE_xx_R -> POLE_xx_C, the pole's centre line: midpoints between L samples and their closest points
+    on R. The user, 2026-10-01: at night a pole's edges are not clear, so its apparent THICKNESS is unreliable (IR bloom
+    widens it on both sides) — the centre line is not affected. Edges labelled without their partner are kept."""
+    out = {k: v for k, v in lab.items() if not (k.startswith("POLE_") and k[-2:] in ("_L", "_R")
+                                              and k[:-2] + ("_R" if k.endswith("_L") else "_L") in lab)}
+    for k in lab:
+        if k.startswith("POLE_") and k.endswith("_L") and k[:-2] + "_R" in lab:
+            Rp = pieces_of(lab[k[:-2] + "_R"])
+            mids = []
+            for P in pieces_of(lab[k]):
+                for q in (_curve_pts(P) if len(P) >= 2 else []):
+                    h = _closest(Rp, q)
+                    if h is not None and not h[3]:
+                        mids.append(((q + h[0]) / 2).tolist())
+            if len(mids) >= 2:
+                out[k[:-2] + "_C"] = [mids]
+    return out
+
+
+def tie_labels(Rl: dict, Tl: dict, day_R: date, day_T: date, centre_poles: bool = True) -> dict:
     """Affine map R px -> T px from two label sets of the same camera (no image matching). Named fit-set landmarks:
     ICP point-to-curve (R samples every TIE_STEP px onto T's same-named curve, normal constraints, Huber), from the median
     centroid offset. Then unnamed items paired by nearest neighbour and kept if their median residual under the named fit
-    is <= TIE_GATE px; final fit on both; leave-one-unit-out held-out error."""
+    is <= TIE_GATE px; final fit on both; leave-one-unit-out held-out error. centre_poles: poles enter as centre lines
+    (pole_centrelines), not as their two edges (labelled thickness is unreliable at night)."""
+    if centre_poles:
+        Rl, Tl = pole_centrelines(Rl), pole_centrelines(Tl)
     named = [n for n in Rl if n in Tl and in_fit(n) and not unnamed(n) and usable(n, day_T, day_R)]
     if not named:
         return {"A": None, "status": "no common named landmarks"}
@@ -677,6 +700,18 @@ def selftest() -> int:
     print(f"[{'PASS' if okt else 'FAIL'}] label tie: affine recovered to {terr:.2f} px within the labelled area, "
           f"{len(tie.get('units', []))} units (3 nails, 2 patches paired), held-out {tie.get('held_med', np.nan):.2f}/"
           f"{tie.get('held_p90', np.nan):.2f} px")
+    Rp = {"POLE_A0_L": [[[280, 200], [288, 700]]], "POLE_A0_R": [[[312, 200], [320, 700]]],
+          "POLE_A2_L": [[[1180, 250], [1188, 690]]], "POLE_A2_R": [[[1212, 250], [1220, 690]]],
+          "WALLTOP_Y0": [[[150, 419], [800, 410], [1450, 401]]], "WALLTOP_Y240": [[[150, 819], [1450, 801]]]}
+    Tp = {k: [(np.asarray(v[0], float) + (12.0 if k.endswith("_R") else -12.0 if k.endswith("_L") else 0.0, 0.0) + (5.0, -3.0)).tolist()]
+          for k, v in Rp.items()}                                  # edges 12 px wider on each side, whole frame +5 / -3
+    tc = tie_labels(Rp, Tp, date(2026, 9, 4), date(2026, 9, 4))
+    te = tie_labels(Rp, Tp, date(2026, 9, 4), date(2026, 9, 4), centre_poles=False)
+    cerr = float(np.abs(apply_A(tc["A"], inside) - (inside + (5.0, -3.0))).max()) if tc["A"] is not None else np.inf
+    okc = cerr < 0.3 and any(u.endswith("_C") for u in tc["units"])
+    print(f"[{'PASS' if okc else 'FAIL'}] pole centre lines: widened edges (night bloom) leave the tie exact ({cerr:.2f} px; "
+          f"with edges: held-out p90 {te.get('held_p90', np.nan):.1f} px)")
+    okt = okt and okc
     house = samples("HOUSE_1_ROOF_X", "edge", pieces_of([[[0, 0], [10, 0]]]))
     ok2 = (not usable("HOUSE_1_ROOF_X", date(2026, 9, 4)) and usable("HOUSE_1_ROOF_X", date(2026, 9, 18))
            and usable("HOUSE_2_BASE_Z", date(2026, 9, 4)) and len(house) == 1

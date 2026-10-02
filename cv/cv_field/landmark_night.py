@@ -7,7 +7,8 @@ Instead of labelling a night frame per camera, the night reference is made autom
 
   1. Dusk chain: frames every CHAIN_STEP_MIN from DUSK_START to NIGHT_START. Each is tracked DIRECTLY from the 09-18
      labelled reference (landmark_track.track_frame) while that gives status ok; from the first failure on, frames are
-     tracked from an ANCHOR (a LINK: the last direct frame as reference, its labels = the 09-18 labels moved by its map)
+     tracked from an ANCHOR (a LINK: the best direct frame of the last ANCHOR_WINDOW_MIN as reference, its labels = the
+     09-18 labels moved by its map)
      -> A_k = T_k o A_anchor; the anchor moves to the last good frame only when a link from it fails (errors add up per
      anchor change, not per frame). The NIGHT_START frame is the night reference (its map A_night from 09-18).
   2. Night frames (default 00:00, 03:01) are tracked from the night reference -> A_total = A_n o A_night, reported like
@@ -55,6 +56,10 @@ DUSK_START, NIGHT_START = time(18, 30), time(21, 0)      # early September, Itha
 DAWN_START, DAWN_END = time(5, 30), time(8, 0)           # sunrise ~06:40; the dawn brightness step is at ~07:25
 CHAIN_STEP_MIN = 5
 CLOSURE_MAX, CLOSURE_N = 2.0, 3
+# Anchor = the BEST direct frame of the last ANCHOR_WINDOW_MIN (lowest held-out p90 among those with >= ANCHOR_UNITS of
+# the most units seen), not the last one: on 09-09 rain from 19:10 degraded the direct fits and the last "ok" frame
+# (held-out 2.94 px, 15 of 20 units) carried its error into the whole night (dawn closure 19.5 px).
+ANCHOR_WINDOW_MIN, ANCHOR_UNITS = 30, 0.9
 MAX_LINK_FAILS = 3
 
 
@@ -95,6 +100,15 @@ class Chain:
         self.ref_g, self.labels, self.kinds = ref_g, labels, kinds
         self.anchor = self.last_good = start   # (frame_g, A 09-18 -> frame, day)
         self.rows, self.fails, self.anchor_changes = [], 0, 0
+        self.direct_hist = []                  # (time, frame_g, A, day, held_p90, n_units) of direct-ok frames
+
+    def best_anchor(self, t: datetime):
+        recent = [h for h in self.direct_hist if (t - h[0]).total_seconds() <= 60 * ANCHOR_WINDOW_MIN]
+        if not recent:
+            return None
+        nmax = max(h[5] for h in recent)
+        good = [h for h in recent if h[5] >= ANCHOR_UNITS * nmax] or recent
+        return min(good, key=lambda h: h[4])
 
     def _from(self, anc, img_g, t):
         ag, aA, aday = anc
@@ -103,13 +117,17 @@ class Chain:
 
     def step(self, img_g, t: datetime, direct: bool) -> dict:
         row = {"time": f"{t:%Y-%m-%d %H:%M:%S}", "mode": "", "status": "", "held_med_px": np.nan, "held_p90_px": np.nan,
-               "n_fit_units": 0, "anchor_changes": self.anchor_changes, "A": None}
+               "n_fit_units": 0, "anchor_changes": self.anchor_changes, "anchor": "", "A": None}
         if direct:
             r = lt.track_frame(self.ref_g, img_g, self.labels, self.kinds, t.date())
             if r.get("status") == "ok":
                 row.update(mode="direct", status="ok", held_med_px=r["held_med"], held_p90_px=r["held_p90"],
                            n_fit_units=len(r["fit_names"]), A=r["A"])
-                self.anchor = self.last_good = (img_g, r["A"], t.date())
+                self.direct_hist.append((t, img_g, r["A"], t.date(), r["held_p90"], len(r["fit_names"])))
+                b = self.best_anchor(t)
+                self.anchor = (b[1], b[2], b[3])
+                self.anchor_time = b[0]
+                self.last_good = (img_g, r["A"], t.date())
                 self.fails = 0
                 self.rows.append(row)
                 return row
@@ -121,12 +139,14 @@ class Chain:
         mode = "link"
         if A is None and self.last_good is not None and self.last_good is not self.anchor:
             self.anchor = self.last_good                       # move the anchor to the last good frame and retry
+            self.anchor_time = None
             self.anchor_changes += 1
             r, A = self._from(self.anchor, img_g, t)
             mode = "relink"
         row.update(mode=mode, status=r.get("status", "no fit"), held_med_px=r.get("held_med", np.nan),
                    held_p90_px=r.get("held_p90", np.nan), n_fit_units=len(r["fit_names"]),
-                   anchor_changes=self.anchor_changes, A=A)
+                   anchor_changes=self.anchor_changes, A=A,
+                   anchor=f"{getattr(self, 'anchor_time', None):%H:%M}" if getattr(self, "anchor_time", None) else "")
         if A is not None:
             self.last_good, self.fails = (img_g, A, t.date()), 0
         else:
@@ -337,6 +357,11 @@ def selftest() -> int:
     mv = move_labels({"POLE_A0_L": [[[0, 0], [0, 100]]], "HOUSE_1_ROOF_X": [[[5, 5], [50, 5]]]}, A1, date(2026, 9, 4))
     rec("move_labels keeps pieces, drops house_1 before 09-18", list(mv) == ["POLE_A0_L"] and len(mv["POLE_A0_L"][0]) == 2)
     rec("frame times every 5 min, both ends", len(frame_times(date(2026, 9, 3), DUSK_START, NIGHT_START)) == 31)
+    c = Chain(None, {}, {})
+    t1 = datetime(2026, 9, 9, 19, 0)
+    c.direct_hist = [(t1 - timedelta(minutes=45), "old", None, None, 0.5, 20), (t1 - timedelta(minutes=20), "best", None, None, 2.4, 20),
+                     (t1 - timedelta(minutes=10), "fewunits", None, None, 1.0, 15), (t1, "last", None, None, 5.6, 20)]
+    rec("anchor = lowest p90 of the last 30 min among frames with >= 90 % of the units", c.best_anchor(t1)[1] == "best")
     print(("PASS" if ok else "FAIL") + " — landmark_night self-test")
     return 0 if ok else 1
 
