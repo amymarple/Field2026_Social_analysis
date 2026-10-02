@@ -107,8 +107,27 @@ def is_corner_lm(name: str) -> bool:
     return name.startswith(CORNER_PREFIXES) or name.endswith("_LABEL")
 
 
+# Per camera (user, 2026-10-02): CH05 / CH06 hang from a crossbeam on top of pole B1 / B3, so that pole and its box move
+# WITH the camera (validation only — they check that beam and camera are one piece); the house below is their main
+# rigid structure (in the fit; house_1 only on the reference's side of its 09-18 move, see usable()).
+CAM_FIT_PREFIXES = {"CH05": ("HOUSE_1_",), "CH06": ("HOUSE_2_", "BLUETOOTH_ANTENNA")}
+CAM_ATTACHED = {"CH05": ("POLE_B1_", "BOX_B1"), "CH06": ("POLE_B3_", "BOX_B3")}
+_CAM = None
+
+
+def set_camera(cam: str | None) -> None:
+    """Select the per-camera fit rules (CAM_FIT_PREFIXES / CAM_ATTACHED) for the following calls."""
+    global _CAM
+    _CAM = cam
+
+
 def in_fit(name: str) -> bool:
-    return base(name).startswith(FIT_PREFIXES)
+    b = base(name)
+    if _CAM in CAM_ATTACHED and b.startswith(CAM_ATTACHED[_CAM]):
+        return False
+    if _CAM in CAM_FIT_PREFIXES and b.startswith(CAM_FIT_PREFIXES[_CAM]):
+        return True
+    return b.startswith(FIT_PREFIXES)
 
 
 def occludable(name: str) -> bool:
@@ -726,6 +745,14 @@ def selftest() -> int:
            and usable("HOUSE_1_ROOF_X", date(2026, 9, 4), ref_day=date(2026, 9, 4))
            and not usable("HOUSE_1_ROOF_X", date(2026, 9, 18), ref_day=date(2026, 9, 4)))
     print(f"[{'PASS' if ok2 else 'FAIL'}] house_1 only on the reference's side of the 09-18 move, house_2 always usable")
+    set_camera("CH06")
+    okc = in_fit("HOUSE_2_ROOF_X") and in_fit("HOUSE_2_LABEL") and in_fit("BLUETOOTH_ANTENNA") and not in_fit("POLE_B3_L") \
+        and not in_fit("POLE_B3_C") and not in_fit("BOX_B3") and in_fit("NAILS")
+    set_camera(None)
+    okc = okc and not in_fit("HOUSE_2_ROOF_X") and in_fit("POLE_B3_L")
+    print(f"[{'PASS' if okc else 'FAIL'}] per-camera rules: CH06 fits its house + antenna, its crossbeam pole B3 is validation only; "
+          "other cameras unchanged")
+    ok2 = ok2 and okc
     allok = ok and ok2 and okn and oko and okt
     print(("PASS" if allok else "FAIL") + " — landmark_track self-test")
     return 0 if allok else 1
@@ -777,6 +804,7 @@ def main(argv=None) -> int:
     rows_f, rows_l, report = [], [], {}
     ffmpeg = cr.find_ffmpeg()
     for cam in args.cameras:
+        set_camera(cam)
         lab_files = sorted(Path(args.labels_dir).glob(f"landmarks_{cam}_20260918_*.json"))
         if not lab_files:
             print(f"{cam}: no 09-18 labels")

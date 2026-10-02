@@ -434,6 +434,7 @@ def main(argv=None) -> int:
     ff = gf.find_ffmpeg()
     H, C, R = [], [], []
     for cam in args.cameras:
+        lt.set_camera(cam)
         lab = json.loads(sorted(Path(args.labels_dir).glob(f"landmarks_{cam}_20260918_*.json"))[0].read_text(encoding="utf-8"))
         labels, kinds = lab["landmarks"], lab.get("kind", {})
         size = tuple(int(v) for v in lab["frame_size_upright"])
