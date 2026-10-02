@@ -601,6 +601,8 @@ def draw_overlay(img: np.ndarray, landmarks: dict, A: np.ndarray | None, frame_d
         ps = pieces_of(v)
         for k, p in enumerate(ps, 1):
             unit = f"{name}#{k}" if occludable(name) and len(ps) > 1 else name
+            if len(p) == 1 and not is_corner_lm(name):    # a stray single click on an edge/curve: unused, not drawn
+                continue
             if len(p) == 1:
                 cv2.circle(out, tuple(np.round(p[0]).astype(int)), 4 * th, (0, 0, 255), max(1, th // 2), cv2.LINE_AA)
             else:
