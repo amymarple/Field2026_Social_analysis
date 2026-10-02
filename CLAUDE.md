@@ -292,8 +292,15 @@ tracks from a user-labelled cohort frame and ties it to 09-18 from the two label
 → `…_track_2026c_<tag>.md` + `run_manifest_landmark_track_<tag>_2026c.json`. Night frames need a night reference:
 `landmark_night.py --cohort 2026c --nights <dusk dates…> --cameras CH01 CH02` chains through dusk (direct from 09-18 while
 ok, then from an anchor frame) and checks by dawn closure → `cv_field_landmark_night_<ts>/` + `cv_field_landmark_night_2026c.md`
-(own pointer `run_manifest_landmark_night_2026c.json`). Both have `--selftest`; plan revision 3 in
+(own pointer `run_manifest_landmark_night_2026c.json`; pass = median of the first three dawn closure frames ≤ 3 px, user
+2026-10-02; `--report-only <run>` re-judges). Both have `--selftest`; plan revision 3 in
 `implementation_plan/2026-09-28-cohort3-camera-stability.md`.
+**Use the correction, not the raw pixel, for any CH01–CH04 position:** `frame_correction.py build --cohort 2026c` assembles
+`results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv` (per camera and sampled night time, hourly
+21:00→04:20; CH01/CH02 from the night chain, CH03/CH04 from the user's 09-04 03:01 labels tied to 09-18) and
+`Corrections("2026c").to_paddock(cam, t, uv_upright, z_mm=60)` maps a detection pixel at field-PC time `t` to paddock
+inches (cohort px → 09-18 px → 09-24 calibration); check the returned `info["flag"]`. Nights only (the whole-field
+cameras are used only at night — user, 2026-10-02). Precision: CH01/CH02 ≤ 3 px on passing nights, CH03/CH04 ~5–10 px.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 
