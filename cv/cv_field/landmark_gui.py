@@ -47,6 +47,9 @@ Landmark kinds (the side panel groups them):
            in 3-D share a vanishing point (a distortion check for those).
            Two water towers outside the paddock (user, 2026-09-29): TOWER_1 beyond the row-C wall (y = 240 side, the
            top of the schematic), TOWER_2 beyond the row-A wall (y = 0 side, the bottom).
+  CH05 / CH06 (above house_1 / house_2; user, 2026-10-02): that house (HOUSE_n_*), poles, boxes, wall tops only.
+  edge     FOODBOX, INNER_EDGES (CH07 / CH08, inside house_2 / house_1): straight edges of the food box and of the house's
+           interior, one piece per edge (b between); point CORNERS: their clear corner points. Unnumbered.
 Poles use the paddock grid names (rows A/B/C x columns 0-4, 10 ft grid) so a pole keeps its name in every frame and
 camera; add any other structure with "+ add".
 
@@ -82,6 +85,28 @@ POLES = [f"POLE_{r}{c}" for r in "ABC" for c in range(5)]
 MULTI = [("NAILS", "point"), ("PATCHES", "polyline"), ("SEAMS", "edge")]
 # per camera (user, 2026-10-01): CH04 sees a building wall outside the paddock and a piece of wood
 EXTRA = {"CH04": [("BUILDING", "polyline"), ("WOOD", "polyline")]}
+# CH05-CH08 (user, 2026-10-02). CH05 / CH06 look down on house_1 / house_2: that house's edges and roof label, the
+# poles, their boxes and the wall tops (no towers, no PC box, not the other house). CH07 / CH08 are INSIDE house_2 /
+# house_1: the food box's straight edges, the house's inner straight edges and corner points — nothing outside.
+SIZE = {"CH01": (7680, 2160), "CH02": (7680, 2160), "CH03": (4512, 2512), "CH04": (4512, 2512),
+        "CH05": (2560, 1920), "CH06": (2560, 1920), "CH07": (2560, 1920), "CH08": (2560, 1920)}   # upright (w, h)
+HOUSE_OF_CAM = {"CH05": "1", "CH06": "2"}
+# the pole right next to each house camera (~20 in away; the calibration guides skip it as too close): CH05 B1, CH06 B3
+NEAR_POLE = {"CH05": "B1", "CH06": "B3"}
+INBOX = [("FOODBOX", "edge"), ("INNER_EDGES", "edge"), ("CORNERS", "point")]
+
+
+def default_kinds(cam: str) -> dict:
+    if cam in ("CH07", "CH08"):
+        return dict(INBOX)
+    kinds = dict(DEFAULTS)
+    if cam in HOUSE_OF_CAM:
+        mine = f"HOUSE_{HOUSE_OF_CAM[cam]}_"
+        kinds = {k: v for k, v in kinds.items() if not (k.startswith("HOUSE_") and not k.startswith(mine))
+                 and not k.startswith(("TOWER_", "PCBOX"))}
+    for name, kind in MULTI + EXTRA.get(cam, []):
+        kinds.setdefault(name, kind)
+    return kinds
 WALLTOPS = ["WALLTOP_X0", "WALLTOP_X480", "WALLTOP_Y0", "WALLTOP_Y240"]
 DEFAULTS = ([(f"{p}_{side}", "edge") for p in POLES for side in "LR"]
             + [(p.replace("POLE_", "BOX_"), "outline") for p in POLES] + [(w, "polyline") for w in WALLTOPS]
@@ -125,6 +150,10 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Landmarks __C
   leave out what grass hides. <b>SEAMS</b>: every vertical seam between wall panels as one piece (b between seams), 2+
   points each, only seams clearly different from the regular corrugation ridges. None of these is numbered; label them
   on the 09-18 frame too where you can (that ties a frame to the calibration).
+  <b>CH07 / CH08 (inside a house)</b>: <b>FOODBOX</b> = each visible straight edge of the food box, one piece per edge
+  (<b>b</b> between edges); <b>INNER_EDGES</b> = the house's inner straight edges (wall joints, floor / wall lines, the
+  door frame), one piece per edge; <b>CORNERS</b> = click each clear corner point (food-box corners, inner corners).
+  <b>CH05 / CH06</b>: the house below (roof / base edges, roof number label), the poles, their boxes, the wall tops.
   <b>BUILDING</b> (CH04): the wall of the building outside the paddock — its visible straight edges (corners, roof line,
   eaves, window / door frames), one piece per edge, <b>b</b> between edges. <b>WOOD</b> (CH04): the piece of wood —
   its visible edges, one piece per edge, <b>b</b> between edges.
@@ -250,7 +279,7 @@ def main(argv=None) -> int:
     import output_paths as op
     cohort = op.resolve_cohort(args.cohort)
     cam, t = args.camera.upper(), datetime.strptime(args.time, "%Y-%m-%d %H:%M:%S")
-    size = (7680, 2160) if cam in cr.PANO else (4512, 2512)
+    size = SIZE.get(cam, (4512, 2512))
     got = cr.grab_at(t, cam, args, cr.find_ffmpeg(), size)
     if got is None:
         raise SystemExit(f"no {cam} frame at {t}")
@@ -258,15 +287,18 @@ def main(argv=None) -> int:
     scale = 0.5 if args.half else 1.0
     small = img if scale == 1.0 else cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     b64 = base64.b64encode(cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 85])[1]).decode()
-    kinds = dict(DEFAULTS)
+    kinds = default_kinds(cam)
     guides = {}
     try:                                                    # calibration-predicted, named guides (identification only)
         import landmark_guides
         guides.update(landmark_guides.calib_guides(cam))
     except Exception as e:  # noqa: BLE001 — the GUI works without them
         print(f"(no calibration guides: {e})")
-    for name, kind in MULTI + EXTRA.get(cam, []):
-        kinds.setdefault(name, kind)
+    if cam in HOUSE_OF_CAM and guides:                      # CH05/CH06: list only the poles / wall tops the camera sees
+        seen = {k for k in guides if k.startswith(("POLE_", "WALLTOP_"))} | {f"POLE_{NEAR_POLE[cam]}"}
+        kinds = {k: v for k, v in kinds.items()
+                 if not k.startswith(("POLE_", "BOX_", "WALLTOP_")) or k in seen
+                 or (k.startswith("POLE_") and k[:-2] in seen) or (k.startswith("BOX_") and "POLE_" + k[4:] in seen)}
     if args.guide:
         g = json.loads(Path(args.guide).read_text(encoding="utf-8"))
         guides = g.get("landmarks", {})
