@@ -1,0 +1,146 @@
+{
+  "_about": "V3 = one B2 filter with a firm head-IMU zero-velocity constraint and locomotion-boosted process noise, cohort 2026c (wiser/scripts/analyze_wiser_v3.py; plan implementation_plan/2026-10-03-wiser-v3.md, approved by the user 2026-10-03 '做', committed 26a1cb8 before any V3 number). Periods, animals, exclusions, IMU seconds and certified still segments are the failure audit's (audit_config / audit_run); S1/S4/S5 definitions are the default-smoother step's (default_smoother_config); the clean-WISER speed reference (clean seconds, u3/u1, noise floor) is step B's (speed_proxy_config / speed_proxy_run); B2 = the smoothing pilot's tuned B2 (smoothing_config -> tuned.B2), unchanged; the locomotion multiplier x10 is the pilot's tuned m_loco (tuned.V2.mult[3]), unchanged. Candidate, sensitivities, thresholds and the decision rule are the plan's and must not be changed after a result. Nothing is tuned in this step. The run writes its verdict into `decision`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "plan": "implementation_plan/2026-10-03-wiser-v3.md",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "default_smoother_run": "D:/Field2026_analysis_out/2026c/wiser_default_smoother_20261002_1626",
+  "default_smoother_config": "wiser/configs/wiser_default_smoother_2026c.json",
+  "v1b_run": "D:/Field2026_analysis_out/2026c/wiser_v1b_20261003_1124",
+  "v1b_config": "wiser/configs/wiser_v1b_2026c.json",
+  "speed_proxy_run": "D:/Field2026_analysis_out/2026c/imu_speed_proxy_20261003_1210",
+  "speed_proxy_config": "wiser/configs/imu_speed_proxy_2026c.json",
+  "smoothing_config": "wiser/configs/wiser_imu_smoothing_2026c.json",
+  "fix_cache_root": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+  "v3": {
+    "base": "tuned.B2 of smoothing_config: q 3 in^2/s^3, anchors_used noise table, chi2 gate (13.8155) + 2 Huber IRLS passes (k_H 2.5), forward KF + RTS",
+    "loco_mult": 10.0,
+    "loco_state": 3,
+    "loco_rule": "q x loco_mult on a step (t[k-1], t[k]] whose midpoint second has the audit's state 3 (IMU-QC-ok and locomoting, pilot rule); x 1 on every other step (still, active, QC-failed, the +-10-min margins without IMU seconds)",
+    "sigma_zupt_inps": 0.25,
+    "huber_zupt": true,
+    "huber_k": 2.5,
+    "min_run_s": 3,
+    "erode_s": 1,
+    "release": false,
+    "zupt_rule": "pseudo-measurements 0 = v_x, 0 = v_y at every fix whose aligned time lies in a run of >= 3 consecutive IMU-QC-ok still seconds shortened by 1 s at each end; Huber weight inside the IRLS passes as in V1b; no release"
+  },
+  "variants": {
+    "V3_s05": {
+      "sigma_zupt_inps": 0.5,
+      "loco_mult": 10.0,
+      "zupt": true,
+      "_note": "sensitivity: softer ZUPT"
+    },
+    "V3_s10": {
+      "sigma_zupt_inps": 1.0,
+      "loco_mult": 10.0,
+      "zupt": true,
+      "_note": "sensitivity: V1b's ZUPT sigma (no release)"
+    },
+    "V3_m3": {
+      "sigma_zupt_inps": 0.25,
+      "loco_mult": 3.0,
+      "zupt": true,
+      "_note": "sensitivity: locomotion multiplier x3"
+    },
+    "V3_m30": {
+      "sigma_zupt_inps": 0.25,
+      "loco_mult": 30.0,
+      "zupt": true,
+      "_note": "sensitivity: locomotion multiplier x30"
+    },
+    "V3_loco": {
+      "sigma_zupt_inps": 0.0,
+      "loco_mult": 10.0,
+      "zupt": false,
+      "_note": "sensitivity: loco-only (no ZUPT)"
+    }
+  },
+  "context_tracks": {
+    "B2": "rebuilt here by the V3 kernel with multiplier 1 and no ZUPT (= the pilot's B2)",
+    "V1b": "the V1b run's saved track (current default for the implanted animals)",
+    "V2b": "the default-smoother run's deployable V2b (IMU-switched q x (1, 0.01, 0.3, 10) on B2, spliced to B2 where the IMU QC fails)"
+  },
+  "acceptance": {
+    "T1_max_abs_rel": 0.03,
+    "T1_scale_s": 3,
+    "T1_set": "all",
+    "T1_bands": [
+      "all",
+      "gt15"
+    ],
+    "T1_quantile": 95,
+    "T2_jump_in": 30.0,
+    "T2_jump_dt_s": 0.35,
+    "T2_max_jumps": 0,
+    "T3_max_later_s": 0.5,
+    "_rule": "V3 passes T1 (|d95| <= 3 % on step B's clean seconds of the six nights, 3-s scale, (a) all clean seconds and (b) the > 15 in/s band of the reference) and T2 (0 jumps in the primary certified still segments, calm and rain, and over the analysis mask of every audit period) and T3 (median per-event lag(V3) - lag(B2) <= +0.5 s for S5 onsets and offsets, calm and rain, all periods; earlier allowed) -> V3 replaces V1b as the default WISER track for the implanted animals (IMU-QC-ok stretches; B2 elsewhere by construction), B2 stays the universal baseline; any failure -> V1b stays the default. Point estimates decide; CIs reported. No sensitivity variant is promoted (a passing variant is a proposal to the user)."
+  },
+  "jitter_check": {
+    "min_dist_s": 3.0,
+    "floor_source": "step-B tables/noise_floor.csv, kind all, set all, scale 3, p95 (1.64 in/s)",
+    "_note": "(i) IMU-active seconds >= 3 s from any locomoting step or ZUPT fix of V3; (ii) clean seconds with IMU state locomoting and u3 below the floor p95"
+  },
+  "bootstrap": {
+    "block_s": 600,
+    "n_boot": 1000,
+    "seed": 20261008,
+    "_note": "10-min animal-period blocks drawn with replacement within each set; paired = the same draw for every method"
+  },
+  "nis": {
+    "chi2_2_q95": 5.991464547107979,
+    "expect_mean": 2.0
+  },
+  "workers": 16,
+  "decision": {
+    "V3_passes": true,
+    "failed_criteria": [],
+    "default_wiser_track_implanted": "V3",
+    "universal_baseline": "B2",
+    "where": "SF07-SF12 wherever the IMU QC passes (V3 is B2 by construction elsewhere)",
+    "T1_d95_3s_all": -0.02103,
+    "T1_d95_3s_gt15": -0.01209,
+    "T1_ci": {
+      "all": [
+        -0.02783,
+        -0.01679
+      ],
+      "gt15": [
+        -0.02783,
+        0.0
+      ]
+    },
+    "T2_jumps_still_mask": [
+      0,
+      0
+    ],
+    "T3_dlag_med_s": {
+      "calm onset": 0.0,
+      "calm offset": 0.0,
+      "rain onset": 0.0,
+      "rain offset": 0.0
+    },
+    "sensitivity": {
+      "V3_s05": "pass",
+      "V3_s10": "pass",
+      "V3_m3": "fail T1",
+      "V3_m30": "pass",
+      "V3_loco": "pass"
+    },
+    "variants_that_would_pass": [
+      "V3_s05",
+      "V3_s10",
+      "V3_m30",
+      "V3_loco"
+    ],
+    "context": {
+      "B2": "fail T1",
+      "V1b": "fail T1",
+      "V2b": "fail T2"
+    },
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_v3_20261003_1425",
+    "report": "results/2026c/wiser_baseline/reports/wiser_baseline_v3_2026c.md",
+    "decided_local": "2026-10-03 14:55:30"
+  }
+}
