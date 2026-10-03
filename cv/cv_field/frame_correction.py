@@ -1,6 +1,6 @@
 """frame_correction.py — per-camera, per-time image correction (cohort px -> 09-18 calibration-epoch px) for the
-whole-field cameras CH01-CH04, and the full pixel -> paddock chain. NIGHT first (user, 2026-10-02: the whole-field
-cameras are used only at night, 21:00 -> 04:20).
+cameras CH01-CH08, and the pixel -> paddock chain. Coverage (user, 2026-10-02): CH01-CH06 at night (21:00 -> 04:20),
+the in-box CH07/CH08 all day, segmented at the house-lid events (battery rounds, catches) when they may be bumped.
 
 Sources (the runs named by the canonical pointers in results/<cohort>/cv_field/reports/):
   CH01, CH02  landmark_night.py — dusk chain from the 09-18 labels, night frames tracked from the chained night reference;
@@ -53,7 +53,15 @@ for _p in (str(HERE), str(HERE.parent)):
 NIGHT_START, NIGHT_END = time(20, 30), time(5, 0)          # samples kept: the 21:00 -> 04:20 window with a margin
 CLOSURE_MAX = 3.0
 # sample rule per camera: (held-out median max, held-out p90 max) in px (user, 2026-10-02: CH03/CH04 at 5 / 10 px)
-SAMPLE_RULE = {"CH01": (3.0, 6.0), "CH02": (3.0, 6.0), "CH03": (5.0, 10.0), "CH04": (5.0, 10.0)}
+SAMPLE_RULE = {"CH01": (3.0, 6.0), "CH02": (3.0, 6.0), "CH03": (5.0, 10.0), "CH04": (5.0, 10.0),
+               "CH05": (3.0, 6.0), "CH06": (3.0, 6.0), "CH07": (5.0, 10.0), "CH08": (5.0, 10.0)}
+# Coverage (user, 2026-10-02): the whole-field CH01-CH04 and the house-top CH05/CH06 at night; the in-box CH07/CH08 all day.
+NIGHT_CAMS = {"CH01", "CH02", "CH03", "CH04", "CH05", "CH06"}
+# CH07 / CH08 sit in the house lids, which are lifted at every battery round / catch (user, 2026-10-02): their correction is
+# segmented at these events (cv/configs/cohort3_lid_events.json) and never interpolated across one.
+LID_CAMS = {"CH07", "CH08"}
+LID_EVENTS = REPO / "cv" / "configs" / "cohort3_lid_events.json"
+TRACK_TAGS = ("ch0304_ref0904night_hourly", "ch0506_ref0904night_hourly", "ch0708_ref0904day_24h", "ch0708_ref0904night_24h")
 A_KEYS = ("a11", "a12", "a13", "a21", "a22", "a23")
 B_KEYS = ("b11", "b12", "b13", "b21", "b22", "b23")
 FMT = "%Y-%m-%d %H" + ":" + "%M" + ":" + "%S"
@@ -66,6 +74,22 @@ def night_of(t: datetime) -> date:
 
 def in_night_window(t: datetime) -> bool:
     return t.time() >= NIGHT_START or t.time() <= NIGHT_END
+
+
+def lid_events(path: Path = LID_EVENTS) -> list[tuple[datetime, datetime]]:
+    """(start - margin, end + margin) of every house-lid event, sorted."""
+    if not Path(path).exists():
+        return []
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
+    m = timedelta(minutes=d.get("margin_min", 5))
+    return sorted((datetime.fromisoformat(e["start"]) - m, datetime.fromisoformat(e["end"]) + m) for e in d["events"])
+
+
+def segment_of(t: datetime, events: list[tuple[datetime, datetime]]) -> tuple[int, bool]:
+    """(index of the lid-closed segment t falls in = number of events that ended before t, t inside an event window?)"""
+    k = sum(1 for a, b in events if b <= t)
+    inside = any(a <= t < b for a, b in events)
+    return k, inside
 
 
 def invert(A: np.ndarray) -> np.ndarray:
@@ -115,7 +139,7 @@ def pointer(rep: Path, name: str) -> Path | None:
     return Path(json.loads(p.read_text(encoding="utf-8"))["run_dir"]) if p.exists() else None
 
 
-def build(cohort: str, night_run: Path | None, track_run: Path | None, weather_dir: str | None) -> tuple[list[dict], dict]:
+def build(cohort: str, night_run: Path | None, track_runs: list[tuple[str, Path]], weather_dir: str | None) -> tuple[list[dict], dict]:
     rows, src = [], {}
     if night_run is not None:
         src["CH01/CH02 night chain"] = str(night_run)
@@ -126,24 +150,33 @@ def build(cohort: str, night_run: Path | None, track_run: Path | None, weather_d
             h = H.get((r["camera"], r["night"]), {})
             cl = float(h["closure_med_next_px"]) if h.get("closure_med_next_px") not in (None, "") else np.nan
             rows.append({"camera": r["camera"], "night": r["night"], "time": r["frame_time"], "source": r.get("source", "night"),
+                         "target_frame": "09-18 (calibration)",
                          "status": r["status"], "held_med_px": r["held_med_px"], "held_p90_px": r["held_p90_px"],
                          "night_quality": "dawn closure", "night_quality_px": cl, "night_verdict": h.get("verdict", ""),
                          **{k: r[k] for k in A_KEYS}})
-    if track_run is not None:
-        src["CH03/CH04 from the 09-04 03:01 labels"] = str(track_run)
-        tie = json.loads((track_run / "tie.json").read_text(encoding="utf-8")) if (track_run / "tie.json").exists() else {}
-        for r in csv.DictReader(open(track_run / "track_frames.csv", encoding="utf-8")):
+    for tag, run in track_runs:
+        src[tag] = str(run)
+        tie = json.loads((run / "tie.json").read_text(encoding="utf-8")) if (run / "tie.json").exists() else {}
+        R = list(csv.DictReader(open(run / "track_frames.csv", encoding="utf-8")))
+        ref_time = {r["camera"]: r["frame_time"] for r in R if r["frame"] == "REF"}
+        for r in R:
             if r["frame"] == "REF" or "a11" not in r or r["a11"] in ("", "nan"):
                 continue
             t = datetime.strptime(r["frame_time"], FMT)
-            if not in_night_window(t):
+            cam = r["camera"]
+            if cam in NIGHT_CAMS and not in_night_window(t):
                 continue
-            ti = tie.get(r["camera"], {})
-            rows.append({"camera": r["camera"], "night": f"{night_of(t)}", "time": r["frame_time"], "source": "night_ref_labels",
+            ti = tie.get(cam, {})
+            tied = ti.get("A") is not None
+            base = ti.get("base", "") if tied else ref_time.get(cam, "")
+            target = ("09-18 (calibration)" if base.startswith("2026-09-18") else f"{base[5:16]} (user-labelled frame)") if base else "?"
+            rows.append({"camera": cam, "night": f"{night_of(t)}", "time": r["frame_time"], "source": tag, "target_frame": target,
                          "status": r["status"], "held_med_px": r["held_med_px"], "held_p90_px": r["held_p90_px"],
-                         "night_quality": "tie to 09-18 (labels)", "night_quality_px": ti.get("held_med", np.nan),
-                         "night_verdict": ti.get("status", ""), **{k: r[k] for k in A_KEYS}})
+                         "night_quality": "tie (labels)" if tied else "untied (reference frame)",
+                         "night_quality_px": ti.get("held_med", np.nan) if tied else np.nan,
+                         "night_verdict": ti.get("status", "") if tied else "", **{k: r[k] for k in A_KEYS}})
     rain = rain_by_night(weather_dir, sorted({date.fromisoformat(r["night"]) for r in rows}))
+    events = lid_events()
     for r in rows:
         A = mat(r)
         r.update({k: float(v) for k, v in zip(B_KEYS, invert(A).ravel())})
@@ -156,8 +189,16 @@ def build(cohort: str, night_run: Path | None, track_run: Path | None, weather_d
             hm = hp = np.nan
         r["sample_ok"] = bool(np.isfinite(hm) and hm <= mx_med and hp <= mx_p90)
         r["sample_rule_px"] = f"{mx_med:g}/{mx_p90:g}"
-        r["flag"] = "sample" if not r["sample_ok"] else "night" if night_bad else "ok"
-    rows.sort(key=lambda r: (r["camera"], r["time"]))
+        r["segment"], inside = segment_of(datetime.strptime(r["time"], FMT), events) if r["camera"] in LID_CAMS else ("", False)
+        r["flag"] = "lid" if inside else "sample" if not r["sample_ok"] else "night" if night_bad else "ok"
+    # one row per camera and time: two references (CH07/CH08 day + night) -> keep the better fit (usable first, lower p90)
+    best = {}
+    for r in rows:
+        k = (r["camera"], r["time"])
+        key = (r["flag"] in ("ok", "night"), -float(r["held_p90_px"]) if r["held_p90_px"] not in ("", "nan") else -np.inf)
+        if k not in best or key > best[k][0]:
+            best[k] = (key, r)
+    rows = sorted((v[1] for v in best.values()), key=lambda r: (r["camera"], r["time"]))
     return rows, src
 
 
@@ -172,17 +213,25 @@ class Corrections:
         for r in self.rows:
             r["_t"] = datetime.strptime(r["time"], FMT)
         self._cams = None
+        self.events = lid_events()
 
     def samples(self, cam: str, night: date) -> list[dict]:
         return sorted((r for r in self.rows if r["camera"] == cam and r["night"] == f"{night}"), key=lambda r: r["_t"])
 
     def correction(self, cam: str, t: datetime) -> tuple[np.ndarray | None, dict]:
         n = night_of(t)
-        allr = self.samples(cam, n)
-        use = [r for r in allr if r["flag"] != "sample"] or allr
-        info = {"camera": cam, "night": f"{n}", "n_samples": len(use)}
+        if cam in LID_CAMS:                                    # in-box: the lid-closed segment, never across a lid event
+            seg, inside = segment_of(t, self.events)
+            allr = sorted((r for r in self.rows if r["camera"] == cam and r.get("segment", "") == str(seg) and r["flag"] != "lid"),
+                          key=lambda r: r["_t"])
+            info = {"camera": cam, "segment": seg, "lid_open": inside}
+        else:
+            allr = self.samples(cam, n)
+            info = {"camera": cam, "night": f"{n}"}
+        use = [r for r in allr if r["flag"] not in ("sample", "lid")] or allr
+        info["n_samples"] = len(use)
         if not use:
-            return None, {**info, "flag": "no samples for this night"}
+            return None, {**info, "flag": "no samples for this night / segment"}
         ts = [r["_t"] for r in use]
         if t <= ts[0] or len(use) == 1:
             A, used = mat(use[0]), [use[0]]
@@ -193,9 +242,11 @@ class Corrections:
             w = (t - ts[i]).total_seconds() / max((ts[i + 1] - ts[i]).total_seconds(), 1e-9)
             A, used = (1 - w) * mat(use[i]) + w * mat(use[i + 1]), [use[i], use[i + 1]]
         flags = sorted({r["flag"] for r in used})
+        if info.get("lid_open"):
+            flags = sorted(set(flags) | {"lid"})
         return invert(A), {**info, "used": [r["time"] for r in used], "flag": "ok" if flags == ["ok"] else "+".join(flags),
-                           "night_quality": used[0]["night_quality"], "night_quality_px": used[0]["night_quality_px"],
-                           "rain_mm_night": used[0]["rain_mm_night"]}
+                           "target_frame": used[0].get("target_frame", ""), "night_quality": used[0]["night_quality"],
+                           "night_quality_px": used[0]["night_quality_px"], "rain_mm_night": used[0]["rain_mm_night"]}
 
     def to_09_18(self, cam: str, t: datetime, uv) -> tuple[np.ndarray | None, dict]:
         B, info = self.correction(cam, t)
@@ -205,10 +256,14 @@ class Corrections:
         return P @ B[:, :2].T + B[:, 2], info
 
     def to_paddock(self, cam: str, t: datetime, uv, z_mm: float = 60.0, units: str = "in") -> tuple[np.ndarray | None, dict]:
-        """Detection pixel(s) at field-PC time t -> paddock (x, y) via the 09-18-epoch pixel and the 09-24 calibration."""
+        """Detection pixel(s) at field-PC time t -> paddock (x, y) via the 09-18-epoch pixel and the 09-24 calibration.
+        Only where the target frame is 09-18 (CH01-CH04, CH06); CH05 (house_1 moved on 09-18) and the in-box CH07/CH08
+        map to a user-labelled 09-04 frame instead -> None here, use to_09_18 for their reference-frame pixels."""
         p18, info = self.to_09_18(cam, t, uv)
         if p18 is None:
             return None, info
+        if not str(info.get("target_frame", "")).startswith("09-18"):
+            return None, {**info, "flag": info["flag"] + "+not calibrated (target " + str(info.get("target_frame")) + ")"}
         if self._cams is None:
             import landmark_guides
             sys.path.insert(0, str(landmark_guides.calib_dir()))
@@ -221,7 +276,7 @@ def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
     import output_paths as op
     rep = op.report_dir(cohort, "cv_field")
     out = rep / f"cv_field_frame_corrections_{cohort}.csv"
-    keys = ["camera", "night", "time", "source", "flag", "sample_rule_px", "status", "held_med_px", "held_p90_px", "night_quality",
+    keys = ["camera", "night", "time", "segment", "source", "target_frame", "flag", "sample_rule_px", "status", "held_med_px", "held_p90_px", "night_quality",
             "night_quality_px", "night_verdict", "rain_mm_night", *A_KEYS, *B_KEYS]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
@@ -290,6 +345,22 @@ def selftest() -> int:
         rec("no samples for another night -> None", B3 is None)
         p18, _ = C.to_09_18("CH01", datetime(2026, 9, 3, 21), [[100.0, 200.0]])
         rec("to_09_18 undoes A at a sample", np.allclose(p18[0] @ A1[:, :2].T + A1[:, 2], [100.0, 200.0]))
+        ev = [(datetime(2026, 9, 4, 8, 0), datetime(2026, 9, 4, 8, 30))]
+        tab2 = Path(tmp) / "t2.csv"
+        with open(tab2, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=["segment", *keys])
+            w.writeheader()
+            for t, A in (("2026-09-04 07:00:00", A1), ("2026-09-04 09:00:00", A2)):
+                seg, _ = segment_of(datetime.strptime(t, FMT), ev)
+                w.writerow({"segment": seg, "camera": "CH07", "night": "2026-09-03", "time": t, "flag": "ok",
+                            "night_quality": "tie", "night_quality_px": 1.0, "rain_mm_night": 0.0, **dict(zip(A_KEYS, A.ravel()))})
+        C2 = Corrections(table=tab2)
+        C2.events = ev
+        Bb, ib = C2.correction("CH07", datetime(2026, 9, 4, 7, 30))
+        Ba, ia = C2.correction("CH07", datetime(2026, 9, 4, 8, 45))
+        Bl, il = C2.correction("CH07", datetime(2026, 9, 4, 8, 10))
+        rec("in-box: no interpolation across a lid event; inside the event flagged 'lid'",
+            np.allclose(Bb, invert(A1)) and np.allclose(Ba, invert(A2)) and "lid" in il["flag"])
     print(("PASS" if ok else "FAIL") + " — frame_correction self-test")
     return 0 if ok else 1
 
@@ -300,8 +371,7 @@ def main(argv=None) -> int:
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--cohort", default=None)
     ap.add_argument("--night-run", default=None, help="landmark_night run folder (default: the canonical pointer)")
-    ap.add_argument("--track-run", default=None, help="landmark_track run folder for CH03/CH04 nights (default: the pointer)")
-    ap.add_argument("--track-tag", default="ch0304_ref0904night_hourly")
+    ap.add_argument("--track-tags", nargs="+", default=list(TRACK_TAGS), help="landmark_track run tags (canonical pointers)")
     ap.add_argument("--weather-dir", default=r"F:\weather_data")
     args = ap.parse_args(argv)
     if args.selftest:
@@ -312,8 +382,11 @@ def main(argv=None) -> int:
     cohort = op.resolve_cohort(args.cohort)
     rep = op.report_dir(cohort, "cv_field")
     night_run = Path(args.night_run) if args.night_run else pointer(rep, f"run_manifest_landmark_night_{cohort}.json")
-    track_run = Path(args.track_run) if args.track_run else pointer(rep, f"run_manifest_landmark_track_{args.track_tag}_{cohort}.json")
-    rows, src = build(cohort, night_run, track_run, args.weather_dir)
+    track_runs = [(t, pointer(rep, f"run_manifest_landmark_track_{t}_{cohort}.json")) for t in args.track_tags]
+    missing = [t for t, r in track_runs if r is None]
+    if missing:
+        print(f"(no run yet for {missing})")
+    rows, src = build(cohort, night_run, [(t, r) for t, r in track_runs if r is not None], args.weather_dir)
     out = write_outputs(rows, src, cohort)
     print(f"{len(rows)} samples -> {out}")
     return 0

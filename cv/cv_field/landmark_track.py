@@ -93,6 +93,7 @@ BLOCK_MARGIN, BLOCK_OPEN_GAP = 6, 30
 UNNAMED_PREFIXES = ("NAILS", "PATCH", "SEAM", "BUILDING", "WOOD")
 TIE_STEP, TIE_PAIR_MAX, TIE_GATE = 10.0, 15.0, 3.0
 HELD_MED_MAX, HELD_P90_MAX = 3.0, 6.0
+EXTRA_TARGET_MIN = 10                                     # --extra-targets: frames this long before / after each event
 PRIOR_W = 1e4                                             # weak identity prior on the affine's linear part
 HOUSE1_MOVED = date(2026, 9, 18)
 IR_REF = {"CH01": "2026-09-18 13:57:30", "CH02": "2026-09-18 15:22:30", "CH03": "2026-09-18 15:45:00", "CH04": "2026-09-18 14:32:30"}
@@ -776,6 +777,10 @@ def main(argv=None) -> int:
                     help="user-labelled reference(s) other than 09-18 (landmarks_CHxx_<date>_<time>.json; camera from the file)")
     ap.add_argument("--tie", action="store_true", help="tie each --ref-labels reference to the camera's 09-18 labels")
     ap.add_argument("--tag", default=None, help="name suffix of the run folder and report (keeps the canonical report)")
+    ap.add_argument("--tie-base", nargs="+", default=[],
+                    help="per camera, the label set to tie the reference to instead of its 09-18 labels (camera from the file)")
+    ap.add_argument("--extra-targets", default=None,
+                    help="events JSON ({'events': [{'start','end'}]}): also track EXTRA_TARGET_MIN before each start and after each end")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
@@ -787,6 +792,7 @@ def main(argv=None) -> int:
     for f in args.ref_labels:
         ref_files[json.loads(Path(f).read_text(encoding="utf-8"))["camera"]] = Path(f)
     ties = {}
+    tie_bases = {json.loads(Path(f).read_text(encoding="utf-8"))["camera"]: Path(f) for f in args.tie_base}
     frames_dir = run / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     targets = run / "targets.csv"
@@ -799,6 +805,14 @@ def main(argv=None) -> int:
                 for t0 in args.times:
                     wr.writerow([cam, f"{datetime.combine(d, t0):%Y-%m-%d %H:%M:%S}", "track"])
             d += timedelta(days=1)
+        if args.extra_targets:                                    # e.g. just before / after every house-lid event
+            ev = json.loads(Path(args.extra_targets).read_text(encoding="utf-8"))["events"]
+            for e in ev:
+                for t in (datetime.fromisoformat(e["start"]) - timedelta(minutes=EXTRA_TARGET_MIN),
+                          datetime.fromisoformat(e["end"]) + timedelta(minutes=EXTRA_TARGET_MIN)):
+                    if args.start <= t.date() <= args.end:
+                        for cam in args.cameras:
+                            wr.writerow([cam, f"{t:%Y-%m-%d %H:%M:%S}", "event"])
     subprocess.run([sys.executable, str(HERE / "grab_frames.py"), "--targets", str(targets), "--out", str(frames_dir),
                     "--root", args.cohort_root, "--workers", "3"], check=True)
     manifest = [r for r in csv.DictReader(open(frames_dir / "manifest.csv", encoding="utf-8")) if not r["error"]]
@@ -813,6 +827,9 @@ def main(argv=None) -> int:
         lab = json.loads(ref_files[cam].read_text(encoding="utf-8")) if cam in ref_files else \
             json.loads(lab_files[0].read_text(encoding="utf-8"))
         lab18 = json.loads(lab_files[0].read_text(encoding="utf-8")) if lab_files else lab   # CH07/CH08: no 09-18 labels
+        if cam in tie_bases:                                     # tie to another labelled frame (e.g. CH07/CH08: 09-04 12:00)
+            lab18 = json.loads(tie_bases[cam].read_text(encoding="utf-8"))
+            lab_files = [tie_bases[cam]]
         landmarks, kinds = lab["landmarks"], {**lab18.get("kind", {}), **lab.get("kind", {})}
         size = tuple(int(v) for v in lab["frame_size_upright"])
         ref_t = datetime.strptime(lab["time"], "%Y-%m-%d %H:%M:%S")
@@ -824,8 +841,14 @@ def main(argv=None) -> int:
         ref = got[0]
         ref_g = prep(ref)
         A_tie = None
-        if cam in ref_files and args.tie and lab_files:          # 09-18 px -> reference px, from the two label sets
-            tie = tie_labels(lab18["landmarks"], landmarks, HOUSE1_MOVED, ref_day)
+        if cam in ref_files and args.tie and lab_files:          # base px (09-18 or --tie-base) -> reference px
+            base_day = datetime.strptime(lab18["time"], "%Y-%m-%d %H:%M:%S").date()
+            if lab18["time"] == lab["time"]:
+                tie = {"A": np.array([[1.0, 0, 0], [0, 1.0, 0]]), "status": "same frame", "held_med": 0.0, "held_p90": 0.0,
+                       "units": [], "rejected": {}}
+            else:
+                tie = tie_labels(lab18["landmarks"], landmarks, base_day, ref_day)
+            tie.update(base=lab18["time"], ref=lab["time"])
             A_tie = tie["A"]
             ties[cam] = tie
             if A_tie is None:                                    # e.g. CH05: house_1 moved on 09-18, its pole is on the camera
