@@ -243,3 +243,16 @@ moved on 09-18; the pole is on the camera beam) -> to be tied through CH01/CH02 
   crossbeam poles deviate from the house-based fit by 1.7-5.7 px (they move with the camera). CH07 3/14 and 6/14,
   CH08 8/14 and 11/14; at noon CH07 matches a median of 1 unit (the box interior is likely occupied by day); CH08's
   fitted shifts reach 65-79 px (tracking failures or the in-box camera moving — not established).
+
+**CH05-CH08 in the correction table (2026-10-03).** Coverage (user): CH05/CH06 at night, CH07/CH08 all day; the in-box
+cameras sit in the house lids, lifted at every battery round / catch -> `cv/configs/cohort3_lid_events.json` (33 events:
+26 rounds from BATTERY_LOG_cohort3.md, probe advances and other catches from cohorts/2026c.yaml, 09-12 removal, 09-16/17
+temperature run). Runs: CH05/CH06 hourly nights from the 09-04 03:01 labels (tag `ch0506_ref0904night_hourly`); CH07/CH08
+hourly all day + 10 min before / after each lid event, from both 09-04 references, both tied to the 09-04 12:00 labels
+(tags `ch0708_ref0904day_24h`, `ch0708_ref0904night_24h`; the better fit kept per sample). Table: 1424 samples.
+- CH05 116 / 125 usable (target: the 09-04 03:01 frame — not yet tied to the calibration, see the CH01/CH02 route);
+  CH06 123 / 126 (target 09-18, tie 2.54 / 3.63 px).
+- CH07 108 / 307 usable (26 of 34 lid-closed segments covered); **jump across a lid event median 16.7 px, p90 46, max 57
+  (11 of 18 > 10 px) vs 5.9 px within a segment -> the camera does move when the lid is lifted**. CH08 268 / 367 usable
+  (29 of 34 segments); jumps median 4.9 px, 4 of 26 > 10 px (max 102), within-segment 7.1 px. Lookups never interpolate
+  across a lid event and flag 'lid' inside one.

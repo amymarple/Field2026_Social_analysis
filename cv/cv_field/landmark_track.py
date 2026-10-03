@@ -855,7 +855,7 @@ def main(argv=None) -> int:
                 print(f"{cam}: tie to 09-18 failed ({tie['status']}) - shifts are vs the reference frame")
         if A_tie is not None:
             (run / "overlays").mkdir(exist_ok=True)
-            cap = (f"{cam} TIE 09-18 labels -> {ref_t:%m-%d %H:%M} labels: {tie['status']} held {tie['held_med']:.2f}/"
+            cap = (f"{cam} TIE {tie.get('base', '09-18')[5:16]} labels -> {ref_t:%m-%d %H:%M} labels: {tie['status']} held {tie['held_med']:.2f}/"
                    f"{tie['held_p90']:.2f}px, {len(tie['units'])} units, rejected {len(tie['rejected'])}")
             ov = draw_overlay(ref, lab18["landmarks"], A_tie, ref_day, cap)
             sc = 2400 / ov.shape[1]
