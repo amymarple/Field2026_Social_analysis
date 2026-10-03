@@ -100,3 +100,62 @@ The proxy is calibrated on open-field clean WISER and then applied in the houses
 mix differs (more in-place activity); its validity there is assumed, not shown. The clean filter selects good conditions,
 so R1 says nothing about speed under poor anchors. Head speed ≠ body speed (head scanning adds path); the 3-s scale
 partly averages it out. The locomotion class used for subsets was itself fitted against WISER speed.
+
+## Amendments
+
+### Amendment 1 (2026-10-03, written before any number of this step was computed) — operational details
+
+Ambiguities resolved by the closest faithful option; no definition, split, threshold or reading rule is changed.
+
+1. **Time label.** "Second $s$" is the field-PC second $[s, s+1)$ of the audit's `imu_seconds` (the unit of the IMU QC
+   and states). The plan's formulas are applied with their time origin at its centre $c = s + 0.5$:
+   $u_3(s)=\lVert\mathbf m(c+1.5)-\mathbf m(c-1.5)\rVert/3$ with medians over $[s-1.5, s-0.5)$ and $[s+1.5, s+2.5)$;
+   $u_1(s)$ from medians over $[s-0.375, s+0.375)$ and $[s+0.625, s+1.375)$; clean span $[c-2, c+2] = [s-1.5, s+2.5]$;
+   IMU feature windows $[s, s+1)$ (1 s) and $[s-1, s+2)$ (3 s). This aligns the reference, the IMU QC second, the
+   feature windows and the default smoother's 1-s speeds (centred at $s + 0.5$).
+2. **Clean second.** "Not in an exclusion" = the audit's per-second `ok` of second $s$ (IMU QC, handling ± 5 min,
+   all-tag silences ± 2 min, tag validity, ADC lane) **and** no fix in the span carrying a fix-cache mask (`m_handling`,
+   `m_silence`, `m_tag_validity`, `m_adc_lane`); "no jump in that span" = no consecutive raw-fix pair > 30 in apart within
+   ≤ 0.35 s with at least one of its two fixes in the span; "fix rate ≥ 3 Hz" = ≥ 12 fixes in the 4-s span; "≥ 14 in
+   outside the house ROIs" = outside `house_1` and `house_2` grown by 14 in on every side (the library's buffered
+   membership, `wiser_analysis_utils._rect_membership`). Fix times are the aligned times ($t - \tau^*$). $u_1$ uses the same
+   clean seconds and additionally needs its two medians.
+3. **Noise floor.** Certified still segments = the audit's primary, scored segments ≥ 30 s (`tables/segments.csv`),
+   trimmed by 1 s at both ends; a floor second's 4-s span lies inside the trimmed segment and meets every clean-second
+   condition except the outside-house one; all ten audit periods (days and nights), reported pooled and by kind × set.
+4. **Features.** Valid 50-Hz samples = the audit's sample QC (`analyze_wiser_failure_audit.sample_valid`: finite,
+   not saturated / frozen / invalid / unreliable, no frozen-rule run, outside handling, silences, ADC lane and the tag
+   window). Time-domain features use the valid samples of the window and need ≥ 50 % of them, else NaN. Spectral
+   features need an ungapped window of exactly $50w$ samples with ≥ 90 % valid (invalid samples set to the window mean),
+   demeaned, Hann taper, one-sided periodogram $P_k = 2\lvert X_k\rvert^2 / (N\sum w_n^2)$ ((m/s²)² per bin); power in
+   2–8 Hz = $\sum P_k$ over bins in $[2, 8]$ Hz, share = that / the sum over $[1, 20]$ Hz, peak frequency = the bin of the
+   largest $P_k$ in $[2, 8]$ Hz (1-Hz resolution at 1 s, 1/3 Hz at 3 s). Horizontal RMS = RMS over the valid samples of
+   $\lVert(a_x, a_y)\rVert$ after a zero-phase order-4 Butterworth band-pass 0.5–8 Hz on each contiguous run (invalid
+   samples zeroed before filtering). QC share = valid samples / $50w$.
+5. **Models.** M1 has an intercept, needs its four features finite, is fitted on the training nights only. M2: other
+   hyper-parameters at scikit-learn 1.7.2 defaults (`max_iter` 100, `early_stopping` 'auto'), `random_state` 0, animal
+   one-hot, fitted on the training nights only (no refit after tuning). Both predictions are clipped at 0 in/s. The
+   tuning-night comparison uses the clean tuning seconds where both models predict. **1-s scale:** the same two model forms
+   fitted to $u_1$ — M1 on the 1-s-window versions of its four features, M2 on all features — and chosen separately by the
+   tuning-night median absolute error at that scale (the plan states the models for $u_3$ only).
+6. **Validity.** Point estimates decide; 10-min block-bootstrap CIs are reported.
+7. **Re-scoring.** A track's speed uses the reference's median estimator on the track's positions at the fix times
+   (≥ 3 fixes per median window). V1 and V2 are the audit's saved forms, V2b the default-smoother deployable form (B2 at
+   IMU-failed fixes), V1b step A's. On clean seconds `raw` *is* the R1 reference (identity check, ratio 1 by
+   construction), so "least biased" is chosen among the seven smoothed tracks; raw stays in R2. R1 primary cell = all six
+   nights pooled, 3-s scale, all clean seconds; speed bands use the reference speed of that scale; calm / rain and the
+   1-s scale are secondary cells. "Closest" = smallest $\max(\lvert d_{50}\rvert, \lvert d_{95}\rvert)$. "Biased" = the
+   95 % CI of $d_{50}$ or $d_{95}$ lies entirely above +10 % or entirely below −10 % (decided on the primary cell,
+   reported for every cell). R2 (nights only) uses the seconds where every track's speed and the proxy are defined. If R1
+   and R2 name different tracks, both are reported and no single track is called least biased.
+8. **Deliverable.** Long format: one row per QC-ok second and valid scale (`sec`, `speed_hat`, `scale`, `qc`, `ok`).
+
+### Note 2 (2026-10-03, after the results; reporting only)
+
+Run `D:\Field2026_analysis_out\2026c\imu_speed_proxy_20261003_1210`: compute 12:10, models frozen by the fit stage at 12:11
+(tuning night only), first test-night / rain-night numbers at 12:12. After the results the report gained (a) a reading-aid
+section explaining that the R1 primary cell is decided by p50 while the reference p50 (1.68 in/s at 3 s) sits at the noise
+floor's p95 (1.64 in/s), so every smoother's negative p50 Δ mixes noise removal with under-following, plus a table of the
+already-computed p95 and speed-band cells; (b) the note that B1 is closest partly by construction (a raw-fix median like the
+reference); (c) figure layout fixes (histogram weights, hexbin range). No definition, threshold, split, model, verdict or
+label was changed; the report was regenerated with `--report-only` from the same frozen models.

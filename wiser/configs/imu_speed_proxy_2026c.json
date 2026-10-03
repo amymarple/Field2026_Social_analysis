@@ -1,0 +1,340 @@
+{
+  "_about": "Head-IMU speed reference independent of the WISER smoother, cohort 2026c (wiser/scripts/analyze_imu_speed_proxy.py; plan implementation_plan/2026-10-03-imu-speed-proxy.md, step B of A -> B -> C, approved by the user 2026-10-03 '干吧'). Animals, periods, exclusions, IMU seconds and certified still segments are the failure audit's (audit_config / audit_run). Reference definitions, features, models, split, validity rule, re-scoring and reading are the plan's (operational details in its Amendment 1, written before any number) and must not be changed after a result. The run writes the fitted models into `fitted` and the verdicts into `result`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "plan": "implementation_plan/2026-10-03-imu-speed-proxy.md",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "default_smoother_run": "D:/Field2026_analysis_out/2026c/wiser_default_smoother_20261002_1626",
+  "v1b_run": "D:/Field2026_analysis_out/2026c/wiser_v1b_20261003_1124",
+  "fix_cache_root": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+  "imu_root": "D:/3rd_rat_spikes/analysis/imu",
+  "feature_cache_root": "D:/Field2026_analysis_out/2026c/imu_speed_features",
+  "deliverable_root": "D:/Field2026_analysis_out/2026c/imu_speed_proxy",
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF12"
+  ],
+  "split": {
+    "train": [
+      "night_20260905",
+      "night_20260906"
+    ],
+    "tune": [
+      "night_20260907"
+    ],
+    "test": [
+      "night_20260908"
+    ],
+    "robustness": [
+      "night_20260903",
+      "night_20260909"
+    ],
+    "_note": "nights 21:00-04:20 (the audit's periods); days excluded from the models (few clean open-field seconds); the noise floor uses all ten audit periods"
+  },
+  "imu_margin_s": 60,
+  "reference": {
+    "u3_offset_s": 1.5,
+    "u3_half_s": 0.5,
+    "u1_offset_s": 0.5,
+    "u1_half_s": 0.375,
+    "min_fix": 3,
+    "time_origin": "second s = field-PC second [s, s+1) of the audit's imu_seconds; formulas centred on c = s + 0.5 (Amendment 1.1)",
+    "clean": {
+      "span_s": 2.0,
+      "min_anchors": 8,
+      "require_valid": true,
+      "fix_masks": [
+        "m_handling",
+        "m_silence",
+        "m_tag_validity",
+        "m_adc_lane"
+      ],
+      "jump_in": 30.0,
+      "jump_dt_s": 0.35,
+      "min_rate_hz": 3.0,
+      "house_rois": [
+        "house_1",
+        "house_2"
+      ],
+      "house_buffer_in": 14.0,
+      "imu_ok": "the audit's per-second ok (IMU QC + handling +- 5 min + all-tag silences +- 2 min + tag validity + ADC lane)"
+    },
+    "floor": {
+      "segments": "audit tables/segments.csv: primary & scored & ge30",
+      "trim_s": 1.0,
+      "periods": "all ten audit periods"
+    }
+  },
+  "features": {
+    "windows_s": [
+      1,
+      3
+    ],
+    "fs": 50.0,
+    "min_valid_share_time": 0.5,
+    "min_valid_share_spectral": 0.9,
+    "hacc_band_hz": [
+      0.5,
+      8.0
+    ],
+    "hacc_butter_order": 4,
+    "stride_band_hz": [
+      2.0,
+      8.0
+    ],
+    "total_band_hz": [
+      1.0,
+      20.0
+    ],
+    "names": [
+      "vedba_mean",
+      "vedba_p90",
+      "hacc_rms",
+      "vpow",
+      "vpeak_hz",
+      "vshare",
+      "omega_mean",
+      "turn_mean",
+      "pitch_sd",
+      "qc"
+    ],
+    "version": 1
+  },
+  "models": {
+    "M1": {
+      "features": [
+        "vedba_mean",
+        "vpow",
+        "vpeak_hz",
+        "omega_mean"
+      ],
+      "per_animal": true,
+      "intercept": true,
+      "clip_min": 0.0
+    },
+    "M2": {
+      "loss": "absolute_error",
+      "grid": {
+        "learning_rate": [
+          0.05,
+          0.1
+        ],
+        "max_depth": [
+          3,
+          5
+        ],
+        "min_samples_leaf": [
+          50,
+          200
+        ]
+      },
+      "random_state": 0,
+      "features": "all features of both windows + animal one-hot",
+      "other": "scikit-learn 1.7.2 defaults (max_iter 100, early_stopping 'auto')",
+      "clip_min": 0.0
+    },
+    "choice": "lower tuning-night median absolute error on the clean tuning seconds where both models predict, separately per scale"
+  },
+  "validity": {
+    "min_u_inps": 5.0,
+    "max_mdare": 0.25,
+    "min_spearman": 0.7,
+    "loco_max_rel": 0.1,
+    "loco_state": 3,
+    "_rule": "test night, clean seconds; all three conditions -> valid at that scale; point estimates decide, CIs reported"
+  },
+  "rescoring": {
+    "tracks": {
+      "raw": "fix cache (float64)",
+      "B1": "audit",
+      "B2": "audit",
+      "B2p": "audit",
+      "V1": "audit",
+      "V2": "audit",
+      "V2b": "default_smoother",
+      "V1b": "v1b"
+    },
+    "smoothed": [
+      "B1",
+      "B2",
+      "B2p",
+      "V1",
+      "V2",
+      "V2b",
+      "V1b"
+    ],
+    "bands_inps": [
+      5.0,
+      15.0
+    ],
+    "bias_bound": 0.1,
+    "primary": {
+      "scale": 3,
+      "set": "all",
+      "band": "all"
+    }
+  },
+  "bootstrap": {
+    "block_s": 600,
+    "n_boot": 1000,
+    "seed": 20261007
+  },
+  "workers": 16,
+  "fitted": {
+    "fitted_local": "2026-10-03 12:11:46",
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_speed_proxy_20261003_1210",
+    "u3": {
+      "choice": "M2",
+      "mae_tune_in_per_s": {
+        "M1": 1.0951,
+        "M2": 0.7535
+      },
+      "n_train": 34043,
+      "n_tune": 10149,
+      "M2_best": {
+        "learning_rate": 0.1,
+        "max_depth": 5,
+        "min_samples_leaf": 200
+      },
+      "M1_coef": {
+        "SF07": {
+          "intercept": 0.164002,
+          "vedba_mean_w3": 1.638574,
+          "vpow_w3": 0.181152,
+          "vpeak_hz_w3": -0.065495,
+          "omega_mean_w3": -0.024602
+        },
+        "SF08": {
+          "intercept": 0.595661,
+          "vedba_mean_w3": 1.112929,
+          "vpow_w3": 0.216178,
+          "vpeak_hz_w3": -0.052436,
+          "omega_mean_w3": -0.014588
+        },
+        "SF09": {
+          "intercept": -1.187213,
+          "vedba_mean_w3": 2.760995,
+          "vpow_w3": 0.211501,
+          "vpeak_hz_w3": 0.086464,
+          "omega_mean_w3": -0.042689
+        },
+        "SF10": {
+          "intercept": -1.510576,
+          "vedba_mean_w3": 1.931062,
+          "vpow_w3": 0.218467,
+          "vpeak_hz_w3": 0.115778,
+          "omega_mean_w3": -0.022441
+        },
+        "SF12": {
+          "intercept": -0.11429,
+          "vedba_mean_w3": 2.293542,
+          "vpow_w3": 0.163787,
+          "vpeak_hz_w3": -0.084306,
+          "omega_mean_w3": -0.032994
+        }
+      },
+      "models": "models/M1_u3.pkl, models/M2_u3.pkl"
+    },
+    "u1": {
+      "choice": "M2",
+      "mae_tune_in_per_s": {
+        "M1": 2.0092,
+        "M2": 1.6804
+      },
+      "n_train": 31893,
+      "n_tune": 8989,
+      "M2_best": {
+        "learning_rate": 0.1,
+        "max_depth": 5,
+        "min_samples_leaf": 200
+      },
+      "M1_coef": {
+        "SF07": {
+          "intercept": 1.779967,
+          "vedba_mean_w1": 1.394961,
+          "vpow_w1": 0.181503,
+          "vpeak_hz_w1": -0.030457,
+          "omega_mean_w1": -0.016961
+        },
+        "SF08": {
+          "intercept": 2.674362,
+          "vedba_mean_w1": 1.06108,
+          "vpow_w1": 0.189426,
+          "vpeak_hz_w1": -0.056139,
+          "omega_mean_w1": -0.010826
+        },
+        "SF09": {
+          "intercept": 1.303899,
+          "vedba_mean_w1": 2.270289,
+          "vpow_w1": 0.191628,
+          "vpeak_hz_w1": 0.021484,
+          "omega_mean_w1": -0.030245
+        },
+        "SF10": {
+          "intercept": 1.415462,
+          "vedba_mean_w1": 1.459333,
+          "vpow_w1": 0.20531,
+          "vpeak_hz_w1": 0.043293,
+          "omega_mean_w1": -0.012172
+        },
+        "SF12": {
+          "intercept": 1.815451,
+          "vedba_mean_w1": 1.784155,
+          "vpow_w1": 0.19344,
+          "vpeak_hz_w1": -0.056253,
+          "omega_mean_w1": -0.020843
+        }
+      },
+      "models": "models/M1_u1.pkl, models/M2_u1.pkl"
+    }
+  },
+  "result": {
+    "valid": {
+      "u3": false,
+      "u1": false
+    },
+    "test_night": {
+      "u3": {
+        "mdare": 0.2625,
+        "spearman": 0.816,
+        "d50": -0.0291,
+        "d95": -0.0776
+      },
+      "u1": {
+        "mdare": 0.4062,
+        "spearman": 0.5763,
+        "d50": -0.1724,
+        "d95": -0.0725
+      }
+    },
+    "R1_least_biased_3s": "B1",
+    "R1_biased_3s": [
+      "B1",
+      "B2",
+      "B2p",
+      "V1",
+      "V2",
+      "V2b",
+      "V1b"
+    ],
+    "R1_least_biased_1s": "B1",
+    "R1_biased_1s": [
+      "B1",
+      "B2",
+      "B2p",
+      "V1",
+      "V2",
+      "V2b",
+      "V1b"
+    ],
+    "least_biased": "B1",
+    "basis": "R1 at the 3-s scale (proxy not valid at that scale -> no R2)",
+    "deliverable": null,
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_speed_proxy_20261003_1210",
+    "report": "results/2026c/wiser_baseline/reports/wiser_baseline_imu_speed_proxy_2026c.md",
+    "decided_local": "2026-10-03 12:27:09"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_speed_proxy_20261003_1210",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "imu_speed_proxy",
+  "report": "wiser_baseline_imu_speed_proxy_2026c.md",
+  "driver": "wiser/scripts/analyze_imu_speed_proxy.py",
+  "config": "wiser/configs/imu_speed_proxy_2026c.json",
+  "plan": "implementation_plan/2026-10-03-imu-speed-proxy.md",
+  "git_commit": "f26b174+dirty",
+  "figures": [
+    "wiser_baseline_imu_speed_proxy_floor_2026c.png",
+    "wiser_baseline_imu_speed_proxy_r1_2026c.png",
+    "wiser_baseline_imu_speed_proxy_test_2026c.png"
+  ],
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "valid_3s": false,
+  "valid_1s": false,
+  "models": {
+    "u3": "M2",
+    "u1": "M2"
+  },
+  "least_biased": "B1",
+  "biased_R1_3s": [
+    "B1",
+    "B2",
+    "B2p",
+    "V1",
+    "V2",
+    "V2b",
+    "V1b"
+  ],
+  "deliverable": null
+}
