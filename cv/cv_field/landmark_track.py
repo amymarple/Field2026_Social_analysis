@@ -21,7 +21,7 @@ Method (no visual judgement; the user reviews the overlays):
      people can stand in front of the distant building):
        stable      POLE_*, BOX_*, WALLTOP_*, TOWER_*, PCBOX, NAILS, SEAM(S)  -> fitted first (A_s; also the coarse stage)
        occludable  PATCH_* / PATCHES, BUILDING, WOOD -> every PIECE is its own unit ("NAME#k"), at most OCC_CAP samples, and
-                   enters the final fit only if >= OCC_MATCH_MIN of its samples matched and its median residual under
+                   enters the final fit only if >= OCC_MATCH_MIN (and >= OCC_MIN_N) of its samples matched and its median residual under
                    A_s is <= OCC_RES_MAX px; otherwise it is DROPPED for that frame (listed per frame).
      PATCHES are matched as BLOCKS (user, 2026-10-01: a patch is a dark block on the white wall): the labelled outline
      is closed (ends joined; an end gap > BLOCK_OPEN_GAP px = a grass-hidden bottom, whose joining band is masked out),
@@ -85,7 +85,11 @@ FIT_PREFIXES = ("POLE_", "BOX_", "WALLTOP_", "TOWER_", "PCBOX", "PATCH_", "SEAM_
 # distant building -> each piece is checked against the stable tier before it may enter the fit
 OCCLUDABLE_PREFIXES = ("PATCH", "BUILDING", "WOOD",       # PATCH_<wall>_<n>, PATCHES, BUILDING, WOOD
                        "FOODBOX", "DOORFRAME", "INNER_EDGES")  # in-box (CH07/CH08): rats sit on / pass through them
-OCC_CAP, OCC_MATCH_MIN, OCC_RES_MAX = 12, 0.6, 3.0
+# a piece is kept if >= OCC_MATCH_MIN of its samples (and >= OCC_MIN_N of them, or all if fewer) matched and they agree
+# with the fit within OCC_RES_MAX (user, 2026-10-03: the in-box edges were dropped at 0.6 although their matched samples
+# sat 1.5 px from the fit - occlusion makes samples NOT match, it rarely makes them match wrongly; the residual check
+# guards the wrong ones)
+OCC_CAP, OCC_MATCH_MIN, OCC_MIN_N, OCC_RES_MAX = 12, 0.25, 3, 3.0
 # Patches = dark blocks on the white wall (user, 2026-10-01) -> one masked 2-D template per patch
 BLOCK_PREFIXES = ("PATCH",)
 BLOCK_MARGIN, BLOCK_OPEN_GAP = 6, 30
@@ -401,7 +405,7 @@ def track_frame(ref_g, tgt_g, landmarks: dict, kinds: dict, frame_day: date, ref
     for u in occ:
         frac = len(per[u]) / max(1, n_samp[u])
         med = float(np.median([residual(A_s, s, d) for s, d, _ in per[u]])) if A_s is not None else np.inf
-        if frac >= OCC_MATCH_MIN and med <= OCC_RES_MAX:
+        if frac >= OCC_MATCH_MIN and len(per[u]) >= min(OCC_MIN_N, n_samp[u]) and med <= OCC_RES_MAX:
             accepted.append(u)
         else:
             dropped[u] = f"matched {frac:.0%}, residual {med:.1f} px"
