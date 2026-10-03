@@ -1,0 +1,19 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_common_mode_20261003_1124",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_common_mode",
+  "report": "wiser_baseline_common_mode_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_common_mode.py",
+  "config": "wiser/configs/wiser_common_mode_2026c.json",
+  "plan": "implementation_plan/2026-10-03-wiser-common-mode.md",
+  "git_commit": "b70f53e+dirty",
+  "figures": [
+    "wiser_baseline_common_mode_c1_anchor_loss_2026c.png",
+    "wiser_baseline_common_mode_c1_correlation_2026c.png",
+    "wiser_baseline_common_mode_c2_distance_2026c.png",
+    "wiser_baseline_common_mode_c3_correction_2026c.png",
+    "wiser_baseline_common_mode_cluster_0910_2026c.png"
+  ],
+  "verdict": "not material"
+}

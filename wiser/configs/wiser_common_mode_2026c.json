@@ -1,0 +1,55 @@
+{
+  "_about": "Inputs and pre-registered rules of step C: WISER common-mode error across tags and pairwise-distance precision, cohort 2026c (wiser/scripts/analyze_wiser_common_mode.py; plan implementation_plan/2026-10-03-wiser-common-mode.md, approved by the user 2026-10-03 as step C of A -> B -> C). Periods, animals, exclusions, certified still segments (primary, >= 30 s, 1 s trimmed at both ends) and their truths are the failure audit's (audit_run / audit_config), used unchanged. Thresholds of the verdict are the plan's. Operational choices and their amendments are listed in the plan. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "fix_cache_root": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+  "methods": ["raw", "B1", "B2", "B2p"],
+  "grid": {
+    "_note": "residual grid = integer seconds of the IMU-aligned clock (t_al_ms); a 1-s value is the coordinate-wise median of the method's fixes in [g - 0.5 s, g + 0.5 s) (>= 2 fixes), a 10-s value the median in [g - 5 s, g + 5 s) (>= 10 fixes, as the audit's 10-s drift); every window lies wholly inside the segment's trimmed span",
+    "half_1s": 0.5,
+    "min_fix_1s": 2,
+    "half_10s": 5.0,
+    "min_fix_10s": 10
+  },
+  "overlap_min_s": 30.0,
+  "lags_s": [-2, -1, 0, 1, 2],
+  "same_zone_pairings": ["same_house", "both_outside"],
+  "distance_bands_in": [14.0, 48.0],
+  "abs_err_hist": {"max_in": 100.0, "step_in": 0.05},
+  "anchors": {
+    "_note": "anchors_list = the anchors listed for the fix (a superset of the anchors used: anchors_used <= n_list in every fix). Reference set of a segment = anchors listed in >= ref_share of its fixes; an anchor of the reference set is lost in a second when it is listed in < lost_share of that second's fixes. Secondary: anchors_used, low = 1-s mean < low_used_lt.",
+    "ref_share": 0.5,
+    "lost_share": 0.5,
+    "low_used_lt": 8.0
+  },
+  "shared_excursion": {
+    "_note": "pair-seconds where both tags' raw 10-s residual magnitudes are >= min_in (the audit's crazy-drift size); runs within a pair overlap = events; events of all pairs overlapping in time (gap <= merge_gap_s) = clusters",
+    "method": "raw",
+    "scale": "10s",
+    "min_in": 12.0,
+    "merge_gap_s": 1.0,
+    "top_n": 20
+  },
+  "c3": {
+    "methods": ["raw", "B2"],
+    "variants": ["z", "a"],
+    "roll_half_s": 5.0,
+    "roll_min_n": 5,
+    "crazy_in": 12.0,
+    "crazy_min_s": 10
+  },
+  "cluster_case": {"time": "2026-09-10 09:48:41", "half_window_s": 300, "period": "day_20260910"},
+  "bootstrap": {"block_s": 600, "n_boot": 1000, "seed": 20261003},
+  "verdict": {
+    "corr_min": 0.3,
+    "rel_change_max": -0.10,
+    "method": "B2",
+    "raw_method": "raw",
+    "corr_scale": "10s",
+    "corr_pairing": "same_zone",
+    "c3_variant": "z",
+    "c3_metrics": ["drift10_p90", "rms_1s"]
+  },
+  "workers": 6
+}
