@@ -1,6 +1,6 @@
 # WISER failure audit with the head IMU as the stillness truth (cohort 2026c)
 
-**Step 1 of the new evaluation** — approved by the user 2026-10-02 ("搞吧"). Plan [`implementation_plan/2026-10-02-wiser-failure-audit.md`](../../../../implementation_plan/2026-10-02-wiser-failure-audit.md) (3 amendments: two before any audit number, one post hoc on the Q4 standardisation — §6); driver `wiser/scripts/analyze_wiser_failure_audit.py` (`--selftest` ALL PASS, 18 checks); config `wiser/configs/wiser_failure_audit_2026c.json`; bulk `D:\Field2026_analysis_out\2026c\wiser_failure_audit_20261002_1511`; git `98a8391+dirty`. Audit only: nothing is tuned, accepted or promoted here.
+**Step 1 of the new evaluation** — approved by the user 2026-10-02 ("搞吧"). Plan [`implementation_plan/2026-10-02-wiser-failure-audit.md`](../../../../implementation_plan/2026-10-02-wiser-failure-audit.md) (3 amendments: two before any audit number, one post hoc on the Q4 standardisation — §6); driver `wiser/scripts/analyze_wiser_failure_audit.py` (`--selftest` ALL PASS, 19 checks; the per-group still tables' speed quantiles were corrected on 2026-10-03, [`implementation_plan/2026-10-03-wiser-v1b-zupt.md`](../../../../implementation_plan/2026-10-03-wiser-v1b-zupt.md)); config `wiser/configs/wiser_failure_audit_2026c.json`; bulk `D:\Field2026_analysis_out\2026c\wiser_failure_audit_20261002_1511`; git `b70f53e+dirty`. Audit only: nothing is tuned, accepted or promoted here.
 
 ## Executive summary
 
@@ -56,10 +56,10 @@ Raw WISER, primary segments ≥ 30 s (truth = segment median; all distances in i
 
 | set | kind | segments | still h | per-fix RMS | p50 | p90 | p99 | 10-s drift med / p90 / max | 60-s drift med / p90 | crazy-drift /h (n) | crazy time | jumps /h | fake speed p50 / p95 / p99 | fake path in/min |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| calm | day | 2791 | 64.3 | **5.60** | 2.67 | 7.38 | 18.8 | 1.48 / 3.82 / 30.8 | 0.61 / 1.86 | 0.047 (3) | 0.02 % | 58 | 3.3 / 12.3 / 23.5 | 270 |
-| calm | night | 454 | 10.3 | **5.36** | 2.65 | 7.01 | 15.5 | 1.60 / 3.76 / 30.5 | 0.52 / 1.36 | 0.000 (0) | 0.00 % | 37 | 3.5 / 12.2 / 22.0 | 256 |
-| rain | day | 707 | 17.5 | **7.84** | 3.26 | 11.06 | 27.9 | 2.00 / 6.45 / 24.8 | 0.95 / 3.73 | 0.285 (5) | 0.10 % | 201 | 3.1 / 11.1 / 20.2 | 372 |
-| rain | night | 208 | 5.0 | **7.38** | 3.49 | 10.89 | 25.4 | 2.30 / 7.05 / 14.8 | 1.03 / 3.00 | 0.198 (1) | 0.06 % | 153 | 4.3 / 14.1 / 22.0 | 366 |
+| calm | day | 2791 | 64.3 | **5.60** | 2.67 | 7.38 | 18.8 | 1.48 / 3.82 / 30.8 | 0.61 / 1.86 | 0.047 (3) | 0.02 % | 58 | 3.2 / 11.8 / 22.2 | 270 |
+| calm | night | 454 | 10.3 | **5.36** | 2.65 | 7.01 | 15.5 | 1.60 / 3.76 / 30.5 | 0.52 / 1.36 | 0.000 (0) | 0.00 % | 37 | 3.2 / 10.9 / 19.3 | 256 |
+| rain | day | 707 | 17.5 | **7.84** | 3.26 | 11.06 | 27.9 | 2.00 / 6.45 / 24.8 | 0.95 / 3.73 | 0.285 (5) | 0.10 % | 201 | 4.0 / 19.9 / 31.3 | 372 |
+| rain | night | 208 | 5.0 | **7.38** | 3.49 | 10.89 | 25.4 | 2.30 / 7.05 / 14.8 | 1.03 / 3.00 | 0.198 (1) | 0.06 % | 153 | 4.2 / 17.8 / 28.4 | 366 |
 
 By `anchors_used` of the fix (per-fix RMS from truth, raw and B2′; share = fraction of still fixes):
 

@@ -7,7 +7,7 @@
   "driver": "wiser/scripts/analyze_wiser_failure_audit.py",
   "config": "wiser/configs/wiser_failure_audit_2026c.json",
   "plan": "implementation_plan/2026-10-02-wiser-failure-audit.md",
-  "git_commit": "98a8391+dirty",
+  "git_commit": "b70f53e+dirty",
   "figures": [
     "wiser_baseline_failure_audit_examples_2026c.png",
     "wiser_baseline_failure_audit_motion_2026c.png",

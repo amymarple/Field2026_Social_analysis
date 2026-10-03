@@ -1167,12 +1167,17 @@ def still_summary(Sg: pd.DataFrame, M: pd.DataFrame, F: pd.DataFrame, SP: dict, 
             "path_in_per_min": float(m.path_in.sum() / (m.path_s.sum() / 60.0)) if m.path_s.sum() else np.nan}
 
 
-def group_table(S: pd.DataFrame, M: pd.DataFrame, F: pd.DataFrame, SP: dict, by: list, methods: list) -> pd.DataFrame:
+def group_table(S: pd.DataFrame, M: pd.DataFrame, F: pd.DataFrame, SP: dict, by: list, methods: list,
+                Sall: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Still summaries per group of S. Sall = the segment table whose row positions the speed index SP refers to (the full
+    segments table, as passed to load_speeds); fix 2026-10-03: it was S itself (the subset being grouped), so the per-group
+    speed quantiles read the wrong segments' speeds (plan implementation_plan/2026-10-03-wiser-v1b-zupt.md)."""
+    Sall = S if Sall is None else Sall
     rows = []
     for key, g in S.groupby(by, dropna=False):
         key = key if isinstance(key, tuple) else (key,)
         for m in methods:
-            rows.append({**dict(zip(by, key)), **still_summary(g, M, F, SP, m, S)})
+            rows.append({**dict(zip(by, key)), **still_summary(g, M, F, SP, m, Sall)})
     return pd.DataFrame(rows)
 
 
@@ -1422,14 +1427,15 @@ def analyze(out: Path, cfg: dict, fh=None) -> dict:
     COV = pd.DataFrame(cov)
     COV.to_csv(tb / "summary_coverage.csv", index=False)
     # ---- Q1 / Q2 tables
-    tabs = {"period": group_table(Sp30, Mt, F, SP, ["set", "kind", "period"], METHODS),
-            "setkind": group_table(Sp30, Mt, F, SP, ["set", "kind"], METHODS),
-            "set": group_table(Sp30, Mt, F, SP, ["set"], METHODS),
-            "animal": group_table(Sp30, Mt, F, SP, ["set", "animal"], ["raw", "B2p"]),
-            "zone": group_table(Sp30, Mt, F, SP, ["set", "kind", "zone"], ["raw", "B2p"]),
-            "segbin": group_table(Sp30, Mt, F, SP, ["set", "anchor_bin"], ["raw", "B2p"]),
-            "hour": group_table(Sp30, Mt, F, SP, ["set", "kind", "hour"], ["raw", "B2p"]),
-            "ge10": group_table(Sp, Mt, F, SP, ["set", "kind"], POS_ONLY)}
+    # Sall = S: the speed index SP holds row positions of the full segments table (load_speeds(out, S)); fix 2026-10-03
+    tabs = {"period": group_table(Sp30, Mt, F, SP, ["set", "kind", "period"], METHODS, S),
+            "setkind": group_table(Sp30, Mt, F, SP, ["set", "kind"], METHODS, S),
+            "set": group_table(Sp30, Mt, F, SP, ["set"], METHODS, S),
+            "animal": group_table(Sp30, Mt, F, SP, ["set", "animal"], ["raw", "B2p"], S),
+            "zone": group_table(Sp30, Mt, F, SP, ["set", "kind", "zone"], ["raw", "B2p"], S),
+            "segbin": group_table(Sp30, Mt, F, SP, ["set", "anchor_bin"], ["raw", "B2p"], S),
+            "hour": group_table(Sp30, Mt, F, SP, ["set", "kind", "hour"], ["raw", "B2p"], S),
+            "ge10": group_table(Sp, Mt, F, SP, ["set", "kind"], POS_ONLY, S)}
     for k, v in tabs.items():
         v.to_csv(tb / f"summary_still_{k}.csv", index=False)
     F30 = F[F.ge30.astype(bool)].copy()
@@ -2030,7 +2036,8 @@ def render_report(A: dict, cfg: dict, out: Path, figs: dict, meta: dict) -> str:
     w(f"**Step 1 of the new evaluation** — approved by the user 2026-10-02 (\"搞吧\"). Plan "
       f"[`implementation_plan/2026-10-02-wiser-failure-audit.md`](../../../../implementation_plan/2026-10-02-wiser-failure-audit.md) "
       f"(3 amendments: two before any audit number, one post hoc on the Q4 standardisation — §6); driver `wiser/scripts/analyze_wiser_failure_audit.py` "
-      f"(`--selftest` ALL PASS, 18 checks); "
+      f"(`--selftest` ALL PASS, 19 checks; the per-group still tables' speed quantiles were corrected on 2026-10-03, "
+      f"[`implementation_plan/2026-10-03-wiser-v1b-zupt.md`](../../../../implementation_plan/2026-10-03-wiser-v1b-zupt.md)); "
       f"config `wiser/configs/wiser_failure_audit_{cohort}.json`; bulk `{out}`; git `{meta['git_commit']}`. "
       f"Audit only: nothing is tuned, accepted or promoted here.\n")
     # ---------------------------------------------------------------- executive summary
@@ -2553,6 +2560,22 @@ def selftest() -> int:
     imm2 = {**imm, "omega_dps": np.where((u >= 4400) & (u < 4500), 50.0, 1.0)}
     S2 = merge_segments(np.array([[0.0, 4000.0], [5000.0, 9000.0]]), imm2, np.ones(len(u), bool), 0.3, scfg)
     check("merge: a quiet 1-s gap joins two windows; a head movement in the gap does not", len(S1) == 1 and len(S2) == 2, f"{len(S1)} / {len(S2)}")
+    # ---- 4) per-group still tables: the speed quantiles of a single group equal the pooled ones (fix 2026-10-03)
+    rq = np.random.default_rng(5)
+    Sq = pd.DataFrame({"seg_id": [f"s{i}" for i in range(6)], "set": ["calm"] * 3 + ["rain"] * 3, "dur_trim_s": 60.0})
+    Mq = pd.DataFrame([{"seg_id": s, "method": "raw", "drift10_in": 1.0, "drift60_in": np.nan, "crazy_n": 0, "crazy_s": 0, "jumps": 0,
+                        "path_in": 10.0, "path_s": 59.0} for s in Sq.seg_id])
+    Fq = pd.DataFrame({"seg_id": np.repeat(Sq.seg_id.to_numpy(), 20), "r_raw": rq.gamma(2.0, 1.0, 120)})
+    spd_q = [rq.gamma(2.0, 1.0 + 3.0 * i, 200).astype(np.float32) for i in range(6)]       # segment i's speeds differ in scale
+    SPq = {"raw": (np.repeat(np.arange(6), 200).astype(np.int64), np.concatenate(spd_q))}
+    sub = Sq[Sq.set == "rain"]
+    gq = group_table(sub, Mq, Fq, SPq, ["set"], ["raw"], Sq).iloc[0]
+    pq = still_summary(sub, Mq, Fq, SPq, "raw", Sq)
+    direct = float(np.percentile(np.concatenate(spd_q[3:]), 95))
+    old = group_table(sub, Mq, Fq, SPq, ["set"], ["raw"]).iloc[0]          # the pre-fix call (positions of the subset)
+    check("group table: a single group's speed p95 equals the pooled one and the direct quantile",
+          abs(gq["speed_p95"] - pq["speed_p95"]) < 1e-9 and abs(gq["speed_p95"] - direct) < 1e-6,
+          f"grouped {gq['speed_p95']:.4f}, pooled {pq['speed_p95']:.4f}, direct {direct:.4f} (pre-fix call {old['speed_p95']:.4f})")
     print(f"selftest {time.time() - t_start:.1f} s -> {'ALL PASS' if ok_all else 'FAILED'}", flush=True)
     return 0 if ok_all else 1
 

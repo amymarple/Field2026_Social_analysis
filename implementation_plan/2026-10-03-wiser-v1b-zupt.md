@@ -128,8 +128,9 @@ guards and the probe address it only partly.
 
 ## Amendments
 
-All five were made on 2026-10-03 at ≈ 11:25 local, **before any pooled V1b number was seen** (after the synthetic selftest
-only; the field run had not started). None changes a candidate, a threshold or the decision rule.
+Amendments 1–5 were made on 2026-10-03 at 11:24 local (file time 11:24:20), **before any pooled V1b number was seen**
+(after the synthetic selftest and two single-animal smoke tests only; the field run `wiser_v1b_20261003_1124` was started
+right after). None changes a candidate, a threshold or the decision rule. Note 6 was added after the pooled numbers.
 
 1. **Selftest bound "V1b = B2 ≥ 3 s from any ZUPT fix (≤ 0.05 in)" is read on the p99** (the E1a statistic), the max is
    printed. On the synthetic track the V1b − B2 difference decays smoothly with the time from the last ZUPT fix (the
@@ -157,3 +158,10 @@ only; the field run had not started). None changes a candidate, a threshold or t
    default-smoother code paths (S2 subsets: IMU-locomoting = state 3, WISER-fast inside the analysis mask; S5 paired
    events where both lags are defined); the E1a p99 CI uses a 0.001-in histogram inside the block bootstrap
    (seed 20261006).
+6. **Note, made after the pooled numbers (2026-10-03 ≈ 11:50; reported diagnostics only, no effect on E1–E3 or the
+   decision):** the report adds (a) an E1b subset "WISER-fast without the IMU-still seconds", to show where the rain
+   WISER-fast p50 change (−2.4 %) comes from; (b) per-event change counts for E2 (events changed, direction, events whose B2
+   crossing lay inside the IMU-still run), because the pre-registered median Δ is 0 while 16–29 % of events shift;
+   (c) "Reading" paragraphs. The first full aggregation stopped in a figure (negative error bars where an exact point
+   estimate lay outside its histogram-bootstrap CI); the bars are clipped at 0 and the report was regenerated with
+   `--report-only` from the same compute outputs.

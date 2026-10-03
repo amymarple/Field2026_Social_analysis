@@ -1,0 +1,102 @@
+{
+  "_about": "V1b = B2 + a guarded head-IMU zero-velocity constraint, cohort 2026c (wiser/scripts/analyze_wiser_v1b.py; plan implementation_plan/2026-10-03-wiser-v1b-zupt.md, approved by the user 2026-10-03 '干吧', step A). Periods, animals, exclusions, IMU seconds and certified still segments are the failure audit's (audit_config / audit_run); S1/S2/S4/S5 definitions are the default-smoother step's (default_smoother_config). B2 = the smoothing pilot's tuned B2 (smoothing_config -> tuned.B2), unchanged. Candidate, sensitivities, thresholds and the decision rule are the plan's and must not be changed after a result. The run writes its verdict into `decision`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "default_smoother_run": "D:/Field2026_analysis_out/2026c/wiser_default_smoother_20261002_1626",
+  "default_smoother_config": "wiser/configs/wiser_default_smoother_2026c.json",
+  "smoothing_config": "wiser/configs/wiser_imu_smoothing_2026c.json",
+  "fix_cache_root": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+  "v1b": {
+    "base": "tuned.B2 of smoothing_config: q 3 in^2/s^3, anchors_used noise table, chi2 gate (13.8155) + 2 Huber IRLS passes (k_H 2.5), forward KF + RTS",
+    "sigma_zupt_inps": 1.0,
+    "huber_zupt": true,
+    "huber_k": 2.5,
+    "min_run_s": 3,
+    "erode_s": 1,
+    "release": {
+      "ref_s": 5.0,
+      "ref_min_fix": 10,
+      "roll_s": 5.0,
+      "dist_in": 12.0,
+      "min_dur_s": 5.0,
+      "grid_s": 0.25,
+      "roll_min_fix": 5,
+      "_op": "grid_s, roll_min_fix, 'continuously' (an undefined centre ends a stretch) and 'for > 5 s' (span last - first centre > 5 s) are operational choices recorded in the plan's amendment 2 before any V1b number"
+    }
+  },
+  "variants": {
+    "V1b_nr": {
+      "sigma_zupt_inps": 1.0,
+      "huber_zupt": true,
+      "min_run_s": 3,
+      "erode_s": 1,
+      "release": false,
+      "_note": "V1b-noRelease (guards 1-2 only)"
+    },
+    "V1b_raw": {
+      "sigma_zupt_inps": 0.25,
+      "huber_zupt": false,
+      "min_run_s": 1,
+      "erode_s": 0,
+      "release": false,
+      "_note": "the original proposal: no erosion, no minimum run, Gaussian, no release"
+    }
+  },
+  "acceptance": {
+    "E1a_p99_max_in": 0.5,
+    "E1a_min_dist_to_zupt_s": 3.0,
+    "E1b_max_rel": 0.05,
+    "E1b_wiser_fast_inps": 10.0,
+    "E2_max_abs_dlag_s": 0.5,
+    "E3_max_jumps": 0,
+    "_rule": "V1b passes E1 (E1a calm and rain, E1b both quantiles x both subsets x both sets) and E2 (onset and offset, calm and rain) and E3 -> V1b is the default WISER track for the implanted animals (B2 by construction where the IMU QC fails), B2 the universal baseline; any failure -> B2 stays the default. Point estimates decide; CIs reported. No sensitivity variant is promoted."
+  },
+  "bootstrap": {
+    "block_s": 600,
+    "n_boot": 1000,
+    "seed": 20261006,
+    "_note": "10-min animal-period blocks drawn with replacement within each set; paired = the same draw for every method"
+  },
+  "nis": {
+    "chi2_2_q95": 5.991464547107979,
+    "expect_mean": 2.0
+  },
+  "cluster": {
+    "label": "09-10 09:48 four-tag cluster",
+    "period": "day_20260910",
+    "center": "2026-09-10 09:48:41",
+    "half_window_s": 300
+  },
+  "workers": 16,
+  "decision": {
+    "V1b_passes": true,
+    "failed_claims": [],
+    "default_wiser_track_implanted": "V1b",
+    "universal_baseline": "B2",
+    "where": "SF07-SF12 wherever the IMU QC passes (V1b is B2 by construction elsewhere)",
+    "E1a_p99_in": {
+      "calm": 0.019636837877333117,
+      "rain": 0.018591448217630396
+    },
+    "E1b_worst_abs_rel": 0.02435,
+    "E2_dlag_med_s": {
+      "calm onset": 0.0,
+      "calm offset": 0.0,
+      "rain onset": 0.0,
+      "rain offset": 0.0
+    },
+    "E3_jumps_still_motion": [
+      0,
+      0
+    ],
+    "sensitivity": {
+      "V1b_nr": "fail E1",
+      "V1b_raw": "fail E1"
+    },
+    "variants_that_would_pass": [],
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_v1b_20261003_1124",
+    "report": "results/2026c/wiser_baseline/reports/wiser_baseline_v1b_2026c.md",
+    "decided_local": "2026-10-03 11:49:52"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_v1b_20261003_1124",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_v1b",
+  "report": "wiser_baseline_v1b_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_v1b.py",
+  "config": "wiser/configs/wiser_v1b_2026c.json",
+  "plan": "implementation_plan/2026-10-03-wiser-v1b-zupt.md",
+  "git_commit": "44ce779+dirty",
+  "figures": [
+    "wiser_baseline_v1b_cluster_2026c.png",
+    "wiser_baseline_v1b_criteria_2026c.png",
+    "wiser_baseline_v1b_e1_profile_2026c.png",
+    "wiser_baseline_v1b_nis_2026c.png",
+    "wiser_baseline_v1b_still_2026c.png"
+  ],
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "v1b_passes": true,
+  "default_implanted": "V1b"
+}
