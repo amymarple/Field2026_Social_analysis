@@ -256,3 +256,17 @@ hourly all day + 10 min before / after each lid event, from both 09-04 reference
   (11 of 18 > 10 px) vs 5.9 px within a segment -> the camera does move when the lid is lifted**. CH08 268 / 367 usable
   (29 of 34 segments); jumps median 4.9 px, 4 of 26 > 10 px (max 102), within-segment 7.1 px. Lookups never interpolate
   across a lid event and flag 'lid' inside one.
+
+**In-box cameras, round 2 (2026-10-03).** The user: CH07's dropped (orange) edges sat on the structures; a few CH07 frames
+are bad only because the lid was open (camera pointing elsewhere; those fall in the lid windows). (1) Occludable gate:
+keep a piece if >= 25 % (and >= 3) of its samples matched, residual <= 3 px unchanged (was >= 60 %: 1574 of the CH07
+drops were for match fraction while their samples sat 1.5 px from the fit). Rerun CH07/CH08 24 h and CH03/CH04 nights:
+CH07 usable 108/307 -> 245/361, CH08 268/367 -> 303/385; CH03/CH04 unchanged (patches are blocks, nails not occludable).
+(2) The larger sample set showed 15-24-px jumps between consecutive samples, mostly where they came from different
+references; a global re-alignment of the two references (median of their differences on 110 / 280 shared frames) changed
+little (CH08 1.9 -> 2.0 px), i.e. single wrong fits, not an offset. (3) Hence, since the in-box cameras move only when a
+lid is lifted: **the correction of a lid-closed segment is the median of its usable samples; samples > 10 px from it are
+'outlier'** (CH07 43, CH08 7). In-segment spread then 2.9 px (CH07) / 1.1 px (CH08). Segment-to-segment jumps across a
+lid event: CH07 median 4.9 px, 8 of 32 > 10 px (max 31: 09-17 collection, 09-12 final round, 09-09 AM, 09-08 PM, 09-16
+animals in); CH08 median 2.4 px, 3 of 30 > 10 px (09-02 AM round 96 px, 09-12 final round 41 px). Table: CH07 202 ok /
+86 sample / 43 outlier / 30 lid; CH08 296 / 40 / 7 / 42.

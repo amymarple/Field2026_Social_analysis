@@ -62,6 +62,16 @@ NIGHT_CAMS = {"CH01", "CH02", "CH03", "CH04", "CH05", "CH06"}
 LID_CAMS = {"CH07", "CH08"}
 LID_EVENTS = REPO / "cv" / "configs" / "cohort3_lid_events.json"
 TRACK_TAGS = ("ch0304_ref0904night_hourly", "ch0506_ref0904night_hourly", "ch0708_ref0904day_24h", "ch0708_ref0904night_24h")
+# CH07/CH08 are tracked from two references whose label tie is weak (3 structures; 3.9 / 8.1 and 4.6 / 5.7 px): mixing
+# them made 15-24 px jumps whenever consecutive samples came from different references (2026-10-03). The night-reference
+# samples are therefore re-aligned to the day reference by the median of their differences on frames where both fit.
+# The in-box cameras move only when a lid is lifted (user, 2026-10-02/03): within a lid-closed segment the camera is
+# static, so the segment's correction is the elementwise MEDIAN of its usable samples, and a sample whose image-centre
+# position is > SEG_OUTLIER_PX from that median is a wrong fit (flag 'outlier'). CH08's consecutive in-segment steps
+# have a median of 0.8 px, so a 10-px tolerance only removes failures.
+SEG_OUTLIER_PX = 10.0
+ALIGN_PAIRS = {"CH07": ("ch0708_ref0904night_24h", "ch0708_ref0904day_24h"),
+               "CH08": ("ch0708_ref0904night_24h", "ch0708_ref0904day_24h")}
 A_KEYS = ("a11", "a12", "a13", "a21", "a22", "a23")
 B_KEYS = ("b11", "b12", "b13", "b21", "b22", "b23")
 FMT = "%Y-%m-%d %H" + ":" + "%M" + ":" + "%S"
@@ -90,6 +100,59 @@ def segment_of(t: datetime, events: list[tuple[datetime, datetime]]) -> tuple[in
     k = sum(1 for a, b in events if b <= t)
     inside = any(a <= t < b for a, b in events)
     return k, inside
+
+
+def align_references(rows: list[dict], W: float = 2560.0, Hh: float = 1920.0) -> dict:
+    """For each camera in ALIGN_PAIRS: C = elementwise median over frames where both references fit (sample_ok) of
+    inv(A_from) @ A_to (3x3), applied to every row of the 'from' reference as A <- A_from @ C. Returns per-camera
+    stats: n shared frames, centre residual between the two references before / after (median, p90, px)."""
+    stats = {}
+    for cam, (frm, to) in ALIGN_PAIRS.items():
+        by = {}
+        for r in rows:
+            if r["camera"] == cam and r["sample_ok"] and r["source"] in (frm, to):
+                by.setdefault(r["time"], {})[r["source"]] = r
+        shared = [(v[frm], v[to]) for v in by.values() if frm in v and to in v]
+        if len(shared) < 5:
+            stats[cam] = {"n": len(shared), "note": "too few shared frames - not aligned"}
+            continue
+        M3 = lambda r: np.vstack([mat(r), [0, 0, 1.0]])  # noqa: E731
+        Cs = np.array([np.linalg.inv(M3(a)) @ M3(b) for a, b in shared])
+        C = np.median(Cs, axis=0)
+        c = np.array([W / 2, Hh / 2, 1.0])
+        before = [float(np.hypot(*((M3(a) - M3(b)) @ c)[:2])) for a, b in shared]
+        after = [float(np.hypot(*((M3(a) @ C - M3(b)) @ c)[:2])) for a, b in shared]
+        for r in rows:
+            if r["camera"] == cam and r["source"] == frm:
+                A = (np.vstack([mat(r), [0, 0, 1.0]]) @ C)[:2]
+                r.update({k: float(v) for k, v in zip(A_KEYS, A.ravel())})
+                r["aligned"] = f"to {to} (median of {len(shared)} shared frames)"
+        stats[cam] = {"n": len(shared), "before_med": float(np.median(before)), "before_p90": float(np.percentile(before, 90)),
+                       "after_med": float(np.median(after)), "after_p90": float(np.percentile(after, 90))}
+    return stats
+
+
+def segment_medians(rows: list[dict], W: float = 2560.0, Hh: float = 1920.0) -> dict:
+    """Per in-box camera and lid-closed segment: median A of the usable samples (flag ok), outliers > SEG_OUTLIER_PX at the
+    image centre flagged and the median recomputed without them. Returns {(cam, segment): stats}."""
+    c = np.array([W / 2, Hh / 2, 1.0])
+    out = {}
+    for cam in LID_CAMS:
+        segs = {}
+        for r in rows:
+            if r["camera"] == cam and r["flag"] == "ok":
+                segs.setdefault(str(r["segment"]), []).append(r)
+        for seg, rs in segs.items():
+            med = np.median([mat(r) for r in rs], axis=0)
+            for r in rs:
+                r["seg_dev_px"] = float(np.hypot(*((mat(r) - med) @ c)))
+                if r["seg_dev_px"] > SEG_OUTLIER_PX:
+                    r["flag"] = "outlier"
+            good = [r for r in rs if r["flag"] == "ok"]
+            med = np.median([mat(r) for r in good], axis=0) if good else med
+            dev = [float(np.hypot(*((mat(r) - med) @ c))) for r in good]
+            out[(cam, seg)] = {"n": len(good), "outliers": len(rs) - len(good), "spread_med_px": float(np.median(dev)) if dev else np.nan}
+    return out
 
 
 def invert(A: np.ndarray) -> np.ndarray:
@@ -178,10 +241,6 @@ def build(cohort: str, night_run: Path | None, track_runs: list[tuple[str, Path]
     rain = rain_by_night(weather_dir, sorted({date.fromisoformat(r["night"]) for r in rows}))
     events = lid_events()
     for r in rows:
-        A = mat(r)
-        r.update({k: float(v) for k, v in zip(B_KEYS, invert(A).ravel())})
-        r["rain_mm_night"] = rain.get(date.fromisoformat(r["night"]), np.nan)
-        night_bad = r["night_quality"] == "dawn closure" and r["night_verdict"] != "PASS"
         mx_med, mx_p90 = SAMPLE_RULE.get(r["camera"], (3.0, 6.0))
         try:
             hm, hp = float(r["held_med_px"]), float(r["held_p90_px"])
@@ -189,8 +248,15 @@ def build(cohort: str, night_run: Path | None, track_runs: list[tuple[str, Path]
             hm = hp = np.nan
         r["sample_ok"] = bool(np.isfinite(hm) and hm <= mx_med and hp <= mx_p90)
         r["sample_rule_px"] = f"{mx_med:g}/{mx_p90:g}"
+    src["_reference_alignment"] = align_references(rows)
+    for r in rows:
+        A = mat(r)
+        r.update({k: float(v) for k, v in zip(B_KEYS, invert(A).ravel())})
+        r["rain_mm_night"] = rain.get(date.fromisoformat(r["night"]), np.nan)
+        night_bad = r["night_quality"] == "dawn closure" and r["night_verdict"] != "PASS"
         r["segment"], inside = segment_of(datetime.strptime(r["time"], FMT), events) if r["camera"] in LID_CAMS else ("", False)
         r["flag"] = "lid" if inside else "sample" if not r["sample_ok"] else "night" if night_bad else "ok"
+    src["_segments"] = segment_medians(rows)
     # one row per camera and time: two references (CH07/CH08 day + night) -> keep the better fit (usable first, lower p90)
     best = {}
     for r in rows:
@@ -228,10 +294,20 @@ class Corrections:
         else:
             allr = self.samples(cam, n)
             info = {"camera": cam, "night": f"{n}"}
-        use = [r for r in allr if r["flag"] not in ("sample", "lid")] or allr
+        use = [r for r in allr if r["flag"] not in ("sample", "lid", "outlier")] or allr
         info["n_samples"] = len(use)
         if not use:
             return None, {**info, "flag": "no samples for this night / segment"}
+        if cam in LID_CAMS:                                    # static between lid events: the segment median
+            good = [r for r in use if r["flag"] == "ok"]
+            A = np.median([mat(r) for r in (good or use)], axis=0)
+            flags = ["ok"] if good else sorted({r["flag"] for r in use})
+            if info.get("lid_open"):
+                flags = sorted(set(flags) | {"lid"})
+            return invert(A), {**info, "used": f"median of {len(good or use)} samples of segment {info['segment']}",
+                               "flag": "ok" if flags == ["ok"] else "+".join(flags), "target_frame": use[0].get("target_frame", ""),
+                               "night_quality": use[0]["night_quality"], "night_quality_px": use[0]["night_quality_px"],
+                               "rain_mm_night": use[0]["rain_mm_night"]}
         ts = [r["_t"] for r in use]
         if t <= ts[0] or len(use) == 1:
             A, used = mat(use[0]), [use[0]]
@@ -276,7 +352,7 @@ def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
     import output_paths as op
     rep = op.report_dir(cohort, "cv_field")
     out = rep / f"cv_field_frame_corrections_{cohort}.csv"
-    keys = ["camera", "night", "time", "segment", "source", "target_frame", "flag", "sample_rule_px", "status", "held_med_px", "held_p90_px", "night_quality",
+    keys = ["camera", "night", "time", "segment", "seg_dev_px", "source", "aligned", "target_frame", "flag", "sample_rule_px", "status", "held_med_px", "held_p90_px", "night_quality",
             "night_quality_px", "night_verdict", "rain_mm_night", *A_KEYS, *B_KEYS]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
@@ -287,13 +363,25 @@ def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
          f"Generated {datetime.now():%Y-%m-%d %H:%M} by `cv/cv_field/frame_correction.py build` (method, columns, flags and "
          "lookup in its docstring). Table: `cv_field_frame_corrections_" + cohort + ".csv` (A = 09-18 px -> frame px, B = "
          "frame px -> 09-18 px; full-resolution upright pixels). Use `Corrections(cohort).to_paddock(cam, t, uv, z_mm=60)`.\n",
-         "Sources: " + "; ".join(f"{k}: `{v}`" for k, v in src.items()) + ".\n",
+         "Sources: " + "; ".join(f"{k}: `{v}`" for k, v in src.items() if not k.startswith("_")) + ".\n",
+         "Reference alignment (CH07/CH08 night-reference samples -> the day reference, median over frames where both fit): "
+         + "; ".join(f"{c}: n {a.get('n')}, centre difference median {a.get('before_med', float('nan')):.1f} -> {a.get('after_med', float('nan')):.1f} px, "
+                     f"p90 {a.get('before_p90', float('nan')):.1f} -> {a.get('after_p90', float('nan')):.1f} px"
+                     for c, a in src.get("_reference_alignment", {}).items()) + ".\n",
          "Precision (user, 2026-10-02): CH01/CH02 dawn closure <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px "
          "(~1-2 cm). Sample rule (held-out median / p90): CH01/CH02 3 / 6 px, CH03/CH04 5 / 10 px. The 09-24 calibration's "
          "own error (76 mm median cross-camera) is separate and not reduced here.\n",
+         "In-box cameras (CH07/CH08): static between lid events -> per lid-closed segment the median of its usable samples; "
+         f"samples > {SEG_OUTLIER_PX:g} px from it are flagged 'outlier'. " + "; ".join(
+             f"{c}: {sum(1 for (cc, _), v in src.get('_segments', {}).items() if cc == c and v['n'])} segments, "
+             f"{sum(v['outliers'] for (cc, _), v in src.get('_segments', {}).items() if cc == c)} outliers, in-segment spread median "
+             f"{np.nanmedian([v['spread_med_px'] for (cc, _), v in src.get('_segments', {}).items() if cc == c] or [np.nan]):.1f} px"
+             for c in sorted(LID_CAMS)) + ".\n",
          "Summary: " + "; ".join(f"{c} {sum(r['flag'] == 'ok' for r in rows if r['camera'] == c)} ok / "
                                   f"{sum(r['flag'] == 'sample' for r in rows if r['camera'] == c)} sample / "
-                                  f"{sum(r['flag'] == 'night' for r in rows if r['camera'] == c)} night of "
+                                  f"{sum(r['flag'] == 'night' for r in rows if r['camera'] == c)} night / "
+                                  f"{sum(r['flag'] == 'outlier' for r in rows if r['camera'] == c)} outlier / "
+                                  f"{sum(r['flag'] == 'lid' for r in rows if r['camera'] == c)} lid of "
                                   f"{sum(r['camera'] == c for r in rows)}" for c in sorted({r['camera'] for r in rows})) + ".\n",
          "| camera | night | samples | ok / sample / night flags | held-out median px (median) | night quality px | verdict | rain mm (21:00-04:20) | shift range tx, ty px |",
          "|---|---|---|---|---|---|---|---|---|"]

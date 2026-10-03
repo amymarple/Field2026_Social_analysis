@@ -1,12 +1,16 @@
 # Frame corrections, whole-field cameras, nights (cohort `2026c`)
 
-Generated 2026-10-03 16:02 by `cv/cv_field/frame_correction.py build` (method, columns, flags and lookup in its docstring). Table: `cv_field_frame_corrections_2026c.csv` (A = 09-18 px -> frame px, B = frame px -> 09-18 px; full-resolution upright pixels). Use `Corrections(cohort).to_paddock(cam, t, uv, z_mm=60)`.
+Generated 2026-10-03 19:16 by `cv/cv_field/frame_correction.py build` (method, columns, flags and lookup in its docstring). Table: `cv_field_frame_corrections_2026c.csv` (A = 09-18 px -> frame px, B = frame px -> 09-18 px; full-resolution upright pixels). Use `Corrections(cohort).to_paddock(cam, t, uv, z_mm=60)`.
 
-Sources: CH01/CH02 night chain: `D:\Field2026_analysis_out\2026c\cv_field_landmark_night_20261002_0417`; ch0304_ref0904night_hourly: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0304_ref0904night_hourly_20261002_0402`; ch0506_ref0904night_hourly: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0506_ref0904night_hourly_20261003_1427`; ch0708_ref0904day_24h: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0708_ref0904day_24h_20261003_1451`; ch0708_ref0904night_24h: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0708_ref0904night_24h_20261003_1554`.
+Sources: CH01/CH02 night chain: `D:\Field2026_analysis_out\2026c\cv_field_landmark_night_20261002_0417`; ch0304_ref0904night_hourly: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0304_ref0904night_hourly_20261003_1849`; ch0506_ref0904night_hourly: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0506_ref0904night_hourly_20261003_1427`; ch0708_ref0904day_24h: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0708_ref0904day_24h_20261003_1834`; ch0708_ref0904night_24h: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0708_ref0904night_24h_20261003_1842`.
+
+Reference alignment (CH07/CH08 night-reference samples -> the day reference, median over frames where both fit): CH07: n 110, centre difference median 7.7 -> 6.8 px, p90 25.2 -> 24.9 px; CH08: n 280, centre difference median 1.9 -> 2.0 px, p90 11.9 -> 11.8 px.
 
 Precision (user, 2026-10-02): CH01/CH02 dawn closure <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px (~1-2 cm). Sample rule (held-out median / p90): CH01/CH02 3 / 6 px, CH03/CH04 5 / 10 px. The 09-24 calibration's own error (76 mm median cross-camera) is separate and not reduced here.
 
-Summary: CH01 98 ok / 0 sample / 26 night of 124; CH02 116 ok / 1 sample / 8 night of 125; CH03 102 ok / 22 sample / 0 night of 124; CH04 124 ok / 2 sample / 0 night of 126; CH05 116 ok / 9 sample / 0 night of 125; CH06 123 ok / 3 sample / 0 night of 126; CH07 108 ok / 175 sample / 0 night of 307; CH08 268 ok / 59 sample / 0 night of 367.
+In-box cameras (CH07/CH08): static between lid events -> per lid-closed segment the median of its usable samples; samples > 10 px from it are flagged 'outlier'. CH07: 33 segments, 84 outliers, in-segment spread median 2.9 px; CH08: 32 segments, 35 outliers, in-segment spread median 1.1 px.
+
+Summary: CH01 98 ok / 0 sample / 26 night / 0 outlier / 0 lid of 124; CH02 116 ok / 1 sample / 8 night / 0 outlier / 0 lid of 125; CH03 102 ok / 22 sample / 0 night / 0 outlier / 0 lid of 124; CH04 124 ok / 2 sample / 0 night / 0 outlier / 0 lid of 126; CH05 116 ok / 9 sample / 0 night / 0 outlier / 0 lid of 125; CH06 123 ok / 3 sample / 0 night / 0 outlier / 0 lid of 126; CH07 202 ok / 86 sample / 0 night / 43 outlier / 30 lid of 361; CH08 296 ok / 40 sample / 0 night / 7 outlier / 42 lid of 385.
 
 | camera | night | samples | ok / sample / night flags | held-out median px (median) | night quality px | verdict | rain mm (21:00-04:20) | shift range tx, ty px |
 |---|---|---|---|---|---|---|---|---|
@@ -54,15 +58,15 @@ Summary: CH01 98 ok / 0 sample / 26 night of 124; CH02 116 ok / 1 sample / 8 nig
 | CH03 | 2026-09-16 | 9 | 5 / 4 / 0 | 4.77 | 2.16 | unreliable | 0.00 | see CSV |
 | CH04 | 2026-08-30 | 9 | 7 / 2 / 0 | 3.37 | 3.05 | unreliable | 0.00 | see CSV |
 | CH04 | 2026-08-31 | 9 | 9 / 0 / 0 | 2.73 | 3.05 | unreliable | 2.50 | see CSV |
-| CH04 | 2026-09-01 | 9 | 9 / 0 / 0 | 2.47 | 3.05 | unreliable | 0.00 | see CSV |
+| CH04 | 2026-09-01 | 9 | 9 / 0 / 0 | 2.38 | 3.05 | unreliable | 0.00 | see CSV |
 | CH04 | 2026-09-02 | 9 | 9 / 0 / 0 | 1.34 | 3.05 | unreliable | 0.25 | see CSV |
 | CH04 | 2026-09-03 | 9 | 9 / 0 / 0 | 0.34 | 3.05 | unreliable | 18.40 | see CSV |
-| CH04 | 2026-09-04 | 9 | 9 / 0 / 0 | 0.91 | 3.05 | unreliable | 0.00 | see CSV |
-| CH04 | 2026-09-05 | 9 | 9 / 0 / 0 | 1.42 | 3.05 | unreliable | 0.00 | see CSV |
-| CH04 | 2026-09-06 | 9 | 9 / 0 / 0 | 1.12 | 3.05 | unreliable | 0.00 | see CSV |
-| CH04 | 2026-09-07 | 9 | 9 / 0 / 0 | 1.56 | 3.05 | unreliable | 0.00 | see CSV |
-| CH04 | 2026-09-08 | 9 | 9 / 0 / 0 | 1.90 | 3.05 | unreliable | 0.00 | see CSV |
-| CH04 | 2026-09-09 | 9 | 9 / 0 / 0 | 1.31 | 3.05 | unreliable | 7.20 | see CSV |
+| CH04 | 2026-09-04 | 9 | 9 / 0 / 0 | 0.83 | 3.05 | unreliable | 0.00 | see CSV |
+| CH04 | 2026-09-05 | 9 | 9 / 0 / 0 | 1.15 | 3.05 | unreliable | 0.00 | see CSV |
+| CH04 | 2026-09-06 | 9 | 9 / 0 / 0 | 1.26 | 3.05 | unreliable | 0.00 | see CSV |
+| CH04 | 2026-09-07 | 9 | 9 / 0 / 0 | 1.57 | 3.05 | unreliable | 0.00 | see CSV |
+| CH04 | 2026-09-08 | 9 | 9 / 0 / 0 | 2.25 | 3.05 | unreliable | 0.00 | see CSV |
+| CH04 | 2026-09-09 | 9 | 9 / 0 / 0 | 1.22 | 3.05 | unreliable | 7.20 | see CSV |
 | CH04 | 2026-09-10 | 9 | 9 / 0 / 0 | 1.40 | 3.05 | unreliable | 0.00 | see CSV |
 | CH04 | 2026-09-11 | 9 | 9 / 0 / 0 | 2.06 | 3.05 | unreliable | 0.00 | see CSV |
 | CH04 | 2026-09-16 | 9 | 9 / 0 / 0 | 2.74 | 3.05 | unreliable | 0.00 | see CSV |
@@ -94,34 +98,35 @@ Summary: CH01 98 ok / 0 sample / 26 night of 124; CH02 116 ok / 1 sample / 8 nig
 | CH06 | 2026-09-10 | 9 | 9 / 0 / 0 | 2.00 | 2.54 | ok | 0.00 | see CSV |
 | CH06 | 2026-09-11 | 9 | 9 / 0 / 0 | 1.81 | 2.54 | ok | 0.00 | see CSV |
 | CH06 | 2026-09-16 | 9 | 9 / 0 / 0 | 1.84 | 2.54 | ok | 0.00 | see CSV |
-| CH07 | 2026-08-30 | 19 | 6 / 8 / 0 | 4.38 | 0.00 | same frame | 0.00 | see CSV |
-| CH07 | 2026-08-31 | 20 | 9 / 9 / 0 | 4.67 | 0.00 | same frame | 2.50 | see CSV |
-| CH07 | 2026-09-01 | 20 | 6 / 14 / 0 | inf | 0.00 | same frame | 0.00 | see CSV |
-| CH07 | 2026-09-02 | 23 | 8 / 13 / 0 | 4.34 | 0.00 | same frame | 0.25 | see CSV |
-| CH07 | 2026-09-03 | 26 | 16 / 8 / 0 | 1.06 | 3.89 | unreliable | 18.40 | see CSV |
-| CH07 | 2026-09-04 | 26 | 20 / 5 / 0 | 2.45 | 0.00 | same frame | 0.00 | see CSV |
-| CH07 | 2026-09-05 | 25 | 11 / 11 / 0 | 5.63 | 0.00 | same frame | 0.00 | see CSV |
-| CH07 | 2026-09-06 | 23 | 4 / 16 / 0 | inf | 0.00 | same frame | 0.00 | see CSV |
-| CH07 | 2026-09-07 | 23 | 4 / 18 / 0 | 5.17 | 3.89 | unreliable | 0.00 | see CSV |
-| CH07 | 2026-09-08 | 23 | 4 / 18 / 0 | 12.08 | 3.89 | unreliable | 0.00 | see CSV |
-| CH07 | 2026-09-09 | 23 | 8 / 14 / 0 | 4.30 | 3.89 | unreliable | 7.20 | see CSV |
-| CH07 | 2026-09-10 | 23 | 7 / 15 / 0 | 4.36 | 3.89 | unreliable | 0.00 | see CSV |
-| CH07 | 2026-09-11 | 19 | 3 / 14 / 0 | 106.77 | 0.00 | same frame | 0.00 | see CSV |
-| CH07 | 2026-09-16 | 14 | 2 / 12 / 0 | 15.91 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-08-30 | 15 | 6 / 5 / 0 | 4.25 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-08-31 | 18 | 9 / 6 / 0 | 3.70 | 0.00 | same frame | 2.50 | see CSV |
-| CH08 | 2026-09-01 | 22 | 11 / 9 / 0 | 2.35 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-02 | 28 | 19 / 7 / 0 | 2.08 | 4.55 | unreliable | 0.25 | see CSV |
-| CH08 | 2026-09-03 | 28 | 25 / 1 / 0 | 0.89 | 4.55 | unreliable | 18.40 | see CSV |
-| CH08 | 2026-09-04 | 28 | 26 / 0 / 0 | 1.28 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-05 | 32 | 27 / 0 / 0 | 1.23 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-06 | 29 | 25 / 0 / 0 | 0.80 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-07 | 28 | 25 / 0 / 0 | 1.16 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-08 | 28 | 25 / 1 / 0 | 1.02 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-09 | 28 | 25 / 1 / 0 | 1.21 | 0.00 | same frame | 7.20 | see CSV |
-| CH08 | 2026-09-10 | 28 | 24 / 1 / 0 | 1.65 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-11 | 27 | 19 / 4 / 0 | 2.27 | 0.00 | same frame | 0.00 | see CSV |
-| CH08 | 2026-09-16 | 27 | 2 / 23 / 0 | inf | 4.55 | unreliable | 0.00 | see CSV |
-| CH08 | 2026-09-17 | 1 | 0 / 1 / 0 | inf | 0.00 | same frame | - | see CSV |
+| CH07 | 2026-08-30 | 21 | 12 / 2 / 0 | 2.83 | 3.89 | unreliable | 0.00 | see CSV |
+| CH07 | 2026-08-31 | 20 | 14 / 2 / 0 | 2.75 | 0.00 | same frame | 2.50 | see CSV |
+| CH07 | 2026-09-01 | 27 | 15 / 7 / 0 | 2.59 | 0.00 | same frame | 0.00 | see CSV |
+| CH07 | 2026-09-02 | 25 | 13 / 7 / 0 | 3.03 | 0.00 | same frame | 0.25 | see CSV |
+| CH07 | 2026-09-03 | 26 | 23 / 1 / 0 | 1.25 | 0.00 | same frame | 18.40 | see CSV |
+| CH07 | 2026-09-04 | 26 | 21 / 2 / 0 | 1.99 | 0.00 | same frame | 0.00 | see CSV |
+| CH07 | 2026-09-05 | 30 | 19 / 7 / 0 | 2.70 | 3.89 | unreliable | 0.00 | see CSV |
+| CH07 | 2026-09-06 | 28 | 17 / 6 / 0 | 2.68 | 0.00 | same frame | 0.00 | see CSV |
+| CH07 | 2026-09-07 | 25 | 14 / 5 / 0 | 3.00 | 3.89 | unreliable | 0.00 | see CSV |
+| CH07 | 2026-09-08 | 26 | 7 / 9 / 0 | 3.22 | 3.89 | unreliable | 0.00 | see CSV |
+| CH07 | 2026-09-09 | 26 | 15 / 7 / 0 | 3.37 | 0.00 | same frame | 7.20 | see CSV |
+| CH07 | 2026-09-10 | 26 | 15 / 8 / 0 | 3.34 | 0.00 | same frame | 0.00 | see CSV |
+| CH07 | 2026-09-11 | 27 | 10 / 8 / 0 | 3.44 | 0.00 | same frame | 0.00 | see CSV |
+| CH07 | 2026-09-16 | 27 | 6 / 15 / 0 | 4.18 | 0.00 | same frame | 0.00 | see CSV |
+| CH07 | 2026-09-17 | 1 | 1 / 0 / 0 | 3.08 | 0.00 | same frame | - | see CSV |
+| CH08 | 2026-08-30 | 22 | 7 / 9 / 0 | 4.58 | 4.55 | unreliable | 0.00 | see CSV |
+| CH08 | 2026-08-31 | 20 | 15 / 2 / 0 | 2.43 | 0.00 | same frame | 2.50 | see CSV |
+| CH08 | 2026-09-01 | 30 | 15 / 13 / 0 | 3.90 | 4.55 | unreliable | 0.00 | see CSV |
+| CH08 | 2026-09-02 | 28 | 22 / 2 / 0 | 1.38 | 0.00 | same frame | 0.25 | see CSV |
+| CH08 | 2026-09-03 | 28 | 24 / 0 / 0 | 1.04 | 0.00 | same frame | 18.40 | see CSV |
+| CH08 | 2026-09-04 | 28 | 26 / 0 / 0 | 0.90 | 0.00 | same frame | 0.00 | see CSV |
+| CH08 | 2026-09-05 | 32 | 27 / 0 / 0 | 1.05 | 4.55 | unreliable | 0.00 | see CSV |
+| CH08 | 2026-09-06 | 29 | 25 / 0 / 0 | 0.78 | 0.00 | same frame | 0.00 | see CSV |
+| CH08 | 2026-09-07 | 28 | 25 / 0 / 0 | 1.02 | 4.55 | unreliable | 0.00 | see CSV |
+| CH08 | 2026-09-08 | 28 | 26 / 0 / 0 | 1.23 | 0.00 | same frame | 0.00 | see CSV |
+| CH08 | 2026-09-09 | 28 | 26 / 0 / 0 | 1.41 | 4.55 | unreliable | 7.20 | see CSV |
+| CH08 | 2026-09-10 | 28 | 25 / 0 / 0 | 1.24 | 4.55 | unreliable | 0.00 | see CSV |
+| CH08 | 2026-09-11 | 27 | 21 / 2 / 0 | 1.73 | 0.00 | same frame | 0.00 | see CSV |
+| CH08 | 2026-09-16 | 28 | 11 / 12 / 0 | 3.66 | 4.55 | unreliable | 0.00 | see CSV |
+| CH08 | 2026-09-17 | 1 | 1 / 0 / 0 | 3.69 | 4.55 | unreliable | - | see CSV |
 
 The shift itself is in the CSV (a13 / a23 are the translation terms at the image origin; landmark_track.params gives tx, ty at the frame centre). Nights 09-12 -> 09-15 have no video.

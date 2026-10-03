@@ -299,8 +299,12 @@ ok, then from an anchor frame) and checks by dawn closure → `cv_field_landmark
 `results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv` (per camera and sampled night time, hourly
 21:00→04:20; CH01/CH02 from the night chain, CH03/CH04 from the user's 09-04 03:01 labels tied to 09-18) and
 `Corrections("2026c").to_paddock(cam, t, uv_upright, z_mm=60)` maps a detection pixel at field-PC time `t` to paddock
-inches (cohort px → 09-18 px → 09-24 calibration); check the returned `info["flag"]`. Nights only (the whole-field
-cameras are used only at night — user, 2026-10-02). Precision: CH01/CH02 ≤ 3 px on passing nights, CH03/CH04 ~5–10 px.
+inches (cohort px → 09-18 px → 09-24 calibration); check the returned `info["flag"]`. Coverage (user, 2026-10-02):
+CH01–CH06 nights hourly; the in-box CH07/CH08 all day, segmented at the house-lid events (`cv/configs/cohort3_lid_events.json`,
+battery rounds / catches) with one median correction per lid-closed segment (outliers > 10 px flagged). CH05 (house_1
+moved 09-18) and CH07/CH08 (uncalibrated) map to user-labelled 09-04 frames, not 09-18 — use `to_09_18` for their
+reference-frame pixels; `to_paddock` refuses them. Precision: CH01/CH02 ≤ 3 px on passing nights, CH03/CH04 ~5–10 px,
+CH05/CH06 held-out ~0.5–1.8 px, CH07/CH08 in-segment spread ~3 / ~1 px.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 
