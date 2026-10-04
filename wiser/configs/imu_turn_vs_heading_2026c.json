@@ -1,0 +1,154 @@
+{
+  "_about": "Phase 0 of turn-aided WISER, cohort 2026c (wiser/scripts/analyze_imu_turn_vs_heading.py; plan implementation_plan/2026-10-04-imu-turn-vs-wiser-heading.md, approved by the user 2026-10-04 '做', committed 5281fc6 before any result; operational details in its Amendment 1, written before any number). Does the head gyro's relative turn track the WISER heading change during locomotion? Quantities, thresholds, the gate and the +1 h control are the plan's and must not be changed after a result. Nothing is tuned. The run writes the verdict into `decision`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "plan": "implementation_plan/2026-10-04-imu-turn-vs-wiser-heading.md",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "speed_proxy_run": "D:/Field2026_analysis_out/2026c/imu_speed_proxy_20261003_1210",
+  "v3_run": "D:/Field2026_analysis_out/2026c/wiser_v3_20261003_1425",
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF12"
+  ],
+  "nights": {
+    "calm": [
+      "night_20260905",
+      "night_20260906",
+      "night_20260907",
+      "night_20260908"
+    ],
+    "rain": [
+      "night_20260903",
+      "night_20260909"
+    ]
+  },
+  "heading": {
+    "median_half_s": 0.5,
+    "median_offset_s": 0.5,
+    "min_fix": 3,
+    "min_speed_inps": 10.0,
+    "_note": "theta(h) = atan2 of d(h) = m(h + 0.5) - m(h - 0.5), m = coordinate-wise median of the raw fixes in [t - 0.5, t + 0.5) (>= 3 fixes); defined when |d|/1 s >= 10 in/s and every second overlapping [h - 1, h + 1) is a step-B clean second (Amendment 1.3)"
+  },
+  "pairs": {
+    "W_s": [
+      1,
+      2,
+      3
+    ],
+    "grid_s": 0.5,
+    "max_abs_dpsi_fit_deg": 150.0,
+    "gyro_window_s": 1.0
+  },
+  "imu": {
+    "fs": 50.0,
+    "max_gap_samples": 1.5,
+    "margin_s": 60.0,
+    "qc": "analyze_wiser_failure_audit.sample_valid (Amendment 1.4)"
+  },
+  "gate": {
+    "set": "calm",
+    "W_s": 2,
+    "heading": "raw",
+    "abs_b_range": [
+      0.8,
+      1.2
+    ],
+    "min_R2": 0.5,
+    "fit": "through the origin, centred R2 (Amendment 1.5)",
+    "control_shift_s": 3600.0,
+    "control_max_R2": 0.1
+  },
+  "speed_bands_inps": [
+    [
+      10.0,
+      20.0
+    ],
+    [
+      20.0,
+      null
+    ]
+  ],
+  "sign": {
+    "min_abs_dpsi_deg": 30.0,
+    "max_abs_dpsi_deg": 150.0,
+    "straight_deg": 15.0
+  },
+  "scanning_tail_deg": 30.0,
+  "in_place": {
+    "turn_deg": 90.0,
+    "window_s": 3.0,
+    "grid_s": 0.1,
+    "u1_floor_p95_inps": 5.26,
+    "house_buffer_in": 14.0,
+    "_note": "u1 = step B's 1-s WISER speed (0.75-s medians at c +- 0.5); 5.26 in/s = its all-period noise-floor p95 quoted in the plan"
+  },
+  "lag_scan_s": [
+    -0.5,
+    -0.4,
+    -0.3,
+    -0.2,
+    -0.1,
+    0.0,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5
+  ],
+  "bootstrap": {
+    "block_s": 600,
+    "n_boot": 1000,
+    "seed": 20261004
+  },
+  "u1_floor_reference": {
+    "p50_inps": 1.9,
+    "p95_inps": 5.26,
+    "source": "imu_speed_proxy_20261003_1210/tables/noise_floor.csv (all periods, 0.75-s medians)"
+  },
+  "workers": 6,
+  "decision": {
+    "verdict": "FAIL",
+    "pass_abs_b": false,
+    "pass_R2": false,
+    "control_invalid": false,
+    "b": 0.6415582908737196,
+    "b_ci": [
+      0.4854795987861658,
+      0.7667372139839496
+    ],
+    "R2": 0.1960652133486206,
+    "R2_ci": [
+      0.1091932646760992,
+      0.2906386765227675
+    ],
+    "n_pairs_fit": 996,
+    "control_b": 0.0040516465727361796,
+    "control_R2": -0.00061254272817024,
+    "control_R2_ci": [
+      -0.008812224650575028,
+      0.00500429018073334
+    ],
+    "intercept_fit": {
+      "b1": 0.642591961374255,
+      "a1": -1.6018840134965702,
+      "R2_1": 0.19687195540975488,
+      "verdict": "FAIL"
+    },
+    "convention": "b > 0: WISER heading increases counter-clockwise like the gyro (right-handed WISER plan view)",
+    "sign_by_animal_calm": {
+      "SF07": "+ (CI spans 0)",
+      "SF08": "+",
+      "SF09": "+",
+      "SF10": "+",
+      "SF12": "+"
+    },
+    "lag_peak_s": -0.2,
+    "ceiling_R2": 0.9797174876899962,
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_turn_vs_heading_20261004_1010",
+    "report": "results/2026c/wiser_baseline/reports/wiser_baseline_imu_turn_vs_heading_2026c.md",
+    "decided_local": "2026-10-04 10:13:50"
+  }
+}

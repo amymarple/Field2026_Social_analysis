@@ -1,0 +1,24 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\imu_turn_vs_heading_20261004_1010",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "imu_turn_vs_heading",
+  "report": "wiser_baseline_imu_turn_vs_heading_2026c.md",
+  "driver": "wiser/scripts/analyze_imu_turn_vs_heading.py",
+  "config": "wiser/configs/imu_turn_vs_heading_2026c.json",
+  "plan": "implementation_plan/2026-10-04-imu-turn-vs-wiser-heading.md",
+  "git_commit": "363df84+dirty",
+  "figures": [
+    "wiser_baseline_imu_turn_vs_heading_animals_2026c.png",
+    "wiser_baseline_imu_turn_vs_heading_ceiling_2026c.png",
+    "wiser_baseline_imu_turn_vs_heading_lag_2026c.png",
+    "wiser_baseline_imu_turn_vs_heading_scatter_2026c.png"
+  ],
+  "speed_proxy_run": "D:/Field2026_analysis_out/2026c/imu_speed_proxy_20261003_1210",
+  "v3_run": "D:/Field2026_analysis_out/2026c/wiser_v3_20261003_1425",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "verdict": "FAIL",
+  "b": 0.6415582908737196,
+  "R2": 0.1960652133486206,
+  "control_R2": -0.00061254272817024
+}

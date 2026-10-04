@@ -84,3 +84,80 @@ Read-only: make_imu npz (`turn_dps`, QC flags, `t_pc_ms`), step-B clean seconds 
 Clean seconds are open-field and ≥ 8 anchors: agreement in the houses is not measured. The 10-in/s heading threshold
 selects locomotion; slow walking is excluded by construction. Raw-median heading carries WISER noise (attenuates R²
 toward 0 — conservative). Head yaw includes scanning; the 1-s averaging removes part of it.
+
+## Amendment 1 (2026-10-04, written while implementing, BEFORE any number of this step was computed)
+
+Operational resolutions of details the plan leaves open; quantities, thresholds and the gate are unchanged.
+
+1. **Scope.** The six step-B nights (21:00–04:20; calm 09-05/06/07/08, rain 09-03/09), animals SF07, SF08, SF09, SF10,
+   SF12 (the failure audit's). Fix times $t_{al}=t-\tau^*$ as in step B; medians need ≥ 3 fixes (step B's `min_fix`).
+2. **Grid.** Heading centres $h$ and pair centres $c$ lie on the 0.5-s grid of whole field-PC seconds from the night start.
+3. **"Both medians exist on clean seconds"** = both medians exist and every field-PC second overlapping the heading's
+   support $[h-1,h+1)$ is a step-B clean second (`clean` of the step-B seconds tables: ≥ 8 anchors, valid, unmasked, no
+   jump, ≥ 3 Hz over the second's ± 2 s, both u3 medians outside the houses + 14 in, IMU second ok).
+4. **"IMU-QC-ok throughout"** = every 50-Hz sample of $[h_1-0.5,\ h_2+0.5)$ ($h_{1,2}=c\mp W/2$) passes the failure
+   audit's sample QC (`analyze_wiser_failure_audit.sample_valid`: finite, not saturated / frozen / invalid / unreliable,
+   frozen rule, handling ± 5 min, all-tag silences ± 2 min, ADC lane, tag window), with no gap > 1.5 samples and the span
+   covered to within 1.5 samples at both ends. $\bar\psi$ = mean of $\psi$ over the 50-Hz samples in the window.
+5. **Which fit decides.** The gate uses the fit **through the origin** (the model behind $r$), with
+   $R^2=1-\sum(\Delta\theta-b\Delta\psi)^2/\sum(\Delta\theta-\overline{\Delta\theta})^2$ (centred total sum of squares; never
+   larger than the intercept fit's $R^2$, so conservative). The fit with intercept (slope $b_1$, intercept $a_1$,
+   $R^2_1$ = squared Pearson r) is reported beside it; if the two disagree on the gate the report says so.
+6. **Residual statistics** (median |r|, p90, scanning tail |r| > 30°) use all pairs of a subset (including
+   $|\Delta\psi|>150°$, wrapped as the plan says) with the subset's own through-origin $b$.
+   $\operatorname{wrap}(x)=((x+180)\bmod 360)-180$. **Circular correlation** = Jammalamadaka–SenGupta $\rho_c$ on the fit set.
+7. **Turn-sign agreement** over $30°\le|\Delta\psi|\le150°$ (the sign of a > 150° turn is wrap-ambiguous), convention
+   $\sigma=\operatorname{sign}$ of the pooled calm W = 2 slope, used for every subset (so a per-animal mirror shows up as
+   disagreement). **Confusion table** on the fit set: gyro left $\Delta\psi\ge15°$, right $\le-15°$, straight otherwise;
+   WISER the same on $\sigma\,\Delta\theta$.
+8. **Bootstrap.** 1000 replicates, blocks = 10 min from the night start per (animal, night), seed 20261004, CI = 2.5–97.5 %;
+   every statistic is recomputed per replicate (residual quantiles with the replicate's $b$).
+9. **Speed band of a pair** = by the slower of its two end speeds: [10, 20) or ≥ 20 in/s.
+10. **Expected heading noise.** $\sigma_d$ (per coordinate) is estimated with this plan's own estimator (1-s medians at
+    $h\pm0.5$) on the step-B floor seconds (`floor_ok`: certified still) of the six nights, per set:
+    $\sigma_d=\operatorname{median}\lVert\mathbf d\rVert/\sqrt{2\ln2}$ (Rayleigh). Step B's quoted u1 floor used 0.75-s medians, so
+    its p50 1.90 in/s (→ $\sigma_d$ 1.61 in) is shown for reference only. Per pair end $\sigma_\theta=\sigma_d/\lVert\mathbf d\rVert$
+    (rad); ceiling $R^2_{\max}=1-\overline{\sigma_{\theta,1}^2+\sigma_{\theta,2}^2}/\operatorname{Var}(\Delta\theta)$ per band
+    (independent ends assumed; approximate at W = 1, where both headings share $\mathbf m(c)$).
+11. **+1 h control.** The gyro input is taken from $t+3600$ s (the V4/V6 convention), with the sample QC at the shifted
+    time; calm W = 2 pairs whose shifted span is QC-ok; fitted exactly as the main fit.
+12. **Lag scan.** Gyro input from $t+\delta$, $\delta\in\{-0.5,-0.4,\dots,+0.5\}$ s, on one common pair set (calm, W = 2,
+    raw; QC-ok at all 11 shifts); peak = the $\delta$ with the largest $R^2$.
+13. **Turns WISER misses.** $\psi$ on a 0.1-s grid (linear interpolation of the cumulative 50-Hz integral); a grid point is a
+    candidate when $|\psi(t+3)-\psi(t)|\ge90°$ and $[t,t+3)$ is QC-ok (item 4); a turn event = a run of consecutive
+    same-sign candidates, window $[t_{first}, t_{last}+3]$. Missed by WISER = every second overlapping the window has
+    step-B $u_1<5.26$ in/s (the all-period u1 floor p95 quoted in the plan); "WISER moving" if any $u_1\ge5.26$;
+    "no WISER" if any $u_1$ is missing. Zone = the median raw fix of the window (house ROIs + 14 in, the clean rule's
+    buffer). Denominator = IMU-ok seconds (audit `ok`) per stratum, zone of a second from the 1-s median of its raw fixes
+    (unknown if < 3 fixes).
+14. **V3 heading** = the same estimator on the V3 track (`wiser_v3_20261003_1425/tracks`, at the fix times), V3 speed
+    ≥ 10 in/s, same clean-second and IMU rules.
+15. **Point estimates decide** the gate and the control (as in steps A/B and V3); the bootstrap CIs are reported beside them.
+
+## Amendment 2 (2026-10-04, after a single-job smoke test, BEFORE any pooled number or gate quantity was seen)
+
+The smoke test (SF09, night 09-06: plumbing and runtime only) showed that step B's $u_1$ is missing on 35 % of the IMU-ok
+seconds (0.75-s medians need ≥ 3 fixes; almost all missing seconds have < 3 Hz), so the rule of Amendment 1.13 — "no
+WISER" if *any* overlapping second lacks $u_1$ — put 60 % of that night's turn events into "no WISER" and left the plan's
+quantity (turns WISER misses while its speed stays below the floor) nearly uncountable. Changed, closest to the plan's
+wording: an event has **WISER coverage** when $u_1$ exists on at least half of the seconds overlapping its window
+($\lceil n/2\rceil$); with coverage, **missed** = every available $u_1<5.26$ in/s, **WISER moving** = some available
+$u_1\ge5.26$; without coverage, "no WISER". Nothing else changes; only that night's per-class event counts were seen.
+
+## Amendment 3 (2026-10-04, AFTER the pooled results of the first full run were seen; no gate quantity changes)
+
+First full run `imu_turn_vs_heading_20261004_1007` (superseded by the rerun named in the report):
+gate FAIL (b +0.642, R² 0.196, control R² −0.001).
+
+i. **Storage fix.** The bulk CSVs had written unix-second times at 5–6 significant digits, so the stored pair centres and
+   event times were rounded. They are now stored as integer ms (`c_ms`, `t0_ms`, `t1_ms`, plus `dur_s`). Every number was
+   computed in memory before writing, so nothing changes.
+ii. **Zone of a second in the turns-in-place denominators.** Amendment 1.13 took the zone of an IMU-ok second from the 1-s
+    median of its fixes. That left 33 h (calm) of seconds "unknown", while event zones come from windows ≥ 3 s, so the
+    field/house numerators included events from seconds counted as "unknown" in the denominators. The zone of a second is now
+    the median raw fix of $[s-1,s+2)$ (≥ 3 fixes), the shortest event window. First-run values, for the record: calm missed
+    per IMU-ok hour 46.1 (field), 24.3 (house), 27.4 (all zones); rain 20.1 (all zones). The all-zone rates, the event
+    classification and every gate quantity are unchanged.
+iii. **Reading only.** The plan's noise ceiling (σ_d from still seconds) is reported as specified. A declared post-hoc
+     caveat is added: the V3-track heading reaches a much higher R² than the raw medians, so heading noise during
+     locomotion exceeds the still floor and the ceiling is an upper bound.
