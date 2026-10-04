@@ -73,3 +73,68 @@ unverified WISER inch frame).
 The females' tags are unidentified; SF11's τ* is assumed; production days include periods never audited (e.g. 08-30 –
 09-02 regime A, rain days) — the default's validation covers only the audit periods; positions stay in the unverified
 WISER frame until the anchor ↔ pole georeference exists.
+
+## Amendments
+
+Amendments 1–8 were made on 2026-10-04 ≈ 10:10 local, **before any production output was written** (after the synthetic
+selftest and a scratch smoke test of two days, 09-05/06, written outside the cache roots and discarded, that printed only
+reproduction checks). None changes the default, a parameter, a label rule of the plan or a check; they fix operational
+readings the plan left open. Source of the facts: a scan of the four DB copies (`3rdcohort_Spike_2026_3.sqlite` 08-30 18:32 →
+09-01 04:20, `_3_2` 09-01 05:23 → 06:47, `_3_3` 09-01 07:23 → 09-03 13:55, `_3_4` 09-03 13:59 → 09-12 10:51; shortids 12376,
+12377, 12378, 12386, 12395, 12407, 12409 only — no shortid outside the identity table).
+
+1. **Two tags on one animal at the same time [op]:** SF12 wore 3059 (12377, valid the whole cohort) and 3058 (12376, 08-30 19:00
+   → 08-31 19:24) together. One filter cannot carry two tags at once, so the tag with the longer validity window keeps the
+   animal label (`SF12`) and the other gets its own label `<animal>_tag<shortid>` (`SF12_tag12376`; generic rule, ties → the
+   smaller shortid keeps the animal label). It is an implanted animal's tag, so it is tracked like the animal (V3 with SF12's
+   IMU and SF12's τ* — the tag's own lag was never measured; flagged in the report). SF11's two tags (12378 to 09-02 00:03,
+   12376 from 09-02 08:15) do not overlap and share the label `SF11`; a column `shortid` is added to the track files so the
+   tags of one label stay distinguishable.
+2. **Full-day fix caches [op]:** each `full_<YYYYMMDD>/<label>.csv.gz` holds the day ± 10 min (as the existing caches hold
+   their window ± 10 min), so a day's track is built from its own file; the track files hold only the core day. The rows
+   come from `build_imu_wiser_cache.wiser_frames` (the function `wiser_night` calls after its SQL; `wiser_night` opens one
+   DB, a day can span two or three copies, so the SQL rows of every copy overlapping the window are concatenated first —
+   the copies do not overlap in time). Per label: every fix of its tag(s) in the window; a fix outside the label's
+   validity window(s) is kept with `m_tag_validity` = True, recomputed per fix from the label's own window(s) (identical to
+   `wiser_frames`' median-time window wherever a day holds one window of the tag — the run logs the count of differences);
+   a tag's fixes outside every window that overlaps the day are not cached (they are counted in the report). The filter
+   uses only fixes inside a validity window (the plan's "not tracked").
+3. **SF11 implant loss [op]:** the identity table keeps SF11 / 3058 to 09-07 08:20 (the plan's source), but
+   `cohorts/2026c.yaml ephys.loggers.SF11.implant_lost` = 06:10:45 (video-confirmed; the tag rode on the implant, which lay
+   in the house afterwards). The label window is not changed; a track column `m_off_animal` flags fixes at or after an
+   animal's `implant_lost` (SF11 06:10:45 → 08:20). The IMU is already blanked there (B2 dynamics).
+4. **IMU seconds [op]:** the failure audit's `per_second_states` is called unmodified on each calendar day ± 10 min of
+   make_imu samples (the audit's ± 10-min extension), only the core day written; "tag limits" = the union of the animal's
+   validity windows (the audit passed the one tag window of its period — identical inside every audit period). A file is
+   written for every animal-day with at least one IMU sample in the day. The head layer is computed per field-PC second
+   from the 50-Hz npz with make_imu's per-second definitions (make_imu's own `.imu_1s.csv` is on the logger-second grid):
+   turn_net_deg = Σ turn_dps / 50, turn_abs_deg = Σ |turn_dps| / 50 (NaN with < 40 samples or any blanked sample),
+   pitch_mean, roll_mean (circular) over finite samples (NaN with < 40). Floats are stored with 6 significant digits. Track
+   jobs read the IMU seconds of days D − 1, D, D + 1 for the margins.
+5. **Track columns [op]:** `method` per fix = V3 where the label has a head IMU and the fix's aligned second is IMU-QC-ok,
+   else B2 (the dynamics in force); `t_al_ms` = t_ms − round(1000 τ*) (integer ms; empty for labels without an IMU);
+   x, y, vx, vy rounded to 6 decimals; booleans stored as 0/1 (the reader returns bool). Index "hours" = distinct
+   field-PC seconds holding ≥ 1 tracked fix ÷ 3600.
+6. **Unknown tags [op]:** the rule is implemented (`tag_<shortid>`, window = release 08-30 19:00 → end 09-12 10:10, B2), but
+   no such shortid exists in the four copies; the report says so. The scope (release, end, 09-11 19:40) is read from
+   `cv/configs/cohort3_handling_windows.json`.
+7. **Method parameter [op]:** `--method V3` (default) writes `wiser_default_tracks/`; `--method B2` writes
+   `wiser_tracks_B2/`, so a non-default run can never overwrite the default root. A later default is added to the
+   driver's method table and run the same way.
+8. **Reproduction [op]:** (a) compares ok / still / state per second and the floats; `sbf` is compared on the audit's ok
+   seconds (in a second without samples the pilot's SBF function can read the 2 s after a data gap, which depends on the
+   loaded window; sbf enters the state only in ok seconds). (b) adds B2 rebuilt from the full-day caches (no IMU) vs the
+   V3 run's saved B2 at every window fix — a day-stitching check free of the IMU-margin difference — and the ZUPT / loco
+   mask agreement; production vs saved V3 is also reported by distance to the window edge. (c) matches rows on (shortid,
+   t_ms); window-independent columns must be equal; `valid` (its gap flag uses the window's median interval) and
+   `speed_inps_smooth` (rolling median and 1-s window truncated at a window's ends) are reported overall and ≥ 60 s from
+   the window edges.
+
+9. **Note made after the first production verify (2026-10-04 ≈ 10:20; report text only, no cache or track changed):** the
+   plan's reproduction subset "fixes ≥ 10 min from the audit-window edges" is reported as written (max |Δ| 0.067 in). Every
+   difference > 0.001 in in it sits at the first fixes after the 09-10 AM-round all-tag silence (08:20:30–08:20:41), where the
+   V3 run had no fix (or one isolated fix) in its margin, i.e. its own track starts there. The report therefore adds a second
+   subset: also ≥ 10 min of fix coverage (inter-fix intervals capped at 5 s) from the V3 run's first / last fix (max |Δ|
+   4.4e-5 in = float32 storage). Likewise the fix-cache comparison's "away from the edges" rows are ≥ 60 s **and** ≥ 10 rows
+   from a window end (the library speed's rolling median runs over rows, so the first fixes after such a silence are
+   row-neighbours of the window edge).

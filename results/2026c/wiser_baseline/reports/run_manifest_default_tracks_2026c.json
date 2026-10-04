@@ -1,0 +1,50 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_default_tracks_run_20261004_1010",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_default_tracks",
+  "report": "wiser_baseline_default_tracks_2026c.md",
+  "driver": "wiser/scripts/build_wiser_default_tracks.py",
+  "reader": "wiser/src/default_tracks.py",
+  "plan": "implementation_plan/2026-10-04-wiser-default-tracks-2026c.md",
+  "method": "V3",
+  "git_commit": "137e2db+dirty",
+  "run_ts": "20261004_1010",
+  "caches": {
+    "fix_full": "D:\\Field2026_analysis_out\\2026c\\wiser_fix_cache",
+    "imu_seconds": "D:\\Field2026_analysis_out\\2026c\\imu_seconds_cache",
+    "tracks": "D:\\Field2026_analysis_out\\2026c\\wiser_default_tracks"
+  },
+  "v3_run": "D:\\Field2026_analysis_out\\2026c\\wiser_v3_20261003_1425",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "dbs": [
+    {
+      "name": "3rdcohort_Spike_2026_3.sqlite",
+      "sha256": "0fe2b6bfac7a1575467f291439099c5a622e416f4d3765074271a8597ba1eb1b",
+      "rows": 1869951,
+      "t0_local": "2026-08-30 18:32:35",
+      "t1_local": "2026-09-01 04:20:06"
+    },
+    {
+      "name": "3rdcohort_Spike_2026_3_2.sqlite",
+      "sha256": "00e1afad632b77cd5e096175ecfbd3acb2dfa009b14896e3f3c286629fdbf652",
+      "rows": 100998,
+      "t0_local": "2026-09-01 05:23:34",
+      "t1_local": "2026-09-01 06:47:16"
+    },
+    {
+      "name": "3rdcohort_Spike_2026_3_3.sqlite",
+      "sha256": "4bea8c3d1ba20d6d98a21a8afa9c055f98692e3c4ed4a8a58409a0f67aa36616",
+      "rows": 3698453,
+      "t0_local": "2026-09-01 07:23:14",
+      "t1_local": "2026-09-03 13:55:58"
+    },
+    {
+      "name": "3rdcohort_Spike_2026_3_4.sqlite",
+      "sha256": "82ccadfde5897d002d1da18ce28be6dcafb9104eb08eb79cb2572147cd344e20",
+      "rows": 15550527,
+      "t0_local": "2026-09-03 13:59:55",
+      "t1_local": "2026-09-12 10:51:19"
+    }
+  ]
+}
