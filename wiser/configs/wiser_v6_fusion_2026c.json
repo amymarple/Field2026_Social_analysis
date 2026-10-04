@@ -1,0 +1,315 @@
+{
+  "_about": "V6 = short-horizon head-IMU / WISER fusion, cohort 2026c (wiser/scripts/analyze_wiser_v6_fusion.py; plan implementation_plan/2026-10-03-wiser-v6-fusion.md, approved by the user 2026-10-03 '开始', committed e0252c8 before any V6 number; operational details in its Amendment 1, written before any V6 number). One EKF + extended RTS per animal and period on a 16-Hz grid with the WISER fixes inserted; state (p, v, b, psi); input = make_imu lin_acc_earth x/y low-passed at 2 Hz; B2 fix noise model, chi2 gate + 2 Huber IRLS passes; V3's ZUPT; fallback = no input, q 3 in^2/s^3. Periods, animals, exclusions, IMU seconds and certified still segments are the failure audit's; S1/S5 definitions the default-smoother step's; the clean-WISER speed reference step B's; B2 = the smoothing pilot's tuned B2; V3 = the V3 step's candidate (wiser_v3_2026c.json). Candidate, split, thresholds and the decision rule are the plan's and must not be changed after a result. The run writes the tuned values (tuning night 09-07 only) into `tuned` and its verdict into `decision`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "plan": "implementation_plan/2026-10-03-wiser-v6-fusion.md",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_failure_audit_20261002_1511",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "default_smoother_run": "D:/Field2026_analysis_out/2026c/wiser_default_smoother_20261002_1626",
+  "default_smoother_config": "wiser/configs/wiser_default_smoother_2026c.json",
+  "v1b_run": "D:/Field2026_analysis_out/2026c/wiser_v1b_20261003_1124",
+  "v1b_config": "wiser/configs/wiser_v1b_2026c.json",
+  "speed_proxy_run": "D:/Field2026_analysis_out/2026c/imu_speed_proxy_20261003_1210",
+  "speed_proxy_config": "wiser/configs/imu_speed_proxy_2026c.json",
+  "v3_run": "D:/Field2026_analysis_out/2026c/wiser_v3_20261003_1425",
+  "v3_config": "wiser/configs/wiser_v3_2026c.json",
+  "smoothing_config": "wiser/configs/wiser_imu_smoothing_2026c.json",
+  "fix_cache_root": "D:/Field2026_analysis_out/2026c/wiser_fix_cache",
+  "imu_root": "D:/3rd_rat_spikes/analysis/imu",
+  "acc16_cache_root": "D:/Field2026_analysis_out/2026c/imu_acc16_cache",
+  "input": {
+    "grid_hz": 16,
+    "fs_imu_hz": 50.0,
+    "in_per_m": 39.37007874015748,
+    "lp_hz": {
+      "lp15": 1.5,
+      "lp2": 2.0,
+      "lp3": 3.0
+    },
+    "butter_order": 4,
+    "edge_s": 0.5,
+    "margin_s": 600,
+    "control_shift_s": 3600,
+    "_note": "zero-phase Butterworth (sosfiltfilt) on each contiguous run of valid 50-Hz samples (failure-audit sample_valid), linear interpolation onto the absolute 16-Hz field-PC grid; 16-Hz samples within edge_s of a run end are not QC-ok; QC-ok also needs the audit's per-second ok (Amendment 1.2)"
+  },
+  "v6": {
+    "primary_lp": "lp2",
+    "q_fallback": 3.0,
+    "zupt": {
+      "sigma_zupt_inps": 0.25,
+      "huber_zupt": true,
+      "min_run_s": 3,
+      "erode_s": 1,
+      "release": false
+    },
+    "sigma_psi0_deg": 20.0,
+    "psi0": {
+      "lp_hz": 1.0,
+      "window_s": 1800.0,
+      "min_window_loco_s": 60,
+      "min_fit_loco_s": 30,
+      "max_gap_s": 1.0
+    },
+    "_note": "state (px, py, vx, vy, bx, by, psi); input steps q_a, fallback steps q_fallback (= B2's q); Huber k 2.5, chi2 gate 13.8155, 2 IRLS passes, m_rej from tuned.B2 (smoothing config)"
+  },
+  "tuning": {
+    "period": "night_20260907",
+    "L_s": 1.0,
+    "grid": {
+      "q_a": [
+        4.375,
+        17.5,
+        70.0
+      ],
+      "tau_sigma_b": [
+        [
+          1.0,
+          4.5
+        ],
+        [
+          3.0,
+          4.5
+        ],
+        [
+          10.0,
+          4.5
+        ]
+      ],
+      "q_psi_deg2_per_min": [
+        1.0,
+        4.0,
+        16.0
+      ]
+    },
+    "_provenance": "q_a centre = sigma_a^2/(2 f_c) with sigma_a = 0.25 m/s^2 / 1.1774 (median 2-D magnitude -> per-axis SD) x 39.37 = 8.36 in/s^2 and f_c = 2 Hz -> 17.5 in^2/s^3, x 1/4 and x 4; sigma_b = g sin(0.67 deg) = 4.5 in/s^2 (geometric mean of the 0.3-1.5 deg tilt range), tau_b 1/3/10 s; q_psi = (1, 2, 4 deg)^2 per minute (2 deg/min gyro-bias drift centre). Objective = pooled RMS_pred at L = 1 s over the five animals of the tuning night (Amendment 1.7)."
+  },
+  "variants": {
+    "V6_lp15": {
+      "lp": "lp15",
+      "couple": true,
+      "zupt": true,
+      "_note": "sensitivity: low-pass 1.5 Hz"
+    },
+    "V6_lp3": {
+      "lp": "lp3",
+      "couple": true,
+      "zupt": true,
+      "_note": "sensitivity: low-pass 3 Hz"
+    },
+    "V6_psifix": {
+      "lp": "lp2",
+      "couple": false,
+      "zupt": true,
+      "_note": "sensitivity: psi frozen at its initial value"
+    },
+    "V6_nozupt": {
+      "lp": "lp2",
+      "couple": true,
+      "zupt": false,
+      "_note": "sensitivity: no ZUPT"
+    },
+    "V6_ctrl": {
+      "lp": "lp2",
+      "couple": true,
+      "zupt": true,
+      "shift_s": 3600,
+      "_note": "negative control: the acceleration shifted by +1 h (nights)"
+    }
+  },
+  "gapfill": {
+    "L_s": [
+      0.5,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "min_gap_s": 10.0,
+    "seed": 20261009,
+    "sets": {
+      "calm_test": [
+        "night_20260905",
+        "night_20260906",
+        "night_20260908"
+      ],
+      "rain": [
+        "night_20260903",
+        "night_20260909"
+      ],
+      "tune": [
+        "night_20260907"
+      ]
+    },
+    "methods": [
+      "B2",
+      "V1b",
+      "V2b",
+      "V3",
+      "V6",
+      "V6_lp15",
+      "V6_lp3",
+      "V6_psifix",
+      "V6_nozupt",
+      "V6_ctrl"
+    ],
+    "_note": "centres = clean (step B) IMU-QC-ok locomoting seconds, >= L_max + min_gap apart, same centres for every L; each method rerun once per L with all its hidden fixes invisible (Amendment 1.8)"
+  },
+  "acceptance": {
+    "G_min_gain": 0.1,
+    "G_decide_L": [
+      0.5,
+      1.0
+    ],
+    "G_set": "calm_test",
+    "control_max_recovery": 0.5,
+    "T1_max_abs_rel": 0.03,
+    "T1_scale_s": 3,
+    "T1_set": "all",
+    "T2_jump_in": 30.0,
+    "T2_jump_dt_s": 0.35,
+    "T3_max_later_s": 0.5,
+    "T4_set": "all",
+    "T4_speed": "S2 1-s speed",
+    "_rule": "1. V6 replaces V3 as the default for the implanted animals if the calm-test gain at L = 0.5 s or 1 s is >= 10 % with its 95 % CI above 0, and T1-T4 pass, and the negative control does not invalidate it; B2 stays the universal baseline. 2. Close the inertial-position line (no further INS / acceleration-fusion variants for WISER position) if the gain is not significantly above 0 (CI lower bound <= 0) at both L = 0.5 s and 1 s, or the control invalidates it; V3 stays. 3. Otherwise V3 stays; the report states what V6 offers and at what cost. Control invalid: at L = 0.5 or 1 s where V6's gain > 0, control gain >= 0.5 x V6's gain. Precedence: control -> rule 2 -> rule 1 -> rule 3 (Amendment 1.15)."
+  },
+  "jitter_check": {
+    "floor_source": "step-B tables/noise_floor.csv, kind all, set all, scale 3, p95 (1.64 in/s)"
+  },
+  "bootstrap": {
+    "block_s": 600,
+    "n_boot": 1000,
+    "seed": 20261009
+  },
+  "nis": {
+    "chi2_2_q95": 5.991464547107979,
+    "expect_mean": 2.0
+  },
+  "psi_diag": {
+    "observable_sigma_deg": 10.0,
+    "bout_min_s": 3,
+    "gyro_bias_expect_deg_per_min": [
+      1.6,
+      2.1
+    ]
+  },
+  "workers": 16,
+  "tuned": {
+    "q_a": 70.0,
+    "tau_b": 10.0,
+    "sigma_b": 4.5,
+    "q_psi_deg2_per_min": 16.0,
+    "q_psi": 8.123131194312229e-05,
+    "handedness": {
+      "SF07": "mirror",
+      "SF08": "normal",
+      "SF09": "normal",
+      "SF10": "normal",
+      "SF12": "normal"
+    },
+    "handedness_all": "per animal",
+    "handedness_mode": "per animal (animals disagree or a fit failed)",
+    "handedness_llr": {
+      "SF07": -0.27798500007796567,
+      "SF08": 0.9399465004122806,
+      "SF09": 0.45375506233834606,
+      "SF10": 13.492193321253783,
+      "SF12": 25.792326715602798
+    },
+    "objective": "pooled RMS_pred at L = 1 s, night_20260907, five animals",
+    "rms_pred_in": 7.232405623791779,
+    "rms_pred_V3_in": 6.639893654059925,
+    "grid_edges_hit": [
+      "q_a",
+      "tau_b",
+      "q_psi_deg2_per_min"
+    ],
+    "tuned_on": "night_20260907",
+    "tuned_local": "2026-10-03 22:08:35",
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_v6_fusion_20261003_2206"
+  },
+  "decision": {
+    "rule": 2,
+    "outcome": "close the inertial-position line; V3 stays",
+    "reason": "the calm-test gain is not significantly above 0 (95 % CI lower bound <= 0) at both L = 0.5 s and 1 s",
+    "default_wiser_track_implanted": "V3",
+    "universal_baseline": "B2",
+    "close_inertial_position_line": true,
+    "gain_calm_test_vs_V3": {
+      "0.5": [
+        -0.05578,
+        -0.06517,
+        -0.04434
+      ],
+      "1": [
+        -0.11547,
+        -0.12787,
+        -0.10349
+      ],
+      "2": [
+        -0.25338,
+        -0.27367,
+        -0.23339
+      ],
+      "3": [
+        -0.45414,
+        -0.48701,
+        -0.42142
+      ]
+    },
+    "control_gain_calm_test_vs_V3": {
+      "0.5": [
+        -0.02101,
+        -0.02917,
+        -0.01289
+      ],
+      "1": [
+        -0.05639,
+        -0.06525,
+        -0.04727
+      ],
+      "2": [
+        -0.15597,
+        -0.17192,
+        -0.1412
+      ],
+      "3": [
+        -0.30262,
+        -0.32949,
+        -0.27787
+      ]
+    },
+    "control_invalid": {
+      "0.5": false,
+      "1": false
+    },
+    "T1_d95_3s_all": -0.00948,
+    "T1_d95_3s_gt15": -0.00125,
+    "T2_jumps_still_mask": [
+      0,
+      0
+    ],
+    "T3_dlag_med_s": {
+      "calm onset": -3.75,
+      "calm offset": 7.0,
+      "rain onset": -4.5,
+      "rain offset": 8.125
+    },
+    "T4_d50_d95_vs_B2": [
+      1.48314,
+      1.66732
+    ],
+    "T_pass": {
+      "T1": true,
+      "T2": true,
+      "T3": false,
+      "T4": false
+    },
+    "sensitivity_T": {
+      "V6_lp15": "fail T3, T4",
+      "V6_lp3": "fail T3, T4",
+      "V6_psifix": "fail T3, T4",
+      "V6_nozupt": "fail T3, T4"
+    },
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_v6_fusion_20261003_2206",
+    "report": "results/2026c/wiser_baseline/reports/wiser_baseline_v6_fusion_2026c.md",
+    "decided_local": "2026-10-03 23:00:46"
+  }
+}
