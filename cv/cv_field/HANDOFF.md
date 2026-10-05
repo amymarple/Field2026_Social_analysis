@@ -3,6 +3,12 @@
 Self-contained pickup doc for the next agent/person. Full technical detail:
 `change_log/2026-07-13-cv-field-visible-regime.md`; plan: `implementation_plan/2026-07-13-cv-field-visible-regime.md`.
 
+**2026-10-05:** the cohort-1 **CH01/CH02 panorama** labels (887 frames) and YOLO v5 from `social-field-rat` are backed up and
+verified at `D:\Field2026_analysis_out\2026a\social_field_rat_backup_20261005\`; SAM3 zero-shot is far behind v5 on them, and
+v5 has been run on one cohort-3 CH01 night hour with review clips for the user — see
+`change_log/2026-10-05-c1-yolo-transfer-sam3.md` (drivers `backup_social_field_rat.py`, `sam3_vs_yolo_c1.py`,
+`c1_yolo_video_test.py`).
+
 ## TL;DR — what this is and where it stands
 
 Whole-field **night-IR rat detector** for the outdoor paddock cameras **CH03/CH04**, night window

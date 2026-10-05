@@ -1,0 +1,15 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\cv_field_c1yolo_video_20261005_1848",
+  "cohort": "2026c",
+  "direction": "cv_field",
+  "analysis": "c1yolo_video",
+  "driver": "cv/cv_field/c1_yolo_video_test.py",
+  "report": "cv_field_c1yolo_video_2026c.md",
+  "plan": "implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md",
+  "video": "F:/3rd_rat/2026-09-06/CH01/CH01_2026-09-06_21-00-00_to_22-00-00.mp4",
+  "weights": "D:/Field2026_analysis_out/2026a/social_field_rat_backup_20261005/computer_vision/outputs/runs/rat_m_v5/weights/best.pt",
+  "weights_sha256": "2d7294f3e29da845c8c6c26a39d427ffbe374274524e2cfd922c0edd51b63360",
+  "git_commit": "c76af8c4f6cec3d08b5fbef56549ed5b4c544b6a",
+  "review_video": "review_10min.mp4",
+  "review_clips_index": "review_clips/index.html"
+}

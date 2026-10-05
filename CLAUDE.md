@@ -89,6 +89,7 @@ python cv\view_quality.py --selftest             # shelter glass/view-quality de
 python cv\cv_field\selftest_field_select.py      # + selftest_field_mask.py, selftest_field_motion.py
 python cv\cv_field\dino_gate.py --selftest       # + stratify_test.py / mask_field.py --selftest (cv env)
 python cv\cv_field\landmark_track.py --selftest  # + landmark_night.py --selftest (ffmpeg), grab_frames.py --selftest
+python cv\cv_field\sam3_vs_yolo_c1.py --selftest # + backup_social_field_rat.py --selftest, c1_yolo_video_test.py --selftest (ffmpeg + PyAV)
 python thermal\detect_blobs.py --selftest        # + thermal\detect_traces.py --selftest
 python audio\scripts\selftest_features.py
 python episode_browser\selftest.py
@@ -263,8 +264,9 @@ label only clearly visible rats (Long Evans hoods read darker than grass → `po
 CH01/CH02 daytime colour was corrupt in **cohort 1** (keyframe truncation fixed 07-11, VBR cap 07-19 — before cohort 3).
 
 **Cohort 3 (2026c), user decisions 2026-09-28:** start with the **CH01/CH02 panoramas** — they map ~68–69 % of the
-paddock each in the 09-24 calibration (CH03/CH04 ~12 % each, the two ends) and so carry the occupancy map; the existing
-detector and all 255 labels are cohort-1 CH03/CH04, so CH01/CH02 start from zero labels. A rat is ~70–160 px in the
+paddock each in the 09-24 calibration (CH03/CH04 ~12 % each, the two ends) and so carry the occupancy map; this repo's
+detector and its 255 labels are cohort-1 CH03/CH04; cohort-1 CH01/CH02 labels + a CH01/CH02 YOLO exist only in the
+`social-field-rat` backup (next paragraph); cohort-3 CH01/CH02 have zero labels. A rat is ~70–160 px in the
 native upright pano (7680×2160) → never the 1280 default (11–16 px); compare whole pano @2560 vs half @1920 after
 labelling. **Workflow:** local first — frames from the local copy `F:\3rd_rat\` with `cv/cv_field/grab_frames.py`
 (`--targets camera,time[,tag] --out <dir>`; exact CPU decode ≈ 0.9 s/frame — the benchmark showed decode is not the
@@ -305,6 +307,21 @@ battery rounds / catches) with one median correction per lid-closed segment (out
 moved 09-18) and CH07/CH08 (uncalibrated) map to user-labelled 09-04 frames, not 09-18 — use `to_09_18` for their
 reference-frame pixels; `to_paddock` refuses them. Precision: CH01/CH02 ≤ 3 px on passing nights, CH03/CH04 ~5–10 px,
 CH05/CH06 held-out ~0.5–1.8 px, CH07/CH08 in-segment spread ~3 / ~1 px.
+**Cohort-1 CH01/CH02 pano detector (`social-field-rat`, another lab member's folder, broken `.git`, 2026-10-05):** the
+project's only CH01/CH02 labels — 887 cohort-1 frames / 1 692 boxes (CH01 06-30, 07-04, 07-07; CH02 06-30, 07-06; all
+21:00–22:00; upright 7680 × 2160 YOLO txt; `labeled_yolo/` 710 train / 177 val) + two partly labelled, never-trained clips
+(`frames_0704_CH02_selective` 60, `frames_0705_CH01_selective` 33) — and YOLO11 v1–v5 (`outputs/runs/rat_m_v5/weights/
+best.pt` = yolo11m @1280, the author's best). **Read the verified backup, never the source:**
+`D:/Field2026_analysis_out/2026a/social_field_rat_backup_20261005/` (5 469 files, 51.35 GB; `MANIFEST_sha256.csv`,
+`README.md`, `VERIFY.json`; `backup_social_field_rat.py --verify-only`). `sam3_vs_yolo_c1.py` (SAM3 text-prompt zero-shot
+vs v5 on those labels → `results/2026a/cv_field/reports/cv_field_sam3_vs_yolo_c1_2026a.md`): v5 AP 0.83 (S-val) / 0.47
+(held-out CH01 07-05) vs SAM3 "rat" 0.23 / 0.02 — SAM3 is no detector here; the CH02 07-04 labels are v5's own boxes
+(circular) and most labelled frames are numerically IR. `c1_yolo_video_test.py` (v5 on every frame of cohort-3 CH01
+09-06 21:00–22:00 via in-process PyAV, ~42 fps; WISER outside-count per 5-s bin; `review_10min.mp4` + rule-chosen 60-s
+review clips with `index.html` → `$OUT_ROOT/2026c/cv_field_c1yolo_video_<ts>/`, report
+`results/2026c/cv_field/reports/cv_field_c1yolo_video_2026c.md`): count ρ 0.10 vs WISER (plausibility only, awaiting the
+user's review). Reolink PTS come in bursts (frames < 1 ms apart) — join frames by PTS at 1 µs, and seek a frame with
+`grab_frames.grab` at the midpoint to the previous PTS. Plan `implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md`.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

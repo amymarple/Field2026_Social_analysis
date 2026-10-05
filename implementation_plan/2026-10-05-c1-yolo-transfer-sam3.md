@@ -1,6 +1,6 @@
 # Cohort-1 pano rat detector (`social-field-rat`): backup, cohort-3 night transfer test, SAM3 zero-shot vs YOLO
 
-Date: 2026-10-05. Status: **PLANNED** — approved by the user 2026-10-05 (answers: test video = "cohort 3 CH01 夜间 1
+Date: 2026-10-05. Status: **DONE 2026-10-05** ([change log](../change_log/2026-10-05-c1-yolo-transfer-sam3.md); step 3 added by the user's request, amendments at the end) — approved by the user 2026-10-05 (answers: test video = "cohort 3 CH01 夜间 1
 小时"; SAM3 = "有标注的定量对比"; backup = "备份到本地"). Pre-registered before any result; amendments are dated and
 marked *before* or *after results*.
 
@@ -132,3 +132,75 @@ Time of a frame = file-name start + PTS (field-PC time, start offset caveat ≤ 
 
 Backup ≈ 48 GB copy + hash (~15–25 min). Step 1: SAM3 ≈ 30 tiles × 270 frames (+ sensitivities) ≈ 30–60 min GPU;
 YOLO minutes. Step 2: ≈ 1 h for the hour (decode-bound) + ~5 min for the review video. Sequential on the one GPU.
+
+## Amendments
+
+- **2026-10-05, before results (step 0).** The backup also takes three things the inclusion list did not name:
+  `computer_vision/weights/*.pt` (the four pretrained ultralytics start checkpoints, 71 MB), `.git/refs/**` (3 files that
+  name the last commit of the broken repository) and the `.gitkeep` files. Beside the manifest it writes
+  `EXCLUDED_files.csv` (every left-out entry with its reason) and `VERIFY.json` (the re-hash result).
+- **2026-10-05, before results (step 1; written after the backup verified, before any detector ran on a scored
+  frame).** (i) Inputs are read from the verified backup, never the source. (ii) S-held = 60 labelled CH02 07-04 frames
+  (the folder's `classes.txt` is not a label) + 33 labelled CH01 07-05 frames, 2 of them empty (negatives). (iii) The
+  IR threshold uses all labelled CH02 07-06 and 06-30 frames (train + val): midpoint of the gap if the two chroma sets
+  separate, else the cut that misclassifies the fewest reference frames. (iv) SAM3 details fixed from the installed
+  ultralytics 8.4.93 source: `imgsz=1008` set explicitly (the default 640 would shrink every tile); score =
+  sigmoid(detection logit) × sigmoid(presence logit); ultralytics' own within-tile NMS (IoU 0.7, on decoder boxes) runs
+  before the mask boxes are taken; mask = ultralytics' upsampled mask > 0.5; a tile's image features are computed once
+  and reused for "rat" and "animal" (checked on one cohort-1 tile: "rat" outputs identical alone and after "animal");
+  fp16 runs. (v) One extra SAM3 sensitivity, `sam3_rat_t1008_edge`: the primary tiling with boxes that touch an inner
+  tile border dropped before the cross-tile NMS (overlaps 267 / 432 px, so every rat lies whole in some tile) —
+  because the plan's NMS alone leaves cut-rat fragments as duplicates. (vi) The max-F1 summary is per group; the
+  count error and empty-frame FP rate use ONE cut per detector × set (that set's max-F1 cut, held fixed across its
+  groups) and, additionally, the fixed cut 0.25 (the cut step 2 uses). Groups also include camera × lighting.
+  Differences YOLO v5@1280 − each SAM3 variant (AP, R@P≥0.8) get paired-bootstrap CIs.
+- **2026-10-05 ~17:55, before results (step 1, lighting rule; after the reference chroma values, before any detector
+  score).** The first lighting pass showed the premise of rule (iii) false: CH02 07-06 chroma 0.0037 / 0.0076 / 0.0104
+  (min / median / max, 8-bit units) and CH02 06-30 0.0068 / 0.0080 / 45.8 — most "colour dusk" 06-30 frames are
+  numerically monochrome (neutral chroma planes), so the min-misclassification cut (0.007) fell inside the grey cluster
+  and would have split it by encoder noise. The run was stopped during its YOLO phase (no score computed) and the rule
+  replaced: thr = the geometric mid-point of the largest gap in log10(max(chroma, 1e-4)) over the pooled reference
+  frames (both clips). Reference chroma values are saved (`ref_chroma.csv`); the old rule's cut is reported beside it.
+- **2026-10-05, before results (step 2).** (i) A 5-s bin with no located tag has no WISER count (missing, not 0); the
+  hour's mean outside-count is over the bins present, with their coverage reported. (ii) The 10-min review video is
+  rendered after the detection pass, from a second, seeked decode of the window, with the cached detections joined by
+  PTS, and burns in the frame's YOLO count (boxes ≥ 0.25) as well as the time and the WISER count — the same renderer
+  as the step-3 clips. (iii) YOLO runs fp32 as in step 1.
+- **2026-10-05 ~18:05, before results (step 2, decode path).** Benchmarks on the chosen-candidate file (no detection
+  run yet): ffmpeg CLI decode alone ≈ 140 fps and decode + transpose + bgr24 ≈ 90 fps (`-f null`), but the
+  grab_frames-style ffmpeg → pipe → Python path delivers only ≈ 8 fps (CPU) for 50-MB upright frames — the pipe, not the
+  decoder, is the bound, so NVDEC cannot help; in-process PyAV (libavcodec, frame threads) with the swscale bgr24
+  conversion + 90° ccw rotation in 8 threads gives ≈ 60 fps and was pixel-identical (max |diff| 0) to `grab_frames.grab`
+  on a test frame. The pass therefore decodes sequentially with PyAV (CPU); PTS = frame.pts × time_base; the
+  identity check against `grab_frames.grab` (CPU, exact) is still made on one frame of the run, and the pipe benchmarks
+  (CPU and NVDEC) are recorded in `run.json`. The renderer also decodes with PyAV (seek to a keyframe ≥ 3 s before the
+  window, frames kept by PTS) and downsizes with OpenCV INTER_AREA.
+- **2026-10-05, before results — NEW step 3: labelled review clips for the user** (user request 2026-10-05: "最后给我做几个
+  labelled clips 我要人工看"). Fixed now, before any step-2 result exists. From the step-2 hour, 6 clips of 60 s
+  (= 12 consecutive 5-s bins on the WISER bin grid, every frame), rendered like `review_10min.mp4` (YOLO v5 boxes with
+  conf ≥ 0.25 and their confidence; field-PC frame time, WISER outside-count and YOLO count burned in on every frame;
+  3840 × 1080, H.264, 20 fps). Window eligibility: all 12 bins have ≥ 1 decoded frame and a WISER count. Per-bin YOLO
+  = median of the per-frame counts at conf 0.25; per-bin WISER = tagged animals outside the houses. Windows may not
+  overlap each other or the 10-min window; they are picked in the order below, each from the windows still free; ties
+  → earlier start. (a) Two "agree-many": among windows with mean |YOLO − WISER| ≤ 1, the highest mean WISER.
+  (b) One "wiser-zero": WISER = 0 in all 12 bins, the highest mean YOLO (candidate false positives, or animals at a
+  house door). (c) One "yolo-miss": the most bins with YOLO = 0 while WISER ≥ 2 (needs ≥ 1 such bin). (d) One
+  "yolo-excess": the most bins with YOLO > WISER + 1 (needs ≥ 1 such bin). (e) One "random": uniform over the free
+  eligible windows, `numpy.random.default_rng(0)`. A category with no qualifying window is reported as such, never
+  substituted. Output in `<step-2 run>/review_clips/`: `<k>_<category>_<HH-MM-SS>.mp4`, `clips.csv` (file, category,
+  start / end field-PC time, frame range, mean WISER, mean YOLO, the selecting rule value), `index.html` embedding all
+  clips and the 10-min video with those columns, `review_template.csv` (clip, user_verdict, notes; empty). The agent
+  draws no conclusion from the clips; they are for the user's manual review.
+- **2026-10-05 ~19:00, after results (step 1, diagnostic only — no metric, set or threshold changed).** Label
+  provenance: per set × camera-date, the share of GT boxes near-identical (IoU ≥ 0.95) to a v5 @1280 box with conf
+  ≥ 0.10 (`prelabel_frames.py` pre-labels with the newest `best.pt` = v5; `WORKFLOW.md`: pre-label, then correct). It
+  is 100 % (71 / 71) for S-held CH02 07-04 — those labels are v5's own boxes, so that group's perfect YOLO score is
+  circular — 34 % for CH01 07-05 and 0 % for every S-val clip. Reported in `label_provenance.csv`, a report section and
+  the headline (the non-circular held-out clip CH01 07-05 is named there); the pre-registered tables are unchanged.
+- **2026-10-05 ~19:25, after results (step 2, two implementation fixes; no detection, table or rule changed).** The
+  hour's PTS are arrival times in bursts: 1 825 of the 72 000 consecutive frame pairs are < 1 ms apart (min 0.022 ms).
+  (i) The identity check first grabbed at PTS − 1 ms and so got the previous frame (0.37 ms earlier; mean |diff| 3.2);
+  redone with the offset at the midpoint to the previous frame's PTS (same frame; result in `identity_check.json`, the
+  first attempt kept there). (ii) The renderer joined detections to frames by PTS rounded to 1 ms, which merges 804
+  frames; the key is now 1 µs, and the 10-min video (whose first render was stopped part-way) and the clips were
+  rendered only after the fix.

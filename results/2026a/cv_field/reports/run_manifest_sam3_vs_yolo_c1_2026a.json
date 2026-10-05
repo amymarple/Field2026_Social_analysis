@@ -1,0 +1,18 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026a\\cv_field_sam3_vs_yolo_c1_20261005_1750",
+  "cohort": "2026a",
+  "direction": "cv_field",
+  "analysis": "sam3_vs_yolo_c1",
+  "driver": "cv/cv_field/sam3_vs_yolo_c1.py",
+  "report": "cv_field_sam3_vs_yolo_c1_2026a.md",
+  "plan": "implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md",
+  "backup": "D:/Field2026_analysis_out/2026a/social_field_rat_backup_20261005",
+  "weights_sha256": "2d7294f3e29da845c8c6c26a39d427ffbe374274524e2cfd922c0edd51b63360",
+  "git_commit": "c76af8c4f6cec3d08b5fbef56549ed5b4c544b6a",
+  "figures": [
+    "results/2026a/cv_field/figures/sam3_vs_yolo_c1/sam3_vs_yolo_c1_pr_sheld_2026a.png",
+    "results/2026a/cv_field/figures/sam3_vs_yolo_c1/sam3_vs_yolo_c1_pr_sval_2026a.png",
+    "results/2026a/cv_field/figures/sam3_vs_yolo_c1/sam3_vs_yolo_c1_ap_groups_sheld_2026a.png",
+    "results/2026a/cv_field/figures/sam3_vs_yolo_c1/sam3_vs_yolo_c1_ap_groups_sval_2026a.png"
+  ]
+}
