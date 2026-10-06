@@ -328,6 +328,8 @@ blocks only; test median 4.39 in, 88.5 % of boxes with an animal ≤ 14 in vs 2.
 CH01 only). → `$OUT_ROOT/2026c/cv_field_wiser_assist_p0_<ts>/` (`mapping.json`, `fn_episodes.csv` = suspected YOLO misses,
 never boxes; `wiser_spots.csv` = WISER presence at the fixed spots, **sealed until the user's spot verdicts**), report
 `results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`. WISER only adds presence, never a negative.
+`--clips <run>` (cv env, PyAV) renders 12 rule-chosen review clips of the suspected misses (pano + crop + panel, WISER
+14-in circles via a Newton inverse of `to_paddock`) → `<run>/review_clips/index.html` + empty `review_template.csv`.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

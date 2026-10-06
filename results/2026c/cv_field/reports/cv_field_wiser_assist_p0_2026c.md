@@ -135,6 +135,30 @@ Ten longest episodes (all in `fn_episodes.csv`; pano pixel = the nearest 40-px g
 
 A suspected miss can also be occlusion (grass, a house roof), WISER error (≈ 3 in still, 4–7 in raw jitter) plus mapping error, an animal out of view near the support edge, or a box displaced > 20 in from the tag. Episodes are proposals for the user's eyes only: **never a box or a label — an occluded animal must not get a box.** Map: [`fn_map.png`](../figures/wiser_assist_p0/fn_map.png).
 
+<!-- review-clips:start -->
+## Review clips of the suspected misses (amendment 4, after results, user request)
+
+12 clips chosen by rule only (longest first, [start - 5, end + 5] s capped at 90 s, no overlap, 12 clips): **4 in the +x hotspot cell** (paddock x 440–480, y 120–160 in, by the episode's median position), **8 elsewhere**. Every frame of each window, decoded with PyAV as in step 2 (pixel-identical to `grab_frames`), 20 fps H.264, canvas 3840 × 2160: top = whole pano at ½; bottom left = native 1920 × 1080 crop following the episode animal (1-s running median, clamped); bottom right = frame time, episode, per-animal house zone and distance to the nearest YOLO box, YOLO count. YOLO boxes (cached, conf ≥ 0.25) green; WISER animals SF07–SF12 projected with the accepted map and a Newton inverse of `to_paddock` (round trip ≤ 1 in, else not drawn), circle = 14 in projected through the local Jacobian; episode animal red, others cyan, house-zone animals dimmed and dashed, outside CH01's support "out of view". Burned-in: "WISER circles = position +/- ~14 in; absence of a box can be occlusion". Frames written 16140; all frame checks (written = expected = ffprobe) **True**; render 17.3 min. The agent did not look at any frame. Index `review_clips/index.html` (it asks the user to fill `fixed_spots_review.csv` first, since the WISER circles reveal what part B tests); verdicts in `review_clips/review_template.csv` (visible_missed / occluded / not_there_wiser_wrong / box_present / unsure).
+
+Definitions (clips): pixel of a WISER animal $\hat{\mathbf u}$ solves $F_t(\hat{\mathbf u})=T(\mathbf w_j(t+L))$ by Newton, $F_t$ = `to_paddock` at the frame's whole second, $J=\partial F_t/\partial\mathbf u$ by 1-px finite differences, started at the nearest mapped 40-px grid centre; kept only if the round trip $e=\lVert F_t(\hat{\mathbf u})-T(\mathbf w_j)\rVert\le 1$ in. **Text:** where WISER says the animal is, in pano pixels. Circle $\{\hat{\mathbf u}+J^{-1}(14\cos\phi,\,14\sin\phi)\}$ = the 14-in ring around that position seen through the local camera geometry (an ellipse in pixels). Crop centre = running median of the episode animal's $\hat{\mathbf u}$ over 20 frames (≈ 1 s; gaps interpolated). Panel distance = $\min_b\lVert\mathbf p_b-T(\mathbf w_j)\rVert$ over that frame's mapped boxes ≥ 0.25 (in). Hotspot = the episode's median paddock position in x ∈ [440, 480), y ∈ [120, 160) in. Window = [start − 5, end + 5] s capped at 90 s from its start.
+
+| # | clip | episode, animal | window (field-PC) | s | paddock x, y (in) | pano u, v (px) | hotspot | frames (ffprobe) | inverse max (in) |
+|---:|---|---|---|---:|---|---|---|---|---:|
+| 1 | `01_ep206_SF08_21-41-41.mp4` | 206 SF08 (covers 206, 207) | 21:41:37 -> 21:43:07 | 90 | 445, 136 | 6820, 1180 | yes | 1799 / 1799 (1799) | 0.02 |
+| 2 | `02_ep22_SF10_21-03-12.mp4` | 22 SF10 (covers 20, 21, 22, 23, 24, 25, 26) | 21:03:07 -> 21:04:37 | 90 | 456, 140 | 6820, 1100 | yes | 1800 / 1800 (1800) | 0.02 |
+| 3 | `03_ep296_SF08_21-58-20.mp4` | 296 SF08 (covers 296, 297, 298, 299) | 21:58:16 -> 21:59:46 | 90 | 106, 120 | 1940, 1660 | no | 1801 / 1801 (1801) | 0.02 |
+| 4 | `04_ep63_SF09_21-16-04.mp4` | 63 SF09 (covers 63) | 21:15:59 -> 21:17:29 | 90 | 431, 48 | 7380, 2020 | no | 1800 / 1800 (1800) | 0.98 |
+| 5 | `05_ep165_SF08_21-33-51.mp4` | 165 SF08 (covers 164, 165, 166, 167, 168, 169) | 21:33:47 -> 21:35:12 | 85 | 222, 232 | 4020, 220 | no | 1699 / 1699 (1699) | 0.64 |
+| 6 | `06_ep236_SF10_21-47-56.mp4` | 236 SF10 (covers 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247) | 21:47:52 -> 21:49:13 | 81 | 449, 131 | 6860, 1220 | yes | 1621 / 1621 (1621) | 0.02 |
+| 7 | `07_ep205_SF08_21-40-41.mp4` | 205 SF08 (covers 204, 205) | 21:40:37 -> 21:41:35 | 58 | 376, 117 | 6540, 1500 | no | 1159 / 1159 (1159) | 0.02 |
+| 8 | `08_ep201_SF08_21-39-34.mp4` | 201 SF08 (covers 199, 200, 201, 202, 203, 204) | 21:39:30 -> 21:40:20 | 50 | 365, 116 | 6420, 1540 | no | 1000 / 1000 (1000) | 0.02 |
+| 9 | `09_ep250_SF12_21-49-32.mp4` | 250 SF12 (covers 249, 250, 251) | 21:49:27 -> 21:50:12 | 45 | 451, 135 | 6860, 1180 | yes | 899 / 899 (899) | 0.02 |
+| 10 | `10_ep258_SF10_21-51-19.mp4` | 258 SF10 (covers 253, 256, 257, 258, 259, 260) | 21:51:15 -> 21:51:59 | 44 | 274, 235 | 4660, 220 | no | 881 / 881 (881) | 0.02 |
+| 11 | `11_ep45_SF07_21-10-08.mp4` | 45 SF07 (covers 44, 45, 46, 47) | 21:10:04 -> 21:10:47 | 43 | 226, 215 | 4060, 380 | no | 861 / 861 (861) | 0.02 |
+| 12 | `12_ep276_SF10_21-55-26.mp4` | 276 SF10 (covers 276, 277, 278, 279, 280) | 21:55:22 -> 21:56:03 | 41 | 220, 232 | 3980, 260 | no | 820 / 820 (820) | 0.16 |
+
+<!-- review-clips:end -->
+
 ## Definitions
 
 Units: paddock and WISER positions in **inches** (paddock = the 09-24 calibration frame, origin pole A0, 480 × 240 in; WISER = the unverified native inch frame); pixels = upright pano pixels (7680 × 2160); times in seconds. $s \in \{0,\dots,3599\}$ = second of the hour after the file-name start; $k(s)$ = the frame with PTS nearest $s$; $i$ = a detection; $j$ = an animal; $\mathbf p_i$ = paddock position of detection $i$; $\mathbf w_j(t)$ = WISER position of animal $j$ at WISER time $t$; blocks $b(s)=\lfloor s/300\rfloor+1$.

@@ -1420,6 +1420,7 @@ def write_report(res: dict, run: Path, rep_dir: Path, fig_dir: Path, figs: list[
               "the tag. Episodes are proposals for the user's eyes only: **never a box or a label — an occluded animal "
               "must not get a box.** "
               + (f"Map: [`fn_map.png`]({figrel}/fn_map.png)." if "fn_map.png" in figs else ""), ""]
+    L += clip_section_md(run)
     L += ["## Definitions", "",
           "Units: paddock and WISER positions in **inches** (paddock = the 09-24 calibration frame, origin pole A0, "
           "480 × 240 in; WISER = the unverified native inch frame); pixels = upright pano pixels (7680 × 2160); times in "
@@ -1641,6 +1642,505 @@ def run_real(step2: Path, out: Path | None) -> int:
     return 0
 
 
+# ----------------------------------------------------------------------------------------------- review clips (amendment 4)
+CLIP_N, CLIP_PAD, CLIP_CAP, CLIP_FPS = 12, 5.0, 90.0, 20
+HOTSPOT = (440.0, 480.0, 120.0, 160.0)               # paddock x0, x1, y0, y1 (in): the +x cell with the most misses
+VERDICTS = ("visible_missed", "occluded", "not_there_wiser_wrong", "box_present", "unsure")
+CLIP_NOTE = "WISER circles = position +/- ~14 in; absence of a box can be occlusion"   # Hershey fonts are ASCII-only
+BLIND_LINE = ("Fill fixed_spots_review.csv (step-2 run, fixed_spots/) BEFORE opening these clips — the WISER circles "
+              "reveal what part B tests.")
+RED, CYAN, GREEN = (0, 0, 255), (255, 255, 0), (0, 255, 0)
+
+
+def in_hotspot(x, y) -> bool:
+    return bool(HOTSPOT[0] <= x < HOTSPOT[1] and HOTSPOT[2] <= y < HOTSPOT[3])
+
+
+def select_clip_windows(ep: pd.DataFrame, n: int = CLIP_N, pad: float = CLIP_PAD, cap: float = CLIP_CAP,
+                        n_sec: int = 3600) -> list[dict]:
+    """Episodes ranked by duration (ties -> earlier start); window = [start - pad, end + pad] capped at `cap` s from its
+    start (seconds of the hour, end exclusive); an episode whose window overlaps a chosen one is skipped; stop at n."""
+    order = ep.sort_values(["duration_s", "start_sec", "episode_id"], ascending=[False, True, True])
+    taken = []
+    for r in order.itertuples():
+        w0 = max(0.0, float(r.start_sec) - pad)
+        w1 = min(float(n_sec), float(r.end_sec) + pad, w0 + cap)
+        if any(w0 < t["w1"] and t["w0"] < w1 for t in taken):
+            continue
+        cov = ep[(ep["start_sec"] < w1) & (ep["end_sec"] + 1 > w0)]
+        taken.append({"k": len(taken) + 1, "episode_id": int(r.episode_id), "animal": r.animal, "w0": w0, "w1": w1,
+                      "episode_start_sec": int(r.start_sec), "episode_end_sec": int(r.end_sec),
+                      "episode_duration_s": int(r.duration_s), "start_t_pc": str(r.start_t_pc),
+                      "paddock_x_in": float(r.paddock_x_in), "paddock_y_in": float(r.paddock_y_in),
+                      "pano_u": int(r.pano_u), "pano_v": int(r.pano_v),
+                      "hotspot": in_hotspot(float(r.paddock_x_in), float(r.paddock_y_in)),
+                      "episodes_covered": [int(v) for v in cov["episode_id"]],
+                      "animals_covered": sorted(set(cov["animal"]))})
+        if len(taken) == n:
+            break
+    return taken
+
+
+def invert_mapper(fwd, P: np.ndarray, uv0: np.ndarray, tol: float = 0.02, max_it: int = 30, h: float = 1.0,
+                  max_step: float = 300.0) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Numeric inverse of a pixel -> paddock map: Newton on the pixel with a finite-difference Jacobian (forward
+    differences, backward where the forward step leaves the support). fwd(uv (n, 2)) -> paddock (n, 2), NaN where
+    unsupported. -> (uv, J = d paddock / d uv at uv (n, 2, 2), round-trip error in paddock units); uv NaN where Newton
+    fails or the round trip exceeds 1 in."""
+    P = np.asarray(P, float).reshape(-1, 2)
+    uv = np.asarray(uv0, float).reshape(-1, 2).copy()
+    n = len(P)
+    J = np.full((n, 2, 2), np.nan)
+    act = np.isfinite(P).all(1) & np.isfinite(uv).all(1)
+
+    def jac(idx, f0):
+        Jm = np.full((len(idx), 2, 2), np.nan)
+        for c, e in ((0, np.array([h, 0.0])), (1, np.array([0.0, h]))):
+            fp = fwd(uv[idx] + e)
+            bad = ~np.isfinite(fp).all(1)
+            if bad.any():
+                fp[bad] = 2 * f0[bad] - fwd(uv[idx][bad] - e)
+            Jm[:, :, c] = (fp - f0) / h
+        return Jm
+
+    for _ in range(max_it):
+        idx = np.flatnonzero(act)
+        if not idx.size:
+            break
+        f0 = fwd(uv[idx])
+        lost = ~np.isfinite(f0).all(1)
+        act[idx[lost]] = False
+        idx, f0 = idx[~lost], f0[~lost]
+        if not idx.size:
+            break
+        r = f0 - P[idx]
+        done = np.hypot(r[:, 0], r[:, 1]) < tol
+        Jm = jac(idx, f0)
+        J[idx] = Jm
+        act[idx[done]] = False
+        go = ~done & np.isfinite(Jm).all((1, 2))
+        act[idx[~done & ~go]] = False
+        if not go.any():
+            continue
+        Jg, rg = Jm[go], r[go]
+        det = Jg[:, 0, 0] * Jg[:, 1, 1] - Jg[:, 0, 1] * Jg[:, 1, 0]
+        det = np.where(np.abs(det) < 1e-12, np.nan, det)
+        du = -(Jg[:, 1, 1] * rg[:, 0] - Jg[:, 0, 1] * rg[:, 1]) / det
+        dv = -(-Jg[:, 1, 0] * rg[:, 0] + Jg[:, 0, 0] * rg[:, 1]) / det
+        step = np.stack([du, dv], 1)
+        sn = np.hypot(step[:, 0], step[:, 1])
+        step *= np.minimum(1.0, max_step / np.maximum(sn, 1e-12))[:, None]
+        bad = ~np.isfinite(step).all(1)
+        act[idx[go][bad]] = False
+        uv[idx[go][~bad]] += step[~bad]
+    f = np.full((n, 2), np.nan)
+    fin = np.isfinite(uv).all(1)
+    if fin.any():
+        f[fin] = fwd(uv[fin])
+    err = np.hypot(f[:, 0] - P[:, 0], f[:, 1] - P[:, 1])
+    fail = ~np.isfinite(err) | (err > 1.0)
+    uv[fail] = np.nan
+    J[fail] = np.nan
+    return uv, J, err
+
+
+def clip_overlays(frames: pd.DataFrame, boxes: pd.DataFrame, tracks: Tracks, houses, m: Map, L: float, sup: Support,
+                  mapper, hour_start: datetime, prm: Params) -> dict:
+    """Per frame of a clip: every animal's WISER -> paddock -> pixel (+ local 14-in ellipse), its house-zone flag and
+    status, and its distance to the nearest mapped YOLO box (conf >= conf_c). frames: frame, pts_s; boxes: frame, x1..conf."""
+    pts = frames["pts_s"].to_numpy(float)
+    n, J = len(pts), len(tracks.labels)
+    X, S, ok = tracks.at(pts + L)
+    house = in_houses(X, houses, prm.house_buf)
+    P = m.fwd(X.reshape(-1, 2)).reshape(X.shape)
+    insup = sup.contains(P) & ok
+    uv = np.full((n, J, 2), np.nan)
+    Jm = np.full((n, J, 2, 2), np.nan)
+    err = np.full((n, J), np.nan)
+    sec = np.floor(pts + 0.5).astype(int)
+    for s in np.unique(sec):
+        rows = np.flatnonzero(sec == s)
+        fi, fj = np.nonzero(insup[rows])
+        if not fi.size:
+            continue
+        t = hour_start + timedelta(seconds=int(s))
+
+        def fwd(q, t=t):
+            p, info = mapper(t, q)
+            return np.full((len(q), 2), np.nan) if p is None or info.get("flag") != "ok" else np.asarray(p, float).reshape(-1, 2)
+
+        tgt = P[rows[fi], fj]
+        u0, _ = sup.nearest_px(tgt)
+        u_, J_, e_ = invert_mapper(fwd, tgt, u0.astype(float))
+        uv[rows[fi], fj], Jm[rows[fi], fj], err[rows[fi], fj] = u_, J_, e_
+    status = np.where(~ok, "not located", np.where(~insup, "out of view",
+                      np.where(np.isfinite(uv).all(2), "ok", "inverse failed"))).astype(object)
+    b = boxes[boxes["conf"] >= prm.conf_c].copy()
+    b["cx"], b["cy"] = (b["x1"] + b["x2"]) / 2, (b["y1"] + b["y2"]) / 2
+    fmap = pd.Series(np.arange(n), index=frames["frame"].to_numpy())
+    b["row"] = b["frame"].map(fmap)
+    b["win"] = np.floor(b["pts_s"].to_numpy(float) + 0.5).astype(int) if "pts_s" in b else sec[b["row"].to_numpy()]
+    bxy, _, _ = map_by_window(b, mapper, hour_start) if len(b) else (np.zeros((0, 2)), None, None)
+    b["px"], b["py"] = bxy[:, 0], bxy[:, 1]
+    nbd = np.full((n, J), np.inf)
+    by_row = {int(r): g for r, g in b.groupby("row")}
+    for r, g in by_row.items():
+        q = g[["px", "py"]].to_numpy(float)
+        q = q[np.isfinite(q).all(1)]
+        if len(q):
+            D = np.hypot(P[r, :, 0][:, None] - q[None, :, 0], P[r, :, 1][:, None] - q[None, :, 1])
+            nbd[r] = np.where(ok[r], D.min(1), np.inf)
+    return {"X": X, "P": P, "ok": ok, "house": house, "insup": insup, "uv": uv, "J": Jm, "err": err, "status": status,
+            "nbd": nbd, "boxes": {int(r): g[["x1", "y1", "x2", "y2", "conf"]].to_numpy(float) for r, g in by_row.items()},
+            "n_boxes": np.array([len(by_row[r]) if r in by_row else 0 for r in range(n)])}
+
+
+def crop_track(uv_e: np.ndarray, fallback: tuple[float, float], n_med: int, W: int, H: int, cw: int, ch: int) -> np.ndarray:
+    """Crop origin per frame: the episode animal's pixel, gaps interpolated (edges held, all-NaN -> fallback), running
+    median over n_med frames (centred), crop clamped to the pano. -> (n, 2) int x0, y0."""
+    s = pd.DataFrame(uv_e, columns=["u", "v"])
+    if s.notna().all(axis=1).sum() == 0:
+        s["u"], s["v"] = float(fallback[0]), float(fallback[1])
+    s = s.interpolate(limit_direction="both")
+    s = s.rolling(n_med, center=True, min_periods=1).median()
+    x0 = np.clip(np.round(s["u"].to_numpy() - cw / 2), 0, W - cw).astype(int)
+    y0 = np.clip(np.round(s["v"].to_numpy() - ch / 2), 0, H - ch).astype(int)
+    return np.stack([x0, y0], 1)
+
+
+def _poly(img, pts, color, thick, dashed):
+    import cv2
+    p = np.round(pts).astype(np.int32)
+    if not dashed:
+        cv2.polylines(img, [p.reshape(-1, 1, 2)], True, color, thick, cv2.LINE_AA)
+        return
+    for i in range(0, len(p), 2):
+        cv2.line(img, tuple(p[i]), tuple(p[(i + 1) % len(p)]), color, thick, cv2.LINE_AA)
+
+
+def draw_view(img, ov: dict, r: int, labels, ep_j: int, scale: float, off: tuple[int, int], thick_box: int,
+              thick_w: int, fs: float) -> None:
+    """Boxes (green, conf) and WISER ellipses (14 in projected through the local Jacobian) on one view; view px =
+    (pano px - off) * scale."""
+    import cv2
+    ox, oy = off
+    for x1, y1, x2, y2, c in ov["boxes"].get(r, np.zeros((0, 5))):
+        a, b, cc, d = int(round((x1 - ox) * scale)), int(round((y1 - oy) * scale)), int(round((x2 - ox) * scale)), int(round((y2 - oy) * scale))
+        cv2.rectangle(img, (a, b), (cc, d), GREEN, thick_box)
+        cv2.putText(img, f"{c:.2f}", (a, max(12, b - 4)), cv2.FONT_HERSHEY_SIMPLEX, fs * 0.8, GREEN, 1, cv2.LINE_AA)
+    phi = np.linspace(0, 2 * np.pi, 33)[:-1]
+    circ = 14.0 * np.stack([np.cos(phi), np.sin(phi)], 1)
+    for j, lab in enumerate(labels):
+        if ov["status"][r, j] != "ok":
+            continue
+        Jm = ov["J"][r, j]
+        try:
+            Ji = np.linalg.inv(Jm)
+        except np.linalg.LinAlgError:
+            continue
+        e = ov["uv"][r, j] + circ @ Ji.T
+        col = RED if j == ep_j else CYAN
+        dim = bool(ov["house"][r, j])
+        if dim:
+            col = tuple(int(0.55 * v) for v in col)
+        _poly(img, (e - [ox, oy]) * scale, col, thick_w, dim)
+        u, v = (ov["uv"][r, j] - [ox, oy]) * scale
+        cv2.putText(img, lab + (" (house)" if dim else ""), (int(u) + 6, int(v) - 6), cv2.FONT_HERSHEY_SIMPLEX, fs, col, 2, cv2.LINE_AA)
+
+
+def compose_frame(img: np.ndarray, ov: dict, r: int, x0y0, labels, ep_j: int, clip: dict, t: datetime, fidx,
+                  mapdesc: str) -> np.ndarray:
+    """Canvas (W/2 x H): top = whole pano at 1/2; bottom left = native (W/4 x H/2) crop at x0y0; bottom right = text."""
+    import cv2
+    H, W = img.shape[:2]
+    cw, ch = W // 4, H // 2
+    canvas = np.zeros((H, W // 2, 3), np.uint8)
+    top = cv2.resize(img, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
+    k = H / 2160.0
+    draw_view(top, ov, r, labels, ep_j, 0.5, (0, 0), 1, 2, max(0.35, 0.7 * k))
+    x0, y0 = int(x0y0[0]), int(x0y0[1])
+    crop = np.ascontiguousarray(img[y0:y0 + ch, x0:x0 + cw])
+    draw_view(crop, ov, r, labels, ep_j, 1.0, (x0, y0), 2, 2, max(0.35, 0.8 * k))
+    cv2.rectangle(top, (x0 // 2, y0 // 2), ((x0 + cw) // 2, (y0 + ch) // 2), (255, 255, 255), 1)
+    canvas[:H // 2] = top
+    canvas[H // 2:, :cw] = crop
+    panel = np.full((ch, W // 2 - cw, 3), 24, np.uint8)
+    fs, lh, y = 1.0 * k, int(46 * k), int(50 * k)
+
+    def put(txt, col=(235, 235, 235), s=1.0, th=2):
+        nonlocal y
+        cv2.putText(panel, txt, (int(24 * k), y), cv2.FONT_HERSHEY_SIMPLEX, fs * s, col, max(1, int(th * k + 0.5)), cv2.LINE_AA)
+        y += int(lh * s)
+
+    put(f"CH01  {t:%Y-%m-%d %H:%M:%S}.{t.microsecond // 1000:03d} field-PC   frame {fidx}")
+    put(f"clip {clip['k']}   episode {clip['episode_id']}   {clip['animal']}", RED)
+    put("SUSPECTED MISS (WISER proposal, not a box)", RED)
+    s0, s1 = clip["episode_start_sec"], clip["episode_end_sec"]
+    tt = (t - HOUR_START).total_seconds()
+    phase = "inside episode" if s0 - 0.5 <= tt < s1 + 0.5 else ("before episode" if tt < s0 else "after episode")
+    put(f"episode {fmt_hms(s0)} -> {fmt_hms(s1)} ({clip['episode_duration_s']} s)   now: {phase}", (200, 200, 200), 0.8)
+    put(f"YOLO boxes (conf >= 0.25): {int(ov['n_boxes'][r])}", GREEN)
+    y += int(10 * k)
+    put("animal   zone             nearest YOLO box", (200, 200, 200), 0.85)
+    for j, lab in enumerate(labels):
+        st = ov["status"][r, j]
+        zone = "house zone" if ov["house"][r, j] else "outside house"
+        if st == "not located":
+            txt = f"{lab}    not located (WISER)"
+        elif st == "out of view":
+            txt = f"{lab}    {zone:<16} out of view"
+        else:
+            d = ov["nbd"][r, j]
+            dist = f"{d:5.1f} in" if np.isfinite(d) else "no box mapped"
+            txt = f"{lab}    {zone:<16} {dist}" + ("   (no pixel: inverse failed)" if st == "inverse failed" else "")
+        col = RED if j == ep_j else CYAN
+        if ov["house"][r, j]:
+            col = tuple(int(0.6 * v) for v in col)
+        put(txt, col, 0.85)
+    y = ch - int(130 * k)
+    put(CLIP_NOTE, (255, 255, 255), 0.7, 1)
+    put(mapdesc, (170, 170, 170), 0.6, 1)
+    put("red = episode animal, cyan = others, dim/dashed = in a house zone; green = YOLO v5 boxes", (170, 170, 170), 0.6, 1)
+    canvas[H // 2:, cw:] = panel
+    return canvas
+
+
+def fmt_hms(sec: float) -> str:
+    return (HOUR_START + timedelta(seconds=float(sec))).strftime("%H:%M:%S")
+
+
+def render_clip(video: Path, clip: dict, frames: pd.DataFrame, det: pd.DataFrame, tracks: Tracks, houses, m: Map, L: float,
+                sup: Support, mapper, hour_start: datetime, prm: Params, out_path: Path, ff: str, mapdesc: str,
+                fps: int = CLIP_FPS, encoder: str = "libx264") -> dict:
+    """Decode every frame of [w0, w1) (PyAV, as step 2), draw, encode H.264 at fps. Returns stats."""
+    import c1_yolo_video_test as cvt
+    t0 = time.perf_counter()
+    p0, p1 = clip["w0"], clip["w1"]
+    fsel = frames[(frames["pts_s"] >= p0 - 1e-6) & (frames["pts_s"] < p1 - 1e-6)].reset_index(drop=True)
+    dsel = det[det["frame"].isin(fsel["frame"]) & (det["conf"] >= prm.conf_c)]
+    ov = clip_overlays(fsel, dsel, tracks, houses, m, L, sup, mapper, hour_start, prm)
+    labels = tracks.labels
+    ep_j = labels.index(clip["animal"])
+    W, H = prm.width, prm.height
+    org = crop_track(ov["uv"][:, ep_j], (clip["pano_u"], clip["pano_v"]), fps, W, H, W // 4, H // 2)
+    want = {cvt.pts_key(v): i for i, v in enumerate(fsel["pts_s"])}
+    cw, chh = W // 2, H
+    enc = subprocess.Popen([ff, "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24",
+                            "-s", f"{cw}x{chh}", "-r", str(fps), "-i", "-", "-c:v", encoder, "-preset", "veryfast",
+                            "-crf", "23", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out_path)],
+                           stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    n_w, n_un = 0, 0
+    src = cvt.AvFrames(video, start_pts=p0, end_pts=p1)
+    for pts, img in src:
+        if not np.isfinite(pts) or pts < p0 - 1e-6:
+            continue
+        if pts >= p1 - 1e-6:
+            break
+        r = want.get(cvt.pts_key(pts))
+        if r is None:
+            n_un += 1
+            continue
+        t = hour_start + timedelta(seconds=float(pts))
+        can = compose_frame(np.ascontiguousarray(img), ov, r, org[r], labels, ep_j, clip, t, int(fsel.loc[r, "frame"]), mapdesc)
+        enc.stdin.write(can.tobytes())
+        n_w += 1
+    enc.stdin.close()
+    enc.wait()
+    err = enc.stderr.read().decode(errors="replace")[-300:]
+    st = ov["status"]
+    e = ov["err"][np.isfinite(ov["err"]) & (st == "ok")]
+    return {"frames_expected": int(len(fsel)), "frames_written": n_w, "frames_unmatched_pts": n_un,
+            "packet_errors": len(src.packet_errors), "encoder_rc": enc.returncode, "encoder_err": err,
+            "bytes": out_path.stat().st_size if out_path.is_file() else 0,
+            "animal_frames_ok": int((st == "ok").sum()), "animal_frames_out_of_view": int((st == "out of view").sum()),
+            "animal_frames_inverse_failed": int((st == "inverse failed").sum()),
+            "animal_frames_not_located": int((st == "not located").sum()),
+            "episode_animal_frames_ok": int((st[:, ep_j] == "ok").sum()),
+            "inverse_roundtrip_max_in": float(e.max()) if e.size else float("nan"),
+            "inverse_roundtrip_p99_in": q(e, 99), "render_s": round(time.perf_counter() - t0, 1)}
+
+
+def probe_frames(ffprobe: str, path: Path) -> int:
+    o = subprocess.run([ffprobe, "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries",
+                        "stream=nb_read_packets", "-of", "csv=p=0", str(path)], capture_output=True, text=True).stdout.strip()
+    try:
+        return int(o.split(",")[0])
+    except ValueError:
+        return -1
+
+
+CLIP_MARK0, CLIP_MARK1 = "<!-- review-clips:start -->", "<!-- review-clips:end -->"
+
+
+def clip_section_md(run: Path) -> list[str]:
+    """Report section for the amendment-4 review clips of `run` ([] if none rendered)."""
+    cdir = run / "review_clips"
+    if not (cdir / "clips.csv").exists() or not (cdir / "clips_summary.json").exists():
+        return []
+    c = pd.read_csv(cdir / "clips.csv")
+    s = json.loads((cdir / "clips_summary.json").read_text(encoding="utf-8"))
+    L = [CLIP_MARK0, "## Review clips of the suspected misses (amendment 4, after results, user request)", "",
+         f"{s['n_clips']} clips chosen by rule only ({s['rule']}): **{s['n_hotspot']} in the +x hotspot cell** (paddock "
+         f"x 440–480, y 120–160 in, by the episode's median position), **{s['n_elsewhere']} elsewhere**. Every frame of each "
+         f"window, decoded with PyAV as in step 2 (pixel-identical to `grab_frames`), {s['fps']} fps H.264, canvas "
+         f"{s['canvas'][0]} × {s['canvas'][1]}: top = whole pano at ½; bottom left = native 1920 × 1080 crop following the "
+         "episode animal (1-s running median, clamped); bottom right = frame time, episode, per-animal house zone and "
+         "distance to the nearest YOLO box, YOLO count. YOLO boxes (cached, conf ≥ 0.25) green; WISER animals SF07–SF12 "
+         "projected with the accepted map and a Newton inverse of `to_paddock` (round trip ≤ 1 in, else not drawn), circle "
+         "= 14 in projected through the local Jacobian; episode animal red, others cyan, house-zone animals dimmed and "
+         "dashed, outside CH01's support \"out of view\". Burned-in: \"" + CLIP_NOTE + "\". "
+         f"Frames written {s['frames_total']}; all frame checks (written = expected = ffprobe) **{s['all_frame_checks']}**; "
+         f"render {s['runtime_s'] / 60:.1f} min. The agent did not look at any frame. Index "
+         "`review_clips/index.html` (it asks the user to fill `fixed_spots_review.csv` first, since the WISER circles "
+         "reveal what part B tests); verdicts in `review_clips/review_template.csv` (visible_missed / occluded / "
+         "not_there_wiser_wrong / box_present / unsure).", "",
+         "Definitions (clips): pixel of a WISER animal $\\hat{\\mathbf u}$ solves $F_t(\\hat{\\mathbf u})=T(\\mathbf w_j(t+L))$ by Newton, "
+         "$F_t$ = `to_paddock` at the frame's whole second, $J=\\partial F_t/\\partial\\mathbf u$ by 1-px finite differences, "
+         "started at the nearest mapped 40-px grid centre; kept only if the round trip $e=\\lVert F_t(\\hat{\\mathbf u})-T(\\mathbf w_j)\\rVert"
+         "\\le 1$ in. **Text:** where WISER says the animal is, in pano pixels. Circle "
+         "$\\{\\hat{\\mathbf u}+J^{-1}(14\\cos\\phi,\\,14\\sin\\phi)\\}$ = the 14-in ring around that position seen through the "
+         "local camera geometry (an ellipse in pixels). Crop centre = running median of the episode animal's "
+         "$\\hat{\\mathbf u}$ over 20 frames (≈ 1 s; gaps interpolated). Panel distance = $\\min_b\\lVert\\mathbf p_b-"
+         "T(\\mathbf w_j)\\rVert$ over that frame's mapped boxes ≥ 0.25 (in). Hotspot = the episode's median paddock "
+         "position in x ∈ [440, 480), y ∈ [120, 160) in. Window = [start − 5, end + 5] s capped at 90 s from its start.", "",
+         "| # | clip | episode, animal | window (field-PC) | s | paddock x, y (in) | pano u, v (px) | hotspot | frames (ffprobe) | inverse max (in) |",
+         "|---:|---|---|---|---:|---|---|---|---|---:|"]
+    for r in c.itertuples():
+        L.append(f"| {r.k} | `{r.file}` | {r.episode_id} {r.animal} (covers {str(r.episodes_covered).replace(';', ', ')}) | "
+                 f"{r.window} | {r.duration_s:g} | {r.paddock_x_in:.0f}, {r.paddock_y_in:.0f} | {r.pano_u}, {r.pano_v} | "
+                 f"{r.hotspot} | {r.frames_written} / {r.frames_expected} ({r.frames_probe}) | {r.inverse_roundtrip_max_in:.2f} |")
+    L += ["", CLIP_MARK1, ""]
+    return L
+
+
+def update_report_clips(run: Path, report: Path) -> bool:
+    """Put the clip section into the phase-0 report (replace between the markers, else before ## Definitions)."""
+    if not report.exists() or run.as_posix() not in report.read_text(encoding="utf-8"):
+        return False
+    t = report.read_text(encoding="utf-8")
+    sec = "\n".join(clip_section_md(run))
+    if CLIP_MARK0 in t and CLIP_MARK1 in t:
+        a, b = t.index(CLIP_MARK0), t.index(CLIP_MARK1) + len(CLIP_MARK1)
+        t = t[:a] + sec.rstrip("\n") + t[b:]
+    else:
+        k = t.index("## Definitions")
+        t = t[:k] + sec + "\n" + t[k:]
+    report.write_text(t, encoding="utf-8")
+    return True
+
+
+def write_clip_index(cdir: Path, rows: list[dict], meta: dict) -> None:
+    import html as _h
+    cols = ["file", "k", "episode_id", "animal", "window", "duration_s", "episode_duration_s", "episodes_covered",
+            "paddock_xy_in", "pano_uv", "hotspot", "frames"]
+    H = ["<!doctype html><html><head><meta charset='utf-8'><title>CH01 suspected-miss clips</title><style>"
+         "body{font-family:sans-serif;margin:16px;max-width:1950px}table{border-collapse:collapse;font-size:13px}"
+         "td,th{border:1px solid #999;padding:3px 6px}video{width:100%;max-width:1920px}h2{margin-top:28px}"
+         ".warn{font-size:20px;font-weight:bold;color:#b00;border:2px solid #b00;padding:8px}</style></head><body>",
+         f"<p class='warn'>{_h.escape(BLIND_LINE)}</p>",
+         "<h1>Cohort-3 CH01 2026-09-06 21:00–22:00 — WISER-flagged suspected YOLO misses (phase 0 part C)</h1>",
+         "<p>Each clip: a tagged animal (WISER) inside CH01's view with no YOLO box (conf &ge; 0.25) within 20 in for "
+         "&ge; 3 s. Chosen by rule only (longest first, ± 5 s, max 90 s, no overlap, 12 clips; plan amendment 4); the "
+         "agent did not look at any frame. Top: whole panorama; bottom left: native crop following the episode animal; "
+         "bottom right: per-animal status. <b>Red</b> = episode animal, <b>cyan</b> = other tagged animals, dimmed "
+         "dashed = WISER places it in a house zone; circle = WISER position ± ~14 in (projected locally); green = YOLO "
+         "v5 boxes. " + _h.escape(CLIP_NOTE) + ". WISER circles are proposals, never boxes or labels; an occluded animal "
+         "must not get a box. Animals without a WISER tag (none before 09-11) would not be circled.</p>",
+         "<p>Verdicts go in <code>review_template.csv</code> (one row per episode in a clip): "
+         + ", ".join(f"<code>{v}</code>" for v in VERDICTS) + ".</p>",
+         f"<p>Map: {_h.escape(meta.get('mapdesc', ''))}. Hotspot cell (paddock x 440–480, y 120–160 in): "
+         f"{meta.get('n_hotspot')} clips; elsewhere: {meta.get('n_elsewhere')}.</p><table><tr>"]
+    H += [f"<th>{c}</th>" for c in cols] + ["</tr>"]
+    for r in rows:
+        H.append("<tr>" + "".join(f"<td>{_h.escape(str(r.get(c, '')))}</td>" for c in cols) + "</tr>")
+    H.append("</table>")
+    for r in rows:
+        H.append(f"<h2>{r['k']}. {_h.escape(r['file'])} — episode {r['episode_id']} {_h.escape(r['animal'])}, "
+                 f"{_h.escape(r['window'])}{' (hotspot)' if r['hotspot'] == 'yes' else ''}</h2>"
+                 f"<video controls preload='metadata' src='{_h.escape(r['file'])}'></video>")
+    H.append("</body></html>")
+    (cdir / "index.html").write_text("\n".join(H), encoding="utf-8")
+
+
+def run_clips(run: Path, step2: Path = STEP2_RUN, only: int | None = None) -> int:
+    """Amendment 4: render the review clips of run's suspected-miss episodes into <run>/review_clips/."""
+    import c1_yolo_video_test as cvt
+    t_start = time.perf_counter()
+    prm = Params()
+    cdir = run / "review_clips"
+    cdir.mkdir(exist_ok=True)
+    logf = open(cdir / "clips_log.txt", "a", encoding="utf-8")
+
+    def log(msg):
+        print(msg, flush=True)
+        logf.write(msg + "\n")
+        logf.flush()
+
+    mj = json.loads((run / "mapping.json").read_text(encoding="utf-8"))
+    am = mj["accepted_map"]
+    m = Map(float(am["dx_in"]), float(am["dy_in"]), float(np.radians(am["theta_deg"])), float(am["scale"]),
+            float(am["centre_wiser_in"][0]), float(am["centre_wiser_in"][1]))
+    L = float(mj["accepted_L_s"])
+    mapdesc = (f"accepted map ({mj['adopted']}): d ({am['dx_in']:.2f}, {am['dy_in']:.2f}) in, theta {am['theta_deg']:.3f} deg, "
+               f"s {am['scale']:.4f}, L {L:+.1f} s")
+    ep = pd.read_csv(run / "fn_episodes.csv")
+    clips = select_clip_windows(ep, n_sec=prm.n_sec)
+    n_hot = sum(c["hotspot"] for c in clips)
+    log(f"clips: {len(clips)} selected (hotspot {n_hot}, elsewhere {len(clips) - n_hot}); {mapdesc}")
+    s2 = json.loads((step2 / "run.json").read_text(encoding="utf-8"))
+    video = Path(s2["video"])
+    fr = pd.read_csv(step2 / "frames.csv.gz")
+    det = pd.read_csv(step2 / "detections.csv.gz")
+    track_data, _ = load_tracks_real(prm)
+    tracks = Tracks(track_data, prm.gap_max)
+    houses = load_houses()
+    mapper = real_mapper()
+    sup = Support(mapper, HOUR_START + timedelta(seconds=prm.n_sec / 2), prm)
+    ff, ffprobe = cvt.gf.find_ffmpeg()
+    rows = []
+    for c in clips:
+        name = f"{c['k']:02d}_ep{c['episode_id']}_{c['animal']}_{c['start_t_pc'][11:19].replace(':', '-')}.mp4"
+        c["file"] = name
+        if only is not None and c["k"] != only:
+            continue
+        st = render_clip(video, c, fr, det, tracks, houses, m, L, sup, mapper, HOUR_START, prm, cdir / name, ff, mapdesc)
+        st["frames_probe"] = probe_frames(ffprobe, cdir / name)
+        st["frames_check"] = bool(st["frames_probe"] == st["frames_expected"] == st["frames_written"] and st["encoder_rc"] == 0)
+        log(f"  {name}: {st['frames_written']} / {st['frames_expected']} frames, ffprobe {st['frames_probe']}, check "
+            f"{st['frames_check']}, inverse max {st['inverse_roundtrip_max_in']:.3f} in, episode animal drawn in "
+            f"{st['episode_animal_frames_ok']} frames, {st['render_s']} s")
+        rows.append({"file": name, "k": c["k"], "episode_id": c["episode_id"], "animal": c["animal"],
+                     "window": f"{fmt_hms(c['w0'])} -> {fmt_hms(c['w1'])}", "window_start_sec": c["w0"], "window_end_sec": c["w1"],
+                     "duration_s": round(c["w1"] - c["w0"], 1), "episode_duration_s": c["episode_duration_s"],
+                     "episodes_covered": ";".join(map(str, c["episodes_covered"])), "animals": ";".join(c["animals_covered"]),
+                     "paddock_x_in": round(c["paddock_x_in"], 1), "paddock_y_in": round(c["paddock_y_in"], 1),
+                     "paddock_xy_in": f"{c['paddock_x_in']:.0f}, {c['paddock_y_in']:.0f}", "pano_u": c["pano_u"],
+                     "pano_v": c["pano_v"], "pano_uv": f"{c['pano_u']}, {c['pano_v']}", "hotspot": "yes" if c["hotspot"] else "no",
+                     "frames": f"{st['frames_written']} / {st['frames_expected']} (ffprobe {st['frames_probe']})", **st})
+    if only is None:
+        cols = ["file", "k", "episode_id", "episodes_covered", "animal", "animals", "window", "window_start_sec", "window_end_sec",
+                "duration_s", "episode_duration_s", "paddock_x_in", "paddock_y_in", "pano_u", "pano_v", "hotspot",
+                "frames_expected", "frames_written", "frames_probe", "frames_check", "frames_unmatched_pts", "packet_errors",
+                "animal_frames_ok", "animal_frames_out_of_view", "animal_frames_inverse_failed", "animal_frames_not_located",
+                "episode_animal_frames_ok", "inverse_roundtrip_max_in", "inverse_roundtrip_p99_in", "bytes", "render_s"]
+        pd.DataFrame(rows)[cols].to_csv(cdir / "clips.csv", index=False)
+        tmpl = [{"clip": r["file"], "episode_id": e, "animal": ep.loc[ep["episode_id"] == e, "animal"].iloc[0], "verdict": "", "notes": ""}
+                for r in rows for e in map(int, r["episodes_covered"].split(";"))]
+        pd.DataFrame(tmpl, columns=["clip", "episode_id", "animal", "verdict", "notes"]).to_csv(cdir / "review_template.csv", index=False)
+        write_clip_index(cdir, rows, {"mapdesc": mapdesc, "n_hotspot": n_hot, "n_elsewhere": len(clips) - n_hot})
+        summ = {"plan_amendment": 4, "n_clips": len(rows), "n_hotspot": n_hot, "n_elsewhere": len(clips) - n_hot,
+                "all_frame_checks": bool(all(r["frames_check"] for r in rows)), "frames_total": int(sum(r["frames_written"] for r in rows)),
+                "runtime_s": round(time.perf_counter() - t_start, 1), "video": video.as_posix(), "map": mapdesc,
+                "rule": f"longest first, [start - {CLIP_PAD:g}, end + {CLIP_PAD:g}] s capped at {CLIP_CAP:g} s, no overlap, {CLIP_N} clips",
+                "canvas": [prm.width // 2, prm.height], "fps": CLIP_FPS, "git_commit": git_commit(REPO)}
+        (cdir / "clips_summary.json").write_text(json.dumps(jsonable(summ), indent=2), encoding="utf-8")
+        log(f"clips done: {summ['frames_total']} frames, all checks {summ['all_frame_checks']}, {summ['runtime_s']} s")
+        rep = REPO / "results" / COHORT / DIRECTION / "reports" / REPORT_NAME
+        log(f"report section {'updated' if update_report_clips(run, rep) else 'NOT updated (report is of another run)'}: {rep.as_posix()}")
+    logf.close()
+    return 0
+
+
 # ----------------------------------------------------------------------------------------------- selftest
 def synth(prm: Params, seed: int = 0, d_true=(-270.0, -598.0), L_true: float = 7.5, wiser_seed: int | None = None,
           w_scale: float = 1.0):
@@ -1790,6 +2290,39 @@ def selftest() -> int:
                        np.array([[[9.0, 0.0], [1.0, 0.0]]]), np.array([[True, True]]), 30.0)
     rec("hungarian: one-to-one, gate drops the far detection", list(ra) == [1, 0, -1] and np.isinf(rr[2]))
 
+    # amendment 4: clip-window rule
+    epx = pd.DataFrame({"episode_id": [1, 2, 3, 4, 5, 6], "animal": ["SF07", "SF08", "SF09", "SF10", "SF11", "SF12"],
+                        "start_sec": [50, 120, 140, 400, 3590, 500], "end_sec": [149, 149, 149, 409, 3599, 502],
+                        "duration_s": [100, 30, 10, 10, 10, 3], "start_t_pc": ["2026-09-06 21:00:50.000"] * 6,
+                        "paddock_x_in": [450.0, 300, 300, 300, 300, 300], "paddock_y_in": [130.0, 50, 50, 50, 50, 50],
+                        "pano_u": [100] * 6, "pano_v": [100] * 6})
+    cl = select_clip_windows(epx, n=4)
+    rec("clip windows: longest first, +-5 s capped at 90 s, overlapping episode skipped, touching allowed, end clamped, "
+        "stop at n, hotspot flag, covered episodes",
+        [c["episode_id"] for c in cl] == [1, 3, 4, 5] and (cl[0]["w0"], cl[0]["w1"]) == (45.0, 135.0)
+        and (cl[1]["w0"], cl[1]["w1"]) == (135.0, 154.0) and cl[3]["w1"] == 3600.0 and cl[0]["hotspot"] and not cl[1]["hotspot"]
+        and cl[0]["episodes_covered"] == [1, 2], str([(c["episode_id"], c["w0"], c["w1"]) for c in cl]))
+
+    # amendment 4: numeric inverse of a nonlinear pixel -> paddock map
+    def fwd_nl(uv):
+        uv = np.asarray(uv, float).reshape(-1, 2)
+        u, v = uv[:, 0], uv[:, 1]
+        xy = np.stack([160 + u / 20 + 2e-6 * (u - 3000) ** 2 + 0.002 * v, 20 + v / 10 + 0.004 * u + 1e-5 * (v - 1000) ** 2], 1)
+        xy[(u < 0) | (u > 5999.5) | (v < 0) | (v > 1999.5)] = np.nan
+        return xy
+    rng2 = np.random.default_rng(3)
+    true_uv = np.stack([rng2.uniform(50, 5950, 300), rng2.uniform(50, 1950, 300)], 1)
+    Ptrue = fwd_nl(true_uv)
+    Ptest = np.vstack([Ptrue, [[1000.0, 1000.0], [-50.0, 10.0]]])
+    uv_i, J_i, e_i = invert_mapper(fwd_nl, Ptest, np.vstack([true_uv + rng2.uniform(-30, 30, true_uv.shape), [[3000, 1000], [10, 10]]]))
+    back = fwd_nl(uv_i[:300])
+    rt = np.hypot(*(back - Ptrue).T)
+    Jt = np.array([[1 / 20 + 4e-6 * (true_uv[0, 0] - 3000), 0.002], [0.004, 1 / 10 + 2e-5 * (true_uv[0, 1] - 1000)]])
+    rec("invert_mapper: round trip <= 1 in (here < 0.05) at 300 points, pixel recovered, Jacobian right, unreachable -> NaN",
+        np.nanmax(rt) < 0.05 and np.isfinite(uv_i[:300]).all() and np.max(np.hypot(*(uv_i[:300] - true_uv).T)) < 2.0
+        and np.allclose(J_i[0], Jt, rtol=0.02, atol=1e-4) and np.isnan(uv_i[300:]).all(),
+        f"max round trip {np.nanmax(rt):.4f} in, max px error {np.max(np.hypot(*(uv_i[:300] - true_uv).T)):.3f}")
+
     # full pipeline on the synthetic hour
     prm = Params(n_sec=1200, block_s=100, lag_max=30.0, control_offset=1200.0, width=6000, height=2000)
     fr, det, cells, spots, track_data, houses, mapper = synth(prm)
@@ -1875,6 +2408,53 @@ def selftest() -> int:
             not res2["acceptance"]["accepted"] and "wiser_spots.csv" not in names2 and "fn_episodes.csv" not in names2,
             f"median {res2['acceptance']['test_median_in']:.1f}, real {res2['acceptance']['real_within14_share']:.3f}, "
             f"control {res2['acceptance']['control_within14_share']:.3f}")
+        # amendment 4: inverse through the pipeline's own Support start + a small render on a synthetic HEVC clip
+        sup1 = Support(mapper, datetime(2026, 9, 6, 21, 10), prm)
+        Pq = np.array([[300.0, 150.0], [200.3, 40.7], [455.0, 210.0]])
+        u0, _ = sup1.nearest_px(Pq)
+        uvq, _, eq = invert_mapper(lambda q: mapper(None, q)[0], Pq, u0.astype(float))
+        rec("invert_mapper from the Support grid start: <= 1 in, exact pixel of a linear camera",
+            np.nanmax(eq) < 1.0 and np.allclose(uvq[0], [2800, 1300], atol=0.5), f"{uvq.round(2).tolist()}")
+        try:
+            import av  # noqa: F401
+            import c1_yolo_video_test as cvt
+            have_av = True
+        except ImportError:
+            have_av = False
+        if not have_av:
+            print("[SKIP] synthetic render (PyAV not installed in this interpreter; run the self-test in the cv env)")
+        else:
+            ff, ffprobe = cvt.gf.find_ffmpeg()
+            vid = Path(tmp) / "CH01_2026-09-06_21-00-00_to_21-00-04.mp4"
+            subprocess.run([ff, "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=180x640:rate=20:duration=4", "-c:v", "libx265",
+                            "-x265-params", "keyint=40:min-keyint=40:scenecut=0:log-level=error", "-pix_fmt", "yuv420p", str(vid)], check=True)
+            pts_all = [p for p, _ in cvt.AvFrames(vid)]
+            prs = replace(prm, width=640, height=180)
+            frs_ = pd.DataFrame({"frame": np.arange(len(pts_all)), "pts_s": pts_all})
+            map_s = lambda t, uv: (np.where(((np.asarray(uv)[:, :1] >= 0) & (np.asarray(uv)[:, :1] < 639.5)  # noqa: E731
+                                             & (np.asarray(uv)[:, 1:] >= 0) & (np.asarray(uv)[:, 1:] < 179.5)),
+                                            np.stack([160 + np.asarray(uv, float)[:, 0] / 2, 20 + np.asarray(uv, float)[:, 1]], 1), np.nan),
+                                   {"flag": "ok"})
+            sup_s = Support(map_s, datetime(2026, 9, 6, 21, 0, 2), prs)
+            dsyn = pd.DataFrame({"frame": [10, 10, 30], "pts_s": [pts_all[10], pts_all[10], pts_all[30]], "x1": [270.0, 500, 270],
+                                 "y1": [70.0, 20, 70], "x2": [290.0, 540, 290], "y2": [90.0, 60, 90], "conf": [0.6, 0.3, 0.7]})
+            mp = Map(-270.0, -598.0)
+            tdat = {lab: pd.DataFrame({"s": np.arange(-5, 10, 0.25), "x": np.full(60, xw), "y": np.full(60, yw), "imu_state": 1})
+                    for lab, xw, yw in (("SF07", 440.0, 678.0), ("SF08", 1000.0, 1000.0), ("SF09", 613.6, 717.3))}
+            trs = Tracks(tdat, 5.0)
+            clip = {"k": 1, "episode_id": 7, "animal": "SF07", "w0": 0.5, "w1": 2.5, "episode_start_sec": 1, "episode_end_sec": 2,
+                    "episode_duration_s": 2, "pano_u": 300, "pano_v": 80}
+            outv = Path(tmp) / "clip.mp4"
+            st = render_clip(vid, clip, frs_, dsyn, trs, houses, mp, 0.0, sup_s, map_s, HOUR_START, prs, outv, ff, "synthetic map")
+            exp = int(np.sum((np.array(pts_all) >= 0.5 - 1e-6) & (np.array(pts_all) < 2.5 - 1e-6)))
+            wh = subprocess.run([ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of",
+                                 "csv=p=0", str(outv)], capture_output=True, text=True).stdout.strip()
+            rec("render_clip: every window frame written, ffprobe count = expected, canvas W/2 x H, episode animal drawn, "
+                "the WISER animal out of the paddock is out of view, the house animal is located",
+                st["frames_written"] == exp == st["frames_expected"] and probe_frames(ffprobe, outv) == exp and wh == "320,180"
+                and st["episode_animal_frames_ok"] == exp and st["animal_frames_out_of_view"] == exp
+                and st["inverse_roundtrip_max_in"] < 1.0, f"{st['frames_written']}/{exp}, probe {probe_frames(ffprobe, outv)}, "
+                f"size {wh}, ok {st['animal_frames_ok']}, oov {st['animal_frames_out_of_view']}")
     print(("PASS" if ok else "FAIL") + " — wiser_assist_p0 self-test")
     return 0 if ok else 1
 
@@ -1885,9 +2465,14 @@ def main(argv=None) -> int:
     ap.add_argument("--run", action="store_true", help="run phase 0 on the step-2 hour")
     ap.add_argument("--step2", default=str(STEP2_RUN), help="step-2 run folder (cv_field_c1yolo_video_<ts>)")
     ap.add_argument("--out", default=None, help="run folder (default: a new $OUT/2026c/cv_field_wiser_assist_p0_<ts>)")
+    ap.add_argument("--clips", default=None, help="amendment 4: render the suspected-miss review clips of this phase-0 run "
+                                                  "into <run>/review_clips/ (cv env: PyAV)")
+    ap.add_argument("--clip-only", type=int, default=None, help="render only clip k (a timing check; writes no tables)")
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.clips:
+        return run_clips(Path(a.clips), Path(a.step2), a.clip_only)
     if not a.run:
         ap.error("nothing to do (--run or --selftest)")
     return run_real(Path(a.step2), Path(a.out) if a.out else None)

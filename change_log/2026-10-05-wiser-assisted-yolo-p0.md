@@ -7,7 +7,7 @@ Plan: [`implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md`](../implementa
 
 ## What changed
 
-- **New driver** `cv/cv_field/wiser_assist_p0.py` (`--selftest`: 22 checks on synthetic data — known offset and lag
+- **New driver** `cv/cv_field/wiser_assist_p0.py` (`--selftest`: 22 checks at first, 26 with the amendment-4 clip code — known offset and lag
   recovered, negative control fails, selection on the fit blocks only, a scaled WISER makes the similarity win on inner
   validation, B on synthetic object / rat / out-of-support spots, C finds a planted 10-s miss at the right place, the
   report carries no B number, unrelated WISER → not accepted and no B / C files; `--run`). Base Python (scipy, pandas,
@@ -49,6 +49,20 @@ seconds (80.9 % of its animal-seconds) while the 106 detections inside it match 
 not off there. Longest episodes: SF08 21:41:41 156 s at pano ≈ (6820, 1180); SF10 21:03:12 108 s ≈ (6820, 1100); SF08
 21:58:20 99 s ≈ (1940, 1660); SF09 21:16:04 90 s ≈ (7380, 2020); SF08 21:33:51 76 s ≈ (4020, 220).
 
+## Review clips of the suspected misses (amendment 4, after results, user request)
+
+`wiser_assist_p0.py --clips D:/Field2026_analysis_out/2026c/cv_field_wiser_assist_p0_20261005_2211` (cv env, PyAV;
+`--selftest` now 26 checks: + the clip-window rule, the numeric inverse of a nonlinear camera map (round trip < 0.05 in),
+the inverse from the Support-grid start, and a synthetic HEVC render with ffprobe frame counts) → `<run>/review_clips/`:
+12 clips `<k>_ep<id>_<animal>_<HH-MM-SS>.mp4` (3840 × 2160, 20 fps H.264, every frame of the window; top = pano at ½,
+bottom left = native 1920 × 1080 crop following the episode animal, bottom right = per-animal panel), `clips.csv`,
+`clips_summary.json`, `clips_log.txt`, `index.html` (first line: fill `fixed_spots_review.csv` before opening, since the
+WISER circles reveal what part B tests), `review_template.csv` (59 rows = episodes covered, verdicts empty:
+visible_missed / occluded / not_there_wiser_wrong / box_present / unsure). Chosen by rule (longest first, ± 5 s, ≤ 90 s,
+no overlap): **4 clips in the +x hotspot cell, 8 elsewhere**; 807 s, 16 140 frames, written = expected = ffprobe for all
+12, no unmatched PTS or packet errors; WISER pixels by Newton on `to_paddock` (round trip ≤ 0.98 in; 14-in circle through
+the local Jacobian); 17.3 min. The agent did not look at any frame; WISER circles are proposals, never boxes.
+
 ## Amendments
 
 1. *Before results* — implementation clarifications (frame per second, WISER interpolation ≤ 5-s gaps, mapping per
@@ -59,6 +73,7 @@ not off there. Longest episodes: SF08 21:41:41 156 s at pano ≈ (6820, 1180); S
    never boxes. Old selection (test blocks: 5.54 vs 4.39 in → similarity) and new (inner validation: 6.03 vs 4.17 in →
    similarity) agree; map, L and verdict unchanged.
 3. *After results* — descriptive diagnostics (x bands, lag shape, house-zone accounting, top miss cells); no decision.
+4. *After results (user request)* — review clips of the suspected-miss episodes (above); nothing refitted, YOLO not rerun.
 
 ## Definitions (headline quantities; full set in the report)
 

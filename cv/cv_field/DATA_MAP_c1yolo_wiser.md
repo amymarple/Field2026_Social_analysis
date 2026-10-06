@@ -88,11 +88,12 @@ rat" + fixed-spot diagnostic).
 
 | What | Path | Status |
 |---|---|---|
-| Code | `REPO/cv/cv_field/wiser_assist_p0.py` (`--selftest` 22 checks, `--run`) | final |
+| Code | `REPO/cv/cv_field/wiser_assist_p0.py` (`--selftest` 26 checks in the cv env, 25 + 1 skipped without PyAV; `--run`; `--clips <run>`) | final |
 | **Run folder (canonical)** | `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/` | final |
 | Mapping (A) | `mapping.json` (selection, accepted map d / θ / s / L, acceptance, fit histories), `model_selection.csv` (inner validation, fit blocks 3, 7, 11), `pairs.csv.gz` (one row per A detection, all blocks, role), `residuals_test.csv`, `residuals_test_by_x.csv`, `control.json`, `lag_profiles.csv` | final — accepted |
 | **Fixed-spot WISER presence (B)** | `wiser_spots.csv` (122 rows: 2 spot summaries + 120 spot-minutes) | **sealed** until the user's verdicts in `cv_field_c1yolo_video_20261005_1848/fixed_spots/fixed_spots_review.csv`; the agreement table is a later step |
 | Suspected misses (C) | `support_polygon.json` (CH01 ground support), `fn_episodes.csv` (`kind = suspected_miss`; never boxes), `fn_grid.csv` | final; for the user's eyes |
+| **Review clips of the suspected misses** (amendment 4, user request) | `review_clips/`: 12 clips `<k>_ep<id>_<animal>_<HH-MM-SS>.mp4` (3840 × 2160, 20 fps H.264; pano + native crop + panel; WISER circles + cached YOLO boxes), `clips.csv`, `clips_summary.json`, `clips_log.txt`, `index.html` (asks the user to fill `fixed_spots_review.csv` first), `review_template.csv` (empty verdicts); made by `wiser_assist_p0.py --clips <run>` (cv env, PyAV) | final; user review pending |
 | Run metadata | `run.json` (inputs + sha256, calibration files, versions, no B numbers), `run_log.txt` | final |
 | Superseded first run | `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2158/` (`SUPERSEDED.txt`: model chosen on the test blocks; same map, B file byte-identical, same verdict) | record only |
 | Report, figures, pointer | `REPO/results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`, `REPO/results/2026c/cv_field/figures/wiser_assist_p0/*.png` (4, no B figure), `REPO/results/2026c/cv_field/reports/run_manifest_wiser_assist_p0_2026c.json` | final |

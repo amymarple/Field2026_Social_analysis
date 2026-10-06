@@ -186,3 +186,36 @@ within 14 in have an in-house-zone animal within 14 in; the C cell with the most
 residual of the detections inside it; a top-5 table of `fn_grid.csv`. Reason: the first report showed a strong
 cluster of suspected misses at the paddock's +x end, and whether the map is locally off there decides how the user should
 read it (it is not: the 106 detections inside that cell match with median residual 5.0 in).
+
+### Amendment 4 — 2026-10-05, *after results (user request)*: review clips of the suspected-miss episodes
+
+The user asked to see the part-C episodes by eye. Nothing is refitted and YOLO is not rerun: cached step-2 detections,
+the accepted map (similarity d, θ, s, L = 0) and `fn_episodes.csv` of run `cv_field_wiser_assist_p0_20261005_2211`.
+
+**Selection (rule only; the agent never looks at frames).** Rank the episodes by duration (ties → earlier start); walk
+the list; each episode's clip window = [start − 5 s, end + 5 s], capped at 90 s from the window start; skip an episode
+whose window overlaps an already chosen window; stop at 12 clips. Report how many clips fall in the +x hotspot cell
+(paddock x 440–480, y 120–160 in, judged on the episode's median paddock position) and how many elsewhere. Other
+episodes that fall inside a chosen window are listed with that clip.
+
+**Rendering.** Every frame of the window (PyAV, as step 2 — pixel-identical to `grab_frames`), 20 fps H.264, canvas
+3840 × 2160: top = the whole upright pano scaled to 3840 × 1080; bottom left = a native 1920 × 1080 crop following the
+episode animal's projected pixel (1-s running median, clamped to the pano); bottom right = a text panel (field-PC frame
+time; episode id, animal, "SUSPECTED MISS (WISER proposal, not a box)"; per animal: id, in / out of a house zone,
+distance to its nearest YOLO box in inches, or "out of view"; the YOLO count). YOLO boxes conf ≥ 0.25 thin green with
+their conf on both views. WISER animals SF07–SF12 projected with the accepted map and a numeric inverse of `to_paddock`
+(Newton on the pixel, accurate to ≤ 1 in, not the 40-px grid); a circle of 14 in projected locally by a
+finite-difference Jacobian, plus the id; the episode animal red, the others cyan; animals in a house zone dimmed and
+dashed; outside CH01's support: "out of view" in the panel, nothing drawn. Burned-in note: "WISER circles = position
+± ~14 in; absence of a box can be occlusion". Outputs in `<run>/review_clips/`: `<k>_ep<id>_<animal>_<HH-MM-SS>.mp4`,
+`clips.csv`, `index.html` (top line: fill `fixed_spots_review.csv` before opening the clips, since the WISER circles
+reveal what part B tests), an empty `review_template.csv` (verdicts visible_missed / occluded / not_there_wiser_wrong /
+box_present / unsure). Checks: ffprobe frame counts = expected; `--selftest` covers the inverse (round trip ≤ 1 in) and
+the overlap rule. The B file stays unopened and no sealed number appears anywhere.
+
+*Done 2026-10-05* (`wiser_assist_p0.py --clips <run>`, cv env): 12 clips (4 in the hotspot, 8 elsewhere), 16 140 frames,
+written = expected = ffprobe for every clip, inverse round trip ≤ 0.98 in, 17.3 min; listed in the report. One
+rendering detail differs from the wording above: OpenCV's Hershey fonts are ASCII-only, so the burned-in note reads
+"+/- ~14 in" instead of "± ~14 in" (the index page keeps "±"). An animal whose projection is inside the support but has no
+pixel within 1 in (rare, near the support edge / the pano seam) is labelled "no pixel: inverse failed" in the panel and
+not drawn.
