@@ -1,0 +1,26 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_i1_return_20261005_2236",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_i1_return",
+  "report": "wiser_baseline_i1_return_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_i1_return.py",
+  "config": "wiser/configs/wiser_i1_return_2026c.json",
+  "plan": "implementation_plan/2026-10-05-wiser-i1-return-test-and-video-review.md",
+  "git_commit": "173f610+dirty",
+  "figures": [
+    "wiser_baseline_i1_return_enrichment_2026c.png",
+    "wiser_baseline_i1_return_profiles_2026c.png",
+    "wiser_baseline_i1_return_shares_2026c.png"
+  ],
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_imu_consistency_20261005_2038",
+  "reading": "NOT ESTABLISHED (otherwise branch)",
+  "return_share_classifiable": 0.2809721398933017,
+  "rho_S_return": 1.2843536857185538,
+  "rho_S_return_ci": [
+    0.7943441494399858,
+    2.3041701453341736
+  ],
+  "rho_S_relocate": 1.6493630890283941,
+  "validation": false
+}

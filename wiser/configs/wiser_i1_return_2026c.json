@@ -1,0 +1,177 @@
+{
+  "_about": "I1 return test, cohort 2026c (wiser/scripts/analyze_wiser_i1_return.py; plan implementation_plan/2026-10-05-wiser-i1-return-test-and-video-review.md Part 1, approved by the user 2026-10-05, committed d722ec0 before any result; operational details in its 'Amendment (Part 1)', written before any number of this step). Does the raw WISER position come back to where it was after a V3 I1 event (return = WISER error) or settle >= 12 in away (relocate = real movement)? Classes, windows, thresholds and the reading are the plan's and must not be changed after a result. Nothing is tuned. The run writes the pre-registered reading into `reading`; --with-verdicts writes the video-verdict agreement into `validation`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "plan": "implementation_plan/2026-10-05-wiser-i1-return-test-and-video-review.md",
+  "audit_config": "wiser/configs/wiser_imu_consistency_2026c.json",
+  "audit_run": "D:/Field2026_analysis_out/2026c/wiser_imu_consistency_20261005_2038",
+  "tracks_root": "D:/Field2026_analysis_out/2026c/wiser_default_tracks",
+  "track": "V3",
+  "type": "I1",
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF11",
+    "SF12"
+  ],
+  "masks": [
+    "m_handling",
+    "m_silence",
+    "m_tag_validity",
+    "m_adc_lane",
+    "m_off_animal"
+  ],
+  "windows": {
+    "pre_ref_s": 2.0,
+    "post_s": 10.0,
+    "min_window_s": 5.0,
+    "min_window_fixes": 10,
+    "min_pre_ref_fixes": 2,
+    "sens_pre_s": 10.0,
+    "sens_post_s": 30.0,
+    "sens_runend_s": 10.0,
+    "_note": "P0 = coordinate-wise median of the unmasked raw fixes with aligned time in [run_t0, run_t0 + 2) (the audit's I1 reference window = first 2 s of the trimmed run); P1 = median of the raw fixes in [t_end, t_end + 10) intersected with the trimmed run, t_end = the audit's event-window end (events.t1); a window is valid iff its length (inside the run) >= 5 s and it holds >= 10 raw fixes, else the event is censored. Sensitivities: S1 pre = [t_onset - 10, t_onset) inside the run (same minimums); S2 post = [t_end, t_end + 30) inside the run (same minimums); S3 run-end (declared in Amendment (Part 1), no rule uses it) = [max(t_onset, run_t1 - 10), run_t1) (same minimums)."
+  },
+  "classes": {
+    "return_lt_in": 6.0,
+    "relocate_ge_in": 12.0,
+    "_note": "return ||P1 - P0|| < 6 in; relocate >= 12 in; ambiguous 6-12 in; censored = no valid post window inside the run"
+  },
+  "bands": {
+    "size_in": [
+      12,
+      24,
+      48
+    ],
+    "size_labels": [
+      "12-24 in",
+      "24-48 in",
+      ">= 48 in"
+    ],
+    "dur_s": [
+      2,
+      6,
+      11,
+      31,
+      61
+    ],
+    "dur_labels": [
+      "2-5 s",
+      "6-10 s",
+      "11-30 s",
+      "31-60 s",
+      "> 60 s"
+    ],
+    "run_len_s": [
+      0,
+      10,
+      30,
+      60,
+      300,
+      1800
+    ],
+    "run_len_labels": [
+      "1-10 s",
+      "11-30 s",
+      "31-60 s",
+      "1-5 min",
+      "5-30 min",
+      "> 30 min"
+    ],
+    "_note": "size = the audit's I1 size (max displacement of the V3 1-s median from its run reference); duration = the audit's dur_s (seconds >= 12 in); run length = trimmed run length (the audit's run-length bins). Lower edges inclusive; dur_s and run_len_s are integer seconds (run_len bins are (a, b] as in the audit's pd.cut)."
+  },
+  "profile": {
+    "onset_from_s": -10,
+    "onset_to_s": 90,
+    "end_from_s": -30,
+    "end_to_s": 30,
+    "median_min_fix": 2,
+    "_note": "raw 1-s medians (>= 2 fixes, the audit's I1 estimator) on seconds inside the trimmed run, distance to P0; per class median and quartiles over events with a value"
+  },
+  "reading_rule": {
+    "min_return_share_of_classifiable": 0.5,
+    "min_return_le6_ratio": 1.5,
+    "return_ci_lower_gt": 1.0,
+    "return_ci_lower_gt_relocate_point": true,
+    "_note": "WISER in-place wandering dominates I1 iff return >= 50 % of the non-censored events AND the return class's <= 6-anchor share ratio (event / matched control) >= 1.5 AND its CI lower bound > 1 AND that CI lower bound > the relocate class's point estimate (grammatical reading of 'with its CI above 1 and above the relocate class's point estimate'; Amendment (Part 1) item 6; the looser 'point > point' is reported for information). An undefined relocate estimate = condition not met. Then propose V8 as a new pre-registered test; otherwise V3 stays, no correction."
+  },
+  "enrichment_seed_offset": 100,
+  "verdicts": {
+    "verdict_columns": [
+      "verdict_blind",
+      "verdict",
+      "answer",
+      "i1_verdict",
+      "moved",
+      "judgement",
+      "judgment",
+      "label",
+      "response"
+    ],
+    "moved_values": [
+      "moved",
+      "changed_place",
+      "changed place",
+      "yes_moved",
+      "move"
+    ],
+    "stayed_values": [
+      "stayed",
+      "stayed_in_place",
+      "stayed (in place)",
+      "in_place",
+      "did_not_move",
+      "did not move",
+      "not_moved",
+      "stay"
+    ],
+    "cannot_values": [
+      "cannot_tell",
+      "cant_tell",
+      "cannot tell",
+      "can't tell",
+      "not_visible",
+      "unsure",
+      "identity_unsure"
+    ],
+    "onset_tolerance_s": 1.5,
+    "n_boot": 1000,
+    "seed": 20261006,
+    "_note": "Part-2 export (JSON with `rows`/`judgements` or CSV; Amendment (Part 2) 1 item 7: `verdict_blind` = `verdict` = the first, blind answer - used here; `verdict_final` is ignored): matched to this run's events on (animal, event_id) of V3 I1 (`audit_event_id` or the `event_key` <animal>|V3|<type>|<event_id>), else on (animal, field-PC onset within 1.5 s); verdicts normalised to moved / stayed / cannot_tell; I2 rows ignored. Agreement: return <-> stayed, relocate <-> moved; Cohen's kappa on events with class in {return, relocate} and verdict in {moved, stayed}. Nothing is re-tuned on the verdicts."
+  },
+  "n_boot": 1000,
+  "workers": 6,
+  "reading": {
+    "verdict": "NOT ESTABLISHED (otherwise branch)",
+    "action": "V3 stays, no correction",
+    "plan_label": "I1 is mainly real movement the IMU missed",
+    "n_events": 5411,
+    "n_classifiable": 1687,
+    "n_return": 474,
+    "n_ambiguous": 995,
+    "n_relocate": 218,
+    "n_censored": 3724,
+    "return_share_classifiable": 0.2809721398933017,
+    "c1_return_share_ge_0p5": false,
+    "rho_S_return": 1.2843536857185538,
+    "rho_S_return_ci": [
+      0.7943441494399858,
+      2.3041701453341736
+    ],
+    "c2_rho_ge_1p5": false,
+    "c3_ci_lower_gt_1": false,
+    "rho_S_relocate": 1.6493630890283941,
+    "rho_S_relocate_ci": [
+      1.084022547760584,
+      2.4660330255350567
+    ],
+    "n_relocate_with_controls": 213,
+    "c4_ci_lower_gt_relocate_point": false,
+    "c4_loose_point_gt_point": false,
+    "c4_evaluable": true,
+    "repro_pass": true,
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_i1_return_20261005_2236",
+    "written": "2026-10-05 23:01"
+  }
+}

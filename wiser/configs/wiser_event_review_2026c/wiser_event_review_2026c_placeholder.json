@@ -1,0 +1,16 @@
+{
+ "schema": "wiser_event_review_labels/1",
+ "cohort": "2026c",
+ "_placeholder": true,
+ "_note": "Empty placeholder with the export schema; do not edit it. Put the review page's exports (wiser_event_review_2026c_<reviewer>_<YYYYMMDD_HHMM>.json / .csv) next to this file. Readers skip files with an empty rows list.",
+ "run_id": "",
+ "run_dir": "",
+ "tool": "wiser/scripts/make_wiser_event_review.py",
+ "plan": "implementation_plan/2026-10-05-wiser-i1-return-test-and-video-review.md",
+ "audit_run": "",
+ "reviewer": "",
+ "n_events": 0,
+ "n_saved": 0,
+ "rows": [],
+ "judgements": {}
+}
