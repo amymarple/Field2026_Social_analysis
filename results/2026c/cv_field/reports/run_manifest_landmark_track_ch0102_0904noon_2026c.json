@@ -1,0 +1,19 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\cv_field_landmark_track_ch0102_0904noon_20261006_1540",
+  "cohort": "2026c",
+  "direction": "cv_field",
+  "analysis": "landmark_track",
+  "cameras": [
+    "CH01",
+    "CH02"
+  ],
+  "labels_dir": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\cv\\configs\\landmarks\\2026c",
+  "start": "2026-09-04",
+  "end": "2026-09-04",
+  "times": [
+    "12:00:00"
+  ],
+  "ref_labels": [],
+  "tie": false,
+  "report": "cv_field_landmark_track_2026c_ch0102_0904noon.md"
+}
