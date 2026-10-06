@@ -95,3 +95,45 @@ Why: the user marked SF12's **09-07 night** (`2_20260907_180003`) as logger nois
 - It is tagged `SF12_shank1_degraded` from 2026-09-07 18:00:03 (descriptive; the tag excludes nothing).
 - **Possible rescue (user decision):** rescore SF12 with the scorer's channel candidates limited to shanks 2/3. Those
   shanks stay clean through the 09-07 night and, per the lab note, through the 09-10 night as well.
+
+## Update: weather GLM and the REM trend across animals (same day)
+
+**What was added**
+- `sleep_quant.py` now loads the cohort-3 weather from field2026-sync (`load_weather`):
+  - the on-site console's cloud export through 09-10 21:50;
+  - the field PC's listener after that;
+  - the NWS airport series only inside the console's 09-02 21:10 – 09-03 15:16 uplink hole.
+- It aggregates the weather per day (`daily_weather`) and adds a weather row to the per-day figure.
+- It fits the models in `weather_and_trend_stats`.
+- New CSVs: `ephys_spikes_sleep_quant_{weather_daily,glm,slopes}_2026c.csv`.
+- Definitions are in the report's GLM section and the function docstrings:
+  - quasi-binomial logit GLM on the share of the 24 h, one intercept per animal;
+  - weather z-scored across days;
+  - SEs cluster-robust by day with $t(G-1)$, $G = 11$ days, because weather is a day-level variable.
+
+**REM decreases over days in every animal.** Slope of REM (% of the 24 h) per day:
+- **all analysed days** (56 animal-days, 09-01..09-11):
+  - per-animal slopes −0.12 to −0.57 pp/day, 6/6 negative;
+  - mean −0.24 pp/day ≈ −3.5 min of REM per day;
+  - $t(5) = -3.53$, p = 0.017; Wilcoxon p = 0.031, the minimum possible for N = 6;
+  - pooled GLM p = 0.0005;
+- **window only** (09-01..09-06, all 6 animals, no drop-outs): −0.44 pp/day, 6/6 negative, p = 0.02.
+
+The decline is not confined to the animals whose probes moved: SF10 (no listed advance) has the clearest within-animal
+slope (p = 0.003).
+
+**NREM** shows no consistent trend over all days (2/6 negative, p = 0.19). Over the window only, NREM rises in all 6
+(+1.1 pp/day, p = 0.011).
+
+**Weather.** NREM is lower on warmer and on rainier days:
+- **univariable GLM:** −1.7 pp per SD of temperature (p = 0.010) and −1.4 pp per SD of rain (p = 0.009);
+- **joint model:** temperature p = 0.04, rain p = 0.007;
+- **day-mean cross-check** (N = 11): temperature r = −0.65 (p = 0.03), rain r = −0.59 (p = 0.055).
+
+REM goes with humidity, rain and temperature univariably, but:
+- with day order in the model, humidity drops out (p = 0.83) while the day trend stays (p = 0.006);
+- in the joint weather model no term is significant.
+
+**Not separable here.** The rain falls on the first four days (and 09-09), and humidity tracks day order (r = −0.87). So the
+weather associations and the over-days trend (habituation after the 08-30 release, recovery, or measurement drift) cannot be
+told apart with 11 days. The weather numbers are associations, not effects.

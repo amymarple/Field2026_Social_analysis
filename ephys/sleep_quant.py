@@ -149,6 +149,119 @@ def hourly(ep: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def load_weather(sync_root: Path) -> pd.DataFrame:
+    """5-min weather for cohort 3 from field2026-sync from-field/ (coverage note: 2026-09-10_cohort3-weather.md): the on-site
+    console's cloud export for 08-31 -> 09-10 21:50, the field PC's local listener after that, and the NWS Ithaca-airport
+    series (KITH, off-site substitute) only inside the console's uplink hole 09-02 21:10 -> 09-03 15:16. Columns: t (EDT),
+    temp_C, rh_pct, rain_rate_mmh, daily_rain_mm (the console's accumulator, resets at local midnight; NaN on NWS rows), source."""
+    F = sync_root / "from-field"
+
+    def awn(paths, source):
+        d = pd.concat([pd.read_csv(p, encoding="utf-8", encoding_errors="replace") for p in paths], ignore_index=True)
+        c = lambda key: next(x for x in d.columns if key in x)  # noqa: E731 - headers differ only in the degree sign's encoding
+        return pd.DataFrame({"t": pd.to_datetime(d["Simple Date"]), "temp_C": d[c("Outdoor Temperature")], "rh_pct": d[c("Humidity (%)")],
+                             "rain_rate_mmh": d[c("Rain Rate")], "daily_rain_mm": d[c("Daily Rain")], "source": source})
+    cloud = awn([F / "AWN-F8B3B78DEAC9-20260831-20260910.csv"], "on-site cloud").sort_values("t")
+    local = awn(sorted(F.glob("AWN-F8B3B78DEAC9_2026-09-*.csv")), "on-site listener")
+    local = local[local.t > cloud.t.max()]
+    n = pd.read_csv(F / "NWS-KITH-20260902-20260903_gapfill.csv")
+    nws = pd.DataFrame({"t": pd.to_datetime(n.timestamp_utc).dt.tz_convert("America/New_York").dt.tz_localize(None),
+                        "temp_C": n.temp_C, "rh_pct": n.rh_pct, "rain_rate_mmh": np.nan, "daily_rain_mm": np.nan, "source": "NWS KITH"})
+    gaps = np.flatnonzero((cloud.t.diff() > pd.Timedelta(minutes=15)).to_numpy())
+    inside = np.zeros(len(nws), bool)
+    for i in gaps:
+        inside |= ((nws.t > cloud.t.iloc[i - 1]) & (nws.t < cloud.t.iloc[i])).to_numpy()
+    return pd.concat([cloud, nws[inside], local], ignore_index=True).sort_values("t").reset_index(drop=True)
+
+
+def daily_weather(w: pd.DataFrame) -> pd.DataFrame:
+    """Per local calendar day: mean temperature (degC) and humidity (%) over all samples; rain_mm = the day's maximum of the
+    console accumulator; rain_complete = the console reported until >= 23:30 (else rain_mm is a lower bound: 09-02)."""
+    g = w.groupby(w.t.dt.date)
+    con = w[w.source.str.startswith("on-site")]
+    gc = con.groupby(con.t.dt.date)
+    d = pd.DataFrame({"temp_C": g.temp_C.mean().round(2), "rh_pct": g.rh_pct.mean().round(1),
+                      "rain_mm": gc.daily_rain_mm.max(),
+                      "rain_complete": gc.t.max().apply(lambda t: t.hour * 60 + t.minute >= 23 * 60 + 30),
+                      "weather_cover": g.t.apply(lambda t: round(min(1.0, t.dt.floor("5min").nunique() / 288), 3)),
+                      "nws_share": g.source.apply(lambda s: round(float(s.str.startswith("NWS").mean()), 3))})
+    d.index.name = "date"
+    return d
+
+
+def glm_logit(df: pd.DataFrame, y: str, xs: list[str]):
+    """Quasi-binomial GLM, logit link, one intercept per animal (no common constant), cluster-robust SEs by date with the
+    small-sample correction and t(G-1) inference (the weather is one value per day, so days are the independent units)."""
+    import statsmodels.api as sm
+    X = pd.concat([pd.get_dummies(df.animal, prefix="an", dtype=float), df[xs].astype(float)], axis=1)
+    groups = pd.factorize(df.date)[0]
+    return sm.GLM(df[y].astype(float), X, family=sm.families.Binomial()).fit(
+        scale="X2", cov_type="cluster", cov_kwds={"groups": groups, "use_correction": True, "df_correction": True}, use_t=True)
+
+
+def weather_and_trend_stats(day: pd.DataFrame, wd: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
+    """Returns (model table, per-animal slopes, the analysed animal-day table, notes). Unit = included animal-day.
+      p_X(a,d)  = M_X(a,d) / 1440                       (share of the 24 h in state X, phase-weighted)
+      z(v)      = (v - mean_d v) / sd_d v over the analysed days (one value per day)
+      weather   logit E[p_X] = alpha_a + beta_v z(v_d)          (one model per weather variable v, then all three jointly)
+      trend     logit E[p_X] = alpha_a + gamma * day            (day = days since 09-01); per animal: OLS p_X = a + s_a day,
+                across animals: one-sample t-test and Wilcoxon of s_a vs 0, count of s_a < 0
+      effect    pp per SD ~ beta * pbar (1 - pbar) * 100 at the mean share pbar
+    """
+    from scipy import stats
+    d = day[day.included_day].copy()
+    d["date"] = pd.to_datetime(d.date)
+    d = d.merge(wd.reset_index().assign(date=lambda x: pd.to_datetime(x.date)), on="date", how="left")
+    d["day"] = (d.date - pd.Timestamp("2026-09-01")).dt.days
+    for X in ("NREM", "REM"):
+        d[f"p_{X}"] = d[f"{X}_min_24h"] / 1440
+    dd = d.drop_duplicates("date").set_index("date")
+    for v in ("temp_C", "rh_pct", "rain_mm"):
+        d[f"z_{v}"] = (d[v] - dd[v].mean()) / dd[v].std(ddof=1)
+    notes = [f"analysed: {len(d)} animal-days, {d.date.nunique()} days ({d.date.min():%m-%d}..{d.date.max():%m-%d}), "
+             f"{d.animal.nunique()} animals"]
+    cors = dd[["temp_C", "rh_pct", "rain_mm"]].assign(day=(dd.index - pd.Timestamp("2026-09-01")).days).corr().round(2)
+    notes.append("correlation across days: " + "; ".join(f"{a}~{b} {cors.loc[a, b]:+.2f}" for i, a in enumerate(cors.columns)
+                                                          for b in cors.columns[i + 1:]))
+    rows = []
+    for X in ("NREM", "REM"):
+        pbar = d[f"p_{X}"].mean()
+        specs = [("temp_C",), ("rh_pct",), ("rain_mm",), ("temp_C", "rh_pct", "rain_mm"), ("day",), ("day", "rh_pct")]
+        for spec in specs:
+            xs = ["day" if v == "day" else f"z_{v}" for v in spec]
+            r = glm_logit(d, f"p_{X}", xs)
+            for x in xs:
+                unit = "per day" if x == "day" else "per SD"
+                rows.append({"outcome": X, "model": " + ".join(spec), "term": x.replace("z_", ""), "beta_logit": round(r.params[x], 4),
+                             "se": round(r.bse[x], 4), "p": round(float(r.pvalues[x]), 4),
+                             f"pp_{unit.replace(' ', '_')}": round(r.params[x] * pbar * (1 - pbar) * 100, 2),
+                             "n_animal_days": int(r.nobs), "n_days": d.date.nunique()})
+        # day-level cross-check: across-animal mean per day vs each weather variable (N = days)
+        m = d.groupby("date")[f"p_{X}"].mean()
+        for v in ("temp_C", "rh_pct", "rain_mm"):
+            lr = stats.linregress(dd.loc[m.index, v], m * 100)
+            rows.append({"outcome": X, "model": f"day means ~ {v}", "term": v, "beta_logit": np.nan, "se": round(lr.stderr, 4),
+                         "p": round(lr.pvalue, 4), "pp_per_SD": round(lr.slope * dd[v].std(ddof=1), 2), "r": round(lr.rvalue, 2),
+                         "n_animal_days": np.nan, "n_days": len(m)})
+    tab = pd.DataFrame(rows)
+    sl = []
+    for X in ("NREM", "REM"):
+        for an, g in d.groupby("animal"):
+            if len(g) >= 4:
+                lr = stats.linregress(g.day, g[f"p_{X}"] * 100)
+                sl.append({"outcome": X, "animal": an, "n_days": len(g), "slope_pp_per_day": round(lr.slope, 3), "p_within": round(lr.pvalue, 3),
+                           "first_day": f"{g.date.min():%m-%d}", "last_day": f"{g.date.max():%m-%d}"})
+    slopes = pd.DataFrame(sl)
+    for X in ("NREM", "REM"):
+        s = slopes[slopes.outcome == X].slope_pp_per_day
+        t = stats.ttest_1samp(s, 0.0)
+        w = stats.wilcoxon(s) if len(s) >= 2 else None
+        notes.append(f"{X} slope across animals: mean {s.mean():+.3f} pp/day (SEM {s.std(ddof=1) / np.sqrt(len(s)):.3f}), "
+                     f"{int((s < 0).sum())}/{len(s)} negative; t({len(s) - 1}) = {t.statistic:.2f}, p = {t.pvalue:.4f}; "
+                     f"Wilcoxon p = {w.pvalue:.4f}" if w is not None else "")
+    return tab, slopes, d, notes
+
+
 def md_table(df: pd.DataFrame) -> list[str]:
     return (["| " + " | ".join(map(str, df.columns)) + " |", "|" + "---|" * len(df.columns)]
             + ["| " + " | ".join(map(str, r)) + " |" for r in df.itertuples(index=False)])
@@ -186,9 +299,20 @@ def quantify(cohort: str, states_dir: Path, review_csv: Path) -> None:
     dwb = day_b[day_b.included_day & (pd.to_datetime(day_b.date) >= WINDOW[0]) & (pd.to_datetime(day_b.date) < WINDOW[1])]
     per_an_b = dwb.groupby("animal")[["NREM_min_24h", "REM_min_24h"]].mean()
 
+    # ---- weather + statistics
+    from _common import sibling_repo
+    wx = load_weather(sibling_repo("field2026-sync"))
+    wd = daily_weather(wx)
+    wd.to_csv(rd / f"ephys_spikes_sleep_quant_weather_daily_{cohort}.csv")
+    tab, slopes, dan, notes = weather_and_trend_stats(day, wd)
+    tab.to_csv(rd / f"ephys_spikes_sleep_quant_glm_{cohort}.csv", index=False)
+    slopes.to_csv(rd / f"ephys_spikes_sleep_quant_slopes_{cohort}.csv", index=False)
+    win_days = day[(pd.to_datetime(day.date) >= WINDOW[0]) & (pd.to_datetime(day.date) < WINDOW[1])]
+    _, slopes_w, _, notes_w = weather_and_trend_stats(win_days, wd)
+
     # ---- figures
     days_all = sorted(day.date.unique())
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.2), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(11, 10), sharex=True, gridspec_kw={"height_ratios": [3, 3, 2]})
     for ax, X, col in ((axes[0], "NREM", "#1f5fa8"), (axes[1], "REM", "#b8322a")):
         di = day[day.included_day]
         for an, g in di.groupby("animal"):
@@ -204,7 +328,23 @@ def quantify(cohort: str, states_dir: Path, review_csv: Path) -> None:
         ax.set_ylabel(f"{X} (h per 24 h)")
         ax.set_title(f"{X} per day (phase-weighted, days with both phases >= {MIN_PHASE_COVER:.0%} recorded)", fontsize=9)
         ax.legend(fontsize=7, loc="upper right")
-        ax.tick_params(axis="x", labelrotation=45, labelsize=7)
+    axw = axes[2]
+    wdp = wd[(pd.to_datetime(wd.index) >= pd.Timestamp(min(days_all))) & (pd.to_datetime(wd.index) <= pd.Timestamp(max(days_all)))]
+    xd = pd.to_datetime(wdp.index)
+    axw.bar(xd, wdp.rain_mm, width=0.6, color="#4a90c2", alpha=0.6, label="rain (mm/day, console)")
+    for x, r, ok in zip(xd, wdp.rain_mm, wdp.rain_complete):
+        if not ok and r == r:
+            axw.annotate(">=", (x, r), textcoords="offset points", xytext=(0, 2), ha="center", fontsize=7, color="#4a90c2")
+    axw.set_ylabel("rain (mm/day)", color="#4a90c2")
+    axh = axw.twinx()
+    axh.plot(xd, wdp.rh_pct, "s-", color="0.35", ms=4, lw=1.2, label="humidity (% mean)")
+    axh.plot(xd, wdp.temp_C * 4, "^-", color="#d98c1f", ms=4, lw=1.2, label="temperature (°C x 4)")
+    axh.set_ylabel("humidity % / temperature °C x 4")
+    h1, l1 = axw.get_legend_handles_labels()
+    h2, l2 = axh.get_legend_handles_labels()
+    axw.legend(h1 + h2, l1 + l2, fontsize=7, loc="upper right")
+    axw.set_title("on-site weather (console; NWS airport inside the 09-02 21:10 - 09-03 15:16 uplink hole; '>=' = rain lower bound)", fontsize=8)
+    axw.tick_params(axis="x", labelrotation=45, labelsize=7)
     fig.suptitle(f"Cohort 2026c sleep per day (imu_remclean; git {git_commit()}, {utc_now_iso()})", fontsize=9)
     fig.tight_layout()
     f1 = fd / f"ephys_spikes_sleep_quant_per_day_{cohort}.png"
@@ -267,6 +407,40 @@ def quantify(cohort: str, states_dir: Path, review_csv: Path) -> None:
         f"Sensitivity, dropping the 3 sessions the user flagged `bad` (SF07, suspect REM): NREM "
         f"{ms('NREM_min_24h', per_an_b, 1 / 60)} h, REM {ms('REM_min_24h', per_an_b, 1 / 60)} h per 24 h.", "",
         "Per animal:", "", *md_table(per_an.round(3).reset_index()), "",
+        "## Weather (per calendar day)", "",
+        "Sources and rules: `load_weather` / `daily_weather` docstrings.",
+        "- `rain_mm` is the on-site console's daily accumulator (its maximum over the day).",
+        "- `rain_complete = False` makes `rain_mm` a lower bound.",
+        "- `nws_share` = the share of samples from the NWS airport substitute.", "",
+        *md_table(wd.reset_index()), "",
+        "## Does the weather go with NREM / REM? (GLM)", "",
+        "**Unit:** one included animal-day.",
+        "**Outcome:** $p_X = M_X / 1440$, the share of the 24 h spent in state X, phase-weighted as in the per-day figure.",
+        "**Model:** a quasi-binomial GLM with a logit link and one intercept per animal:",
+        "$$\\operatorname{logit} E[p_X(a,d)] = \\alpha_a + \\beta\\, z(v_d)$$",
+        "- $z(v)$ = the weather variable standardised across the analysed days.",
+        "- Standard errors are cluster-robust by day, with the small-sample correction and $t(G-1)$ inference, $G$ = number of "
+        "days. The weather is one value per day, so **days, not animal-days, are the independent units**.",
+        "- `pp_per_SD` ≈ $\\beta\\,\\bar p(1-\\bar p) \\times 100$ = the change in percentage points of the 24 h per 1 SD of "
+        "the variable.",
+        "- The `day means ~ v` rows are the plain cross-check: across-animal mean per day regressed on $v$ (N = days).", "",
+        "Notes:", "", *[f"- {n}" for n in notes if n], "",
+        *md_table(tab.fillna("")), "",
+        "## Is the REM (and NREM) change over days consistent across animals?", "",
+        "- **Per animal:** an OLS slope $s_a$ of $100\\,p_X$ on day (days since 09-01), for animals with ≥ 4 analysed days.",
+        "- **Across animals:** a one-sample $t$-test and a Wilcoxon signed-rank test of $s_a$ against 0, plus the count of "
+        "negative slopes. With N = 6 the smallest two-sided Wilcoxon p is 0.031.",
+        "- **Pooled:** the GLM rows `day` above (animal intercepts, cluster by day).", "",
+        *md_table(slopes), "",
+        f"Window only ({WINDOW[0]:%m-%d}..{WINDOW[1] - pd.Timedelta(days=1):%m-%d}, all 6 animals, no drop-outs):", "",
+        *[f"- {n}" for n in notes_w[2:] if n], "",
+        "**Caveats for both tests:**",
+        "- There are about 11 days.",
+        "- Humidity, rain and day order are correlated (see the correlations above), so a weather effect and a time trend "
+        "cannot be separated with these data.",
+        "- The REM score depends on the LFP theta. Probe advances (SF08 and SF12 on 09-09; SF12 again on 09-10) and SF12's "
+        "shank-1 / contact degradation can shift the score over days without any change in sleep.",
+        "- The five females released on 09-11 at 19:40 change the social regime for the last day.", "",
         "## Figures",
         f"- `{f1.relative_to(rd.parent).as_posix()}`: per day, all days (N falls after 09-06: SF11 implant loss; SF12 from 09-10).",
         f"- `{f2.relative_to(rd.parent).as_posix()}`: hour-of-day profile over the window; dark shading = mean "

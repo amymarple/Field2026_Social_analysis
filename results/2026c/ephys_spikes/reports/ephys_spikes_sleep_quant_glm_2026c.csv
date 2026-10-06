@@ -1,0 +1,25 @@
+outcome,model,term,beta_logit,se,p,pp_per_SD,n_animal_days,n_days,pp_per_day,r
+NREM,temp_C,temp_C,-0.0688,0.0217,0.0099,-1.66,56.0,11,,
+NREM,rh_pct,rh_pct,-0.0418,0.0184,0.0459,-1.01,56.0,11,,
+NREM,rain_mm,rain_mm,-0.0562,0.0173,0.0089,-1.36,56.0,11,,
+NREM,temp_C + rh_pct + rain_mm,temp_C,-0.0526,0.0229,0.0445,-1.27,56.0,11,,
+NREM,temp_C + rh_pct + rain_mm,rh_pct,0.0027,0.0127,0.8336,0.07,56.0,11,,
+NREM,temp_C + rh_pct + rain_mm,rain_mm,-0.0251,0.0075,0.0074,-0.61,56.0,11,,
+NREM,day,day,0.0103,0.0051,0.071,,56.0,11,0.25,
+NREM,day + rh_pct,day,-0.0032,0.0147,0.8343,,56.0,11,-0.08,
+NREM,day + rh_pct,rh_pct,-0.0508,0.052,0.3522,-1.23,56.0,11,,
+NREM,day means ~ temp_C,temp_C,,0.2039,0.0317,-1.32,,11,,-0.65
+NREM,day means ~ rh_pct,rh_pct,,0.1359,0.2855,-0.72,,11,,-0.35
+NREM,day means ~ rain_mm,rain_mm,,0.0489,0.0552,-1.21,,11,,-0.59
+REM,temp_C,temp_C,0.0802,0.0337,0.0388,0.54,56.0,11,,
+REM,rh_pct,rh_pct,0.1038,0.0264,0.0028,0.7,56.0,11,,
+REM,rain_mm,rain_mm,0.0818,0.0175,0.0009,0.55,56.0,11,,
+REM,temp_C + rh_pct + rain_mm,temp_C,0.0022,0.0354,0.9517,0.01,56.0,11,,
+REM,temp_C + rh_pct + rain_mm,rh_pct,0.0774,0.0364,0.0596,0.52,56.0,11,,
+REM,temp_C + rh_pct + rain_mm,rain_mm,0.0448,0.0306,0.1741,0.3,56.0,11,,
+REM,day,day,-0.0364,0.0071,0.0005,,56.0,11,-0.25,
+REM,day + rh_pct,day,-0.0345,0.01,0.0064,,56.0,11,-0.23,
+REM,day + rh_pct,rh_pct,0.007,0.0328,0.8343,0.05,56.0,11,,
+REM,day means ~ temp_C,temp_C,,0.1063,0.1956,0.38,,11,,0.42
+REM,day means ~ rh_pct,rh_pct,,0.0476,0.0253,0.6,,11,,0.67
+REM,day means ~ rain_mm,rain_mm,,0.0222,0.0765,0.5,,11,,0.55
