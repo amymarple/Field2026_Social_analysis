@@ -103,15 +103,44 @@ def session_struct(cohort: str, animal: str) -> dict:
     }
 
 
-def imu_emg(npz_path: Path, duration_s: float) -> dict:
-    with np.load(npz_path) as z:
-        v, t, fs = z["vedba_ms2"].astype(np.float64), z["t_logger_s"], float(z["fs"])
-        bad = np.zeros(len(v), bool)
+def load_imu(imu_root: Path, animal: str, session: str) -> dict:
+    """IMU inputs for scoring: vedba_ms2 (float32 at fs Hz), bad (frozen | invalid), sec + vedba_1s (the per-second table).
+    Read from the compact bundle <s>.imu_sleep.npz (written by --export-imu-bundle; what the server gets) if present,
+    else from the full make_imu layout (<s>.imu.npz + <s>.imu_1s.csv). The arrays are identical either way."""
+    d = imu_root / animal
+    bundle = d / f"{session}.imu_sleep.npz"
+    if bundle.exists():
+        with np.load(bundle) as z:
+            return {"vedba_ms2": z["vedba_ms2"], "fs": float(z["fs"]), "bad": z["bad"], "sec": z["sec"], "vedba_1s": z["vedba_1s"]}
+    with np.load(d / f"{session}.imu.npz") as z:
+        bad = np.zeros(len(z["vedba_ms2"]), bool)
         for key in ("frozen", "invalid"):
             if key in z.files:
                 bad |= z[key]
+        out = {"vedba_ms2": z["vedba_ms2"], "fs": float(z["fs"]), "bad": bad}
+    import pandas as pd
+    t = pd.read_csv(d / f"{session}.imu_1s.csv", usecols=["sec", "vedba_mean"])
+    out["sec"], out["vedba_1s"] = t["sec"].to_numpy(), t["vedba_mean"].to_numpy()
+    return out
+
+
+def export_imu_bundles(imu_root: Path, dest: Path) -> None:
+    """Write <dest>/<SFxx>/<session>.imu_sleep.npz for every session with a make_imu output (~1 GB instead of 15 GB)."""
+    n = 0
+    for npz in sorted(imu_root.glob("*/*.imu.npz")):
+        animal, session = npz.parent.name, npz.name[: -len(".imu.npz")]
+        imu = load_imu(imu_root, animal, session)
+        out = dest / animal / f"{session}.imu_sleep.npz"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(out, **imu)
+        n += 1
+    print(f"{n} IMU bundles -> {dest}")
+
+
+def imu_emg(imu: dict, duration_s: float, session: str) -> dict:
+    v, fs, bad = imu["vedba_ms2"].astype(np.float64), imu["fs"], imu["bad"]
     if bad.any() or np.isnan(v).any():
-        raise SystemExit(f"{npz_path.name}: IMU has frozen / invalid / NaN samples - excluded time is not supported yet (see docstring)")
+        raise SystemExit(f"{session}: IMU has frozen / invalid / NaN samples - excluded time is not supported yet (see docstring)")
     tt = np.arange(1, int(duration_s * EMG_FS)) / EMG_FS
     half = int(EMG_WIN_S / 2 * fs)
     c = np.cumsum(np.r_[0.0, v])
@@ -143,7 +172,7 @@ def score_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varian
     savemat(bp / f"{session}.session.mat", {"session": {k: v for k, v in sess.items() if not k.startswith("_")}})
     duration = os.path.getsize(lfp) / (64 * 2) / 1250.0
     if emg_kind == "imu":
-        emg = imu_emg(imu_root / animal / f"{session}.imu.npz", duration)
+        emg = imu_emg(load_imu(imu_root, animal, session), duration, session)
         savemat(bp / f"{session}.EMGFromLFP.LFP.mat", {"EMGFromLFP": emg})
     key = (animal, session)
     if key in sslfp_cache and not (bp / f"{session}.SleepScoreLFP.LFP.mat").exists():
@@ -182,7 +211,7 @@ def summarize(bp: Path, animal: str, session: str, variant: str, imu_root: Path,
             "SWchan": metrics.get("SWchanID"), "THchan": metrics.get("THchanID"),
             "scorer": f"PreprocessPipeline {pp_commit}", "xml": xml, "git_commit": git_commit(), "written_utc": utc_now_iso(),
             **(extra or {})}
-    info.update(imu_consistency(imu_root / animal / f"{session}.imu_1s.csv", animal, ts, states))
+    info.update(imu_consistency(load_imu(imu_root, animal, session), animal, ts, states))
     (bp / "score_sleep.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
     return info
 
@@ -234,8 +263,7 @@ def derive_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varia
             shutil.copy2(base_bp / name, bp / name)       # copies, never links: nothing here may write through to the base
     st = loadmat(base_bp / f"{session}.SleepState.states.mat", simplify_cells=True)["SleepState"]
     ts = np.asarray(st["idx"]["timestamps"], dtype=np.float64).reshape(-1)
-    import pandas as pd
-    ved = pd.read_csv(imu_root / animal / f"{session}.imu_1s.csv", usecols=["vedba_mean"])["vedba_mean"].to_numpy()
+    ved = load_imu(imu_root, animal, session)["vedba_1s"]
     states, counts = remclean_states(ss, np.asarray(st["idx"]["states"]).reshape(-1), ts, ved, IMU_STILL_THR[animal])
     st["idx"]["states"] = states.reshape(-1, 1)
     for k, v in ss._idx_to_int(states, ts, STATENAMES).items():
@@ -254,7 +282,7 @@ def derive_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varia
 IMU_STILL_THR = {"SF07": 0.387, "SF08": 0.307, "SF09": 0.325, "SF10": 0.325, "SF11": 0.387, "SF12": 0.365}  # m/s^2, 2026-09-28
 
 
-def imu_consistency(imu1: Path, animal: str, ts: np.ndarray, states: np.ndarray) -> dict:
+def imu_consistency(imu: dict, animal: str, ts: np.ndarray, states: np.ndarray) -> dict:
     """Score vs IMU movement, per second s (independent of the variant; theta_a = IMU_STILL_THR[animal]):
       moving(s) = VeDBA_1s(s) >= theta_a;   run(s) = length (s) of the unbroken moving run containing s
       moving_scored_wake         = mean_{moving} [state(s) = WAKE]
@@ -262,12 +290,8 @@ def imu_consistency(imu1: Path, animal: str, ts: np.ndarray, states: np.ndarray)
       brief_moving_scored_sleep  = mean_{moving, run < 5 s} [state(s) in {NREM, REM}]  (twitches / shifts inside sleep)
       still_scored_sleep         = mean_{not moving} [state(s) in {NREM, REM}]
     """
-    if not imu1.exists():
-        return {}
-    import pandas as pd
-    d = pd.read_csv(imu1, usecols=["sec", "vedba_mean"])
-    v = d["vedba_mean"].to_numpy()
-    s_at = np.interp(d["sec"].to_numpy() + 0.5, ts, states, left=0, right=0).round()
+    v = np.asarray(imu["vedba_1s"], dtype=np.float64)
+    s_at = np.interp(np.asarray(imu["sec"]) + 0.5, ts, states, left=0, right=0).round()
     moving = v >= IMU_STILL_THR[animal]
     still = v < IMU_STILL_THR[animal]                      # NaN (frozen / invalid) is neither
     edges = np.flatnonzero(np.diff(np.r_[0, moving.astype(np.int8), 0]))
@@ -282,40 +306,104 @@ def imu_consistency(imu1: Path, animal: str, ts: np.ndarray, states: np.ndarray)
             "brief_moving_scored_sleep": frac(sleep, moving & (run < 5)), "still_scored_sleep": frac(sleep, still)}
 
 
+_PIPE = None
+
+
+def process_session(job: dict) -> list[dict]:
+    """All requested variants of one session (one worker). Resumable: a (session, variant) with a score_sleep.json is
+    skipped unless job['redo']; a failure is written to <out>/_errors/ and stops that session's later variants."""
+    global _PIPE
+    if _PIPE is None:
+        _PIPE = pipeline_module(job["pipeline_root"])
+    ss, Cfg, pp_commit, _ = _PIPE
+    animal, session = job["animal"], job["session"]
+    out_root, lfp_root, imu_root = Path(job["out_root"]), Path(job["lfp_root"]), Path(job["imu_root"])
+    cache, results = {}, []
+    for v in job["variants"]:
+        bp = out_root / v / animal / session
+        err = out_root / "_errors" / f"{animal}__{session}__{v}.json"
+        if not job["redo"] and (bp / "score_sleep.json").exists():
+            results.append({"animal": animal, "session": session, "variant": v, "status": "done before"})
+            continue
+        try:
+            run = derive_one if v in DERIVED else score_one
+            info = run(ss, Cfg, pp_commit, job["cohort"], animal, session, v, out_root, lfp_root, imu_root, cache)
+        except (Exception, SystemExit) as e:  # noqa: BLE001 - one bad session must not stop the batch
+            import traceback
+            err.parent.mkdir(parents=True, exist_ok=True)
+            msg = f"{type(e).__name__}: {e}"
+            err.write_text(json.dumps({"animal": animal, "session": session, "variant": v, "error": msg,
+                                       "traceback": traceback.format_exc(), "written_utc": utc_now_iso()}, indent=2), encoding="utf-8")
+            results.append({"animal": animal, "session": session, "variant": v, "status": "error", "error": msg})
+            break
+        err.unlink(missing_ok=True)
+        for anc in job["anchors"]:
+            aan, ases, arec, aexp = anc.split(":")
+            if (aan, ases) == (animal, session):
+                ts, s = load_states(bp, session)
+                w = (ts >= float(arec) - 60) & (ts <= float(arec) + 60)
+                info[f"anchor_{arec}_{aexp}"] = {n: int(np.sum(s[w] == code)) for n, code in (("WAKE", 1), ("NREM", 3), ("REM", 5), ("0", 0))}
+                (bp / "score_sleep.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
+        results.append({"status": "ok", **info})
+    return results
+
+
+def report_line(r: dict) -> str:
+    head = f"{r['animal']} {r['session']} {r['variant']:13s}: "
+    if r["status"] != "ok":
+        return head + r["status"] + (f" - {r['error']}" if r.get("error") else "")
+    return (head + f"wake {r['frac_wake']:.2f} nrem {r['frac_nrem']:.2f} rem {r['frac_rem']:.2f} (REM {r['rem_share_of_sleep']:.0%} "
+            f"of sleep); moving->WAKE {r.get('moving_scored_wake')}, still->sleep {r.get('still_scored_sleep')}; {r['elapsed_s']} s"
+            + "".join(f"; {k}: {vv}" for k, vv in r.items() if k.startswith("anchor_")))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--cohort", default=None)
     ap.add_argument("--sessions", nargs="*", default=[], help="ANIMAL:SESSION, animal as SF07 (none: only rebuild the CSVs)")
+    ap.add_argument("--all", action="store_true", help="every session with an LFP under --lfp-root")
     ap.add_argument("--variants", nargs="+", default=["imu", "imu_nremgate", "lfpemg", "imu_remclean"],
                     choices=list(VARIANTS) + list(DERIVED))
     ap.add_argument("--pipeline-root", default=None)
     ap.add_argument("--anchor", nargs="*", default=[], help="ANIMAL:SESSION:REC_S:EXPECTED (WAKE|NREM|REM) - report state +-60 s")
+    ap.add_argument("--lfp-root", default=None, help="default <analysis_root>/lfp")
+    ap.add_argument("--imu-root", default=None, help="default <analysis_root>/imu (full make_imu layout or the bundles)")
+    ap.add_argument("--out-root", default=None, help="default <analysis_root>/sleep")
+    ap.add_argument("--workers", type=int, default=1, help="sessions scored in parallel")
+    ap.add_argument("--redo", action="store_true", help="rescore (session, variant) pairs that already have a score_sleep.json")
+    ap.add_argument("--report-name", default="sleep_pilot", help="reports ephys_spikes_<name>[_agreement|_errors]_<c>.csv")
+    ap.add_argument("--export-imu-bundle", default=None, metavar="DIR", help="write the compact IMU inputs for the server and exit")
     a = ap.parse_args()
     c = resolve_cohort(a.cohort)
-    ss, Cfg, pp_commit, pp_root = pipeline_module(a.pipeline_root)
     ar = analysis_root(c)
-    out_root, lfp_root, imu_root = ar / "sleep", ar / "lfp", ar / "imu"
-    print(f"scorer: PreprocessPipeline {pp_commit} ({pp_root}); output -> {out_root}")
-    cache = {}
-    for spec in a.sessions:
-        animal, session = spec.split(":")
-        for v in a.variants:
-            run = derive_one if v in DERIVED else score_one
-            info = run(ss, Cfg, pp_commit, c, animal, session, v, out_root, lfp_root, imu_root, cache)
-            for anc in a.anchor:
-                aan, ases, arec, aexp = anc.split(":")
-                if (aan, ases) == (animal, session):
-                    st = loadmat(Path(info["basepath"]) / f"{session}.SleepState.states.mat", simplify_cells=True)["SleepState"]["idx"]
-                    ts, s = np.asarray(st["timestamps"]).reshape(-1), np.asarray(st["states"]).reshape(-1)
-                    w = (ts >= float(arec) - 60) & (ts <= float(arec) + 60)
-                    counts = {n: int(np.sum(s[w] == code)) for n, code in (("WAKE", 1), ("NREM", 3), ("REM", 5), ("0", 0))}
-                    info[f"anchor_{arec}_{aexp}"] = counts
-                    (Path(info["basepath"]) / "score_sleep.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
-            print(f"{animal} {session} {v:13s}: wake {info['frac_wake']:.2f} nrem {info['frac_nrem']:.2f} rem {info['frac_rem']:.2f} "
-                  f"(REM {info['rem_share_of_sleep']:.0%} of sleep); moving->WAKE {info.get('moving_scored_wake')}, "
-                  f"still->sleep {info.get('still_scored_sleep')}; {info['elapsed_s']} s"
-                  + "".join(f"; {k}: {vv}" for k, vv in info.items() if k.startswith("anchor_")), flush=True)
-    write_summary(c, out_root)
+    lfp_root = Path(a.lfp_root) if a.lfp_root else ar / "lfp"
+    imu_root = Path(a.imu_root) if a.imu_root else ar / "imu"
+    out_root = Path(a.out_root) if a.out_root else ar / "sleep"
+    if a.export_imu_bundle:
+        export_imu_bundles(imu_root, Path(a.export_imu_bundle))
+        return
+    _, _, pp_commit, pp_root = pipeline_module(a.pipeline_root)
+    print(f"scorer: PreprocessPipeline {pp_commit} ({pp_root}); lfp {lfp_root}; imu {imu_root}; output -> {out_root}", flush=True)
+    specs = [s.split(":") for s in a.sessions]
+    if a.all:
+        specs += [[p.parent.name, p.name[: -len(".lfp")]] for p in sorted(lfp_root.glob("*/*.lfp"))]
+    jobs = [{"cohort": c, "animal": an, "session": ses, "variants": a.variants, "anchors": a.anchor, "redo": a.redo,
+             "pipeline_root": str(pp_root), "out_root": str(out_root), "lfp_root": str(lfp_root), "imu_root": str(imu_root)}
+            for an, ses in dict.fromkeys(map(tuple, specs))]
+    t0, n_done = time.time(), 0
+    if a.workers > 1 and len(jobs) > 1:
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        with ProcessPoolExecutor(a.workers) as ex:
+            for fut in as_completed([ex.submit(process_session, j) for j in jobs]):
+                n_done += 1
+                for r in fut.result():
+                    print(f"[{n_done}/{len(jobs)} {time.time() - t0:.0f} s] " + report_line(r), flush=True)
+    else:
+        for j in jobs:
+            n_done += 1
+            for r in process_session(j):
+                print(f"[{n_done}/{len(jobs)} {time.time() - t0:.0f} s] " + report_line(r), flush=True)
+    write_summary(c, out_root, a.report_name)
 
 
 def load_states(bp: Path, session: str) -> tuple[np.ndarray, np.ndarray]:
@@ -323,8 +411,8 @@ def load_states(bp: Path, session: str) -> tuple[np.ndarray, np.ndarray]:
     return np.asarray(st["timestamps"]).reshape(-1), np.asarray(st["states"]).reshape(-1)
 
 
-def write_summary(c: str, out_root: Path) -> None:
-    """Rebuild both pilot CSVs from every score_sleep.json under out_root (so a partial rerun never drops rows).
+def write_summary(c: str, out_root: Path, name: str = "sleep_pilot") -> None:
+    """Rebuild the CSVs from every score_sleep.json (and _errors/*.json) under out_root, so a partial rerun never drops rows.
 
     Agreement between two variants a, b of one session, over the 1-s epochs t both score (state != 0):
       agree = mean_t [s_a(t) == s_b(t)];  kappa = (agree - p_e) / (1 - p_e),  p_e = sum_k p_a(k) p_b(k)
@@ -335,13 +423,16 @@ def write_summary(c: str, out_root: Path) -> None:
         info = json.loads(p.read_text(encoding="utf-8"))
         if "sustained_moving_scored_wake" not in info:     # rows written before the run-length split: add it
             ts, s = load_states(p.parent, info["session"])
-            info.update(imu_consistency(out_root.parent / "imu" / info["animal"] / f"{info['session']}.imu_1s.csv", info["animal"], ts, s))
+            info.update(imu_consistency(load_imu(out_root.parent / "imu", info["animal"], info["session"]), info["animal"], ts, s))
             p.write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
         rows.append(info)
+    errors = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((out_root / "_errors").glob("*.json"))]
+    if errors:
+        pd.DataFrame(errors).drop(columns=["traceback"]).to_csv(report_dir(c) / f"ephys_spikes_{name}_errors_{c}.csv", index=False)
     if not rows:
         return
     df = pd.DataFrame(rows).sort_values(["animal", "session", "variant"])
-    df.to_csv(report_dir(c) / f"ephys_spikes_sleep_pilot_{c}.csv", index=False)
+    df.to_csv(report_dir(c) / f"ephys_spikes_{name}_{c}.csv", index=False)
     pairs = []
     for (animal, session), g in df.groupby(["animal", "session"]):
         st = {r.variant: load_states(Path(r.basepath), session) for r in g.itertuples()}
@@ -355,12 +446,12 @@ def write_summary(c: str, out_root: Path) -> None:
                 pe = sum(np.mean(sa[m] == k) * np.mean(sb[m] == k) for k in (1, 3, 5))
                 row = {"animal": animal, "session": session, "variant_a": va, "variant_b": vb, "epochs": int(m.sum()),
                        "agree": round(agree, 4), "kappa": round((agree - pe) / max(1e-9, 1 - pe), 4)}
-                for name, code in (("wake", 1), ("nrem", 3), ("rem", 5)):   # where a says X, share b also says X
+                for sname, code in (("wake", 1), ("nrem", 3), ("rem", 5)):   # where a says X, share b also says X
                     ka = sa[m] == code
-                    row[f"{name}_a_also_b"] = round(float(np.mean(sb[m][ka] == code)), 4) if ka.any() else None
+                    row[f"{sname}_a_also_b"] = round(float(np.mean(sb[m][ka] == code)), 4) if ka.any() else None
                 pairs.append(row)
-    pd.DataFrame(pairs).to_csv(report_dir(c) / f"ephys_spikes_sleep_pilot_agreement_{c}.csv", index=False)
-    print(f"-> {report_dir(c) / f'ephys_spikes_sleep_pilot_{c}.csv'} (+ _agreement)")
+    pd.DataFrame(pairs).to_csv(report_dir(c) / f"ephys_spikes_{name}_agreement_{c}.csv", index=False)
+    print(f"-> {report_dir(c) / f'ephys_spikes_{name}_{c}.csv'} (+ _agreement{', _errors' if errors else ''})")
 
 
 if __name__ == "__main__":
