@@ -137,3 +137,41 @@ REM goes with humidity, rain and temperature univariably, but:
 **Not separable here.** The rain falls on the first four days (and 09-09), and humidity tracks day order (r = −0.87). So the
 weather associations and the over-days trend (habituation after the 08-30 release, recovery, or measurement drift) cannot be
 told apart with 11 days. The weather numbers are associations, not effects.
+
+## Update: SF07 slow-wave channel re-picked for two sessions (user decision)
+
+The user's SF07 per-day line dropped to ~0 REM on 09-10. A scan of all 63 day sessions ≥ 2 h for NREM epochs that meet
+REM's theta + EMG criteria (median 1.5 %, p90 5.8 %) found two SF07 outliers:
+
+| Session | Automatic SW channel | SW threshold | REM | NREM epochs meeting REM criteria |
+|---|---|---|---|---|
+| `5_20260910_082351` | 2 | 0.29 | 0.0 % | 21.6 % |
+| `2_20260905_093310` | 45 | 0.29 | 0.2 % | 11.4 % |
+
+The user had marked both `ok`.
+- **Mechanism.** The scorer decides NREM first ($\text{SW} > \theta_{SW}$), so a low threshold swallows REM.
+- **The IMU was fine:** SF07 is still 86 % of the time.
+
+**What changed**
+- **`ephys/configs/sleep_channel_overrides_2026c.yaml`.** Per-session channels, 1-based. `score_one` passes them to the
+  scorer's `sw_channels` / `theta_channels` (0-based) and records `sw_channel_forced` in `score_sleep.json`.
+- **Fixed channel:** SF07 slow wave = channel 23, its most frequent automatic pick in the sessions the user marked ok.
+- **`--redo`** (and `REDO=1` in `run_score_sleep.sh`):
+  - clears the scorer's reused products but never the EMG file;
+  - replaces the review copy only if the user has not edited it.
+- **Local test** (SF07 `15_20260902`): forced channel used, IMU EMG kept, unedited copy reseeded, edited copy kept.
+- `sleep_quant.py` now saves figures next to a locked file instead of failing.
+
+**Result** (server, commit 636c8c5)
+- **`5_20260910_082351`: fixed.** SW threshold 0.54, REM 13.7 % of the session (16 % of sleep). SF07's 09-10 goes from 4.5 to
+  99.9 min REM per 24 h.
+- **`2_20260905_093310`: not fixed by the channel.** With channel 23 the SW threshold is again 0.29 and REM 0.3 %.
+  - The SW histogram has its wake peak near 0.15 and its NREM peak near 0.85.
+  - With 25 % wake in 3.7 h, the dip finder settles next to the wake peak whatever the channel.
+  - SF07's usual threshold (0.54) would make 18 min (8 %) REM-eligible.
+  - It needs a fixed threshold, which the unmodified scorer cannot take: user decision pending.
+
+**Trend after the fix** (all days)
+- REM falls in 6/6 animals: −0.18 pp of the 24 h per day, $t(5) = -7.67$, p = 0.0006; pooled day term p = 0.015.
+- NREM shows no consistent trend: 2/6 negative, p = 0.24.
+- The window (09-01..09-06) results are unchanged.

@@ -262,6 +262,18 @@ def weather_and_trend_stats(day: pd.DataFrame, wd: pd.DataFrame) -> tuple[pd.Dat
     return tab, slopes, d, notes
 
 
+def save_fig(fig, path: Path) -> Path:
+    """Save; if the target is locked (e.g. open in a viewer on Windows), write <name>.new.png next to it instead of failing."""
+    try:
+        fig.savefig(path, dpi=140)
+        return path
+    except OSError as e:
+        alt = path.with_name(path.stem + ".new.png")
+        fig.savefig(alt, dpi=140)
+        print(f"WARNING: {path.name} is locked ({e.strerror}); wrote {alt.name} - close the viewer and rerun to replace it")
+        return alt
+
+
 def md_table(df: pd.DataFrame) -> list[str]:
     return (["| " + " | ".join(map(str, df.columns)) + " |", "|" + "---|" * len(df.columns)]
             + ["| " + " | ".join(map(str, r)) + " |" for r in df.itertuples(index=False)])
@@ -347,8 +359,7 @@ def quantify(cohort: str, states_dir: Path, review_csv: Path) -> None:
     axw.tick_params(axis="x", labelrotation=45, labelsize=7)
     fig.suptitle(f"Cohort 2026c sleep per day (imu_remclean; git {git_commit()}, {utc_now_iso()})", fontsize=9)
     fig.tight_layout()
-    f1 = fd / f"ephys_spikes_sleep_quant_per_day_{cohort}.png"
-    fig.savefig(f1, dpi=140)
+    f1 = save_fig(fig, fd / f"ephys_spikes_sleep_quant_per_day_{cohort}.png")
 
     srs = [sun_times(d) for d in sorted(win.t.dt.date.unique())]
     sr_h = np.mean([s.hour + s.minute / 60 for s, _ in srs])
@@ -374,8 +385,7 @@ def quantify(cohort: str, states_dir: Path, review_csv: Path) -> None:
     fig.suptitle(f"Circadian profile, {WINDOW[0]:%m-%d} - {WINDOW[1] - pd.Timedelta(days=1):%m-%d} (all 6 animals); "
                  f"grey = single animals (git {git_commit()})", fontsize=9)
     fig.tight_layout()
-    f2 = fd / f"ephys_spikes_sleep_quant_circadian_{cohort}.png"
-    fig.savefig(f2, dpi=140)
+    f2 = save_fig(fig, fd / f"ephys_spikes_sleep_quant_circadian_{cohort}.png")
 
     # ---- report
     def ms(col, df=per_an, scale=1.0):
