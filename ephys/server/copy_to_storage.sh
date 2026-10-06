@@ -115,7 +115,7 @@ for part in $PARTS; do
   while read -r rel; do echo "$(src_path "$part" "$rel")"; done < "$WORK/$part.rel" > "$WORK/$part.srcabs"
   xargs -d '\n' -n 16 -P "$JOBS" bash -c 'md5_plain "$@"' _ < "$WORK/$part.srcabs" > "$WORK/$part.srcmd5.raw"
   paste -d'\t' "$WORK/$part.srcabs" "$WORK/$part.rel" > "$WORK/$part.map"
-  awk -F'\t' 'NR == FNR { rel[$1] = $2; next } { h = $1; p = substr($0, length($1) + 3); print h "  " rel[p] }' \
+  awk 'NR == FNR { split($0, m, "\t"); rel[m[1]] = m[2]; next } { print substr($0, 1, 32) "  " rel[substr($0, 35)] }' \
     "$WORK/$part.map" "$WORK/$part.srcmd5.raw" | LC_ALL=C sort -k2 > "$WORK/$part.srcmd5"
   ( cd "$D" && xargs -d '\n' -n 16 -P "$JOBS" bash -c 'md5_direct "$@"' _ < "$WORK/$part.rel" ) | LC_ALL=C sort -k2 > "$WORK/$part.dstmd5"
   if diff -q "$WORK/$part.srcmd5" "$WORK/$part.dstmd5" > /dev/null && ! grep -q READ_ERROR "$WORK/$part.dstmd5"; then v2=PASS; else v2=FAIL; fi
