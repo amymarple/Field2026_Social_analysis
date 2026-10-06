@@ -149,6 +149,11 @@ def hourly(ep: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def md_table(df: pd.DataFrame) -> list[str]:
+    return (["| " + " | ".join(map(str, df.columns)) + " |", "|" + "---|" * len(df.columns)]
+            + ["| " + " | ".join(map(str, r)) + " |" for r in df.itertuples(index=False)])
+
+
 def mean_sem(x: pd.Series) -> tuple[float, float, int]:
     x = x.dropna()
     n = len(x)
@@ -245,7 +250,7 @@ def quantify(cohort: str, states_dir: Path, review_csv: Path) -> None:
         f"- Included epochs: {len(ep) / 3600:.0f} h over {ep.animal.nunique()} animals.",
         "- Sessions excluded:", "",
         "| Reason | Sessions | Hours |", "|---|---|---|",
-        *[f"| {k} | {v.sessions} | {v.hours} |" for k, v in excl.iterrows()], "",
+        *[f"| {k} | {int(v.sessions)} | {v.hours:.1f} |" for k, v in excl.iterrows()], "",
         f"- Window for the across-animal summary: {WINDOW[0]:%Y-%m-%d} to {WINDOW[1] - pd.Timedelta(days=1):%Y-%m-%d}, "
         "the last days with all 6 animals (SF11's implant came off on 09-07 at 06:10).",
         f"- An animal-day counts if both its light and its dark phase are at least {MIN_PHASE_COVER:.0%} recorded.", "",
@@ -261,7 +266,7 @@ def quantify(cohort: str, states_dir: Path, review_csv: Path) -> None:
         f"| REM, % of dark phase | {ms('f_REM_dark', scale=100)} |", "",
         f"Sensitivity, dropping the 3 sessions the user flagged `bad` (SF07, suspect REM): NREM "
         f"{ms('NREM_min_24h', per_an_b, 1 / 60)} h, REM {ms('REM_min_24h', per_an_b, 1 / 60)} h per 24 h.", "",
-        "Per animal:", "", per_an.round(3).to_markdown(), "",
+        "Per animal:", "", *md_table(per_an.round(3).reset_index()), "",
         "## Figures",
         f"- `{f1.relative_to(rd.parent).as_posix()}`: per day, all days (N falls after 09-06: SF11 implant loss; SF12 from 09-10).",
         f"- `{f2.relative_to(rd.parent).as_posix()}`: hour-of-day profile over the window; dark shading = mean "
