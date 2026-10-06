@@ -1,0 +1,25 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_imu_consistency_20261005_2038",
+  "cohort": "2026c",
+  "direction": "wiser_baseline",
+  "analysis": "wiser_imu_consistency",
+  "report": "wiser_baseline_imu_consistency_2026c.md",
+  "driver": "wiser/scripts/analyze_wiser_imu_consistency.py",
+  "config": "wiser/configs/wiser_imu_consistency_2026c.json",
+  "plan": "implementation_plan/2026-10-05-wiser-imu-consistency-audit.md",
+  "git_commit": "951300d+dirty",
+  "figures": [
+    "wiser_baseline_imu_consistency_enrichment_2026c.png",
+    "wiser_baseline_imu_consistency_rates_2026c.png",
+    "wiser_baseline_imu_consistency_sizes_2026c.png"
+  ],
+  "verdict": "NOT MATERIAL",
+  "rate_i1_plus_i2_per_h": 4.333056777445563,
+  "le6_share_ratio": 1.4273246948301062,
+  "le6_share_ratio_ci": [
+    1.23311166142293,
+    1.6413642835206212
+  ],
+  "qc_root": "D:/Field2026_analysis_out/2026c/wiser_default_tracks_qc",
+  "b2_tracks_root": "D:/Field2026_analysis_out/2026c/wiser_tracks_B2"
+}

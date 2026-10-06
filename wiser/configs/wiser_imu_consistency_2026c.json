@@ -1,0 +1,157 @@
+{
+  "_about": "IMU-WISER consistency audit, cohort 2026c (wiser/scripts/analyze_wiser_imu_consistency.py; plan implementation_plan/2026-10-05-wiser-imu-consistency-audit.md, approved by the user 2026-10-05 '搞', committed ff3c75c before any result; operational details in its Amendment 1, written before any number). Where does WISER move (I1) or turn (I2) while the head IMU says it cannot? Thresholds and the decision rule are the plan's and must not be changed after a result. Nothing is tuned. The run writes the verdict into `decision`. A new cohort = a new copy of this file + a re-run.",
+  "tz": "America/New_York",
+  "plan": "implementation_plan/2026-10-05-wiser-imu-consistency-audit.md",
+  "audit_config": "wiser/configs/wiser_failure_audit_2026c.json",
+  "phase0_run": "D:/Field2026_analysis_out/2026c/imu_turn_vs_heading_20261004_1010",
+  "tracks_root": "D:/Field2026_analysis_out/2026c/wiser_default_tracks",
+  "b2_tracks_root": "D:/Field2026_analysis_out/2026c/wiser_tracks_B2",
+  "b2_build_run": "D:/Field2026_analysis_out/2026c/wiser_default_tracks_run_20261005_1704",
+  "imu_seconds_root": "D:/Field2026_analysis_out/2026c/imu_seconds_cache",
+  "qc_root": "D:/Field2026_analysis_out/2026c/wiser_default_tracks_qc",
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF11",
+    "SF12"
+  ],
+  "tracks": [
+    "V3",
+    "B2",
+    "raw"
+  ],
+  "primary_track": "V3",
+  "masks": [
+    "m_handling",
+    "m_silence",
+    "m_tag_validity",
+    "m_adc_lane",
+    "m_off_animal"
+  ],
+  "i1": {
+    "min_run_s": 5,
+    "trim_s": 2,
+    "ref_s": 2,
+    "disp_in": 12.0,
+    "min_consec_s": 2,
+    "median_min_fix": 2,
+    "_note": "run = maximal stretch of included seconds with state still/active (no locomoting second), >= 5 s before trimming, trimmed 2 s at both ends; p~(s) = coordinate-wise median of the track at fixes with aligned time in [s, s+1) (>= 2 fixes); reference = median of p~ over the first 2 s of the trimmed run; event when |p~(s) - r| >= 12 in for >= 2 consecutive seconds"
+  },
+  "pairs": {
+    "grid_s": 0.5,
+    "W_s": 2.0,
+    "median_half_s": 0.5,
+    "median_offset_s": 0.5,
+    "min_fix": 3,
+    "min_speed_inps": 10.0,
+    "gyro_window_s": 1.0,
+    "_note": "Phase-0 estimators (analyze_imu_turn_vs_heading.headings / Gyro); speed rule at c - 1 and c + 1; support [c - 2, c + 2) all included seconds; gyro span [c - 1.5, c + 1.5) all samples valid"
+  },
+  "i2": {
+    "min_abs_dtheta_deg": 90.0,
+    "max_abs_dpsi_deg": 20.0
+  },
+  "i3": {
+    "min_abs_dpsi_deg": 90.0,
+    "max_abs_dtheta_deg": 20.0
+  },
+  "merge_gap_s": 2.0,
+  "imu": {
+    "fs": 50.0,
+    "max_gap_samples": 1.5,
+    "margin_s": 60.0
+  },
+  "controls": {
+    "n_per_event": 5,
+    "i1_len_ratio": [
+      0.5,
+      2.0
+    ],
+    "i2_min_sep_s": 4.0,
+    "bio_day_offset_h": 12,
+    "seed": 20261005
+  },
+  "enrichment": {
+    "anchor_le": 6,
+    "disp_bin_in": 0.1,
+    "disp_max_in": 100.0
+  },
+  "bootstrap": {
+    "block_s": 600,
+    "n_boot": 1000,
+    "seed": 20261005
+  },
+  "decision_rule": {
+    "track": "V3",
+    "min_rate_i1_plus_i2_per_imu_ok_h": 1.0,
+    "min_le6_share_ratio": 2.0,
+    "ci_lower_gt": 1.0,
+    "_note": "Material iff the pooled V3 I1+I2 rate >= 1 per IMU-ok hour AND the pooled <= 6-anchor share ratio (event / matched control) >= 2 with its CI lower bound > 1; otherwise not material (V3 stays; QC flags are the deliverable)"
+  },
+  "day_night": {
+    "night": [
+      "21:00",
+      "04:20"
+    ],
+    "day": [
+      "08:00",
+      "18:00"
+    ],
+    "_note": "the rest = twilight (Amendment 1.8)"
+  },
+  "weather": {
+    "wet_after_h": 12,
+    "_note": "rain / wet / dry / unknown per field-PC clock hour (Amendment 1.9); source = audit_config weather.cloud_csv"
+  },
+  "house_rois": [
+    "house_1",
+    "house_2"
+  ],
+  "house_buffer_in": 14.0,
+  "video": {
+    "root": "F:/3rd_rat",
+    "channels_by_zone": {
+      "field": [
+        "CH01",
+        "CH02"
+      ],
+      "house_1": [
+        "CH08",
+        "CH05"
+      ],
+      "house_2": [
+        "CH07",
+        "CH06"
+      ]
+    },
+    "_note": "file + offset by file-name time (field-PC), never the OSD; IR at night; the agent never looks at a frame"
+  },
+  "n_event_list": 30,
+  "repro_tol_deg": 0.1,
+  "workers": 6,
+  "decision": {
+    "verdict": "NOT MATERIAL",
+    "rate_i1_plus_i2_per_h": 4.333056777445563,
+    "rate_ci": [
+      4.17907641962098,
+      4.486743253758859
+    ],
+    "rate_rule_met": true,
+    "le6_share_ratio": 1.4273246948301062,
+    "le6_share_ratio_ci": [
+      1.23311166142293,
+      1.6413642835206212
+    ],
+    "ratio_rule_met": false,
+    "ci_rule_met": true,
+    "le6_share_event": 0.1741156708400882,
+    "le6_share_control": 0.1219874296792806,
+    "n_events_enrichment": 5503,
+    "imu_ok_hours": 1277.62,
+    "run_dir": "D:\\Field2026_analysis_out\\2026c\\wiser_imu_consistency_20261005_2038",
+    "repro_pass": true,
+    "written": "2026-10-05 21:05"
+  }
+}

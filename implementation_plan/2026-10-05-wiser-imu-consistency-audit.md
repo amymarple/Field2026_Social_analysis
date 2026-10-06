@@ -97,3 +97,85 @@ No ground truth: an event is a WISER error, a detector miss or a real movement t
 pushed in a huddle); enrichment is circumstantial evidence, the video check decides. Head turn ≠ body turn (scanning), so I2
 uses a strict asymmetric rule. House interiors have worse geometry by default, so enrichment is also reported within zone.
 The 12-in / 90° / 20° thresholds were set in advance and are not tuned.
+
+## Amendment 1 (2026-10-05, operational; written BEFORE any number of this step was computed)
+
+Written by the implementing session after reading the plan and the inputs, before the driver existed and before any rate,
+event count or enrichment was computed (the only output seen so far is the B2 build log: file counts and run time). No
+definition, threshold or decision rule above is changed; these fix details the plan leaves open (**[op]**) or that cannot be
+implemented literally.
+
+1. **B2 tracks.** Absent, so built with `build_wiser_default_tracks.py --cohort 2026c --method B2 --stages tracks --labels
+   SF07 SF08 SF09 SF10 SF11 SF12` → `<OUT>/2026c/wiser_tracks_B2/` (run dir `wiser_default_tracks_run_20261005_1704`). The
+   `verify` / `report` stages were skipped because the report stage writes the V3 default-tracks report and pointer in
+   `results/` (they must not be overwritten); the fix and IMU caches already exist.
+2. **Gyro turn Δψ (not implementable from the per-second cache).** The Phase-0 gyro quantity is the difference of 1-s means
+   of the integrated 50-Hz turn, ψ̄(c + 1) − ψ̄(c − 1), on a 0.5-s grid; the per-second `turn_net_deg` cannot represent a 1-s
+   mean centred on an integer second, so it cannot reproduce Phase 0 to ≤ 0.1°. Δψ is therefore computed exactly as in Phase 0
+   from the make_imu 50-Hz npz (the source of the cache's head layer): `analyze_wiser_failure_audit.load_imu` /
+   `sample_valid` and `analyze_imu_turn_vs_heading.Gyro`, imported unmodified. The per-second cache supplies `ok` and `state`.
+   The error of a per-second approximation is reported for information only.
+3. **Heading Δθ and the 1-s speed (I2, I3)** use Phase 0's estimator unchanged: m(t) = coordinate-wise median of the
+   track's values at the fixes with aligned time in [t − 0.5, t + 0.5) (≥ 3 fixes), d(h) = m(h + 0.5) − m(h − 0.5), 1-s speed
+   |d(h)| / 1 s, θ(h) = atan2 d(h), at h = c ± 1. Tracks: raw fixes, V3, B2. Phase 0's clean-second rule (≥ 8 anchors, open
+   field) is **not** applied: it would remove exactly the bad-geometry seconds this audit is about.
+4. **"IMU-QC-ok throughout"** (I2, I3) = every field-PC second overlapping the pair's support [c − 2, c + 2) (the fixes that
+   enter both headings) is an included second (item 5), and every 50-Hz sample of the gyro span [c − 1.5, c + 1.5) passes
+   `sample_valid`.
+5. **Included seconds and masks.** Included = the cache's `ok` (which already excludes handling ± 5 min, all-tag silences
+   ± 120 s, the ADC-lane window and time outside tag validity), no masked fix (`m_handling`, `m_silence`, `m_tag_validity`,
+   `m_adc_lane`, `m_off_animal`) in the second, and before SF11's implant loss (cohort YAML). Masked fixes are dropped from
+   every estimate. Time base: aligned time t_al = t_ms − τ* (the IMU / field-PC clock); event lists give field-PC time.
+   Denominator of every rate = included seconds (IMU-ok hours).
+6. **I1 details.** The ≥ 5-s run length is read before trimming. Reference = coordinate-wise median of the available p̃ over
+   the first 2 s of the trimmed run (runs with no p̃ there are "not evaluable" and counted). "≥ 2 consecutive seconds" =
+   consecutive seconds with p̃ defined and ≥ 12 in. At most one I1 event per run; its **window** = the union of the run's
+   seconds with displacement ≥ 12 in (so its length = the plan's duration); onset = the first such second; size = the
+   maximum displacement over the trimmed run; subtype from the trimmed run's states.
+7. **I2 / I3 merging.** Qualifying centres whose pair windows [c − 1, c + 1] overlap (spacing < 2 s) form one event; event
+   window (enrichment and flags) = [c_first − 2, c_last + 2) (the fixes that enter the headings); size = max |Δθ| (I2) or
+   max |Δψ| (I3) over the event's centres.
+8. **Day / night.** Night = 21:00–04:20 (the cohort's night window), day = 08:00–18:00, twilight = the remaining hours
+   (reported as a third class rather than forced into either). Hour = field-PC clock hour.
+9. **Weather class of an hour** (on-site AWN, `F:/weather_data/AWN-F8B3B78DEAC9-20260831-20260912.csv`, read with
+   `analyze_wiser_failure_audit.load_weather`): rain = ≥ 1 five-minute row in [H, H + 1 h) with rain rate > 0; wet = not
+   rain and the last rain row before H is ≤ 12 h earlier; dry = otherwise; unknown = no weather row in the hour.
+10. **Zone of a second** = house when the V3 track's 1-s median p̃ lies inside a house ROI grown by 14 in, else open field;
+    seconds without p̃ take the last defined zone (else the next). A window's zone = the zone of its first second (onset);
+    the zone detail (house_1 / house_2 / field) chooses the cameras of the event list.
+11. **Matched controls.** Same animal, same noon-to-noon "bio-day" (one night each), same track. I1: evaluable event-free
+    runs with trimmed length within [0.5, 2]× the event run's; control window = one contiguous stretch of the event window's
+    length placed at the event onset's offset from the trimmed-run start (clipped to fit). I2: candidate pairs (speed rule +
+    IMU-ok throughout) that are not I2 centres and whose support does not overlap an I2 event window; control window
+    [c − 2, c + 2); the controls of one event are ≥ 4 s apart. Up to 5 per event drawn at random (fixed seed); a control may
+    serve several events. Events without a control are left out of the enrichment and counted.
+12. **Enrichment** pooled over fixes: ≤ 6-anchor share Σ n≤6 / Σ n, dispersion = median over the fixes, fix rate
+    Σ n / Σ duration; each event's controls weighted 1/k_e (k_e = its number of controls). Ratio event / control; CI =
+    2.5–97.5 percentiles of a 10-min block bootstrap (block = animal × 10-min field-PC clock bin of the window onset;
+    1000 replicates; fixed seed). The decision uses V3 I1 + I2 pooled; per type, per track and within zone are reported.
+13. **Rates** assign an event to the stratum of its onset second (hour, day/night, zone, weather, animal). A 10-min
+    block-bootstrap CI of the pooled rate is reported, not used by the rule.
+14. **QC flags** for every V3 default-track day of SF07–SF12 (days without IMU: all 0): `qc_i1` / `qc_i2` = the fix's aligned
+    time lies in a V3 I1 / I2 event window, plus `i1_event_id` / `i2_event_id`; same row order as the production file, keyed
+    by `t_ms`.
+15. **Reproduction** uses all of Phase 0's W = 2 s pairs (not a sample): Δθ (raw, V3) and Δψ from this run's centre arrays.
+
+## Amendment 2 (2026-10-05, written AFTER the first full run's pooled numbers were seen; no definition, threshold or rule changed)
+
+The first full run (`wiser_imu_consistency_20261005_1721`) computed every table, then its aggregation stopped at the
+reproduction step (a pandas/numpy type error); the rates, enrichment, size and event-list tables it had written were read.
+Checking them found:
+
+1. **Bug (fixed, re-run): event and control times written with 6 significant digits.** The bulk CSVs used `%.6g`, which
+   rounds an absolute time (≈ 1.79e9 s) by up to 5,000 s. Only the times in `events.csv.gz` / `controls.csv.gz` were
+   affected, and so the onsets and video files of the event lists. Rates, strata, enrichment and QC flags are computed in
+   memory and did not change: the re-run `wiser_imu_consistency_20261005_2038` reproduces `rates.csv`, `runs`, `exposure`,
+   `repro` and the QC-flag counts exactly, and every non-time event column. Those two tables are now written at full
+   precision; the selftest checks the CSV round trip. The aggregation error is fixed too. Run `…_1721` is superseded.
+2. **Post-hoc sensitivity (declared; no rule uses it).** By construction (Amendment 1.6) an I1 event window holds only
+   seconds with a 1-s median (≥ 2 fixes). A control window is a contiguous stretch and can include seconds with 0–1 fixes.
+   This asymmetry could bias the I1 fix-rate ratio (and to a lesser degree the ≤ 6-anchor ratio). The I1 enrichment is
+   therefore also reported with both windows restricted to seconds with ≥ 2 raw fixes
+   (`tables/enrichment_posthoc_f2.csv`). The pre-registered decision uses the Amendment-1 windows only.
+3. **Descriptive addition:** I1 events by trimmed run length (`tables/i1_by_run_length.csv`), because the events cluster in
+   long runs.
