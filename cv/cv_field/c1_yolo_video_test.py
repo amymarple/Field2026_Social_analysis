@@ -327,35 +327,37 @@ class AvFrames:
         tb = st.time_base
         if self.start is not None and self.start > 3:
             c.seek(int((self.start - 3) / tb), stream=st, backward=True, any_frame=False)
-        pend = deque()
-        stop = False
-        with ThreadPoolExecutor(self.workers) as ex:
-            for pkt in c.demux(st):
-                if stop:
-                    break
-                self.n_packets += 1
-                try:
-                    frs = pkt.decode()
-                except Exception as e:  # noqa: BLE001 - corrupt packet: skip, count
-                    if len(self.packet_errors) < 1000:
-                        self.packet_errors.append(f"packet {self.n_packets}: {type(e).__name__}: {str(e)[:150]}")
-                    continue
-                for fr in frs:
-                    p = float(fr.pts * tb) if fr.pts is not None else float("nan")
-                    if self.start is not None and np.isfinite(p) and p < self.start - 1e-6:
-                        continue
-                    if self.end is not None and np.isfinite(p) and p >= self.end - 1e-6:
-                        stop = True
+        try:
+            pend = deque()
+            stop = False
+            with ThreadPoolExecutor(self.workers) as ex:
+                for pkt in c.demux(st):
+                    if stop:
                         break
-                    pend.append((p, ex.submit(self._conv, fr)))
-                    self.n_frames += 1
-                    while len(pend) > 2 * self.workers:
-                        q, f = pend.popleft()
-                        yield q, f.result()
-            while pend:
-                q, f = pend.popleft()
-                yield q, f.result()
-        c.close()
+                    self.n_packets += 1
+                    try:
+                        frs = pkt.decode()
+                    except Exception as e:  # noqa: BLE001 - corrupt packet: skip, count
+                        if len(self.packet_errors) < 1000:
+                            self.packet_errors.append(f"packet {self.n_packets}: {type(e).__name__}: {str(e)[:150]}")
+                        continue
+                    for fr in frs:
+                        p = float(fr.pts * tb) if fr.pts is not None else float("nan")
+                        if self.start is not None and np.isfinite(p) and p < self.start - 1e-6:
+                            continue
+                        if self.end is not None and np.isfinite(p) and p >= self.end - 1e-6:
+                            stop = True
+                            break
+                        pend.append((p, ex.submit(self._conv, fr)))
+                        self.n_frames += 1
+                        while len(pend) > 2 * self.workers:
+                            q, f = pend.popleft()
+                            yield q, f.result()
+                while pend:
+                    q, f = pend.popleft()
+                    yield q, f.result()
+        finally:
+            c.close()
 
 
 def bench_av(video: Path, n: int = 300, workers: int = 8) -> dict:
@@ -887,6 +889,23 @@ def write_report(run: Path, meta: dict, tab: pd.DataFrame) -> Path:
     for r in meta.get("clips", []):
         L.append(f"| {r['file'] or '–'} | {r['category']} | {r['start']} → {r['end']} | {r['frames']} | {r['mean_wiser']} | "
                  f"{r['mean_yolo']} | {r['rule']} | {r['rule_value']} |")
+    fsp = run / "fixed_spots" / "fixed_spots.csv"
+    if fsp.is_file():
+        sp = pd.read_csv(fsp)
+        info = json.loads((run / "fixed_spots" / "fixed_spots.json").read_text(encoding="utf-8"))
+        L += ["", "## Fixed spots (diagnostic added after results at the user's request; plan amendment B)", "",
+              "From the cached detections only (YOLO not rerun), driver `cv/cv_field/c1_yolo_fixed_spots.py`. Occupancy = "
+              f"share of the {info['n_frames']} frames with a box centre (conf ≥ {info['conf']}) in a {info['cell_px']}-px cell; "
+              f"cells ≥ {info['occ_min']:.0%} ({info['n_cells_ge_min']} cells) joined 8-connected into {info['n_components']} "
+              f"spots, ranked, at most {info['max_spots']} kept. Cells named in the user's review: "
+              + "; ".join(f"x {c['x0']}–{c['x0'] + info['cell_px']} / y {c['y0']}–{c['y0'] + info['cell_px']} {c['occupancy']:.1%}"
+                          for c in info["user_cells"]) + ". **No conclusion here about what the spots are** — locator, "
+              "heatmap, crops and the verdict sheet are in `fixed_spots/` (`index.html`, `fixed_spots_review.csv`, "
+              "`fn_notes.txt` for the misses).", "",
+              "| spot | pano centre (x, y) | occupancy | median conf | median box w × h | centre SD x / y (px) | cells |",
+              "|---:|---|---:|---:|---|---|---:|"]
+        L += [f"| {r.spot_id} | {r.cx_median:.0f}, {r.cy_median:.0f} | {r.occupancy:.1%} | {r.conf_median:.2f} | "
+              f"{r.w_median:.0f} × {r.h_median:.0f} | {r.cx_sd:.1f} / {r.cy_sd:.1f} | {r.n_cells} |" for r in sp.itertuples()]
     L += ["", "## Definitions", "",
           "Units: upright pano pixels (7680 × 2160); times field-PC local (EDT). $k$ = frame, $b$ = 5-s WISER bin.", "",
           "### Frame time",
@@ -909,6 +928,13 @@ def write_report(run: Path, meta: dict, tab: pd.DataFrame) -> Path:
           "agree-many: max $\\bar W$ s.t. $\\overline{|D|}\\le1$; wiser-zero: $W_b=0\\ \\forall b$, max $\\bar Y$; yolo-miss: "
           "max $\\#\\{b: Y_b=0, W_b\\ge2\\}$; yolo-excess: max $\\#\\{b: Y_b>W_b+1\\}$; random: uniform, seed 0. No overlap; "
           "ties → earlier.", "",
+          "### Cell and spot occupancy (fixed-spot diagnostic)",
+          "$$ O_c=\\frac{\\#\\{k:\\ \\exists\\ \\text{box with } conf\\ge0.25,\\ \\text{centre}\\in c\\}}{N_{frames}},\\quad "
+          "O_S=\\frac{\\#\\{k:\\ \\exists\\ \\text{box centre}\\in \\bigcup_{c\\in S} c\\}}{N_{frames}} $$ "
+          "**Text:** share of the hour's frames with a box centre in a 40-px cell $c$ / in spot $S$ (8-connected cells "
+          "with $O_c\\ge0.05$). Range [0, 1]; the number alone does not tell a resting animal from a fixed "
+          "object. Centre SD = population SD of the box "
+          "centres in the spot (px).", "",
           "## Rerun", "", "```", f"C:/Users/Cornell/.conda/envs/cv/python.exe cv/cv_field/c1_yolo_video_test.py --run "
           f"{run.as_posix()} --steps tables media report", "```", ""]
     rdir = REPO / "results" / COHORT / DIRECTION / "reports"

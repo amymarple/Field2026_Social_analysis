@@ -89,7 +89,7 @@ python cv\view_quality.py --selftest             # shelter glass/view-quality de
 python cv\cv_field\selftest_field_select.py      # + selftest_field_mask.py, selftest_field_motion.py
 python cv\cv_field\dino_gate.py --selftest       # + stratify_test.py / mask_field.py --selftest (cv env)
 python cv\cv_field\landmark_track.py --selftest  # + landmark_night.py --selftest (ffmpeg), grab_frames.py --selftest
-python cv\cv_field\sam3_vs_yolo_c1.py --selftest # + backup_social_field_rat.py --selftest, c1_yolo_video_test.py --selftest (ffmpeg + PyAV)
+python cv\cv_field\sam3_vs_yolo_c1.py --selftest # + backup_social_field_rat.py, c1_yolo_video_test.py, c1_yolo_fixed_spots.py --selftest (ffmpeg + PyAV)
 python thermal\detect_blobs.py --selftest        # + thermal\detect_traces.py --selftest
 python audio\scripts\selftest_features.py
 python episode_browser\selftest.py
@@ -320,7 +320,7 @@ vs v5 on those labels → `results/2026a/cv_field/reports/cv_field_sam3_vs_yolo_
 09-06 21:00–22:00 via in-process PyAV, ~42 fps; WISER outside-count per 5-s bin; `review_10min.mp4` + rule-chosen 60-s
 review clips with `index.html` → `$OUT_ROOT/2026c/cv_field_c1yolo_video_<ts>/`, report
 `results/2026c/cv_field/reports/cv_field_c1yolo_video_2026c.md`): count ρ 0.10 vs WISER (plausibility only, awaiting the
-user's review). Reolink PTS come in bursts (frames < 1 ms apart) — join frames by PTS at 1 µs, and seek a frame with
+user's review; the user saw many fixed-position false positives / negatives → `c1_yolo_fixed_spots.py --run <run>` maps them from the cached detections into `<run>/fixed_spots/index.html` for the user's verdicts). Reolink PTS come in bursts (frames < 1 ms apart) — join frames by PTS at 1 µs, and seek a frame with
 `grab_frames.grab` at the midpoint to the previous PTS. Plan `implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md`.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction

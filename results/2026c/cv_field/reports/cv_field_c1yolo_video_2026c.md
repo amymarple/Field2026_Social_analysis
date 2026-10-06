@@ -1,6 +1,6 @@
 # Cohort-1 YOLO v5 panorama detector on one cohort-3 CH01 night hour (2026c)
 
-Driver `cv/cv_field/c1_yolo_video_test.py` (plan `implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md`, steps 2-3); run `D:/Field2026_analysis_out/2026c/cv_field_c1yolo_video_20261005_1848`; generated 2026-10-05 19:39. **No ground truth here**: the YOLO-vs-WISER numbers are a plausibility check for the user, not an accuracy number. Machine boxes are proposals, never labels. The agent did not look at any frame or video.
+Driver `cv/cv_field/c1_yolo_video_test.py` (plan `implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md`, steps 2-3); run `D:/Field2026_analysis_out/2026c/cv_field_c1yolo_video_20261005_1848`; generated 2026-10-05 20:35. **No ground truth here**: the YOLO-vs-WISER numbers are a plausibility check for the user, not an accuracy number. Machine boxes are proposals, never labels. The agent did not look at any frame or video.
 
 ## Hour
 
@@ -76,6 +76,15 @@ Reading guide: WISER counts tagged animals outside the two houses anywhere in th
 | 5_yolo-excess_21-57-30.mp4 | yolo-excess | 2026-09-06 21:57:30 → 2026-09-06 21:58:30 | 68993-70191 | 3.083 | 6.0 | max number of bins with YOLO > WISER + 1 | 12.0 |
 | 6_random_21-51-05.mp4 | random | 2026-09-06 21:51:05 → 2026-09-06 21:52:05 | 61294-62493 | 5.0 | 1.458 | uniform, default_rng(0) | 417.0 |
 
+## Fixed spots (diagnostic added after results at the user's request; plan amendment B)
+
+From the cached detections only (YOLO not rerun), driver `cv/cv_field/c1_yolo_fixed_spots.py`. Occupancy = share of the 72000 frames with a box centre (conf ≥ 0.25) in a 40-px cell; cells ≥ 5% (3 cells) joined 8-connected into 2 spots, ranked, at most 15 kept. Cells named in the user's review: x 6480–6520 / y 1120–1160 37.2%; x 6440–6480 / y 1120–1160 11.9%; x 3280–3320 / y 600–640 33.9%. **No conclusion here about what the spots are** — locator, heatmap, crops and the verdict sheet are in `fixed_spots/` (`index.html`, `fixed_spots_review.csv`, `fn_notes.txt` for the misses).
+
+| spot | pano centre (x, y) | occupancy | median conf | median box w × h | centre SD x / y (px) | cells |
+|---:|---|---:|---:|---|---|---:|
+| 1 | 6481, 1149 | 46.8% | 0.37 | 76 × 105 | 2.0 / 2.6 | 2 |
+| 2 | 3287, 628 | 33.9% | 0.64 | 91 × 89 | 2.1 / 2.2 | 1 |
+
 ## Definitions
 
 Units: upright pano pixels (7680 × 2160); times field-PC local (EDT). $k$ = frame, $b$ = 5-s WISER bin.
@@ -97,6 +106,9 @@ $$ D_b = Y_b - W_b,\quad \rho = \mathrm{Spearman}(Y_b, W_b),\quad f_{miss}=\frac
 
 ### Clip rules
 Window = 12 consecutive bins (60 s), all with ≥ 1 frame and a WISER count; mean over its bins. agree-many: max $\bar W$ s.t. $\overline{|D|}\le1$; wiser-zero: $W_b=0\ \forall b$, max $\bar Y$; yolo-miss: max $\#\{b: Y_b=0, W_b\ge2\}$; yolo-excess: max $\#\{b: Y_b>W_b+1\}$; random: uniform, seed 0. No overlap; ties → earlier.
+
+### Cell and spot occupancy (fixed-spot diagnostic)
+$$ O_c=\frac{\#\{k:\ \exists\ \text{box with } conf\ge0.25,\ \text{centre}\in c\}}{N_{frames}},\quad O_S=\frac{\#\{k:\ \exists\ \text{box centre}\in \bigcup_{c\in S} c\}}{N_{frames}} $$ **Text:** share of the hour's frames with a box centre in a 40-px cell $c$ / in spot $S$ (8-connected cells with $O_c\ge0.05$). Range [0, 1]; the number alone does not tell a resting animal from a fixed object. Centre SD = population SD of the box centres in the spot (px).
 
 ## Rerun
 

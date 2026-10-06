@@ -15,7 +15,7 @@ frozen cohort-3 test night 09-05 and `cv/dataset/rat_pano_test/` were not touche
 | driver | step | self-test |
 |---|---|---|
 | `backup_social_field_rat.py` | 0: copy + hash + re-verify (`--verify-only` re-checks) | 9 checks (selection rules, source untouched, sha = source bytes, flipped byte + deleted file caught) |
-| `sam3_vs_yolo_c1.py` | 1: lighting, YOLO, SAM3 tiles, NMS merge, centre / IoU match, bootstrap scoring, report (`--score-only <run>`) | 21 checks (tilings, matchers, AP 0.8333 case, R@P≥0.8, max F1, weighted bootstrap, threshold rule, mask boxes, inner-edge flag, NMS, end-to-end) |
+| `sam3_vs_yolo_c1.py` | 1: lighting, YOLO, SAM3 tiles, NMS merge, centre / IoU match, bootstrap scoring, report (`--score-only <run>`; `--phases sam3_posthoc` = the "Long Evans rat" addition) | 23 checks (tilings, matchers, AP 0.8333 case, R@P≥0.8, max F1, weighted bootstrap, threshold rule, mask boxes, inner-edge flag, NMS, end-to-end) |
 | `c1_yolo_video_test.py` | 2 + 3: hour choice, PyAV decode + YOLO, tables, review video, rule-chosen clips, `index.html`, report (`--steps detect identity tables media report`, `--hour-only`) | 20 checks (b5 bins, PTS key, hour rule incl. frozen-night refusal, windows, clip rules incl. "no qualifying window", plausibility, decode + identity vs `grab_frames.grab`, per-second / 5-s tables, render frame count, index) |
 
 ## Step 0 — backup (verified before anything else ran)
@@ -85,6 +85,42 @@ no handling overlap, all complete). Run `D:\Field2026_analysis_out\2026c\cv_fiel
 | `4_yolo-miss_21-00-35.mp4` | yolo-miss | 21:00:35 → 21:01:35 | 701–1 900 | 4.00 | 1.00 | 2 bins |
 | `5_yolo-excess_21-57-30.mp4` | yolo-excess | 21:57:30 → 21:58:30 | 68 993–70 191 | 3.08 | 6.00 | 12 bins |
 | `6_random_21-51-05.mp4` | random | 21:51:05 → 21:52:05 | 61 294–62 493 | 5.00 | 1.46 | index 417 |
+
+## After-results additions (user-approved 2026-10-05, prompted by the user's review)
+
+The user: the 10-min review video "is OK"; the clips show many false negatives and false positives that are "very
+fixed". Both additions are a dated after-results amendment in the plan.
+
+**A — SAM3 prompt "Long Evans rat" (post hoc, the user's suggestion)**: same 270 frames, matchers, bootstrap, groups and
+IR rule; both tilings; one image-feature pass per tile, then the prompt; raw outputs cached in
+`sam3_tiles_t1008_ler.csv` / `sam3_tiles_t2016_ler.csv` (5.6 / 1.9 s per frame); "rat" / "animal" reused from the cache.
+A separate post-hoc section in the step-1 report; the pre-registered tables and figures are unchanged. Centre-match AP
+[95 % CI]:
+
+| set | v5 @1280 | "rat" 1008 | "rat" 2016→1008 | "animal" 1008 | "Long Evans rat" 1008 | "Long Evans rat" 2016→1008 |
+|---|---|---|---|---|---|---|
+| S-val all | 0.83 [0.79, 0.87] | 0.23 [0.18, 0.28] | 0.40 [0.34, 0.46] | 0.40 [0.34, 0.46] | 0.02 [0.01, 0.04] | 0.04 [0.02, 0.07] |
+| S-val IR | 0.84 [0.80, 0.88] | 0.21 [0.15, 0.26] | 0.43 [0.37, 0.50] | 0.42 [0.36, 0.49] | 0.02 [0.01, 0.03] | 0.05 [0.03, 0.08] |
+| S-held all | 0.79 [0.70, 0.87] | 0.04 [0.01, 0.08] | 0.03 [0.01, 0.05] | 0.07 [0.04, 0.12] | 0.01 [0.00, 0.04] | 0.00 [0.00, 0.00] |
+| S-held CH01 07-05 | 0.47 [0.32, 0.66] | 0.02 [0.01, 0.07] | 0.01 [0.00, 0.01] | 0.02 [0.01, 0.05] | 0.01 [0.00, 0.07] | 0.00 [0.00, 0.00] |
+
+The prompt does not change the conclusion (rule: a "Long Evans rat" AP CI would have to reach v5's on S-val or on CH01
+07-05); it scores below "rat" and "animal" as well.
+
+**B — fixed-spot diagnostic** (`cv/cv_field/c1_yolo_fixed_spots.py`, `--selftest` 13 checks PASS; cached detections
+only, YOLO not rerun) → `D:\Field2026_analysis_out\2026c\cv_field_c1yolo_video_20261005_1848\fixed_spots\`
+(`index.html`, `locator.png` = median of 60 frames one per minute at 1920 × 540 with spot outlines, `heatmap.png`,
+`crops/` 400 × 400 native at first / middle / last / no-box frame, `fixed_spots.csv`, `cells.csv.gz`, empty
+`fixed_spots_review.csv`, `fn_notes.txt` stub). The user's cell numbers reproduce (37.2 %, 11.9 %, 33.9 %). Only 3 cells
+reach ≥ 5 % → 2 spots:
+
+| spot | pano centre (x, y) | occupancy | median conf | median box w × h | centre SD x / y (px) | cells |
+|---:|---|---:|---:|---|---|---:|
+| 1 | 6481, 1149 | 46.8 % | 0.37 | 76 × 105 | 2.0 / 2.6 | 2 |
+| 2 | 3287, 628 | 33.9 % | 0.64 | 91 × 89 | 2.1 / 2.2 | 1 |
+
+No conclusion is drawn about what the spots are; the verdicts are the user's. Definition: $O_S$ = share of the 72 000
+frames with a conf ≥ 0.25 box centre in any 40-px cell of spot $S$ (8-connected cells with cell occupancy ≥ 0.05).
 
 ## Amendments (all in the plan file)
 

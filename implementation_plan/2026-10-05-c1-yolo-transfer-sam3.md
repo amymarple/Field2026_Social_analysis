@@ -204,3 +204,24 @@ YOLO minutes. Step 2: ≈ 1 h for the hour (decode-bound) + ~5 min for the revie
   first attempt kept there). (ii) The renderer joined detections to frames by PTS rounded to 1 ms, which merges 804
   frames; the key is now 1 µs, and the 10-min video (whose first render was stopped part-way) and the clips were
   rendered only after the fix.
+- **2026-10-05 ~19:50, after results — two user-approved additions (prompted by the user's review, relayed by the
+  coordinator; step-1 and step-2 results already existed).** The user: the 10-min review video "is OK"; the review clips
+  show many false negatives and false positives that are "very fixed"; a numeric check of `detections.csv.gz`
+  (conf ≥ 0.25, 40-px cells) has cell x 6480–6520 / y 1120–1160 boxed in 37.2 % of frames (+ 11.9 % in the cell to its
+  left) and x 3280–3320 / y 600–640 in 33.9 %.
+  **A — SAM3 prompt "Long Evans rat" (post-hoc sensitivity, the user's suggestion).** Same 270 frames (S-val 177,
+  S-held 93), same matchers, metrics, bootstrap, groups and IR rule; both tilings (1008 native, 2016 → 1008); image
+  features once per tile, then the text prompt; raw outputs cached (`sam3_tiles_t1008_ler.csv`,
+  `sam3_tiles_t2016_ler.csv`); the cached "rat" / "animal" outputs are reused, not rerun. Reported in a separately
+  marked post-hoc section of the step-1 report beside v5 @1280, "rat" and "animal", with one sentence on whether the
+  conclusion changes. The pre-registered tables and figures stay as they are.
+  **B — fixed-spot diagnostic (cached step-2 detections only; YOLO not rerun)** → `<step-2 run>/fixed_spots/`: per
+  40-px cell the fraction of the 72 000 frames with a box centre (conf ≥ 0.25) in it; 8-connected cells ≥ 5 % merged
+  into spots, ranked by occupancy, all ≥ 5 % up to 15; per spot occupancy, median conf, median box w × h, centre SD,
+  occupancy per minute. Figures for the user only (the agent does not interpret them): a 1920 × 540 locator (median of
+  60 frames, one per minute) with spot outlines and numbers, an occupancy heatmap on the same scale, and per spot
+  native 400 × 400 crops at the first / middle / last frame with a spot box and one frame without (thin boxes, frame
+  time and conf printed); frames via PyAV as in step 2. `index.html` (locator, heatmap, one row per spot with crops,
+  numbers, minute raster; a free-text section "where are the consistent misses?"), `fixed_spots.csv`,
+  `fixed_spots_review.csv` (spot_id, user_verdict object/rat/unsure, notes; empty), `fn_notes.txt` stub. Driver
+  `cv/cv_field/c1_yolo_fixed_spots.py`. No conclusion about what the spots are.

@@ -91,6 +91,13 @@ TILINGS = {"t1008": {"tile": 1008, "prompts": ["rat", "animal"]}, "t2016": {"til
 DETECTORS = ["yolo_v5_1280", "yolo_v5_2560", "sam3_rat_t1008", "sam3_rat_t2016", "sam3_animal_t1008",
              "sam3_rat_t1008_edge"]
 PRIMARY = ("yolo_v5_1280", "sam3_rat_t1008")
+# Post-hoc (plan amendment 2026-10-05, after results, the user's suggestion): the prompt "Long Evans rat" on both tilings.
+POSTHOC_PROMPT = "Long Evans rat"
+POSTHOC_TILINGS = {"t1008_ler": {"tile": 1008, "prompts": [POSTHOC_PROMPT]},
+                   "t2016_ler": {"tile": 2016, "prompts": [POSTHOC_PROMPT]}}
+POSTHOC = ["sam3_ler_t1008", "sam3_ler_t2016"]
+PREREG = list(DETECTORS)
+DETECTORS = DETECTORS + POSTHOC
 NAME_RE = re.compile(r"(CH0\d)_(\d{4})-(\d{2})-(\d{2})")
 
 
@@ -541,7 +548,7 @@ def sam3_tile(pred, tile_bgr: np.ndarray, prompts: list[str]) -> list[dict]:
     return out
 
 
-def phase_sam3(run: Path, frames: pd.DataFrame, half: bool = True) -> dict:
+def phase_sam3(run: Path, frames: pd.DataFrame, half: bool = True, tilings: dict | None = None) -> dict:
     import cv2
     import torch
     info = {"requested_fp16": half}
@@ -557,7 +564,7 @@ def phase_sam3(run: Path, frames: pd.DataFrame, half: bool = True) -> dict:
         info["precision"] = "fp32"
     info["device"] = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"
     print(f"SAM3 precision {info['precision']} on {info['device']}")
-    for tname, cfg in TILINGS.items():
+    for tname, cfg in (tilings or TILINGS).items():
         T = cfg["tile"]
         xo, yo = tile_origins(FW, T), tile_origins(FH, T)
         info[f"{tname}_tiles"] = {"x": xo, "y": yo, "n": len(xo) * len(yo)}
@@ -606,8 +613,10 @@ def merge_sam3(run: Path) -> pd.DataFrame:
     """Per frame x variant: drop empty-mask rows (box NaN), NMS IoU 0.5 across tiles -> frame-level predictions."""
     out = []
     variants = {"sam3_rat_t1008": ("t1008", "rat", False), "sam3_animal_t1008": ("t1008", "animal", False),
+                "sam3_ler_t1008": ("t1008_ler", POSTHOC_PROMPT, False), "sam3_ler_t2016": ("t2016_ler", POSTHOC_PROMPT, False),
                 "sam3_rat_t2016": ("t2016", "rat", False), "sam3_rat_t1008_edge": ("t1008", "rat", True)}
-    tabs = {t: pd.read_csv(run / f"sam3_tiles_{t}.csv") for t in TILINGS if (run / f"sam3_tiles_{t}.csv").is_file()}
+    tabs = {t: pd.read_csv(run / f"sam3_tiles_{t}.csv") for t in list(TILINGS) + list(POSTHOC_TILINGS)
+            if (run / f"sam3_tiles_{t}.csv").is_file()}
     stats = {}
     for det, (tiling, prompt, edge_filter) in variants.items():
         if tiling not in tabs:
@@ -645,7 +654,8 @@ def fmt(v, lo=None, hi=None, d=3):
 
 LABEL = {"yolo_v5_1280": "YOLO v5 @1280", "yolo_v5_2560": "YOLO v5 @2560", "sam3_rat_t1008": "SAM3 'rat' 1008 tiles",
          "sam3_rat_t2016": "SAM3 'rat' 2016→1008", "sam3_animal_t1008": "SAM3 'animal' 1008",
-         "sam3_rat_t1008_edge": "SAM3 'rat' 1008, inner-edge boxes dropped"}
+         "sam3_rat_t1008_edge": "SAM3 'rat' 1008, inner-edge boxes dropped",
+         "sam3_ler_t1008": "SAM3 'Long Evans rat' 1008 (post hoc)", "sam3_ler_t2016": "SAM3 'Long Evans rat' 2016→1008 (post hoc)"}
 
 
 def make_figures(res: dict, figdir: Path) -> list[str]:
@@ -657,7 +667,7 @@ def make_figures(res: dict, figdir: Path) -> list[str]:
     pr = res["pr_center"]
     for s in sorted(pr["set"].unique()):
         fig, ax = plt.subplots(figsize=(6, 5))
-        for det in DETECTORS:
+        for det in PREREG:
             d = pr[(pr["set"] == s) & (pr["detector"] == det)]
             if len(d):
                 ax.plot(d["recall"], d["precision"], label=LABEL[det], lw=1.5 if det in PRIMARY else 0.8)
@@ -672,7 +682,7 @@ def make_figures(res: dict, figdir: Path) -> list[str]:
         d = m[(m["set"] == s) & (m["group_type"].isin(["overall", "camera x date", "lighting"]))]
         groups = list(dict.fromkeys(d["group"]))
         fig, ax = plt.subplots(figsize=(max(6, 1.3 * len(groups)), 4.5))
-        dets = [x for x in DETECTORS if x != "sam3_rat_t1008_edge"]
+        dets = [x for x in PREREG if x != "sam3_rat_t1008_edge"]
         wdt = 0.8 / len(dets)
         for k, det in enumerate(dets):
             dd = d[d["detector"] == det].set_index("group").reindex(groups)
@@ -754,16 +764,17 @@ def write_report(run: Path, frames: pd.DataFrame, res: dict, meta: dict, figs: l
           f"{meta['versions'].get('torch')}.", ""]
     for s in sets:
         L += [f"## {s} — centre match (primary)", ""]
-        L += table(m, s, ["overall", "camera x date", "lighting", "camera x lighting"], DETECTORS)
+        L += table(m, s, ["overall", "camera x date", "lighting", "camera x lighting"], PREREG)
         L += ["", f"Paired difference YOLO v5 @1280 − SAM3 (same bootstrap resamples), centre match:", "",
               "| group | − SAM3 variant | ΔAP [95 % CI] | ΔR@P≥0.8 [95 % CI] |", "|---|---|---|---|"]
-        dd = dfc[(dfc["set"] == s) & (dfc["subtrahend"].str.startswith("sam3"))]
+        dd = dfc[(dfc["set"] == s) & (dfc["subtrahend"].str.startswith("sam3")) & (dfc["subtrahend"].isin(PREREG))]
         for r in dd.itertuples():
             L.append(f"| {r.group} | {LABEL[r.subtrahend]} | {fmt(r.dAP, r.dAP_lo, r.dAP_hi, 2)} | "
                      f"{fmt(r.dR_at_P80, r.dR_at_P80_lo, r.dR_at_P80_hi, 2)} |")
         L += ["", f"### {s} — IoU ≥ 0.5 (secondary), primary detectors", ""]
         L += table(mi, s, ["overall", "camera x date", "lighting"], list(PRIMARY) + ["yolo_v5_2560"])
         L.append("")
+    L += posthoc_section(res, meta)
     L += ["## Author's numbers (orientation only; different matcher, val split and grouping — not comparable)", "",
           "From `computer_vision/models.md`, v5 per-group validation (ultralytics mAP50 at IoU 0.5): CH01 06-30 + 07-04 "
           ".824 (R .774), CH01 07-07 .608, CH02 colour 06-30 .455, CH02 IR 07-06 .585 (R .545).", "",
@@ -859,6 +870,51 @@ def label_provenance(frames: pd.DataFrame, gt: pd.DataFrame, preds: pd.DataFrame
     return out
 
 
+def posthoc_verdict(m: pd.DataFrame) -> str:
+    """One sentence, by a fixed numeric rule: the prompt changes the conclusion only if a 'Long Evans rat' variant's AP CI
+    overlaps v5 @1280's AP CI on S-val overall or on the non-circular held-out clip CH01 07-05."""
+    checks = []
+    for s, kind, g in (("S-val", "overall", "all"), ("S-held", "camera x date", "CH01 07-05")):
+        d = m[(m["set"] == s) & (m["group_type"] == kind) & (m["group"] == g)].set_index("detector")
+        if PRIMARY[0] not in d.index:
+            continue
+        y = d.loc[PRIMARY[0]]
+        for det in POSTHOC:
+            if det in d.index:
+                checks.append((s, g, det, d.loc[det].AP, d.loc[det].AP_hi, y.AP, y.AP_lo))
+    if not checks:
+        return "Not computed."
+    overlap = [c for c in checks if c[4] >= c[6]]
+    best = max(checks, key=lambda c: c[3])
+    if overlap:
+        return ("The prompt changes the conclusion: on " + "; ".join(f"{c[0]} {c[1]} ({LABEL[c[2]]})" for c in overlap)
+                + " its AP CI overlaps v5 @1280's.")
+    return (f"The prompt does not change the conclusion: every 'Long Evans rat' AP CI lies below v5 @1280's on S-val and on "
+            f"held-out CH01 07-05 (best: {LABEL[best[2]]} AP {best[3]:.2f} on {best[0]} {best[1]} vs v5 {best[5]:.2f}).")
+
+
+def posthoc_section(res: dict, meta: dict) -> list[str]:
+    m, mi = res["metrics_center"], res["metrics_iou"]
+    if not set(POSTHOC) & set(m["detector"]):
+        return []
+    dets = [PRIMARY[0], "sam3_rat_t1008", "sam3_rat_t2016", "sam3_animal_t1008"] + POSTHOC
+    L = ["## POST HOC — SAM3 prompt 'Long Evans rat' (added after results at the user's suggestion; plan amendment)", "",
+         "Not pre-registered. Same 270 frames, matchers, metrics, bootstrap resamples, groups and IR rule as above; "
+         "both tilings; image features computed once per tile, then the text prompt; raw outputs cached in "
+         "`sam3_tiles_t1008_ler.csv` / `sam3_tiles_t2016_ler.csv`. The 'rat' and 'animal' rows are the cached "
+         "pre-registered outputs (not rerun).", ""]
+    rt = meta.get("runtime", {})
+    L += [f"Runtime: t1008_ler {rt.get('t1008_ler', '–')}; t2016_ler {rt.get('t2016_ler', '–')}.", "",
+          f"**{posthoc_verdict(m)}**", ""]
+    for s in ("S-val", "S-held"):
+        L += [f"### {s} — centre match", ""]
+        L += table(m, s, ["overall", "camera x date", "lighting"], dets)
+        L += ["", f"### {s} — IoU ≥ 0.5", ""]
+        L += table(mi, s, ["overall"], dets)
+        L.append("")
+    return L
+
+
 def headline(res: dict, prov: pd.DataFrame | None = None) -> list[str]:
     m = res["metrics_center"]
     out = []
@@ -887,6 +943,13 @@ def headline(res: dict, prov: pd.DataFrame | None = None) -> list[str]:
                 out.append(f"  - Non-circular held-out clip {r.cam_date} ({int(a.n_frames)} frames, {int(a.n_gt)} rats; "
                            f"{r.share_iou_ge_095:.0%} of GT boxes = v5 boxes): YOLO AP {fmt(a.AP, a.AP_lo, a.AP_hi, 2)}, "
                            f"R@P≥0.8 {fmt(a.R_at_P80, a.R_at_P80_lo, a.R_at_P80_hi, 2)}; SAM3 'rat' AP {fmt(b.AP, b.AP_lo, b.AP_hi, 2)}.")
+    if set(POSTHOC) & set(m["detector"]):
+        for s in ("S-val", "S-held"):
+            o = m[(m["set"] == s) & (m["group_type"] == "overall")].set_index("detector")
+            out.append(f"- Post hoc ({s}): SAM3 'Long Evans rat' AP " + ", ".join(
+                f"{t} {fmt(o.loc[d].AP, o.loc[d].AP_lo, o.loc[d].AP_hi, 2)}" for d, t in
+                (("sam3_ler_t1008", "1008"), ("sam3_ler_t2016", "2016→1008")) if d in o.index) + ".")
+        out.append(f"- Post hoc: {posthoc_verdict(m)}")
     return out
 
 
@@ -989,6 +1052,11 @@ def run_all(args) -> int:
             meta["sam3_sha256"] = sha256(SAM3_WEIGHTS)
         meta["sam3"] = phase_sam3(run, frames, half=not args.fp32)
         (run / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    if "sam3_posthoc" in phases:
+        print(f"nvidia check before SAM3 post hoc: {subprocess.run(['nvidia-smi', '--query-gpu=memory.used,utilization.gpu', '--format=csv,noheader'], capture_output=True, text=True).stdout.strip()}")
+        meta["sam3_posthoc"] = phase_sam3(run, frames, half=not args.fp32, tilings=POSTHOC_TILINGS)
+        meta["sam3_posthoc"]["prompt"] = POSTHOC_PROMPT
+        (run / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     if "score" in phases:
         phase_score(run)
     return 0
@@ -1090,6 +1158,17 @@ def selftest() -> int:
     rec("synthetic: tail-wide SAM3 boxes fail IoU 0.5 but pass the centre match", sa_i.AP < sa_.AP, f"{sa_i.AP:.3f} < {sa_.AP:.3f}")
     d = res["diffs_center"]
     rec("paired differences table present for every group", len(d) == len(mc) // 2, f"{len(d)} rows")
+    vm = pd.DataFrame([
+        {"set": "S-val", "group_type": "overall", "group": "all", "detector": "yolo_v5_1280", "AP": 0.8, "AP_lo": 0.75, "AP_hi": 0.85},
+        {"set": "S-val", "group_type": "overall", "group": "all", "detector": "sam3_ler_t1008", "AP": 0.3, "AP_lo": 0.2, "AP_hi": 0.4},
+        {"set": "S-held", "group_type": "camera x date", "group": "CH01 07-05", "detector": "yolo_v5_1280", "AP": 0.5,
+         "AP_lo": 0.3, "AP_hi": 0.7},
+        {"set": "S-held", "group_type": "camera x date", "group": "CH01 07-05", "detector": "sam3_ler_t2016", "AP": 0.2,
+         "AP_lo": 0.1, "AP_hi": 0.35}])
+    v = posthoc_verdict(vm)
+    rec("post-hoc verdict: an overlapping CI (0.35 >= 0.30) counts as a change", v.startswith("The prompt changes"), v)
+    v2 = posthoc_verdict(vm.assign(AP_hi=[0.85, 0.4, 0.7, 0.25]))
+    rec("post-hoc verdict: all CIs below -> no change", v2.startswith("The prompt does not change"), v2)
     print(("PASS" if ok else "FAIL") + " — sam3_vs_yolo_c1 self-test")
     return 0 if ok else 1
 
@@ -1100,7 +1179,7 @@ def main(argv=None) -> int:
     ap.add_argument("--backup", default=str(BACKUP))
     ap.add_argument("--run", default=None, help="existing run dir to resume")
     ap.add_argument("--phases", nargs="+", default=["lighting", "yolo", "sam3", "score"],
-                    choices=["lighting", "yolo", "sam3", "score"])
+                    choices=["lighting", "yolo", "sam3", "sam3_posthoc", "score"])
     ap.add_argument("--score-only", default=None, help="run dir: re-score from the caches and rewrite the report")
     ap.add_argument("--fp32", action="store_true", help="run SAM3 in fp32 (default: fp16 if it works)")
     ap.add_argument("--sam3-weights-sha-skip", action="store_true")
