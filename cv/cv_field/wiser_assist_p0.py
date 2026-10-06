@@ -753,7 +753,9 @@ def part_b(spots: pd.DataFrame, fr: pd.DataFrame, mapper, tracks: Tracks, m: Map
 
 # ----------------------------------------------------------------------------------------------- C
 def part_c(d_all: pd.DataFrame, frs: pd.DataFrame, fr: pd.DataFrame, tracks: Tracks, houses, m: Map, L: float,
-           sup: Support, prm: Params, hour_start: datetime) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+           sup: Support, prm: Params, hour_start: datetime, seconds_out: list | None = None) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    """seconds_out (a list): if given, the per-second table of every eligible animal-second is appended to it (sec,
+    animal, WISER and paddock position, IMU state, nearest box, miss, episode_id) - nothing else changes."""
     secs = np.arange(prm.n_sec)
     X, S, ok = tracks.at(secs + L)
     h = in_houses(X, houses, prm.house_buf)
@@ -821,8 +823,21 @@ def part_c(d_all: pd.DataFrame, frs: pd.DataFrame, fr: pd.DataFrame, tracks: Tra
     # a WISER proposal for the user's eyes: never a box or a label (an occluded animal must not get a box)
     ep.insert(1, "kind", "suspected_miss")
     in_ep = np.zeros_like(miss)
+    ep_id = np.zeros(miss.shape, int)
     for r in ep.itertuples():
         in_ep[r.start_sec:r.end_sec + 1, tracks.labels.index(r.animal)] = True
+        ep_id[r.start_sec:r.end_sec + 1, tracks.labels.index(r.animal)] = r.episode_id
+    if seconds_out is not None:
+        e_s, e_j = np.nonzero(elig)
+        o = np.lexsort((e_s, e_j))
+        e_s, e_j = e_s[o], e_j[o]
+        seconds_out.append(pd.DataFrame({
+            "sec": e_s, "t_pc": frs["t_pc"].to_numpy()[e_s], "frame": frs["frame"].to_numpy()[e_s],
+            "animal": np.array(tracks.labels, dtype=object)[e_j], "wiser_x_in": X[e_s, e_j, 0], "wiser_y_in": X[e_s, e_j, 1],
+            "paddock_x_in": P[e_s, e_j, 0], "paddock_y_in": P[e_s, e_j, 1],
+            "imu_state": [STATE_NAME.get(int(v), "?") for v in S[e_s, e_j]],
+            "nearest_box_in": np.where(np.isfinite(nbd[e_s, e_j]), nbd[e_s, e_j], np.nan), "miss": miss[e_s, e_j],
+            "episode_id": ep_id[e_s, e_j]}))
     cs = prm.fn_cell
     e_s, e_j = np.nonzero(elig)
     cx, cy = np.floor(P[e_s, e_j, 0] / cs).astype(int), np.floor(P[e_s, e_j, 1] / cs).astype(int)
@@ -843,13 +858,10 @@ def part_c(d_all: pd.DataFrame, frs: pd.DataFrame, fr: pd.DataFrame, tracks: Tra
 
 
 # ----------------------------------------------------------------------------------------------- pipeline
-def run_pipeline(fr: pd.DataFrame, det: pd.DataFrame, cells: pd.DataFrame, spots: pd.DataFrame, track_data: dict,
-                 houses: list[dict], mapper, prm: Params, hour_start: datetime, out: Path, log=print) -> dict:
-    """Parts A, B (sealed) and C on one hour. Writes the run-folder outputs; returns the results (no part-B numbers)."""
-    t_start = time.perf_counter()
-    out.mkdir(parents=True, exist_ok=True)
-    tracks = Tracks(track_data, prm.gap_max)
-    labels = tracks.labels
+def prepare_boxes(fr: pd.DataFrame, det: pd.DataFrame, cells: pd.DataFrame, mapper, prm: Params, hour_start: datetime):
+    """Frames sorted, one sampled frame per second, the boxes >= min(conf_a, conf_c) mapped per whole-second window, with
+    the sampled-frame second and the fixed-spot flag. -> (fr, frs, d, last mapper info, fixed-spot cells). Extracted
+    unchanged from run_pipeline (2026-10-06) so the occlusion step can rebuild part C's per-second table."""
     secs = np.arange(prm.n_sec)
     fr = fr.sort_values("frame").reset_index(drop=True)
     kf = sample_frames(fr["pts_s"].to_numpy(float), prm.n_sec)
@@ -867,6 +879,18 @@ def run_pipeline(fr: pd.DataFrame, det: pd.DataFrame, cells: pd.DataFrame, spots
     d["sec"] = d["frame"].map(sec_of).fillna(-1).astype(int)
     spotcells = {(int(r.x0) // prm.cell_px, int(r.y0) // prm.cell_px) for r in cells.itertuples() if r.occupancy >= prm.spot_occ}
     d["in_spot"] = [(int(a // prm.cell_px), int(b // prm.cell_px)) in spotcells for a, b in zip(d["cx"], d["cy"])]
+    return fr, frs, d, info, spotcells
+
+
+def run_pipeline(fr: pd.DataFrame, det: pd.DataFrame, cells: pd.DataFrame, spots: pd.DataFrame, track_data: dict,
+                 houses: list[dict], mapper, prm: Params, hour_start: datetime, out: Path, log=print) -> dict:
+    """Parts A, B (sealed) and C on one hour. Writes the run-folder outputs; returns the results (no part-B numbers)."""
+    t_start = time.perf_counter()
+    out.mkdir(parents=True, exist_ok=True)
+    tracks = Tracks(track_data, prm.gap_max)
+    labels = tracks.labels
+    secs = np.arange(prm.n_sec)
+    fr, frs, d, info, spotcells = prepare_boxes(fr, det, cells, mapper, prm, hour_start)
     cand = d["sampled"] & (d["conf"] >= prm.conf_a)
     useA = cand & ~d["in_spot"] & d["mapped"]
     inputs = {"frames_total": int(len(fr)), "frames_sampled": int(len(frs)),

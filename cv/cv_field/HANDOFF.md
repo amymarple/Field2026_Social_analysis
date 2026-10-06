@@ -11,6 +11,9 @@ v5 has been run on one cohort-3 CH01 night hour with review clips for the user �
 **2026-10-05 (later):** `wiser_assist_p0.py` maps WISER onto that CH01 hour (accepted: test median 4.39 in, L 0.0 s) and
 lists suspected YOLO misses for the user (never boxes); WISER presence at the fixed spots is **sealed** in the run's
 `wiser_spots.csv` until the user's spot verdicts — `change_log/2026-10-05-wiser-assisted-yolo-p0.md`.
+**2026-10-06:** `ch01_occlusion.py` classifies those suspected misses by CH01 geometry (poles, houses): pooled 10.3 % hidden,
+33.7 % ambiguous, 51.3 % clear; per-episode classes sealed until the user's clip verdicts; visibility mask for CH01 —
+`change_log/2026-10-06-ch01-occlusion-geometry.md`.
 
 ## TL;DR — what this is and where it stands
 

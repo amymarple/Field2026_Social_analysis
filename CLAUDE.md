@@ -330,6 +330,12 @@ never boxes; `wiser_spots.csv` = WISER presence at the fixed spots, **sealed unt
 `results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`. WISER only adds presence, never a negative.
 `--clips <run>` (cv env, PyAV) renders 12 rule-chosen review clips of the suspected misses (pano + crop + panel, WISER
 14-in circles via a Newton inverse of `to_paddock`) → `<run>/review_clips/index.html` + empty `review_template.csv`.
+**CH01 occlusion geometry** (`ch01_occlusion.py --run`, plan `2026-10-06-ch01-occlusion-geometry.md`): rays from CH01's rev g
+centre to each suspected-miss rat against pole capsules (B1–B3 re-measured on rev g, others design grid) and the gabled
+houses (house_2 calibration pose, house_1 from the WISER ROI — flagged) → pooled 10.3 % hidden / 4.7 % partly / 51.3 % clear /
+33.7 % ambiguous of 300 episodes; `$OUT_ROOT/2026c/cv_field_ch01_occlusion_<ts>/` (`visibility_mask.npz`, `occluders.json`,
+`checks.csv`; per-episode classes **sealed** in `episodes.csv` until the user's clip verdicts), report
+`results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`. Geometry never makes a label.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

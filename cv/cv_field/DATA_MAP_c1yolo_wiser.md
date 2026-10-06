@@ -99,6 +99,22 @@ rat" + fixed-spot diagnostic).
 | Report, figures, pointer | `REPO/results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`, `REPO/results/2026c/cv_field/figures/wiser_assist_p0/*.png` (4, no B figure), `REPO/results/2026c/cv_field/reports/run_manifest_wiser_assist_p0_2026c.json` | final |
 | Plan, change log | `REPO/implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md` (amendment 1 before results, 2–3 after), `REPO/change_log/2026-10-05-wiser-assisted-yolo-p0.md` | final |
 
+## H. CH01 occlusion geometry (poles, houses) for the suspected misses
+
+| What | Path | Status |
+|---|---|---|
+| Code | `REPO/cv/cv_field/ch01_occlusion.py` (`--selftest` 11 checks, `--poles-only`, `--run`); uses `wiser_assist_p0.prepare_boxes` + `part_c(seconds_out=…)` | final |
+| Plan, change log | `REPO/implementation_plan/2026-10-06-ch01-occlusion-geometry.md` (amendment 1 before results, 2 after results), `REPO/change_log/2026-10-06-ch01-occlusion-geometry.md` | final |
+| **Run folder** | `$OUT/2026c/cv_field_ch01_occlusion_20261006_1445/` | final |
+| Rebuilt per-second table (phase 0 had not saved it) | `miss_seconds_rebuilt.csv.gz` (every eligible animal-second, `miss`, `episode_id`; the regenerated `fn_episodes.csv` / `fn_grid.csv` are byte-identical to phase 0's) | final |
+| Occluders and their sources | `occluders.json` (camera centre, 15 poles with source / radius / lean, 2 houses with pose / soil level / sizes), `pole_edges_revg.csv`, `pole_triangulation_revg.csv` | final |
+| Landmark checks | `checks.csv` (per object: median / p90 px from the user's labels, flag > 20 px) | final |
+| Visibility mask | `visibility_mask.npz` (2-in grid: support, hidden share h, h per object) | final |
+| **Per-second / per-episode classes** | `seconds.csv.gz`, `episodes.csv` (`SEALED_README.txt`) | **sealed** until the user's verdicts in the phase-0 `review_clips/review_template.csv` |
+| Run metadata | `run.json` (calibration files + sha256, recording-repo commit `a667cfe`, pooled numbers, checks), `run_log.txt` | final |
+| Report, figures, pointer | `REPO/results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`, `REPO/results/2026c/cv_field/figures/ch01_occlusion/{visibility_mask,class_shares}.png`, `REPO/results/2026c/cv_field/reports/run_manifest_ch01_occlusion_2026c.json` | final (pooled only) |
+| Calibration inputs (read-only) | `../Field_2026_Social_Recording/calibration_qc/`: `paddock_map.py` (rev g RayCamera + terrain), `survey_2026-10-03.json`, `HOUSE_CHECK_2026-10-04_revg.txt`, `pole_check.py` (method re-run); labels `REPO/cv/configs/landmarks/2026c/landmarks_CH0[1-4]_20260918_*.json`, `landmarks_CH01_20260904_120002.json` | external |
+
 ## Rules an auditor should hold the work to
 
 The agent never judged images; every visual verdict is the user's. Machine boxes (YOLO, SAM3, WISER projections) are
