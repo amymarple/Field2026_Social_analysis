@@ -172,6 +172,19 @@ yet; they await the user's Neuroscope check.
 
 The Neuroscope review sets (`CURRENT` / `PROPOSED`, `.rip.evt`) are in each folder.
 
+**User decision 2026-10-06:** SF07 takes the proposed order; SF08 takes the proposed shank 4; SF10 is left as is for now.
+- New repo XMLs:
+  - `ephys/configs/xml/SF07_A4x16-Lin_lfporder_20261006.xml`;
+  - `ephys/configs/xml/SF08_A4x16-Lin_lfporder_20261006.xml` (the adopted shanks 1–3 plus the consensus shank 4; 32 and 55
+    stay skipped).
+- `probes_2026c.yaml` now points SF07 and SF08 at them; `mapping_source` starts with a CURRENT note.
+- The old XMLs stay in the repo. SF11 keeps the old SF07 XML for grouping only; the grouping is identical.
+- Placed as `<session>.xml` in the full-day stage sessions SF07 `15_20260902_082418.755`, SF07 `2_20260901_002100.939` and
+  SF08 `13_20260902_082748.094`. Each mapping was verified against the repo XML. The previous files are kept as
+  `.xml.pre_20261006`.
+- `.xml.done` (sort provenance) was not touched. Neither were the users' Neuroscope `amplifier.xml` files, which still
+  carry the old orders.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
