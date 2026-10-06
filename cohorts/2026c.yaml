@@ -137,6 +137,10 @@ ephys:
   # Operator observations on electrode position / signal (dated; the analysis reads them as expectations for sorting:
   # a probe still above the hippocampus yields no CA1 units, emerging ripples mark the approach to the pyramidal layer).
   probe_notes:
+    # The two 09-09 18:10 notes below were in the lab's copy of this registry but never reached this repo; restored 2026-10-06
+    # verbatim from field2026-sync from-lab/2026-09-21_pc-time-algorithm-backup/2026c.yaml (L137-138).
+    - {animal: SF12, time: "2026-09-09 18:10", note: "LFP depth landmarks (lab, ripple-peak slot + sharp-wave reversal slot, 09-03 vs 09-08 night sessions, 50 um per slot): probe RETRACTED 250-400 um (5-8 slots; shank 1 >= 11) - on 09-08 no ripple peak and no reversal on any shank, layer below every tip; four new dead columns 48 58 60 63 = slots 8-11 of shank 1 (partial crack pattern). Expect +1 slot per quarter turn; recovery needs 5-8 quarter turns", source: "lab 2026-09-09 (restored 2026-10-06)"}
+    - {animal: SF08, time: "2026-09-09 18:10", note: "LFP depth landmarks (lab, same method, 09-03 vs 09-08): probe RETRACTED >= 100-150 um (2-3 slots); ripple peak now at the deepest slots 14-15 (peak value 38-43 -> 22-35), reversal moved from slot ~12 to ~14; upper shank uniformly negative. Layer still at the tips; 2-3 quarter turns should recover it", source: "lab 2026-09-09 (restored 2026-10-06)"}
     - {animal: SF11, time: "2026-09-05 23:50", note: "probably still ABOVE the hippocampus, or impedance bad; drive resistance very strong, unclear whether it can be advanced tomorrow", source: operator}
     - {animal: SF07, time: "2026-09-05 23:50", note: "ripples gradually strengthening (approaching the CA1 pyramidal layer); another advance planned for the 2026-09-06 morning round", source: operator}
     # 2026-09-06 LFP-signature assessment (ephys/hpc_signature_check.py + swr_strict_check.py, windows 09-04 21:30 / 09-05 00:30 / 09-05 10:30):
@@ -175,6 +179,11 @@ ephys:
   # Distinct from the neural valid_until above: SF12's final-night contact failure kept the logger on the head.
   imu_valid_until:
     - {animal: SF11, until: "2026-09-07 06:10:00", note: "implant (with the logger) came off 06:10:30-06:15:00; video 06:10:45 in CH07, passive, in the huddle; the logger recorded on until the 08:12:41 Stop. Added 2026-09-28 after the IMU bug report (session -ae)"}
+  # Record-quality PERIODS (read by ephys/sleep_review.py --merge, which tags every session whose [start, end] on the logger
+  # clock overlaps [from, until); no until = to the end of the record). A tag describes the record; it does not exclude a
+  # session by itself - unlike field_flags (excluded from coverage) and valid_until (clips the session).
+  quality_flags:
+    - {animal: SF12, from: "2026-09-10 14:53:45", tag: SF12_contact_failing, note: "headstage/probe CONNECTOR contact failing (mechanical; handling opens and closes it; not the probe, not the advances): shank 4 normal to the end of 8_20260910_083507 (14:53:45) and at shank 1's half amplitude by 21:05; the 09-10 night 15_ has shanks 1+4 at half amplitude with whole-shank opens; 09-11 day 3_ all 64 ch open until ~17:50 (field_flag); final night 17_ usable only to 23:30 (valid_until); 09-12 home-cage mostly unusable. Earlier and separate: shank-1 single channels weak/dead from the 09-08 night (probe_notes 09-09 18:10; ch 63 'since the 09-09 day')", source: "logger_notes 09-10 21:05 .. 09-11 23:30 (lab measurements); field2026-sync from-lab/2026-09-11_sf12-connector-answer.md, from-lab/2026-09-17_cohort3-ephys-offload-complete.md; Notion observation log 09-11 / 09-17 rows; user request 2026-10-06"}
   # Sessions the field log marks as not-real recordings (keep them in the index, exclude from analysis). Source: recording
   # repo BATTERY_LOG_cohort3.md.
   field_flags:

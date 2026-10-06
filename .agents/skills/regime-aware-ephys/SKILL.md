@@ -151,7 +151,7 @@ The YAML is what the code reads, so each of these is a place where the code curr
    missing.
 5. `field_events`: construction end is null; the 09-02 storm and 09-09 rain are absent; `field_events` has no code
    reader yet.
-6. SF12 shank-1/4 degradation from 09-10 ~14:00 is not encoded per shank; only the final night is clipped.
+6. SF12 shank-1/4 degradation: since 2026-10-06 a session-level `ephys.quality_flags` entry `SF12_contact_failing` from 09-10 14:53:45 (tags, does not exclude); still not encoded per shank or per minute. The final night is clipped at 23:30 (`valid_until`).
 7. The temperature run (09-16/17) and SF12's implant loss there are not registered (the lab note asks for it).
 8. Line ~82 still calls FM65 "UNEVALUATED" while line ~86 says "VERIFIED".
 9. The Notion animal table still says SF11 fell off "~07:40"; the observation log and the video say 06:10:45, which is

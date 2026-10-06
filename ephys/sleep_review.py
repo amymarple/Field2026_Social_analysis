@@ -13,6 +13,15 @@ u = next unreviewed. Verdicts autosave in the browser (localStorage, per page) a
 (session, verdict, note, reviewed_at). Keep the exported CSV in ephys/configs/sleep_review_<cohort>/.
 
 Usage: python ephys/sleep_review.py --cohort 2026c [--root D:/3rd_rat_spikes/analysis/sleep_server] [--variant imu_remclean]
+       python ephys/sleep_review.py --cohort 2026c --merge ephys/configs/sleep_review_2026c/<export>.csv [--scores <csv>]
+  --merge writes results/<c>/ephys_spikes/reports/ephys_spikes_sleep_review_<c>.csv: one row per session = the scores of
+  --variant + the user's verdict / note + `tags` from the cohort YAML (a session gets a tag when its [start, end] on the
+  logger clock overlaps the tagged interval):
+    ephys.quality_flags  {animal, from, [until], tag, note, source}  - record-quality periods (e.g. a failing contact)
+    ephys.valid_until    session clipped: neural signal ends inside it
+    ephys.field_flags    session flagged by the field record
+    not_scored           the scorer refused it (frozen / invalid IMU)
+  Tags describe the record; they do not decide inclusion.
 """
 from __future__ import annotations
 
@@ -23,7 +32,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from _common import analysis_root, report_dir, resolve_cohort, utc_now_iso
+from _common import analysis_root, ephys_block, report_dir, resolve_cohort, utc_now_iso
 
 
 def unpad(animal: str) -> str:
@@ -159,13 +168,67 @@ show(0);
 """
 
 
+def session_tags(cohort: str, animal: str, session: str, start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
+    """Record-quality tags for one session from the cohort YAML (see the module docstring)."""
+    eb = ephys_block(cohort)
+    tags = []
+    for q in eb.get("quality_flags") or []:
+        if q["animal"] != animal:
+            continue
+        lo = pd.Timestamp(q["from"])
+        hi = pd.Timestamp(q["until"]) if q.get("until") else pd.Timestamp.max
+        if pd.notna(start) and pd.notna(end) and start < hi and end > lo:
+            tags.append(q["tag"])
+    for v in eb.get("valid_until") or []:
+        if v["animal"] == animal and v["session"] == session:
+            tags.append(f"valid_until {v['valid_until']}")
+    for f in eb.get("field_flags") or []:
+        if f["animal"] == animal and session in f["sessions"]:
+            tags.append("field_flag")
+    return tags
+
+
+def merge_review(cohort: str, review_csv: Path, scores_csv: Path, variant: str) -> Path:
+    s = pd.read_csv(scores_csv)
+    s = s[s.variant == variant]
+    keep = ["animal", "session", "frac_wake", "frac_nrem", "frac_rem", "rem_share_of_sleep", "swthresh", "EMGthresh", "THthresh",
+            "SWchan", "THchan", "sustained_moving_scored_wake", "still_scored_sleep"]
+    s = s[keep]
+    err_csv = scores_csv.with_name(scores_csv.name.replace(f"_{cohort}.csv", f"_errors_{cohort}.csv"))
+    if err_csv.exists():
+        e = pd.read_csv(err_csv)[["animal", "session", "error"]].drop_duplicates(["animal", "session"])
+        s = pd.concat([s, e.assign(not_scored=e.error)[["animal", "session", "not_scored"]]], ignore_index=True)
+    r = pd.read_csv(review_csv)
+    r[["animal", "session"]] = r.animal_session.str.split("/", expand=True)
+    s = s.merge(r[["animal", "session", "verdict", "note", "reviewed_at"]], on=["animal", "session"], how="left")
+    idx = pd.read_csv(report_dir(cohort) / f"ephys_spikes_session_index_{cohort}.csv")
+    idx["animal"] = idx.animal.str.replace(r"^SF(\d)$", r"SF0\1", regex=True)
+    s = s.merge(idx[["animal", "session", "start_local", "end_local", "duration_s", "firmware"]], on=["animal", "session"], how="left")
+    st, en = pd.to_datetime(s.start_local), pd.to_datetime(s.end_local)
+    s["tags"] = [";".join(session_tags(cohort, a, ss, t0, t1) + (["not_scored"] if isinstance(ns, str) else []))
+                 for a, ss, t0, t1, ns in zip(s.animal, s.session, st, en, s.get("not_scored", pd.Series([None] * len(s))))]
+    s["duration_h"] = (s.pop("duration_s") / 3600).round(3)
+    lead = ["animal", "session", "start_local", "end_local", "duration_h", "firmware", "verdict", "note", "tags"]
+    s = s[lead + [c for c in s.columns if c not in lead]].sort_values(["animal", "start_local"])
+    out = report_dir(cohort) / f"ephys_spikes_sleep_review_{cohort}.csv"
+    s.to_csv(out, index=False)
+    print(f"{len(s)} sessions -> {out}; verdicts {s.verdict.value_counts(dropna=False).to_dict()}; "
+          f"tagged {int((s.tags != '').sum())}")
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--cohort", default=None)
     ap.add_argument("--root", default=None, help="sleep output tree (default <analysis_root>/sleep)")
     ap.add_argument("--variant", default="imu_remclean")
+    ap.add_argument("--merge", default=None, metavar="REVIEW_CSV", help="merge an exported review CSV with scores + YAML tags")
+    ap.add_argument("--scores", default=None, help="scores CSV (default reports/ephys_spikes_sleep_scores_<c>.csv)")
     a = ap.parse_args()
     c = resolve_cohort(a.cohort)
+    if a.merge:
+        merge_review(c, Path(a.merge), Path(a.scores) if a.scores else report_dir(c) / f"ephys_spikes_sleep_scores_{c}.csv", a.variant)
+        return
     root = Path(a.root) if a.root else analysis_root(c) / "sleep"
     items = collect(root, a.variant, c)
     cards = [card(it) for it in items]
