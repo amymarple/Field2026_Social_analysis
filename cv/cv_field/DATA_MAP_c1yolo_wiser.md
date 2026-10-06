@@ -9,7 +9,8 @@ job when this file was written; **planned** = not yet produced.
 Plans and logs (start here): `REPO/implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md` (steps 0–3 + dated
 amendments), `REPO/implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md` (the WISER phase, planned),
 `REPO/change_log/2026-10-05-c1-yolo-transfer-sam3.md`. Commits: `c76af8c` (plan, before results), `bea8c9d` (steps
-0–3 code, reports, docs); later commits for the post-hoc additions are listed in the change_log.
+0–3 code, reports, docs), `951300d` (WISER phase-0 plan + this data map), `62309b3` (post-hoc SAM3 prompt "Long Evans
+rat" + fixed-spot diagnostic).
 
 ## A. Cohort-1 detector: source and backup
 
@@ -26,14 +27,14 @@ amendments), `REPO/implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md` (th
 
 | What | Path | Status |
 |---|---|---|
-| Run folder | `$OUT/2026a/cv_field_sam3_vs_yolo_c1_20261005_1750/` | final (+ post-hoc files in progress) |
+| Run folder | `$OUT/2026a/cv_field_sam3_vs_yolo_c1_20261005_1750/` | final |
 | Ground truth, frame list, lighting class | `gt.csv`, `frames.csv`, `lighting.json`, `ref_chroma.csv` | final |
 | Cached raw predictions | `yolo_preds.csv.gz` (v5 @1280 and @2560, conf ≥ 0.01), `sam3_tiles_t1008.csv` / `sam3_tiles_t2016.csv` (per-tile SAM3 boxes), `sam3_preds.csv.gz` (merged per frame), `sam3_merge_stats.json` | final |
 | Scores | `metrics_center.csv` (primary, centre match), `metrics_iou.csv`, `pr_*.csv`, `counts_*.csv`, `diffs_*.csv` | final |
 | Label provenance diagnostic | `label_provenance.csv` | final (after results) |
 | Timing | `timing_yolo.csv`, `timing_sam3_t1008.csv`, `timing_sam3_t2016.csv` | final |
-| **Post-hoc prompt "Long Evans rat"** (user suggestion) | `sam3_tiles_t1008_ler.csv`, `timing_sam3_t1008_ler.csv`, and the 2016-tile equivalents | **in progress** |
-| Report, figures, pointer | `REPO/results/2026a/cv_field/reports/cv_field_sam3_vs_yolo_c1_2026a.md`, `REPO/results/2026a/cv_field/figures/sam3_vs_yolo_c1/*.png`, `REPO/results/2026a/cv_field/reports/run_manifest_sam3_vs_yolo_c1_2026a.json` | final (post-hoc section to come) |
+| **Post-hoc prompt "Long Evans rat"** (user suggestion, after results) | `sam3_tiles_t1008_ler.csv`, `sam3_tiles_t2016_ler.csv`, `timing_sam3_t1008_ler.csv`, `timing_sam3_t2016_ler.csv` (image features computed once per tile; "rat"/"animal" caches reused) | final (`62309b3`) |
+| Report, figures, pointer | `REPO/results/2026a/cv_field/reports/cv_field_sam3_vs_yolo_c1_2026a.md`, `REPO/results/2026a/cv_field/figures/sam3_vs_yolo_c1/*.png`, `REPO/results/2026a/cv_field/reports/run_manifest_sam3_vs_yolo_c1_2026a.json` | final (post-hoc section added in `62309b3`) |
 | SAM3 weights | `C:/Users/Cornell/.cache/huggingface/hub/models--facebook--sam3/snapshots/3c879f39826c281e95690f02c7821c4de09afae7/sam3.pt` (3.45 GB, downloaded 2026-10-01) | external |
 | Code | `REPO/cv/cv_field/sam3_vs_yolo_c1.py` (`--selftest`, `--run`, `--phases`, `--score-only`) | final |
 
@@ -48,10 +49,10 @@ amendments), `REPO/implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md` (th
 | Derived tables | `per_frame_counts.csv.gz`, `per_second.csv`, `per_5s.csv` (YOLO vs WISER outside-count), `plausibility.json` | final |
 | Orientation check | `identity_check.json`, `identity_frame_26200.png` (pipeline frame vs `grab_frames.grab`, max diff 0) | final |
 | Review media for the user | `review_10min.mp4` (21:21:50–21:31:50), `review_clips/` (5 clips + `clips.csv`, `eligible_windows.csv`, `index.html`, `review_template.csv`) | final; user review pending |
-| **Fixed-spot diagnostic** | `fixed_spots/` (`index.html`, `fixed_spots.csv`, `fixed_spots_review.csv`, `fn_notes.txt`, locator / heatmap / crops) | **in progress** |
+| **Fixed-spot diagnostic** (cached detections only) | `fixed_spots/` (`index.html`, `fixed_spots.csv`, `fixed_spots.json`, `cells.csv.gz`, `locator.png`, `heatmap.png`, `crops/`, `fixed_spots_review.csv` and `fn_notes.txt` for the user) | final (`62309b3`); user review pending |
 | Run metadata | `run.json` (video, weights + sha256, versions, runtime) | final |
-| Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_c1yolo_video_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_c1yolo_video_2026c.json` | final (fixed-spot section to come) |
-| Code | `REPO/cv/cv_field/c1_yolo_video_test.py` (`--selftest`, `--hour-only`, `--run`, `--steps`) | final |
+| Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_c1yolo_video_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_c1yolo_video_2026c.json` | final (fixed-spot section added in `62309b3`) |
+| Code | `REPO/cv/cv_field/c1_yolo_video_test.py` (`--selftest`, `--hour-only`, `--run`, `--steps`); `REPO/cv/cv_field/c1_yolo_fixed_spots.py` (`--selftest`) | final |
 
 ## D. WISER inputs (read-only; used by step 2 and by the planned WISER phase)
 
