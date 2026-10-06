@@ -1,8 +1,8 @@
 {
-  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_cycles_20261006_1852",
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_cycles_20261006_1922",
   "driver": "ephys/sleep_cycles.py",
-  "git_commit": "0555a7b+dirty",
-  "written_utc": "2026-10-06T23:18:38+00:00",
+  "git_commit": "9344676+dirty",
+  "written_utc": "2026-10-06T23:42:00+00:00",
   "states": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s",
   "states_s3": "D:/3rd_rat_spikes/analysis/sleep_server/sleep_states_1s_nremgate",
   "dt_s": 10,

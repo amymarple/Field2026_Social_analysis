@@ -1,7 +1,7 @@
 # NREM → REM transitions and recent sleep history, cohort 2026c
 
-`ephys/sleep_cycles.py` (git 0555a7b+dirty, 2026-10-06T23:18:38+00:00). Plan: [implementation_plan/2026-10-06-sleep-rem-cycle-history.md](../../../../implementation_plan/2026-10-06-sleep-rem-cycle-history.md).
-Bulk outputs: `D:\Field2026_analysis_out\2026c\sleep_cycles_20261006_1852`. Definitions: the module docstring, summarised here.
+`ephys/sleep_cycles.py` (git 9344676+dirty, 2026-10-06T23:42:00+00:00). Plan: [implementation_plan/2026-10-06-sleep-rem-cycle-history.md](../../../../implementation_plan/2026-10-06-sleep-rem-cycle-history.md).
+Bulk outputs: `D:\Field2026_analysis_out\2026c\sleep_cycles_20261006_1922`. Definitions: the module docstring, summarised here.
 
 **Scope.**
 - States are `imu_remclean`, 1-s epochs. REM bouts as scored, no merging (user decision).
@@ -48,7 +48,7 @@ Bulk outputs: `D:\Field2026_analysis_out\2026c\sleep_cycles_20261006_1852`. Defi
 
 **ΔLL** = held-out mean log-loss difference, in millinats per 10-s step; < 0 means the larger model predicts better. The CI is a bootstrap over dates. `folds better` = held-out dates on which the larger model is better.
 
-Relative = ΔLL / the light-phase held-out log-loss of M0 (0.2660 nats / step).
+Relative = ΔLL / the baseline's held-out log-loss: M0 on the light phase (0.2660 nats / step); for the night-transfer rows M0' on the dark phase (0.2923).
 
 | Comparison | ΔLL (millinats / step) | 95 % CI | Relative to M0 | Folds better |
 |---|---|---|---|---|
@@ -57,14 +57,14 @@ Relative = ΔLL / the light-phase held-out log-loss of M0 (0.2660 nats / step).
 | M1 - M0, REM outcome | -2.18 | [-2.72, -1.59] | -0.82 % | 11/12 |
 | M2 - M1, REM outcome | +0.01 | [-0.06, +0.13] | +0.00 % | 9/12 |
 | M1 - M0, steps >= S2 threshold after REM | -1.69 | [-2.28, -1.01] | -0.64 % | 10/12 |
-| night transfer M1' - M0', all outcomes | -14.41 | [-16.88, -12.03] | -5.42 % | 13/13 |
-| night transfer M1' - M0', REM outcome | -9.51 | [-10.88, -8.29] | -3.57 % | 13/13 |
+| night transfer M1' - M0', all outcomes | -14.41 | [-16.88, -12.03] | -4.93 % | 13/13 |
+| night transfer M1' - M0', REM outcome | -9.51 | [-10.88, -8.29] | -3.25 % | 13/13 |
 | M1 + day weather - M1 (secondary) | +0.20 | [-0.31, +0.92] | +0.07 % | 8/12 |
 | ablation, M0 + REM_pre vs M0 | -0.07 | [-0.16, +0.02] | -0.03 % | 8/12 |
 | ablation, M0 + N_prior vs M0 | -0.44 | [-0.66, -0.22] | -0.17 % | 10/12 |
 | ablation, M0 + W_cum vs M0 | -2.35 | [-2.99, -1.73] | -0.88 % | 11/12 |
 | ablation, M0 + REM_pre+N_prior vs M0 | -0.52 | [-0.74, -0.30] | -0.20 % | 11/12 |
-| night transfer, M0' + REM_pre + N_prior vs M0' (no wake term) | -3.15 | [-3.91, -2.41] | -1.18 % | 13/13 |
+| night transfer, M0' + REM_pre + N_prior vs M0' (no wake term) | -3.15 | [-3.91, -2.41] | -1.08 % | 13/13 |
 | S3 imu_nremgate states, M1 vs M0 | -2.72 | [-3.48, -1.97] | -1.02 % | 11/12 |
 
 Per fold: `ephys_spikes_sleep_cycles_cv_2026c.csv`.

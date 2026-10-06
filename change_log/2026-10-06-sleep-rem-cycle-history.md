@@ -59,9 +59,11 @@ Report (all tables, definitions): [results/2026c/ephys_spikes/reports/ephys_spik
   - leave one animal out: M1 better for all 6 (−1.2 to −4.7 millinats / step);
   - single-cycle regime: −0.64 %;
   - pre-post-rule states (S3): −1.02 %.
-- **Night transfer** (trained on light, tested on dark-phase naps, 13 nights, without time of day):
-  - full M1′: −5.4 %;
-  - without the wake term: −1.2 %, 13/13 nights.
+- **Night transfer** (trained on light, tested on dark-phase naps, 13 nights, without time of day; relative to M0′'s night
+  log-loss of 0.292):
+  - full M1′: −4.9 %;
+  - without the wake term: −1.1 %, 13/13 nights.
+  - The first report had −5.4 / −1.2 % because it used the light baseline; fixed in the driver, report regenerated.
 - **Weather** (secondary): adds nothing (+0.07 %).
 
 ### Direction of the history terms
@@ -85,6 +87,8 @@ Full light fit, log-odds of REM vs staying, per SD:
 - **Dark phase** (233 cycles): R1 +0.31 [0.004, 0.62], 6/6.
 
 ## Reading (technical; claims are audited separately)
+
+**Claim audit** (`/scientific-report-promotion`, status + allowed wording per claim): [ephys_spikes_sleep_cycles_claim_audit_2026c.md](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_cycles_claim_audit_2026c.md).
 
 - **History adds a small, consistent amount of held-out information** about when the next REM starts. Almost all of it is
   the **wake accumulated since the last REM**, which lowers the REM probability and raises the Wake probability. NREM

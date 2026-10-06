@@ -516,7 +516,9 @@ def run(a) -> None:
                          "folds_better": int((f3.d < 0).sum()), "folds": len(f3)})
     cmp_ = pd.DataFrame(cmp_rows)
     base_ll = float((folds.ll_M0 * folds.n).sum() / folds.n.sum())
-    cmp_["relative_to_M0_LL_pct"] = (100 * cmp_.delta_ll_nats_per_step / base_ll).round(2)
+    night_base = float(night.ll0.mean())          # held-out log-loss of M0' on the dark-phase steps
+    is_night = cmp_.comparison.str.startswith("night transfer")
+    cmp_["relative_to_M0_LL_pct"] = (100 * cmp_.delta_ll_nats_per_step / np.where(is_night, night_base, base_ll)).round(2)
     cmp_.to_csv(rd / f"ephys_spikes_sleep_cycles_model_comparison_{c}.csv", index=False)
 
     # ---------------- full-data coefficients (direction / size; inference = held-out above)
@@ -711,7 +713,9 @@ def run(a) -> None:
         "## Does history add predictive information? (held-out)", "",
         "**ΔLL** = held-out mean log-loss difference, in millinats per 10-s step; < 0 means the larger model predicts better. "
         "The CI is a bootstrap over dates. `folds better` = held-out dates on which the larger model is better.", "",
-        f"Relative = ΔLL / the light-phase held-out log-loss of M0 ({float((folds.ll_M0 * folds.n).sum() / folds.n.sum()):.4f} nats / step).", "",
+        f"Relative = ΔLL / the baseline's held-out log-loss: M0 on the light phase "
+        f"({float((folds.ll_M0 * folds.n).sum() / folds.n.sum()):.4f} nats / step); for the night-transfer rows M0' on the dark phase "
+        f"({float(night.ll0.mean()):.4f}).", "",
         "| Comparison | ΔLL (millinats / step) | 95 % CI | Relative to M0 | Folds better |", "|---|---|---|---|---|",
         *[fmt_cmp(r) for r in cmp_.itertuples()], "",
         "Per fold: `ephys_spikes_sleep_cycles_cv_" + c + ".csv`.", "",
