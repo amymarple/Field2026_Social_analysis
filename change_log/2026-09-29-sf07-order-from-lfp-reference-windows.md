@@ -224,6 +224,23 @@ total from 09-11 23:39; the probe was not broken.
 **SF08 col 53.** SF11 and SF12 (both unbridged) agree on 53's position. That suggests SF08's 53 placement reflects its
 bridge with 55. This is optional: 53 is a bridged duplicate there.
 
+**User decisions 2026-10-06 (evening):** SF11 and SF12 proposals accepted; SF08 53 moved next to 61; the stage XMLs switched
+to the new orders; the final XMLs to go to `Q:\hc997\SocialFieldRat2026\3rd_rat`.
+- **53 placement:** after 61, i.e. 56 → 61 → 53 → 48. This is SF12's adopted order, and SF11's sharp wave is monotone along
+  it on 09-02 and 09-05. SF11's proposal had 53 one site earlier and was aligned to this.
+  - SF08 shank 1 now equals SF12's. Shank 4 is identical in SF08, SF11 and SF12.
+- **Repo XMLs:**
+  - `SF08_A4x16-Lin_lfporder_20261006.xml` updated in place (53 moved);
+  - `SF11_A4x16-Lin_lfporder_20261006.xml` (skip 32, 56, 60) and `SF12_A4x16-Lin_lfporder_20261006.xml` are new.
+- **`probes_2026c.yaml`:** SF11 now points at its own XML (`verified: true`, `reject_channels: [32, 56, 60]`); SF12 at its
+  new XML.
+- **Stage folders (SF07, SF08, SF10, SF11, SF12):** 17 files replaced, each `<folder>.xml` and `amplifier.xml`, written by
+  `make_session_xml.write_session_xml_for_animal` and verified against the repo XML. The old files are kept as
+  `*.pre_20261006`, or `…b` where that name was taken. `.xml.done` and SF09 were not touched.
+- **Copy to Q: not done by the agent.** The data-server guard makes Q: read-only. The bundle for the user to copy is
+  `G:\3rd_rat_spikes\analysis\channel_maps_final_20261006\`: the five XMLs, `probes_2026c.yaml`, a SHA-256
+  `MANIFEST.csv` and a README. SF09 is not included (not final).
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
