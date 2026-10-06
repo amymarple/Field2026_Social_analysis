@@ -188,6 +188,42 @@ The Neuroscope review sets (`CURRENT` / `PROPOSED`, `.rip.evt`) are in each fold
   consensus shanks 2–3, with shank 1 (dead) and shank 4 (impedance split) unchanged. The yaml points at it. Placed in
   stage `9_20260902_083247.835`; the previous file is kept as `.xml.pre_20261006`.
 
+## 2026-10-06 (later): second template (SF09 type), method hardening, SF11 / SF12
+
+**Template 2.** WT2 day10 probe 3, the 5-shank "middle finger" probe (12/12/16/12/12 sites, paired sites). It is another
+person's data on `Q:\shared`, copied read-only to `G:\…\inspect\template_WT2_day10_5x12\`. The first version of the
+method oriented shank 2 backwards (it lies entirely below the layer) and broke shank 3 at the steep layer step.
+
+**`swr_layer_order.py` changes.** None of them changes any order accepted earlier the same day.
+1. **Unimodal ripple** (`unimodal_path`): exact Held–Karp with a rising/falling phase bit. After the first drop of the
+   (mean) signed ripple, every rise is penalised, so the path can no longer glue the oriens run to the radiatum run.
+2. **Ratio vote** replaces the "end" vote. |ΔS|/|ΔR| is large below the layer (19–75 on the templates) and small above it
+   (2.5–4.5).
+3. **Contrast weighting.** Each profile's ripple, theta and ratio votes, and its share of the consensus distance, are
+   weighted by its ripple contrast. A day with a flat ripple then says little: SF11 after its advances, and SF12 shank 1 on
+   09-09.
+4. Comparison XMLs are matched by channel set, `--method plain` is kept for comparison, and `--layout` is new.
+
+**Validation.**
+- HYC3: CA1 shank 1 exact; others 0.93 / 0.96 / 0.97, with the orientation right on all.
+- WT2: all five shanks right. Shank 3 is exact; the others are 0.98–0.99 with every site within ±1 (the pairs).
+- SF07 / SF08 / SF10 final orders are reproduced at 0.991–1.000.
+
+**SF11** (09-02, 09-05, 09-06 NREM from the server's `imu_remclean`; local LFPs; dead 32, 56, 60).
+- 09-02 alone reproduces SF08's final order at ρ 0.91 / 0.99 / 0.99 / 1.00, so SF11 is wired like SF08 and SF12.
+- The one real difference is col 53. It sits next to 56/61; in SF08, 53 is bridged with 55.
+- **Proposal:** `SF11_proposed_SF08wiring.xml` = SF08's final order with 53 after 56.
+
+**SF12.** The consensus uses 09-02 + 09-05 only. Per the field record, the contact failure starts at shank 1 on 09-07 and is
+total from 09-11 23:39; the probe was not broken.
+- Shanks 1–3 are identical to the adopted XML.
+- Shank 4 equals SF08's final shank 4 except for the bridged 21.
+- **Proposal:** `SF12_proposed.xml` = the adopted shanks 1–3 + SF08's shank 4, with 23 skipped in place.
+- SF12's adopted top, 20, 27, 18, 22, independently confirms today's change to SF08 shank 4.
+
+**SF08 col 53.** SF11 and SF12 (both unbridged) agree on 53's position. That suggests SF08's 53 placement reflects its
+bridge with 55. This is optional: 53 is a bridged duplicate there.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
