@@ -46,7 +46,8 @@ BOUT mode (user 2026-10-05: the layer profile belongs to NREM SWRs; take short N
   [--state NREMstate --edge-s 5 --bout-min-s 15 --bout-max-s 60 --range-min A B --max-bout-min 20] reads only the trimmed bouts
   (the middle <= 60 s of each; bouts spread evenly over the range when they exceed the cap) of the session LFP, z-scores the
   ripple band on NREM alone, filters per bout, drops ripples < 150 ms from a join, and takes theta from REM bouts of the same
-  range. --states without --lfp gates a window's ripples instead (whole trimmed bouts).
+  range. --states without --lfp gates a window's ripples instead (whole trimmed bouts). --lfp without --states reads a plain
+  window (--offset-min, --minutes) of any session .lfp; channel count and rate come from the .lfp.json sidecar or the --xml.
   The npz adds ripple_peaks_session_s and segments_session_s (session seconds = the .lfp / Neuroscope time base).
 Appends results/<cohort>/ephys_spikes/reports/ephys_spikes_lfp_profile_check_<cohort>.csv.
 """
@@ -373,13 +374,26 @@ def main() -> None:
         import yaml
         cfg = ephys_block(a.cohort)
         xml_path = Path(a.xml) if a.xml else PROJECT_ROOT / yaml.safe_load((PROJECT_ROOT / cfg.get("probe_config", f"ephys/configs/probes_{a.cohort}.yaml")).read_text(encoding="utf-8"))["animals"][an]["xml"]
-    if a.lfp:
-        if not a.states:
-            raise SystemExit("--lfp needs --states (the bouts to analyse)")
+    if a.lfp and not a.states:                                       # plain window of a session .lfp
+        lfp_path = Path(a.lfp)
+        side = lfp_path.with_name(lfp_path.name + ".json")
+        if side.exists():
+            sj = json.loads(side.read_text(encoding="utf-8")); nch = int(sj["n_channels"]); fs = float(sj["fs_out"]); fw = sj.get("firmware")
+        else:                                                         # any Neuroscope session: channel count / rate from the XML
+            xr = ET.parse(xml_path).getroot(); fw = None
+            nch = int(xr.findtext("acquisitionSystem/nChannels")); fs = float(xr.findtext("fieldPotentials/lfpSamplingRate") or 1250.0)
+        off = a.offset_min if a.offset_min is not None else 0.0
+        lfp, _, _ = load_bouts(lfp_path, np.array([[off * 60.0, (off + a.minutes) * 60.0]]), fs, nch)
+        win = lfp.shape[0]; a0 = int(round(off * 60.0 * fs)); bad = set()
+        print(f"   lfp window mode: {lfp_path} ({nch} ch, {fs:g} Hz), grouping XML {xml_path}")
+    elif a.lfp:
         lfp_path = Path(a.lfp)
         side = lfp_path.with_name(lfp_path.name + ".json")
         sj = json.loads(side.read_text(encoding="utf-8")) if side.exists() else {}
         nch = int(sj.get("n_channels", 64)); fs = float(sj.get("fs_out", 1250.0)); fw = sj.get("firmware")
+        if not side.exists():
+            xr = ET.parse(xml_path).getroot()
+            nch = int(xr.findtext("acquisitionSystem/nChannels")); fs = float(xr.findtext("fieldPotentials/lfpSamplingRate") or 1250.0)
         rng = tuple(a.range_min) if a.range_min else None
         avail = state_bouts(Path(a.states), a.state, a.edge_s, a.bout_min_s, rng, a.bout_max_s or None)
         if not len(avail):
@@ -531,7 +545,7 @@ def main() -> None:
         print(f"   -> {out}")
     if a.save_profile:
         meta = {"animal": an, "session": a.session, "source": a.lfp or a.raw or str(sdir),
-                "mode": "bouts" if seg_bounds is not None else ("raw" if a.raw else "sort"), "window_desc": win_desc,
+                "mode": "bouts" if seg_bounds is not None else ("lfp_window" if a.lfp else ("raw" if a.raw else "sort")), "window_desc": win_desc,
                 "window_start_min": float(to_session_s(0) / 60), "window_min": float(win / fs / 60), "fs": fs, "ripple_thr_z": a.thr,
                 "grouping_xml": str(xml_path), "firmware": (fw if (a.raw or a.lfp) else None),
                 "deglitch_applied": DEGLITCH_APPLIED if a.raw else None, "units": "uV relative (0.195 uV/count)",

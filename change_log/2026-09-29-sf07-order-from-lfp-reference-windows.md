@@ -100,6 +100,30 @@ window.
 - The order holds across the whole 8.5-h session.
 - The 09-01 evening session `9_20260901_192912.215` has essentially no scored NREM.
 
+## 2026-10-05 (night): correct-order template, `--lfp` plain window
+
+**Template.** The user supplied a session whose order is correct: HYC3 `day26`, standard A4x16-Lin, 109–140 min (NREM).
+- Copied read-only from `W:\data\PPP\HYC3\day26` to `G:\3rd_rat_spikes\analysis\inspect\template_HYC3_day26\`
+  (SHA-256 verified).
+- Its shanks 1–2 (CA1) show the textbook profile along the true order:
+  - The SPW rises smoothly. The top sites are negative, so the sign is not a depth label.
+  - The SPW peaks 1 site above the ripple maximum and reverses within 2 sites below it.
+  - Only 4 sites lie above the ripple half-maximum.
+  - Theta phase is flat above the layer and shifts fast below it.
+  - On shank 2 the SPW reaches its trough 4 sites below the layer, then rises again to a positive peak where theta power
+    peaks (SLM). Below the trough the profile folds.
+
+**`lfp_profile_check.py --lfp` without `--states`** reads a plain window (`--offset-min`, `--minutes`) of any session `.lfp`.
+The channel count and rate come from the sidecar or from `--xml`.
+
+**Seriation prototype (scratch, not yet in the repo).** It finds the shortest path through the sites in normalised (SPW,
+ripple, theta phase, log theta power) space.
+- Template: CA1 shank 1 recovered exactly. Errors fall only in the fold below the radiatum trough and in the featureless
+  cortex top.
+- SF10 shanks 2–4: ρ 0.98–0.99 to the adopted order.
+- SF08: ρ ≥ 0.98 on most shanks. The exceptions are single sites (47, 53, tip col 3).
+- SF07 shanks 2–4: equal to the LFP-derived order. Shank 1 gives the same path with the orientation flipped.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
