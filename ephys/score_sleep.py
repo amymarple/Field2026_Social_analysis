@@ -11,6 +11,16 @@ Variants (one folder each; the user reviews and picks):
   imu           IMU in the EMG slot, useEMG_NREM=False  -> MATLAB rule: movement gates REM only; NREM = slow wave
   imu_nremgate  IMU in the EMG slot, useEMG_NREM=True   -> NREM also requires low movement (moving + slow wave = WAKE)
   lfpemg        the scorer's own LFP-EMG (300-600 Hz correlation of a 450-Hz-low-passed .lfp)  -> the standard baseline
+  imu_remclean  DERIVED from imu_nremgate (its scorer outputs are copied, not rescored) + two REM post-rules (user, 2026-10-05:
+                REM with high EMG is often wake):
+                  (1) a REM bout entered after > 10 s of WAKE -> WAKE (the scorer's own _suppress_wake_to_rem_transitions with
+                      min wake 10 s; its block_wake_to_rem config is not used because state_microarousal_sec also sets the
+                      episode definitions);
+                  (2) REM epoch k -> WAKE when the head moves in >= 3 of the 5 IMU seconds k-2 .. k+2
+                      (moving(j) = VeDBA_1s(j) >= theta_a; IMU second j = [j, j+1) s; epoch k = the scorer's 2-s window
+                      centred on k s, so twitches of 1-2 s keep REM);
+                (1) again (rule 2 can open a > 10 s WAKE gap inside a bout), then REM runs <= 6 s -> WAKE (the scorer's minimum REM length). Theta epochs, episodes and the overview
+                figures are regenerated with the scorer's own functions.
 Per session and variant: <out>/<variant>/<SFxx>/<session>/ holds the .lfp as a HARD LINK to <analysis_root>/lfp (no copy),
 a session.mat built from the animal's XML (ephys/configs/probes_<c>.yaml), the scorer outputs, and complex_system/ with a
 COPY of the automatic SleepState for manual review - state_editor.py loads and saves complex_system/ first, so manual
@@ -48,6 +58,11 @@ from scipy.io import loadmat, savemat
 from _common import PROJECT_ROOT, analysis_root, ephys_block, git_commit, report_dir, resolve_cohort, utc_now_iso
 
 VARIANTS = {"imu": ("imu", False), "imu_nremgate": ("imu", True), "lfpemg": ("lfp", False)}
+DERIVED = {"imu_remclean": "imu_nremgate"}          # derived variant -> the scored variant it post-processes
+REMCLEAN_MAX_WAKE_BEFORE_REM_S = 10.0
+REMCLEAN_WIN_S, REMCLEAN_MIN_MOVING_S = 5, 3
+MIN_REM_S = 6                                       # = the scorer's state_min_state_length
+STATENAMES = ["WAKE", "", "NREM", "", "REM"]
 EMG_FS = 2.0
 EMG_WIN_S = 2.0
 EMG_EPS = 0.01
@@ -142,6 +157,12 @@ def score_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varian
     sslfp = bp / f"{session}.SleepScoreLFP.LFP.mat"
     if sslfp.exists():
         sslfp_cache.setdefault(key, sslfp)
+    return summarize(bp, animal, session, variant, imu_root, pp_commit, sess["_xml"], t0)
+
+
+def summarize(bp: Path, animal: str, session: str, variant: str, imu_root: Path, pp_commit: str, xml: str, t0: float,
+              extra: dict | None = None) -> dict:
+    """Seed the review copy (once), then write score_sleep.json from the automatic SleepState."""
     auto = bp / f"{session}.SleepState.states.mat"
     review = bp / "complex_system" / f"{session}.SleepState.states.mat"
     if auto.exists() and not review.exists():             # seed the manual-review copy once; never overwrite it
@@ -159,10 +180,75 @@ def score_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varian
             "rem_share_of_sleep": round(frac["rem"] / max(1e-9, frac["rem"] + frac["nrem"]), 4),
             "swthresh": metrics.get("swthresh"), "EMGthresh": metrics.get("EMGthresh"), "THthresh": metrics.get("THthresh"),
             "SWchan": metrics.get("SWchanID"), "THchan": metrics.get("THchanID"),
-            "scorer": f"PreprocessPipeline {pp_commit}", "xml": sess["_xml"], "git_commit": git_commit(), "written_utc": utc_now_iso()}
+            "scorer": f"PreprocessPipeline {pp_commit}", "xml": xml, "git_commit": git_commit(), "written_utc": utc_now_iso(),
+            **(extra or {})}
     info.update(imu_consistency(imu_root / animal / f"{session}.imu_1s.csv", animal, ts, states))
     (bp / "score_sleep.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
     return info
+
+
+def remclean_states(ss, states: np.ndarray, ts: np.ndarray, vedba_1s: np.ndarray, theta_a: float) -> tuple[np.ndarray, dict]:
+    """The imu_remclean post-rules (module docstring). Returns the new states and the REM seconds each rule moved to WAKE."""
+    s0 = np.asarray(states, dtype=np.uint8).reshape(-1)
+    s1 = ss._suppress_wake_to_rem_transitions(s0, ts, min_wake_before_rem_secs=REMCLEAN_MAX_WAKE_BEFORE_REM_S,
+                                              preserve_rem_interruption=False)
+    moving = np.nan_to_num(vedba_1s, nan=0.0) >= theta_a          # NaN (frozen / invalid) is not movement
+    mov_win = np.convolve(moving.astype(np.int32), np.ones(REMCLEAN_WIN_S, np.int32), mode="same") >= REMCLEAN_MIN_MOVING_S
+    j = np.clip(np.asarray(ts).astype(np.int64), 0, len(mov_win) - 1)  # epoch k -> IMU seconds k-2 .. k+2
+    s2 = s1.copy()
+    s2[(s2 == 5) & mov_win[j]] = 1
+    counts = {"rem_to_wake_after_wake_s": int(np.sum((s0 == 5) & (s1 != 5))),
+              "rem_to_wake_imu_moving_s": int(np.sum((s1 == 5) & (s2 != 5))), "rem_to_wake_short_rem_s": 0}
+    # rule (2) can open, and removing a short REM run can merge, a > 10 s WAKE gap before REM: repeat rule (1) and the
+    # short-REM rule until nothing changes, so the final score obeys both
+    s = s2
+    while True:
+        sa = ss._suppress_wake_to_rem_transitions(s, ts, min_wake_before_rem_secs=REMCLEAN_MAX_WAKE_BEFORE_REM_S,
+                                                  preserve_rem_interruption=False)
+        sb = sa.copy()
+        edges = np.flatnonzero(np.diff(np.r_[0, (sb == 5).astype(np.int8), 0]))
+        for a, b in zip(edges[::2], edges[1::2]):
+            if b - a <= MIN_REM_S:
+                sb[a:b] = 1
+        counts["rem_to_wake_after_wake_s"] += int(np.sum((s == 5) & (sa != 5)))
+        counts["rem_to_wake_short_rem_s"] += int(np.sum((sa == 5) & (sb != 5)))
+        if np.array_equal(sb, s):
+            return sb, counts
+        s = sb
+
+
+def derive_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, variant: str, out_root: Path, lfp_root: Path,
+               imu_root: Path, sslfp_cache: dict) -> dict:
+    """A derived variant: copy the base variant's scorer outputs, apply the post-rules, regenerate the scorer's products."""
+    base = DERIVED[variant]
+    base_bp = out_root / base / animal / session
+    if not (base_bp / f"{session}.SleepState.states.mat").exists():
+        score_one(ss, Cfg, pp_commit, cohort, animal, session, base, out_root, lfp_root, imu_root, sslfp_cache)
+    t0 = time.time()
+    bp = out_root / variant / animal / session
+    (bp / "StateScoreFigures").mkdir(parents=True, exist_ok=True)
+    link_or_fail(lfp_root / animal / f"{session}.lfp", bp / f"{session}.lfp")
+    for name in (f"{session}.session.mat", f"{session}.EMGFromLFP.LFP.mat", f"{session}.SleepScoreLFP.LFP.mat",
+                 f"StateScoreFigures/{session}_SWTHChannels.jpg"):
+        if (base_bp / name).exists():
+            shutil.copy2(base_bp / name, bp / name)       # copies, never links: nothing here may write through to the base
+    st = loadmat(base_bp / f"{session}.SleepState.states.mat", simplify_cells=True)["SleepState"]
+    ts = np.asarray(st["idx"]["timestamps"], dtype=np.float64).reshape(-1)
+    import pandas as pd
+    ved = pd.read_csv(imu_root / animal / f"{session}.imu_1s.csv", usecols=["vedba_mean"])["vedba_mean"].to_numpy()
+    states, counts = remclean_states(ss, np.asarray(st["idx"]["states"]).reshape(-1), ts, ved, IMU_STILL_THR[animal])
+    st["idx"]["states"] = states.reshape(-1, 1)
+    for k, v in ss._idx_to_int(states, ts, STATENAMES).items():
+        st["ints"][k] = v
+    st["detectorinfo"]["postrules"] = {
+        "base_variant": base, "driver": "ephys/score_sleep.py remclean_states", "git_commit": git_commit(),
+        "rule": f"REM after > {REMCLEAN_MAX_WAKE_BEFORE_REM_S:g} s WAKE -> WAKE; REM with head moving in >= "
+                f"{REMCLEAN_MIN_MOVING_S}/{REMCLEAN_WIN_S} s -> WAKE; REM runs <= {MIN_REM_S} s -> WAKE", **counts}
+    ss._append_theta_epochs(st, bp, session)                # recomputes the WAKE theta epochs and writes SleepState
+    ss._states_to_episodes(st, bp, session, microarousal_sec=float(Cfg(basepath=bp).state_microarousal_sec), overwrite=True)
+    ss._save_state_figures(bp, session, st, overwrite=True)
+    return summarize(bp, animal, session, variant, imu_root, pp_commit, session_struct(cohort, animal)["_xml"], t0,
+                     extra={"derived_from": base, **counts})
 
 
 IMU_STILL_THR = {"SF07": 0.387, "SF08": 0.307, "SF09": 0.325, "SF10": 0.325, "SF11": 0.387, "SF12": 0.365}  # m/s^2, 2026-09-28
@@ -200,7 +286,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--cohort", default=None)
     ap.add_argument("--sessions", nargs="*", default=[], help="ANIMAL:SESSION, animal as SF07 (none: only rebuild the CSVs)")
-    ap.add_argument("--variants", nargs="+", default=["imu", "imu_nremgate", "lfpemg"], choices=list(VARIANTS))
+    ap.add_argument("--variants", nargs="+", default=["imu", "imu_nremgate", "lfpemg", "imu_remclean"],
+                    choices=list(VARIANTS) + list(DERIVED))
     ap.add_argument("--pipeline-root", default=None)
     ap.add_argument("--anchor", nargs="*", default=[], help="ANIMAL:SESSION:REC_S:EXPECTED (WAKE|NREM|REM) - report state +-60 s")
     a = ap.parse_args()
@@ -213,7 +300,8 @@ def main() -> None:
     for spec in a.sessions:
         animal, session = spec.split(":")
         for v in a.variants:
-            info = score_one(ss, Cfg, pp_commit, c, animal, session, v, out_root, lfp_root, imu_root, cache)
+            run = derive_one if v in DERIVED else score_one
+            info = run(ss, Cfg, pp_commit, c, animal, session, v, out_root, lfp_root, imu_root, cache)
             for anc in a.anchor:
                 aan, ases, arec, aexp = anc.split(":")
                 if (aan, ases) == (animal, session):
