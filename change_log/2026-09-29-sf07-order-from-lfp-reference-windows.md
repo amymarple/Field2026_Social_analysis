@@ -184,6 +184,9 @@ The Neuroscope review sets (`CURRENT` / `PROPOSED`, `.rip.evt`) are in each fold
   `.xml.pre_20261006`.
 - `.xml.done` (sort provenance) was not touched. Neither were the users' Neuroscope `amplifier.xml` files, which still
   carry the old orders.
+- **SF10 (user, later the same day: "SF10 要 proposed"):** `ephys/configs/xml/SF10_A4x16-Lin_lfporder_20261006.xml` = the
+  consensus shanks 2–3, with shank 1 (dead) and shank 4 (impedance split) unchanged. The yaml points at it. Placed in
+  stage `9_20260902_083247.835`; the previous file is kept as `.xml.pre_20261006`.
 
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
