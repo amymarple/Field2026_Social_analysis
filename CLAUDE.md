@@ -306,7 +306,10 @@ CH01–CH06 nights hourly; the in-box CH07/CH08 all day, segmented at the house-
 battery rounds / catches) with one median correction per lid-closed segment (outliers > 10 px flagged). CH05 (house_1
 moved 09-18) and CH07/CH08 (uncalibrated) map to user-labelled 09-04 frames, not 09-18 — use `to_09_18` for their
 reference-frame pixels; `to_paddock` refuses them. Precision: CH01/CH02 ≤ 3 px on passing nights, CH03/CH04 ~5–10 px,
-CH05/CH06 held-out ~0.5–1.8 px, CH07/CH08 in-segment spread ~3 / ~1 px.
+CH05/CH06 held-out ~0.5–1.8 px, CH07/CH08 in-segment spread ~3 / ~1 px. **The table is night-only for CH01–CH06**: at a
+daytime time it returns the nearest night sample (09-04 12:00 on CH02: 30 px off) — track daytime frames directly with
+`landmark_track.py --times HH:MM --start D --end D --tag …`. Summary for detector/tracking work (camera motion, house_1,
+landmark names, occluder regions): **`cv/cv_field/CAMERA_GEOMETRY_2026c.md`**.
 **Cohort-1 CH01/CH02 pano detector (`social-field-rat`, another lab member's folder, broken `.git`, 2026-10-05):** the
 project's only CH01/CH02 labels — 887 cohort-1 frames / 1 692 boxes (CH01 06-30, 07-04, 07-07; CH02 06-30, 07-06; all
 21:00–22:00; upright 7680 × 2160 YOLO txt; `labeled_yolo/` 710 train / 177 val) + two partly labelled, never-trained clips

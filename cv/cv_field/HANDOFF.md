@@ -14,6 +14,9 @@ lists suspected YOLO misses for the user (never boxes); WISER presence at the fi
 **2026-10-06:** `ch01_occlusion.py` classifies those suspected misses by CH01 geometry (poles, houses): pooled 10.3 % hidden,
 33.7 % ambiguous, 51.3 % clear; per-episode classes sealed until the user's clip verdicts; visibility mask for CH01 —
 `change_log/2026-10-06-ch01-occlusion-geometry.md`.
+**2026-10-06: read [`CAMERA_GEOMETRY_2026c.md`](CAMERA_GEOMETRY_2026c.md) before using any cohort-3 pixel position** —
+how every camera moved (per day, per night, at lid events), house_1's 09-18 move, the landmark names / files and the
+occluder image regions, and the correction table (`frame_correction.Corrections`; nights for CH01–CH06, all day for CH07/CH08).
 
 ## TL;DR — what this is and where it stands
 
