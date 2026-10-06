@@ -334,9 +334,10 @@ never boxes; `wiser_spots.csv` = WISER presence at the fixed spots, **sealed unt
 `--clips <run>` (cv env, PyAV) renders 12 rule-chosen review clips of the suspected misses (pano + crop + panel, WISER
 14-in circles via a Newton inverse of `to_paddock`) → `<run>/review_clips/index.html` + empty `review_template.csv`.
 **CH01 occlusion geometry** (`ch01_occlusion.py --run`, plan `2026-10-06-ch01-occlusion-geometry.md`): rays from CH01's rev g
-centre to each suspected-miss rat against pole capsules (B1–B3 re-measured on rev g, others design grid) and the gabled
-houses (house_2 calibration pose, house_1 from the WISER ROI — flagged) → pooled 10.3 % hidden / 4.7 % partly / 51.3 % clear /
-33.7 % ambiguous of 300 episodes; `$OUT_ROOT/2026c/cv_field_ch01_occlusion_<ts>/` (`visibility_mask.npz`, `occluders.json`,
+centre to each suspected-miss rat; v2: CH01-labelled poles hide by CH01's own edge planes, other poles capsules, gabled
+houses (house_2 calibration pose; house_1 at its fitted cohort pose `cv/configs/house1_cohort_pose_2026c.json`, made by
+`--house1-fit` = house_check on the CH01 + CH02 09-04 noon labels), 7-in perturbations clamped → pooled 5.0 % hidden / 5.0 %
+partly / 50.7 % clear / 39.3 % ambiguous of 300 episodes; `$OUT_ROOT/2026c/cv_field_ch01_occlusion_<ts>/` (`visibility_mask.npz`, `occluders.json`,
 `checks.csv`; per-episode classes **sealed** in `episodes.csv` until the user's clip verdicts), report
 `results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`. Geometry never makes a label.
 

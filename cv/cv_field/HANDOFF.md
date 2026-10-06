@@ -11,9 +11,9 @@ v5 has been run on one cohort-3 CH01 night hour with review clips for the user �
 **2026-10-05 (later):** `wiser_assist_p0.py` maps WISER onto that CH01 hour (accepted: test median 4.39 in, L 0.0 s) and
 lists suspected YOLO misses for the user (never boxes); WISER presence at the fixed spots is **sealed** in the run's
 `wiser_spots.csv` until the user's spot verdicts — `change_log/2026-10-05-wiser-assisted-yolo-p0.md`.
-**2026-10-06:** `ch01_occlusion.py` classifies those suspected misses by CH01 geometry (poles, houses): pooled 10.3 % hidden,
-33.7 % ambiguous, 51.3 % clear; per-episode classes sealed until the user's clip verdicts; visibility mask for CH01 —
-`change_log/2026-10-06-ch01-occlusion-geometry.md`.
+**2026-10-06:** `ch01_occlusion.py` classifies those suspected misses by CH01 geometry (poles, houses); v2 pooled 5.0 % hidden,
+39.3 % ambiguous, 50.7 % clear; per-episode classes sealed until the user's clip verdicts; visibility mask for CH01; house_1's
+cohort pose in `cv/configs/house1_cohort_pose_2026c.json` — `change_log/2026-10-06-ch01-occlusion-geometry.md`.
 **2026-10-06: read [`CAMERA_GEOMETRY_2026c.md`](CAMERA_GEOMETRY_2026c.md) before using any cohort-3 pixel position** —
 how every camera moved (per day, per night, at lid events), house_1's 09-18 move, the landmark names / files and the
 occluder image regions, and the correction table (`frame_correction.Corrections`; nights for CH01–CH06, all day for CH07/CH08).

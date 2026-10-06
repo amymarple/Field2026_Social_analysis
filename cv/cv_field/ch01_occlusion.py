@@ -411,7 +411,10 @@ class Scene:
         out = np.zeros((len(Q), len(self.names)), bool)
         k = 0
         for p, rec in self.poles.items():
-            out[:, k] = seg_seg_dist(self.C, Q, rec["A"], rec["B"]) <= rec["radius_mm"]
+            if rec.get("planes") is not None:                                # v2: CH01's own L / R edge planes
+                out[:, k] = planes_hidden(self.C, Q, rec["planes"])
+            else:
+                out[:, k] = seg_seg_dist(self.C, Q, rec["A"], rec["B"]) <= rec["radius_mm"]
             k += 1
         for h in self.houses:
             hit = np.zeros(len(Q), bool)
@@ -445,16 +448,32 @@ class Scene:
         return hb.any(2).mean(1), hb.sum(1)
 
 
-def classify(scene: Scene, xy_in: np.ndarray) -> pd.DataFrame:
-    """Per position: nominal h / class / occluder, and the robustness over 8 positions 7 in away."""
+PADDOCK_IN = (0.0, 480.0, 0.0, 240.0)
+CLAMP_INSET_IN = 1.0
+
+
+def classify(scene: Scene, xy_in: np.ndarray, clamp: bool = False, stats: dict | None = None) -> pd.DataFrame:
+    """Per position: nominal h / class / occluder, and the robustness over 8 positions 7 in away. clamp (v2): a perturbed
+    position outside the paddock inset by 1 in is clamped to that boundary (stats['clamped'] counts them)."""
     xy = np.asarray(xy_in, float).reshape(-1, 2)
     h0, c0 = scene.assess(xy * IN)
     hs, cnt = [h0], c0.copy()
+    lo = np.array([PADDOCK_IN[0] + CLAMP_INSET_IN, PADDOCK_IN[2] + CLAMP_INSET_IN])
+    hi = np.array([PADDOCK_IN[1] - CLAMP_INSET_IN, PADDOCK_IN[3] - CLAMP_INSET_IN])
+    n_cl = 0
     for k in range(N_DIR):
         a = 2 * np.pi * k / N_DIR
-        hk, ck = scene.assess((xy + PERTURB_IN * np.array([np.cos(a), np.sin(a)])) * IN)
+        pk = xy + PERTURB_IN * np.array([np.cos(a), np.sin(a)])
+        if clamp:
+            pc = np.clip(pk, lo, hi)
+            n_cl += int(np.any(pc != pk, axis=1).sum())
+            pk = pc
+        hk, ck = scene.assess(pk * IN)
         hs.append(hk)
         cnt += ck
+    if stats is not None:
+        stats["clamped"] = stats.get("clamped", 0) + n_cl
+        stats["perturbations"] = stats.get("perturbations", 0) + N_DIR * len(xy)
     H = np.stack(hs, 1)
     nominal = np.where(h0 >= HIDDEN_T, "hidden", np.where(h0 > 0, "partly", "clear"))
     rob_h = (H >= HIDDEN_T).all(1)
@@ -657,13 +676,251 @@ def rebuild_seconds(phase0: Path, log=print) -> tuple[pd.DataFrame, pd.DataFrame
     return sec, ep, chk
 
 
+# ----------------------------------------------------------------------------------------------- house_1 cohort pose (v2)
+HOUSE1_POSE_JSON = REPO / "cv" / "configs" / "house1_cohort_pose_2026c.json"
+NOON_POINTER = REPO / "results" / COHORT / DIRECTION / "reports" / "run_manifest_landmark_track_ch0102_0904noon_2026c.json"
+HC_FUNCS = ("house_edges", "to_paddock", "ray_seg_dist", "cls", "fit", "assign")
+
+
+def load_house_check(cd: Path) -> dict:
+    """calibration_qc/house_check.py's functions, read-only: its source is parsed and only the function definitions (and
+    the literal constants IR2COL, DESIGN_XY, IN, CM) are executed - importing it would run its whole fit and write into the
+    QC folder. Returns the namespace plus the file's sha256."""
+    import ast
+    from scipy.optimize import least_squares
+    p = cd / "house_check.py"
+    src = p.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    ns = {"np": np, "least_squares": least_squares, "SV": survey(cd)["houses"]}
+    for n in tree.body:
+        if isinstance(n, ast.Assign):
+            tg = ast.unparse(n.targets[0])
+            if tg in ("IR2COL", "DESIGN_XY"):
+                ns[tg] = ast.literal_eval(n.value)
+            elif tg == "(IN, CM)":
+                ns["IN"], ns["CM"] = ast.literal_eval(n.value)
+    mod = ast.Module(body=[n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in HC_FUNCS], type_ignores=[])
+    exec(compile(mod, str(p), "exec"), ns)
+    missing = [f for f in HC_FUNCS if f not in ns]
+    if missing:
+        raise RuntimeError(f"house_check.py lacks {missing}")
+    ns["_sha256"] = sha256(p)
+    return ns
+
+
+def noon_affines() -> tuple[dict, dict]:
+    """The 09-04 12:00 noon affines A (09-18 px -> frame px) of CH01 / CH02 from the ch0102_0904noon landmark-track run."""
+    ptr = json.loads(NOON_POINTER.read_text(encoding="utf-8"))
+    run = Path(ptr["run_dir"])
+    tf = pd.read_csv(run / "track_frames.csv")
+    out, meta = {}, {"run_dir": run.as_posix(), "pointer": NOON_POINTER.relative_to(REPO).as_posix()}
+    for cam in ("CH01", "CH02"):
+        r = tf[(tf["camera"] == cam) & (tf["frame"] != "REF") & tf["frame_time"].str.startswith("2026-09-04 12:00")].iloc[0]
+        A = np.array([[r.a11, r.a12, r.a13], [r.a21, r.a22, r.a23]], float)
+        out[cam] = A
+        meta[cam] = {"frame_time": r.frame_time, "status": r.status, "held_med_px": float(r.held_med_px),
+                     "held_p90_px": float(r.held_p90_px), "A_0918_to_frame": A.round(8).tolist()}
+    return out, meta
+
+
+def inv_affine(A: np.ndarray) -> np.ndarray:
+    return np.linalg.inv(np.vstack([A, [0, 0, 1.0]]))[:2]
+
+
+def cohort_house1_pieces(cams: dict, hc: dict, A: dict) -> list[dict]:
+    """house_check.pieces() for the 09-04 12:00 cohort house_1 labels: the same densification, then cohort px -> 09-18 px
+    with the inverse NOON affine, + IR2COL (the converted pixels are IR 09-18 pixels like the 09-18 labels). LABEL excluded."""
+    out = []
+    for cam in ("CH01", "CH02"):
+        lab = json.loads((LM_DIR / f"landmarks_{cam}_20260904_120002.json").read_text(encoding="utf-8"))["landmarks"]
+        Ai = inv_affine(A[cam])
+        for key in ("ROOF_X", "ROOF_Y", "BASE_X", "BASE_Y", "BASE_Z"):
+            for p in lab.get(f"HOUSE_1_{key}", []):
+                p = np.asarray(p, float).reshape(-1, 2)
+                if len(p) < 2:
+                    continue
+                pts = []
+                for a, b in zip(p[:-1], p[1:]):
+                    n = max(2, int(np.hypot(*(b - a)) / 15))
+                    pts += list(a + (b - a) * np.linspace(0, 1, n, endpoint=False)[:, None])
+                pts.append(p[-1])
+                uv = np.array(pts) @ Ai[:, :2].T + Ai[:, 2] + np.asarray(hc["IR2COL"].get(cam, (0.0, 0.0)))
+                d = cams[cam].rays(uv)
+                ok = np.isfinite(d).all(1)
+                if ok.sum() >= 3:
+                    out.append(dict(cam=cam, key=key, d=d[ok], C=np.asarray(cams[cam].centre, float), t="0904_120002"))
+    return out
+
+
+def fit_house1_cohort(cams: dict, cd: Path, log=print) -> dict:
+    """house_check.py's joint fit (4 free: x, y, theta, dz) on the converted cohort pieces, with its coarse start grid;
+    per-camera fits (dz fixed); sensitivities dz = 58 / 93 mm; roof-only vs BASE_Z-only (dz fixed at the main value)."""
+    hc = load_house_check(cd)
+    A, nmeta = noon_affines()
+    PC = cohort_house1_pieces(cams, hc, A)
+    edges, he, hr, run = hc["house_edges"]("HOUSE_1")
+    starts = []
+    for th0 in (0.0, 90.0, 180.0, 270.0):
+        for dx in np.arange(-12, 13, 3.0):
+            for dy in np.arange(-9, 10, 3.0):
+                x = np.array([hc["DESIGN_XY"]["HOUSE_1"][0] + dx, hc["DESIGN_XY"]["HOUSE_1"][1] + dy, th0, 50.0])
+                starts.append((np.median(np.concatenate([a[2] for a in hc["assign"](PC, edges, x)])), x))
+    starts.sort(key=lambda t: t[0])
+    best = None
+    for _, x0 in starts[:6]:
+        x = hc["fit"](PC, edges, x0)
+        r = np.concatenate([a[2] for a in hc["assign"](PC, edges, x)])
+        if best is None or np.median(r) < best[1]:
+            best = (x, np.median(r))
+    x = best[0]
+
+    def summ(PCs, xx):
+        asg = hc["assign"](PCs, edges, xx)
+        per = {}
+        for c in sorted({p["cam"] for p in PCs}):
+            r = np.concatenate([d for pc, n, d in asg if pc["cam"] == c])
+            per[c] = {"ray_miss_median_mm": float(np.median(r)), "ray_miss_p90_mm": float(np.percentile(r, 90)), "n_rays": int(len(r)),
+                      "pieces": [f"{pc['key'].replace('ROOF_', 'R').replace('BASE_', 'B')}:{n} {np.median(d):.0f}" for pc, n, d in asg if pc["cam"] == c]}
+        return per
+
+    def pose(xx):
+        return {"centre_in": [float(xx[0]), float(xx[1])], "ridge_deg": float(xx[2] % 180), "soil_below_mm": float(xx[3])}
+
+    res = {"main": {**pose(x), "free": "x, y, ridge angle, soil offset", "per_camera_residual": summ(PC, x)}}
+    per = {}
+    for c in ("CH01", "CH02"):
+        sub = [p for p in PC if p["cam"] == c]
+        if len(sub) >= 2:
+            per[c] = hc["fit"](sub, edges, x, free=(0, 1, 2))
+    P = np.array([[v[0], v[1]] for v in per.values()]) * IN
+    res["per_camera"] = {c: pose(v) for c, v in per.items()}
+    res["per_camera_spread_mm"] = float(np.max(np.linalg.norm(P - P.mean(0), axis=1))) if len(P) else float("nan")
+    res["per_camera_pairwise_mm"] = float(np.linalg.norm((per["CH01"][:2] - per["CH02"][:2]) * IN)) if len(per) == 2 else float("nan")
+    sens = {}
+    for dz in (58.0, 93.0):
+        xs = x.copy()
+        xs[3] = dz
+        xs = hc["fit"](PC, edges, xs, free=(0, 1, 2))
+        sens[f"soil_fixed_{dz:.0f}mm"] = {**pose(xs), "centre_shift_mm": float(np.linalg.norm((xs[:2] - x[:2]) * IN))}
+    sub_r = [p for p in PC if p["key"].startswith("ROOF")]
+    sub_b = [p for p in PC if p["key"] == "BASE_Z"]
+    xr = hc["fit"](sub_r, edges, x.copy(), free=(0, 1, 2))
+    xb = hc["fit"](sub_b, edges, x.copy(), free=(0, 1, 2))
+    sens["roof_only"] = {**pose(xr), "n_pieces": len(sub_r), "per_camera_residual": summ(sub_r, xr)}
+    sens["base_z_only"] = {**pose(xb), "n_pieces": len(sub_b), "per_camera_residual": summ(sub_b, xb)}
+    sens["roof_vs_base_z_mm"] = float(np.linalg.norm((xr[:2] - xb[:2]) * IN))
+    sens["roof_vs_base_z_ridge_deg"] = float(((xr[2] - xb[2] + 90) % 180) - 90)
+    sens["lid_rule"] = ("roof-only and BASE_Z-only fits (soil offset fixed at the main value) differ by more than the 09-18 "
+                        "per-camera spread (30 mm) -> the lid offset matters")
+    sens["lid_offset_matters"] = bool(sens["roof_vs_base_z_mm"] > 30.0)
+    res["sensitivity"] = sens
+    res["model"] = {"eaves_mm": float(he), "ridge_mm": float(hr), "eave_run_mm": float(run), "edges": "house_check.house_edges('HOUSE_1')"}
+    res["n_pieces"] = {c: sum(p["cam"] == c for p in PC) for c in ("CH01", "CH02")}
+    res["inputs"] = {"labels": {c: f"cv/configs/landmarks/2026c/landmarks_{c}_20260904_120002.json" for c in ("CH01", "CH02")},
+                     "labels_sha256": {c: sha256(LM_DIR / f"landmarks_{c}_20260904_120002.json") for c in ("CH01", "CH02")},
+                     "label_keys": "HOUSE_1_ROOF_X / _ROOF_Y / _BASE_Z (no BASE_X / BASE_Y labelled; HOUSE_1_LABEL excluded)",
+                     "noon_correction": nmeta, "ir2col_px": hc["IR2COL"], "house_check_py_sha256": hc["_sha256"],
+                     "start_grid": f"DESIGN_XY HOUSE_1 {hc['DESIGN_XY']['HOUSE_1']} +-12 / +-9 in, theta 0/90/180/270, dz 50; best 6 refined"}
+    log(f"house_1 cohort fit: centre ({x[0]:.2f}, {x[1]:.2f}) in, ridge {x[2] % 180:.1f} deg, soil {x[3]:+.0f} mm; "
+        f"per-camera spread {res['per_camera_spread_mm']:.0f} mm; roof vs BASE_Z {sens['roof_vs_base_z_mm']:.0f} mm")
+    return res
+
+
+def write_house1_json(res: dict, cd: Path) -> Path:
+    rec = REPO.parent / "Field_2026_Social_Recording"
+    out = {"_about": ("Cohort-3 (2026c) pose of house_1 (roof number 4, by pole B1) while the rats were in the field (08-30 -> 09-12): "
+                      "house_1 was moved on 09-18, so the calibration's 09-18 house fit (147.5, 121.7) in is post-move. Fitted with "
+                      "calibration_qc/house_check.py's rigid model and fit (functions reused read-only) on the user's 09-04 12:00 "
+                      "house_1 edge labels from CH01 and CH02, converted to 09-18 px with the noon affines (not the night-only table), "
+                      "+ IR -> colour offset. Frame: paddock inches of the rev g calibration, origin pole A0. Soil offset = mm below "
+                      "the calibration's z = 0 (house_check's dz; the house's soil level is z = -dz)."),
+           "house": "HOUSE_1", "roof_number": 4, "centre_in": res["main"]["centre_in"], "ridge_deg": res["main"]["ridge_deg"],
+           "soil_below_calibration_ground_mm": res["main"]["soil_below_mm"],
+           "residuals": res["main"]["per_camera_residual"], "per_camera": res["per_camera"],
+           "per_camera_spread_mm": res["per_camera_spread_mm"], "per_camera_pairwise_mm": res["per_camera_pairwise_mm"],
+           "sensitivity": res["sensitivity"], "model": res["model"], "n_pieces": res["n_pieces"], "inputs": res["inputs"],
+           "commits": {"analysis_repo": git_commit(REPO), "recording_repo": git_commit(rec)},
+           "calibration_files_sha256": {n: sha256(cd / n) for n in ("camera_fit.npz", "ray_correction.json", "survey_2026-10-03.json")},
+           "made_by": "cv/cv_field/ch01_occlusion.py --house1-fit (plan implementation_plan/2026-10-06-ch01-occlusion-geometry.md, amendment 3)",
+           "made": datetime.now().isoformat(timespec="seconds")}
+    HOUSE1_POSE_JSON.write_text(json.dumps(out, indent=2, default=float) + "\n", encoding="utf-8")
+    return HOUSE1_POSE_JSON
+
+
+# ----------------------------------------------------------------------------------------------- pole planes (v2)
+CH01_LABELLED_POLES = ("A0", "B0", "B1", "B2", "B3", "C0", "C1")
+
+
+def pole_planes(cam, rec: dict, labels: dict, p: str, offset=(0.0, 0.0)) -> dict | None:
+    """The pole's angular extent from CH01's own L / R edge labels: each edge -> a plane through the camera centre (least
+    squares of its rays), normals oriented towards the other edge; vertical span = the heights where the labelled rays pass
+    the pole's horizontal distance (the grass-hidden foot is not labelled, so not included)."""
+    Lp, Rp = labels.get(f"POLE_{p}_L"), labels.get(f"POLE_{p}_R")
+    if not Lp or not Rp:
+        return None
+    rays = {}
+    for side, pieces in (("L", Lp), ("R", Rp)):
+        uv = np.vstack([densify(q) for q in pieces]) + np.asarray(offset)
+        d = cam.rays(uv)
+        rays[side] = d[np.isfinite(d).all(1)]
+    nrm = {}
+    for side in ("L", "R"):
+        _, _, Vt = np.linalg.svd(rays[side])
+        n = Vt[-1]
+        other = rays["R" if side == "L" else "L"].mean(0)
+        nrm[side] = n if n @ other > 0 else -n
+    ax = axis_at(rec, 1050.0)
+    rho = float(np.linalg.norm(ax[:2] - cam.centre[:2]))
+    allr = np.vstack([rays["L"], rays["R"]])
+    z = cam.centre[2] + rho * allr[:, 2] / np.hypot(allr[:, 0], allr[:, 1])
+    planar = {s: np.degrees(np.abs(np.arcsin(np.clip(rays[s] @ nrm[s], -1, 1)))) for s in ("L", "R")}
+    azL = np.arctan2(*rays["L"].mean(0)[[1, 0]])
+    azR = np.arctan2(*rays["R"].mean(0)[[1, 0]])
+    width = float(abs(np.degrees((azR - azL + np.pi) % (2 * np.pi) - np.pi)))   # azimuth between the two edges (descriptive)
+    return {"nL": nrm["L"], "nR": nrm["R"], "rho_mm": rho, "z_lo": float(z.min()), "z_hi": float(z.max()),
+            "planarity_med_deg": float(np.median(np.r_[planar["L"], planar["R"]])), "planarity_max_deg": float(np.max(np.r_[planar["L"], planar["R"]])),
+            "angular_width_deg": width, "n_rays": int(len(allr))}
+
+
+def planes_hidden(C: np.ndarray, Q: np.ndarray, pl: dict) -> np.ndarray:
+    d = Q - C
+    rq = np.hypot(d[:, 0], d[:, 1])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z_at = C[2] + pl["rho_mm"] * d[:, 2] / rq
+    return (d @ pl["nL"] >= 0) & (d @ pl["nR"] >= 0) & (z_at >= pl["z_lo"]) & (z_at <= pl["z_hi"]) & (rq > pl["rho_mm"])
+
+
 # ----------------------------------------------------------------------------------------------- run
-def build_scene(cams, cd, mj: dict, log=print) -> tuple[Scene, dict, pd.DataFrame, pd.DataFrame, dict]:
+def tojson(o):
+    if isinstance(o, dict):
+        return {str(k): tojson(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [tojson(v) for v in o]
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    if isinstance(o, (np.floating, np.integer, np.bool_)):
+        return o.item()
+    return o
+
+
+def build_scene(cams, cd, mj: dict, log=print, v2: bool = True) -> tuple[Scene, dict, pd.DataFrame, pd.DataFrame, dict]:
+    """v2 (amendment 3): house_1 at the fitted cohort pose (house1_cohort_pose_2026c.json); poles labelled in CH01 hide by
+    CH01's own L / R edge planes. v1: house_1 from the WISER ROI, all poles capsules."""
     import wiser_assist_p0 as wp
     sv = survey(cd)
     radii = {p: per * IN / (2 * np.pi) for p, per in sv["poles"]["perimeter"].items()}
     files = sorted(LM_DIR.glob("landmarks_CH0[1-4]_20260918_*.json"))
     poles, prow, tri = pole_lines(cams, files, radii)
+    for p, rec in poles.items():
+        rec["model"] = "cylinder (capsule)"
+        rec["planes"] = None
+    if v2:
+        lab18 = load_labels(LM_0918)["landmarks"]
+        for p in CH01_LABELLED_POLES:
+            pl = pole_planes(cams[CAM], poles[p], lab18, p, IR2COL[CAM])
+            if pl is not None:
+                poles[p]["planes"] = pl
+                poles[p]["model"] = "CH01 L/R label planes"
     am = mj["accepted_map"]
     m = wp.Map(float(am["dx_in"]), float(am["dy_in"]), float(np.radians(am["theta_deg"])), float(am["scale"]),
                float(am["centre_wiser_in"][0]), float(am["centre_wiser_in"][1]))
@@ -674,26 +931,57 @@ def build_scene(cams, cd, mj: dict, log=print) -> tuple[Scene, dict, pd.DataFram
     ridge1 = (float(R["house_1"].get("orientation_deg", 90.0)) + float(am["theta_deg"])) % 180
     house2 = house_model(sv["houses"], "HOUSE_2", HOUSE2_POSE["cx_in"], HOUSE2_POSE["cy_in"], HOUSE2_POSE["ridge_deg"],
                          -HOUSE2_POSE["soil_below_mm"])
-    house1 = house_model(sv["houses"], "HOUSE_1", float(h1p[0]), float(h1p[1]), ridge1, -HOUSE1_SOIL_BELOW_MM)
+    post = np.array([HOUSE1_CALIB_POSTMOVE["cx_in"], HOUSE1_CALIB_POSTMOVE["cy_in"]])
+    if v2:
+        hp = json.loads(HOUSE1_POSE_JSON.read_text(encoding="utf-8"))
+        c_fit = np.array(hp["centre_in"], float)
+        house1 = house_model(sv["houses"], "HOUSE_1", float(c_fit[0]), float(c_fit[1]), float(hp["ridge_deg"]),
+                             -float(hp["soil_below_calibration_ground_mm"]))
+        h1 = {"source": "fitted cohort pose (house_check on the CH01 + CH02 09-04 noon labels; house1_cohort_pose_2026c.json)",
+              "paddock_in": c_fit.tolist(), "ridge_deg": float(hp["ridge_deg"]), "soil_z_mm": -float(hp["soil_below_calibration_ground_mm"]),
+              "vs_calibration_postmove_in": float(np.hypot(*(c_fit - post))), "vs_wiser_roi_placement_in": float(np.hypot(*(c_fit - h1p))),
+              "wiser_roi_in": h1w.tolist(), "wiser_roi_mapped_in": h1p.tolist(), "wiser_roi_ridge_deg": ridge1,
+              "pose_json_sha256": sha256(HOUSE1_POSE_JSON)}
+    else:
+        house1 = house_model(sv["houses"], "HOUSE_1", float(h1p[0]), float(h1p[1]), ridge1, -HOUSE1_SOIL_BELOW_MM)
+        h1 = {"source": "WISER ROI house_1 centre through the accepted map", "wiser_roi_in": h1w.tolist(),
+              "paddock_in": h1p.tolist(), "ridge_deg": ridge1, "soil_z_mm": -HOUSE1_SOIL_BELOW_MM,
+              "vs_calibration_postmove_in": float(np.hypot(*(h1p - post)))}
     c1 = cams[CAM]
     scene = Scene(c1.centre, poles, [house1, house2], lambda xy: ground(c1, xy))
-    place = {"house_1": {"source": "WISER ROI house_1 centre through the accepted map", "wiser_roi_in": h1w.tolist(),
-                         "paddock_in": h1p.tolist(), "ridge_deg": ridge1, "soil_z_mm": -HOUSE1_SOIL_BELOW_MM,
-                         "vs_calibration_postmove_in": float(np.hypot(*(h1p - [HOUSE1_CALIB_POSTMOVE['cx_in'], HOUSE1_CALIB_POSTMOVE['cy_in']])))},
+    place = {"house_1": h1,
              "house_2": {"source": "calibration house check (rev g)", "paddock_in": [HOUSE2_POSE["cx_in"], HOUSE2_POSE["cy_in"]],
                          "ridge_deg": HOUSE2_POSE["ridge_deg"], "soil_z_mm": -HOUSE2_POSE["soil_below_mm"],
                          "wiser_roi_in": h2w.tolist(), "wiser_roi_mapped_in": h2p.tolist(),
                          "map_check_in": float(np.hypot(*(h2p - [HOUSE2_POSE['cx_in'], HOUSE2_POSE['cy_in']])))},
              "terrain_at_house_2_mm": float(ground(c1, (np.array([HOUSE2_POSE["cx_in"], HOUSE2_POSE["cy_in"]]) * IN)[None])[0]),
-             "terrain_at_house_1_mm": float(ground(c1, (h1p * IN)[None])[0])}
-    log(f"house_1 placed at ({h1p[0]:.1f}, {h1p[1]:.1f}) in, ridge {ridge1:.1f} deg; house_2 map check: WISER ROI -> "
-        f"({h2p[0]:.1f}, {h2p[1]:.1f}) in vs calibration ({HOUSE2_POSE['cx_in']}, {HOUSE2_POSE['cy_in']}) = {place['house_2']['map_check_in']:.1f} in")
+             "terrain_at_house_1_mm": float(ground(c1, (np.array(h1["paddock_in"]) * IN)[None])[0])}
+    log(f"house_1 at ({h1['paddock_in'][0]:.1f}, {h1['paddock_in'][1]:.1f}) in, ridge {h1['ridge_deg']:.1f} deg ({h1['source'].split(' (')[0]}); "
+        f"house_2 map check: WISER ROI -> ({h2p[0]:.1f}, {h2p[1]:.1f}) in vs calibration ({HOUSE2_POSE['cx_in']}, {HOUSE2_POSE['cy_in']}) = "
+        f"{place['house_2']['map_check_in']:.1f} in")
     return scene, place, prow, tri, {"house_1": house1, "house_2": house2}
 
 
-def landmark_checks(cams, scene: Scene, houses: dict, log=print) -> tuple[pd.DataFrame, dict]:
-    """09-18 labels in 09-18 px (+ IR -> colour offset, as house_check); the 09-04 cohort house_1 labels -> 09-18 px with
-    Corrections.to_09_18 at the label frame time."""
+def plane_resid_px(cam, labels: dict, p: str, pl: dict, offset=(0.0, 0.0)) -> dict:
+    """How far CH01's own L / R pole-edge labels lie from the planes built from them (px across the plane): the plane
+    model's fit residual, not an independent check."""
+    out = []
+    for side, n in (("L", pl["nL"]), ("R", pl["nR"])):
+        uv = np.vstack([densify(q) for q in labels[f"POLE_{p}_{side}"]]) + np.asarray(offset)
+        r = cam.rays(uv)
+        r1 = cam.rays(uv + [1.0, 0.0])
+        ok = np.isfinite(r).all(1) & np.isfinite(r1).all(1)
+        ang = np.abs(np.arcsin(np.clip(r[ok] @ n, -1, 1)))
+        dpp = np.arccos(np.clip(np.einsum("ij,ij->i", r[ok], r1[ok]), -1, 1))
+        out.append(ang / np.maximum(dpp, 1e-12))
+    d = np.concatenate(out)
+    return {"n_points": int(len(d)), "median_px": float(np.median(d)), "p90_px": float(np.percentile(d, 90)), "pieces": ""}
+
+
+def landmark_checks(cams, scene: Scene, houses: dict, log=print, v2: bool = True, place: dict | None = None) -> tuple[pd.DataFrame, dict]:
+    """09-18 labels in 09-18 px (+ IR -> colour offset, as house_check). v2: the 09-04 cohort house_1 labels of CH01 and CH02
+    -> 09-18 px with the inverse NOON affine (+ IR2COL); they are the house_1 fit's data, so that row is a fit residual.
+    v1: CH01's 09-04 labels with Corrections.to_09_18 (night sample)."""
     Corrections = _fc.Corrections
     c1 = cams[CAM]
     lab18 = load_labels(LM_0918)
@@ -701,43 +989,64 @@ def landmark_checks(cams, scene: Scene, houses: dict, log=print) -> tuple[pd.Dat
     off = IR2COL[CAM]
     rows = []
     for p, rec in scene.poles.items():
+        if rec.get("planes") is not None:
+            r = plane_resid_px(c1, lab18["landmarks"], p, rec["planes"], off)
+            rows.append({"object": f"pole_{p}", "labels": "09-18", "model": "CH01 L/R label planes (v2; built from these labels)",
+                         "kind": "fit residual (not independent)", **r})
         r = check_pole(c1, rec, lab18["landmarks"], p, off)
         if r is not None:
-            rows.append({"object": f"pole_{p}", "labels": "09-18", "model": rec["source"].split(" (")[0], **r})
+            rows.append({"object": f"pole_{p}" + (" (capsule, v1 model; v2 uses it only for the distance)" if rec.get("planes") is not None else ""),
+                         "labels": "09-18", "model": "cylinder, " + rec["source"].split(" (")[0],
+                         "kind": "check" if rec.get("planes") is None else "reference", **r})
     r = check_house(c1, houses["house_2"], lab18["landmarks"], "HOUSE_2", offset=off)
-    rows.append({"object": "house_2", "labels": "09-18", "model": "house check rev g pose", **r})
-    t04 = datetime.strptime(lab04["time"], "%Y-%m-%d %H:%M:%S")
-    C = Corrections(COHORT)
-    info_holder = {}
-
-    def to18(pts):
-        q, info = C.to_09_18(CAM, t04, pts)
-        info_holder.update(info)
-        return np.asarray(q, float)
-    r = check_house(c1, houses["house_1"], lab04["landmarks"], "HOUSE_1", to18=to18)
-    rows.append({"object": "house_1", "labels": "09-04 cohort (-> 09-18 px)", "model": "WISER ROI through the map", **r})
-    # code check (not a result): the calibration's own post-move house_1 against the 09-18 labels
+    rows.append({"object": "house_2", "labels": "09-18", "model": "house check rev g pose", "kind": "check", **r})
+    if v2:
+        A, nmeta = noon_affines()
+        sv = survey(calib()[1])["houses"]
+        for cam in ("CH01", "CH02"):
+            labc = json.loads((LM_DIR / f"landmarks_{cam}_20260904_120002.json").read_text(encoding="utf-8"))["landmarks"]
+            Ai = inv_affine(A[cam])
+            to18n = (lambda Ai_: (lambda pts: np.asarray(pts, float) @ Ai_[:, :2].T + Ai_[:, 2]))(Ai)
+            r = check_house(cams[cam], houses["house_1"], labc, "HOUSE_1", to18=to18n, offset=IR2COL.get(cam, (0.0, 0.0)))
+            rows.append({"object": f"house_1 ({cam} 09-04 labels)", "labels": "09-04 cohort (noon affine -> 09-18 px)",
+                         "model": "fitted cohort pose", "kind": "fit residual (labels are the fit data)", **r})
+        # reference: how far v1's WISER-ROI placement was from the same (noon-converted) CH01 labels
+        h1pl = (place or {}).get("house_1", {})
+        roi_box = (house_model(sv, "HOUSE_1", float(h1pl["wiser_roi_mapped_in"][0]), float(h1pl["wiser_roi_mapped_in"][1]),
+                               float(h1pl["wiser_roi_ridge_deg"]), -HOUSE1_SOIL_BELOW_MM) if "wiser_roi_mapped_in" in h1pl else None)
+        if roi_box is not None:
+            Ai = inv_affine(A["CH01"])
+            r = check_house(c1, roi_box, lab04["landmarks"], "HOUSE_1", to18=lambda pts: np.asarray(pts, float) @ Ai[:, :2].T + Ai[:, 2], offset=off)
+            rows.append({"object": "house_1 WISER-ROI placement (v1 model)", "labels": "09-04 cohort (noon affine -> 09-18 px)",
+                         "model": "WISER ROI through the map", "kind": "reference", **r})
+        corr = {"label_time": lab04["time"], "conversion": "inverse noon affine (ch0102_0904noon) + IR2COL", "noon": nmeta,
+                "note": "the night-only correction table is not used for the 12:00 labels (CH02 would be ~30 px off)"}
+    else:
+        t04 = datetime.strptime(lab04["time"], "%Y-%m-%d %H:%M:%S")
+        C = Corrections(COHORT)
+        r = check_house(c1, houses["house_1"], lab04["landmarks"], "HOUSE_1", to18=lambda pts: np.asarray(C.to_09_18(CAM, t04, pts)[0], float))
+        rows.append({"object": "house_1", "labels": "09-04 cohort (-> 09-18 px)", "model": "WISER ROI through the map", "kind": "check", **r})
+        B, binfo = C.correction(CAM, t04)
+        ctr = np.array([c1.upright_size[0] / 2, c1.upright_size[1] / 2])
+        corr = {"label_time": lab04["time"], "correction_used": binfo.get("used"), "flag": binfo.get("flag"),
+                "B_shift_at_centre_px": ((B[:, :2] @ ctr + B[:, 2]) - ctr).tolist()}
     sv = survey(calib()[1])["houses"]
     h1post = house_model(sv, "HOUSE_1", HOUSE1_CALIB_POSTMOVE["cx_in"], HOUSE1_CALIB_POSTMOVE["cy_in"],
                          HOUSE1_CALIB_POSTMOVE["ridge_deg"], -HOUSE1_SOIL_BELOW_MM)
     r = check_house(c1, h1post, lab18["landmarks"], "HOUSE_1", offset=off)
-    rows.append({"object": "house_1 (09-18 post-move pose; code check only)", "labels": "09-18", "model": "house check rev g pose", **r})
+    rows.append({"object": "house_1 (09-18 post-move pose; code check only)", "labels": "09-18", "model": "house check rev g pose",
+                 "kind": "code check", **r})
     df = pd.DataFrame(rows)
-    df["flagged"] = df["median_px"] > FLAG_PX
-    df.loc[df["object"].str.contains("code check"), "flagged"] = False
-    B, binfo = C.correction(CAM, t04)
-    ctr = np.array([c1.upright_size[0] / 2, c1.upright_size[1] / 2])
-    bshift = (B[:, :2] @ ctr + B[:, 2]) - ctr
-    corr = {"label_time": lab04["time"], "correction_used": binfo.get("used"), "flag": binfo.get("flag"),
-            "B_shift_at_centre_px": bshift.tolist(),
-            "note": "Corrections covers CH01 at night only; the 12:00 label frame gets the nearest sample of night 09-04 "
-                    "(21:00). Cross-check: the daily 12:00 track (cv_field_landmark_track_20261001_1819) puts this frame at "
-                    "tx, ty = +10.13, +1.96 px from 09-18 at the frame centre, i.e. 09-18 px = frame px - (10.13, 1.96)."}
+    df["flagged"] = (df["median_px"] > FLAG_PX) & df["kind"].isin(["check", "fit residual (labels are the fit data)",
+                                                                    "fit residual (not independent)"])
     log("landmark checks: " + "; ".join(f"{r.object} {r.median_px:.1f} px{' FLAG' if r.flagged else ''}" for r in df.itertuples()))
     return df, corr
 
 
-def run(phase0: Path, out: Path | None) -> int:
+V1_RUN = OUT_ROOT / "2026c" / "cv_field_ch01_occlusion_20261006_1445"     # v1 (superseded by amendment 3)
+
+
+def run(phase0: Path, out: Path | None, v2: bool = True) -> int:
     t0 = time.perf_counter()
     started = datetime.now().isoformat(timespec="seconds")
     if out is None:
@@ -759,21 +1068,24 @@ def run(phase0: Path, out: Path | None) -> int:
     if not chk["episodes_byte_identical"]:
         raise SystemExit("rebuilt episodes differ from fn_episodes.csv - refusing")
     sec_all.to_csv(out / "miss_seconds_rebuilt.csv.gz", index=False)
-    scene, place, prow, tri, houses = build_scene(cams, cd, mj, log)
+    scene, place, prow, tri, houses = build_scene(cams, cd, mj, log, v2=v2)
     prow.to_csv(out / "pole_edges_revg.csv", index=False)
     tri.to_csv(out / "pole_triangulation_revg.csv", index=False)
-    occl = {"camera": {"name": CAM, "centre_mm": scene.C.tolist(), "centre_in": (scene.C[:2] / IN).tolist(), "source": "RayCamera.centre (rev g)"},
-            "poles": {p: {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in r.items()} for p, r in scene.poles.items()},
-            "houses": {k: {kk: (vv.tolist() if isinstance(vv, np.ndarray) else vv) for kk, vv in h.items() if kk not in ("parts", "edges")}
-                       for k, h in houses.items()},
-            "placement": place, "clean_rule": CLEAN, "pole_height_mm": POLE_H,
+    occl = {"version": "v2" if v2 else "v1", "camera": {"name": CAM, "centre_mm": scene.C.tolist(), "centre_in": (scene.C[:2] / IN).tolist(),
+                                                         "source": "RayCamera.centre (rev g)"},
+            "poles": tojson(scene.poles),
+            "houses": tojson({k: {kk: vv for kk, vv in h.items() if kk not in ("parts", "edges")} for k, h in houses.items()}),
+            "placement": tojson(place), "clean_rule": CLEAN, "pole_height_mm": POLE_H,
             "rat_model": {"heights_mm": RAT_Z, "lateral_mm": [-RAT_HALF, 0, RAT_HALF], "hidden_threshold": HIDDEN_T,
-                          "perturbation_in": PERTURB_IN, "directions": N_DIR}}
+                          "perturbation_in": PERTURB_IN, "directions": N_DIR,
+                          "perturbation_clamp": f"inside the paddock inset by {CLAMP_INSET_IN:g} in" if v2 else "none"}}
     (out / "occluders.json").write_text(json.dumps(occl, indent=2, default=float), encoding="utf-8")
-    log("poles: " + "; ".join(f"{p} {r['source'].split(':')[0].split(' (')[0]}" for p, r in scene.poles.items()))
+    log("poles: " + "; ".join(f"{p} {r['model'].split(' (')[0]}, {r['source'].split(':')[0].split(' (')[0]}" for p, r in scene.poles.items()))
     # occlusion of every suspected-miss second
     sec = sec_all[sec_all["miss"]].reset_index(drop=True)
-    cl = classify(scene, sec[["paddock_x_in", "paddock_y_in"]].to_numpy(float))
+    cstats = {}
+    cl = classify(scene, sec[["paddock_x_in", "paddock_y_in"]].to_numpy(float), clamp=v2, stats=cstats)
+    log(f"perturbations clamped to the paddock: {cstats.get('clamped', 0)} of {cstats.get('perturbations', 0)}")
     sec = pd.concat([sec, cl], axis=1)
     # descriptive (amendment 2, after results): the 7-in ring crosses a paddock wall (perturbed positions are not clipped)
     x, y = sec["paddock_x_in"].to_numpy(float), sec["paddock_y_in"].to_numpy(float)
@@ -792,7 +1104,7 @@ def run(phase0: Path, out: Path | None) -> int:
     mk = visibility_mask(scene, paths)
     np.savez_compressed(out / "visibility_mask.npz", **mk)
     # checks
-    chkdf, corr = landmark_checks(cams, scene, houses, log)
+    chkdf, corr = landmark_checks(cams, scene, houses, log, v2=v2, place=place)
     chkdf.to_csv(out / "checks.csv", index=False)
     figs = make_figures(out, scene, houses, mk, pool, paths)
     rec = REPO.parent / "Field_2026_Social_Recording"
@@ -809,10 +1121,18 @@ def run(phase0: Path, out: Path | None) -> int:
             "recording_repo_commit": git_commit(rec), "calibration_dir": cd.as_posix(), "calibration_files_sha256": calsha,
             "calibration_same_as_phase0": bool(same_cal), "phase0_run": phase0.as_posix(), "rebuild_check": chk,
             "pooled": pool, "mask": mask_stats, "landmark_checks": chkdf.drop(columns=["pieces"]).to_dict("records"),
-            "cohort_label_correction": corr, "placement": place,
+            "cohort_label_correction": tojson(corr), "placement": tojson(place),
             "pole_sources": {p: r["source"] for p, r in scene.poles.items()},
+            "pole_models": {p: r["model"] for p, r in scene.poles.items()},
+            "pole_planes": {p: {k: v for k, v in r["planes"].items() if k not in ("nL", "nR")} for p, r in scene.poles.items()
+                            if r.get("planes") is not None},
+            "version": "v2" if v2 else "v1", "perturbation_clamp": cstats,
+            "house1_pose": json.loads(HOUSE1_POSE_JSON.read_text(encoding="utf-8")) if v2 else None,
+            "v1_run": V1_RUN.as_posix() if v2 else None,
+            "v1_pooled": (json.loads((V1_RUN / "run.json").read_text(encoding="utf-8"))["pooled"]
+                          if v2 and (V1_RUN / "run.json").exists() else None),
             "sealed_files": ["episodes.csv", "seconds.csv.gz"], "figures": figs, "runtime_s": time.perf_counter() - t0}
-    (out / "run.json").write_text(json.dumps(runj, indent=2, default=float), encoding="utf-8")
+    (out / "run.json").write_text(json.dumps(tojson(runj), indent=2, default=float), encoding="utf-8")
     import output_paths as op
     rep_dir = op.report_dir(COHORT, DIRECTION)
     rp = write_report(rep_dir, out, runj, scene, houses, chkdf, tri, figs)
@@ -846,7 +1166,8 @@ def make_figures(out: Path, scene: Scene, houses: dict, mk: dict, pool: dict, pa
         ax.plot(np.r_[v[:, 0], v[0, 0]], np.r_[v[:, 1], v[0, 1]], color="C0", lw=1)
     for p, r in scene.poles.items():
         a = r["A"][:2] / IN
-        ax.add_patch(plt.Circle(a, r["radius_mm"] / IN, color="C2" if r["source"].startswith("measured") else "C1", fill=True))
+        col = "C4" if r.get("planes") is not None else ("C2" if r["source"].startswith("measured") else "C1")
+        ax.add_patch(plt.Circle(a, r["radius_mm"] / IN, color=col, fill=True))
         ax.text(a[0] + 4, a[1] + 4, p, fontsize=8, color="k")
     for k, h in houses.items():
         f = np.asarray(h["footprint_mm"]) / IN
@@ -860,8 +1181,8 @@ def make_figures(out: Path, scene: Scene, houses: dict, mk: dict, pool: dict, pa
     ax.set_xlabel("paddock x (in)")
     ax.set_ylabel("paddock y (in)")
     ax.legend(fontsize=8, loc="upper right")
-    ax.set_title("CH01 visibility mask (2-in cells in CH01's support): shadows of the poles (green = measured line, orange = "
-                 "design grid) and houses (cyan)", fontsize=9)
+    ax.set_title("CH01 visibility mask (2-in cells in CH01's support): shadows of the poles (purple = CH01 label planes, green = "
+                 "capsule on a measured line, orange = capsule at the design grid) and houses (cyan)", fontsize=9)
     fig.tight_layout()
     fig.savefig(fd / "visibility_mask.png", dpi=110)
     plt.close(fig)
@@ -912,121 +1233,156 @@ def tape_txt(scene: Scene) -> str:
 def write_report(rep_dir: Path, run: Path, rj: dict, scene: Scene, houses: dict, chk: pd.DataFrame, tri: pd.DataFrame,
                  figs: list[str]) -> Path:
     pool, pl, rb = rj["pooled"], rj["placement"], rj["rebuild_check"]
+    v1 = rj.get("v1_pooled")
+    hp = rj.get("house1_pose") or {}
+    cst = rj.get("perturbation_clamp", {})
     figrel = "../figures/" + FIG_SUB
-    L = ["# CH01 occlusion geometry for the WISER-flagged suspected misses (poles, houses) — 2026c", "",
+    L = ["# CH01 occlusion geometry for the WISER-flagged suspected misses (poles, houses) — 2026c, v2", "",
          f"Driver `cv/cv_field/ch01_occlusion.py`; plan `{PLAN}` (pre-registered, approved 2026-10-06 \"行上吧\"; amendment 1 "
-         f"before results, amendment 2 after results = descriptive only); run `{run.as_posix()}`; generated {datetime.now():%Y-%m-%d %H:%M}; code `{rj['git_commit']}`; "
-         f"calibration `{rj['calibration_dir']}` at recording-repo commit `{rj['recording_repo_commit']}` (frozen rev g; files "
-         f"identical to phase 0's: {rj['calibration_same_as_phase0']}). Hour: CH01 2026-09-06 21:00–22:00, the phase-0 "
-         "suspected misses. The agent did not look at any frame or figure. Geometry says *hidden*; it never makes a label — a "
-         "hidden animal gets no box and a *clear* suspected miss is still only a proposal.", "",
+         "before results; amendment 2 after results, descriptive; **amendment 3 after results = v2**: house_1 at its fitted cohort "
+         "pose, CH01-labelled poles hide by CH01's own edge planes, the 7-in perturbations clamped to the paddock); run "
+         f"`{run.as_posix()}`; v1 run `{rj.get('v1_run')}` (superseded, `SUPERSEDED.txt`); generated {datetime.now():%Y-%m-%d %H:%M}; "
+         f"code `{rj['git_commit']}`; calibration `{rj['calibration_dir']}` at recording-repo commit `{rj['recording_repo_commit']}` "
+         f"(the calibration files are byte-identical to phase 0's and v1's: {rj['calibration_same_as_phase0']}). Hour: CH01 "
+         "2026-09-06 21:00–22:00, the phase-0 suspected misses. The agent did not look at any frame or figure. Geometry says "
+         "*hidden*; it never makes a label — a hidden animal gets no box and a *clear* suspected miss is still only a proposal.", "",
          "**Blinding.** The user is filling `review_template.csv` of the phase-0 review clips. Per-episode and per-second "
          "classes are sealed in the run folder (`episodes.csv`, `seconds.csv.gz`); this report shows only pooled numbers over "
          "all episodes and the visibility mask. The phase-0 `wiser_spots.csv` stays unopened.", "",
-         "## Pooled result", ""]
-    L += [f"Suspected-miss episodes (n {pool['n_episodes']}) by geometry class: "
-          + ", ".join(f"**{c} {pool['episodes_by_class'][c]['n']} ({pct(pool['episodes_by_class'][c]['share'])})**" for c in CATS) + ".",
-          f"Suspected-miss seconds (n {pool['n_seconds']}) by category: "
-          + ", ".join(f"{c} {pool['seconds_by_category'][c]['n']} ({pct(pool['seconds_by_category'][c]['share'])})" for c in CATS)
-          + "; at the nominal WISER position alone: " + ", ".join(f"{c} {pct(v)}" for c, v in pool["seconds_by_nominal_class"].items()) + ".", "",
+         "## Pooled result (v2)", "",
+         "| | n | hidden | partly | clear | ambiguous |", "|---|---:|---:|---:|---:|---:|"]
+    if v1:
+        L.append(f"| episodes, v1 | {v1['n_episodes']} | " + " | ".join(pct(v1['episodes_by_class'][c]['share']) for c in CATS) + " |")
+    L.append(f"| **episodes, v2** | {pool['n_episodes']} | " + " | ".join(f"**{pct(pool['episodes_by_class'][c]['share'])}**" for c in CATS) + " |")
+    if v1:
+        L.append(f"| seconds, v1 | {v1['n_seconds']} | " + " | ".join(pct(v1['seconds_by_category'][c]['share']) for c in CATS) + " |")
+    L.append(f"| **seconds, v2** | {pool['n_seconds']} | " + " | ".join(f"**{pct(pool['seconds_by_category'][c]['share'])}**" for c in CATS) + " |")
+    L += ["", "Episode counts v2: " + ", ".join(f"{c} {pool['episodes_by_class'][c]['n']}" for c in CATS)
+          + ". Seconds at the nominal WISER position alone (v2): " + ", ".join(f"{c} {pct(v)}" for c, v in pool["seconds_by_nominal_class"].items())
+          + f". Perturbed positions clamped to the paddock (inset 1 in): **{cst.get('clamped', 0)} of {cst.get('perturbations', 0)}** "
+          f"({pct(cst.get('clamped', 0) / max(cst.get('perturbations', 1), 1))}).", "",
           "By occluder (episodes whose class is not *clear*; occluder = the most frequent occluder of their non-clear seconds; "
-          "*landmark check* = the object's own check below — results of a flagged object carry the flag):", "",
-          "| occluder | source | landmark check | hidden | partly | ambiguous | total |", "|---|---|---|---:|---:|---:|---:|"]
+          "*model* = how that object hides in v2; *check* = its landmark check below):", "",
+          "| occluder | v2 model | check | hidden | partly | ambiguous | total | v1 total |", "|---|---|---|---:|---:|---:|---:|---:|"]
 
     def status(o):
-        r = chk[chk["object"] == o]
-        return "not checked (no CH01 labels)" if r.empty else (f"**flagged** ({r['median_px'].iloc[0]:.0f} px)" if r["flagged"].iloc[0]
-                                                               else f"ok ({r['median_px'].iloc[0]:.0f} px)")
+        r = chk[(chk["object"] == o) | chk["object"].str.startswith(o + " (C")]
+        if r.empty:
+            return "not checked (no CH01 labels)"
+        r0 = r.iloc[0]
+        tag = "fit residual" if "fit residual" in r0["kind"] else "check"
+        return (f"**flagged** ({tag} {r0['median_px']:.0f} px)" if r0["flagged"] else f"{tag} {r0['median_px']:.1f} px")
 
-    def source(o):
+    def model(o):
         if o.startswith("pole_"):
-            s = scene.poles[o[5:]]["source"]
-            return "measured line" if s.startswith("measured") else "design grid"
-        return pl.get(o, {}).get("source", "")
+            r = scene.poles[o[5:]]
+            return r["model"] + ("" if r.get("planes") is not None else (", measured line" if r["source"].startswith("measured") else ", design grid"))
+        return "house check rev g pose" if o == "house_2" else "fitted cohort pose"
+    v1occ = (v1 or {}).get("episodes_by_occluder", {})
     for o, v in sorted(pool["episodes_by_occluder"].items(), key=lambda kv: -sum(kv[1].values())):
-        L.append(f"| {o} | {source(o)} | {status(o)} | {v.get('hidden', 0)} | {v.get('partly', 0)} | {v.get('ambiguous', 0)} | {sum(v.values())} |")
-    rw = pool.get("ring_crosses_wall", {}).get("by_occluder_share", {})
-    L += ["", "Seconds by occluder (non-clear seconds; last column = share of them whose 7-in WISER ring crosses a paddock wall, "
-          "amendment 2):", "", "| occluder | hidden | partly | ambiguous | total | ring crosses a wall |", "|---|---:|---:|---:|---:|---:|"]
+        L.append(f"| {o} | {model(o)} | {status(o)} | {v.get('hidden', 0)} | {v.get('partly', 0)} | {v.get('ambiguous', 0)} | "
+                 f"{sum(v.values())} | {sum(v1occ.get(o, {}).values())} |")
+    for o in sorted(set(v1occ) - set(pool["episodes_by_occluder"])):
+        L.append(f"| {o} | {model(o)} | {status(o)} | 0 | 0 | 0 | 0 | {sum(v1occ[o].values())} |")
+    v1s = (v1 or {}).get("seconds_by_occluder", {})
+    L += ["", "Seconds by occluder (non-clear seconds):", "", "| occluder | hidden | partly | ambiguous | total | v1 total |", "|---|---:|---:|---:|---:|---:|"]
     for o, v in sorted(pool["seconds_by_occluder"].items(), key=lambda kv: -sum(kv[1].values())):
-        L.append(f"| {o} | {v.get('hidden', 0)} | {v.get('partly', 0)} | {v.get('ambiguous', 0)} | {sum(v.values())} | {pct(rw.get(o))} |")
-    if "ring_crosses_wall" in pool:
-        L += ["", f"Reading guide (amendment 2, descriptive): the 8 perturbed positions are not clipped to the paddock, so along a "
-              "wall a 7-in move can put the animal outside, behind a wall-line pole; such seconds count as *ambiguous* "
-              f"({pct(pool['ring_crosses_wall']['ambiguous_share'])} of all ambiguous seconds have a ring crossing a wall). A thin "
-              "pole a few metres from CH01 throws a shadow narrower than the 7-in WISER uncertainty at the animal's distance, so "
-              "it yields *partly* / *ambiguous*, almost never robustly *hidden*; the houses and the near pole B2 can hide robustly."]
+        L.append(f"| {o} | {v.get('hidden', 0)} | {v.get('partly', 0)} | {v.get('ambiguous', 0)} | {sum(v.values())} | {sum(v1s.get(o, {}).values())} |")
+    for o in sorted(set(v1s) - set(pool["seconds_by_occluder"])):
+        L.append(f"| {o} | 0 | 0 | 0 | 0 | {sum(v1s[o].values())} |")
     mk = rj["mask"]
-    L += ["", f"Visibility mask: {mk['cells_in_support']} 2-in cells in CH01's support; a rat is hidden (h ≥ 0.8) in "
-          f"{pct(mk['share_hidden_ge_0_8'])} of them and partly hidden in {pct(mk['share_partly'])}. Hidden share by object: "
+    L += ["", f"Visibility mask (v2): {mk['cells_in_support']} 2-in cells in CH01's support; a rat is hidden (h ≥ 0.8) in "
+          f"{pct(mk['share_hidden_ge_0_8'])} and partly hidden in {pct(mk['share_partly'])}. Hidden share by object: "
           + ", ".join(f"{k} {pct(v)}" for k, v in sorted(mk["by_object_hidden_ge_0_8"].items(), key=lambda kv: -kv[1]) if v > 0) + ". "
           f"Figure [`visibility_mask.png`]({figrel}/visibility_mask.png); pooled classes [`class_shares.png`]({figrel}/class_shares.png); "
-          "array `visibility_mask.npz` in the run folder.", "",
-          "## Inputs and the rebuilt per-second table", "",
-          f"The phase-0 per-second suspected-miss table had not been saved; it was rebuilt with the unchanged phase-0 code "
-          f"(`wiser_assist_p0.prepare_boxes` + `part_c`, accepted map d ({rb['map']['dx_in']:.2f}, {rb['map']['dy_in']:.2f}) in, "
-          f"θ {rb['map']['theta_deg']:.3f}°, s {rb['map']['scale']:.4f}, L {rb['L_s']:+.1f} s): {rb['n_miss']} suspected-miss seconds of "
-          f"{rb['n_eligible']} eligible animal-seconds; the regenerated `fn_episodes.csv` is **byte-identical** to phase 0's: "
-          f"{rb['episodes_byte_identical']} (`fn_grid.csv` too: {rb['grid_byte_identical']}). Saved as `miss_seconds_rebuilt.csv.gz`.", "",
+          "array `visibility_mask.npz` in the run folder.", ""]
+    # house_1
+    if hp:
+        s = hp["sensitivity"]
+        res = hp["residuals"]
+        pc = hp["per_camera"]
+        L += ["## house_1 cohort pose (v2 fix 1)", "",
+              "Fitted with `calibration_qc/house_check.py`'s rigid model and fit (its functions reused read-only; file sha256 "
+              f"`{hp['inputs']['house_check_py_sha256'][:12]}…`) on the user's 09-04 12:00:02 house_1 edge labels of CH01 and CH02 "
+              f"({hp['n_pieces']['CH01']} + {hp['n_pieces']['CH02']} pieces: ROOF_X, ROOF_Y, BASE_Z; the number plate LABEL excluded), "
+              "converted to 09-18 px with the inverse **noon** affines (CH01 held-out "
+              f"{hp['inputs']['noon_correction']['CH01']['held_med_px']:.2f} px, CH02 {hp['inputs']['noon_correction']['CH02']['held_med_px']:.2f} px; "
+              "not the night-only table) + the IR → colour offset; 4 free parameters (x, y, ridge angle, soil offset), house_check's start "
+              f"grid. Written to `cv/configs/house1_cohort_pose_2026c.json` (pointer added to `cv/cv_field/CAMERA_GEOMETRY_2026c.md` §4).", "",
+              f"- **Centre ({hp['centre_in'][0]:.2f}, {hp['centre_in'][1]:.2f}) in, ridge {hp['ridge_deg']:.1f}° from x, soil "
+              f"{hp['soil_below_calibration_ground_mm']:.0f} mm below the calibration's z = 0.**",
+              "- Rays miss the rigid house by: " + "; ".join(f"{c} median {v['ray_miss_median_mm']:.1f} mm, p90 {v['ray_miss_p90_mm']:.1f} mm "
+                                                            f"(n {v['n_rays']})" for c, v in res.items()) + ".",
+              "- Each camera alone (soil fixed at the joint value): " + "; ".join(f"{c} ({v['centre_in'][0]:.2f}, {v['centre_in'][1]:.2f}) in, "
+                                                                                 f"{v['ridge_deg']:.1f}°" for c, v in pc.items())
+              + f" → spread {hp['per_camera_spread_mm']:.1f} mm from their mean, CH01–CH02 {hp['per_camera_pairwise_mm']:.1f} mm.",
+              f"- Soil sensitivity: soil fixed at 58 mm → centre ({s['soil_fixed_58mm']['centre_in'][0]:.2f}, {s['soil_fixed_58mm']['centre_in'][1]:.2f}) in, "
+              f"shift {s['soil_fixed_58mm']['centre_shift_mm']:.0f} mm; at 93 mm → ({s['soil_fixed_93mm']['centre_in'][0]:.2f}, "
+              f"{s['soil_fixed_93mm']['centre_in'][1]:.2f}) in, shift {s['soil_fixed_93mm']['centre_shift_mm']:.0f} mm (with two cameras the soil "
+              "level and the centre trade along the viewing rays).",
+              f"- Lid (the roof is lifted at every round): roof-only fit ({s['roof_only']['n_pieces']} pieces) "
+              f"({s['roof_only']['centre_in'][0]:.2f}, {s['roof_only']['centre_in'][1]:.2f}) in vs BASE_Z-only ({s['base_z_only']['n_pieces']} pieces) "
+              f"({s['base_z_only']['centre_in'][0]:.2f}, {s['base_z_only']['centre_in'][1]:.2f}) in, soil fixed at the joint value: "
+              f"**{s['roof_vs_base_z_mm']:.0f} mm apart**, ridge {s['roof_vs_base_z_ridge_deg']:+.2f}° — below the 30-mm 09-18 per-camera "
+              f"spread, so by the note's rule the lid offset does {'' if s['lid_offset_matters'] else 'not '}matter here.",
+              f"- Distance from the calibration's 09-18 post-move position (147.5, 121.7) in: **{pl['house_1']['vs_calibration_postmove_in']:.2f} in** "
+              f"(the move on 09-18, \"farther from its pole\"); from v1's WISER-ROI placement ({pl['house_1']['wiser_roi_mapped_in'][0]:.1f}, "
+              f"{pl['house_1']['wiser_roi_mapped_in'][1]:.1f}) in: **{pl['house_1']['vs_wiser_roi_placement_in']:.2f} in**.", ""]
+    # poles
+    L += ["## Poles (v2 fix 2)", "",
+          "Poles labelled in CH01's 09-18 reference (A0, B0, B1, B2, B3, C0, C1) hide by **CH01's own L / R edge labels**: each "
+          "edge's rays (09-18 px + IR → colour offset, rev g rays) define a plane through CH01's centre; a sample point is hidden "
+          "if its ray lies between the two planes, within the labelled vertical span (the heights where the labelled rays pass "
+          "the pole's horizontal distance; the grass-hidden foot is not labelled, so not included), and it is farther from "
+          "the camera than the pole. The pole's distance comes from the measured line (B1–B3) or the design grid; only the "
+          "front / behind decision uses it. The planes are fixed in the world (camera centre + pole edges), so the cohort "
+          "hour needs no pixel correction for them. Poles CH01 did not label keep the v1 capsule.", "",
+          "| pole | v2 model | distance source | distance (m) | angular width | labelled span (m, at the pole) | label planarity median / max |",
+          "|---|---|---|---:|---:|---|---|"]
+    for p, r in scene.poles.items():
+        if r.get("planes") is not None:
+            q = r["planes"]
+            L.append(f"| {p} | label planes | {r['source'].split(':')[0].split(' (')[0]} | {q['rho_mm'] / 1000:.2f} | {q['angular_width_deg']:.2f}° | "
+                     f"{q['z_lo'] / 1000:.2f}–{q['z_hi'] / 1000:.2f} | {q['planarity_med_deg']:.3f}° / {q['planarity_max_deg']:.3f}° |")
+    others = [p for p, r in scene.poles.items() if r.get("planes") is None]
+    L += ["", "Capsule (v1 model): " + ", ".join(f"{p} ({'measured line' if scene.poles[p]['source'].startswith('measured') else 'design grid'})"
+                                                 for p in others) + ".", ""]
+    L += ["## Inputs and the rebuilt per-second table", "",
+          f"The phase-0 per-second suspected-miss table, rebuilt with the unchanged phase-0 code (`wiser_assist_p0.prepare_boxes` + "
+          f"`part_c`, accepted map d ({rb['map']['dx_in']:.2f}, {rb['map']['dy_in']:.2f}) in, θ {rb['map']['theta_deg']:.3f}°, s "
+          f"{rb['map']['scale']:.4f}, L {rb['L_s']:+.1f} s): {rb['n_miss']} suspected-miss seconds of {rb['n_eligible']} eligible "
+          f"animal-seconds; the regenerated `fn_episodes.csv` is byte-identical to phase 0's: {rb['episodes_byte_identical']} "
+          f"(`fn_grid.csv`: {rb['grid_byte_identical']}).", "",
           "## Occluders", "",
-          f"Camera CH01 centre ({scene.C[0] / IN:.1f}, {scene.C[1] / IN:.1f}) in, {scene.C[2]:.0f} mm (`RayCamera.centre`). "
-          f"Poles: capsules of the surveyed radius from the local ground to {POLE_H / 1000:.1f} m. Houses: the house check's rigid "
-          "model (body box to the eave height + gable-roof prism with the 66-cm ridge and the roof overhang).", "",
-          "| object | position (in) | source | size | lean |", "|---|---|---|---|---|"]
+          f"Camera CH01 centre ({scene.C[0] / IN:.1f}, {scene.C[1] / IN:.1f}) in, {scene.C[2]:.0f} mm (`RayCamera.centre`). Houses: the "
+          "house check's rigid model (body box to the eave height + gable-roof prism with the 66-cm ridge and the roof overhang).", "",
+          "| object | position (in) | source | size / model |", "|---|---|---|---|"]
     for p, r in scene.poles.items():
         a = r["A"][:2] / IN
-        L.append(f"| pole {p} | ({a[0]:.1f}, {a[1]:.1f}) at the ground | {r['source']} | r {r['radius_mm']:.0f} mm ({r['radius_source']}) | "
-                 f"{r.get('lean_deg', 0):.1f}° |")
+        L.append(f"| pole {p} | ({a[0]:.1f}, {a[1]:.1f}) at the ground | {r['source']} | {r['model']}; r {r['radius_mm']:.0f} mm; lean {r.get('lean_deg', 0):.1f}° |")
     for k, h in houses.items():
-        L.append(f"| {k} | ({h['centre_in'][0]:.1f}, {h['centre_in'][1]:.1f}), ridge {h['ridge_deg']:.1f}° | "
-                 f"{pl[k]['source']} | {h['footprint_cm'][0]:.2f} × {h['footprint_cm'][1]:.2f} cm, eaves {h['eave_mm'] / 10:.1f} cm, ridge "
-                 f"{h['ridge_mm'] / 10:.1f} cm, soil at z {h['soil_z_mm']:.0f} mm | – |")
-    L += ["", f"house_1 (moved on 09-18) is placed from the WISER ROI `house_1` ({pl['house_1']['wiser_roi_in'][0]:.1f}, "
-          f"{pl['house_1']['wiser_roi_in'][1]:.1f}) through the accepted map → ({pl['house_1']['paddock_in'][0]:.1f}, "
-          f"{pl['house_1']['paddock_in'][1]:.1f}) in, {pl['house_1']['vs_calibration_postmove_in']:.1f} in from the calibration's "
-          "post-move position (147.5, 121.7) — not used. Map check on house_2: its WISER ROI through the same map lands at "
-          f"({pl['house_2']['wiser_roi_mapped_in'][0]:.1f}, {pl['house_2']['wiser_roi_mapped_in'][1]:.1f}) in, "
-          f"**{pl['house_2']['map_check_in']:.1f} in** from the calibration's (342.4, 117.7): the ROI rectangles are hand-placed, so "
-          "house_1's WISER placement carries an error of that order.", ""]
-    good = tri.copy()
-    L += ["### Pole re-measurement (amendment 1)", "",
-          "The pole check (`calibration_qc/pole_check.py`, `session_2026-09-18_pole_check.txt`, 2026-10-01) ran on a fit "
-          "before revisions e–g, so its method was re-run read-only on the frozen rev g cameras with the operator's 09-18 "
-          "pole-edge labels (CH01–CH04): per camera and height the axis offset across the line of sight, then per height the "
-          "least-squares crossing of the cameras' lines. Clean rule (fixed before any occlusion result): ≥ "
-          f"{CLEAN['min_heights']} heights each seen by ≥ 2 cameras crossing at ≥ {CLEAN['min_angle_deg']:.0f}° (camera residual ≤ "
-          f"{CLEAN['max_cam_resid_mm']:.0f} mm with ≥ 3 cameras), a straight line in height through them with residuals ≤ "
-          f"{CLEAN['max_line_resid_mm']:.0f} mm, its 1.05-m point ≤ {CLEAN['max_from_design_mm']:.0f} mm from the design grid, "
-          f"and a lean ≤ {CLEAN['max_lean_deg']:.0f}° (this bound was added after the pole table, before any occlusion result; it "
-          "removes only A4, whose two-height line leaned 23°); else the vertical design-grid line. Per-height triangulations: "
-          "`pole_triangulation_revg.csv`. Check against the operator's tape (survey, centre to centre at ≈ 1.05 m), measured "
-          "lines at 1.05 m above the ground: " + tape_txt(scene) + ".", ""]
-    L += ["## Landmark checks (model projected into CH01 vs the user's labels)", "",
-          f"Median pixel distance from the labelled edges to the projected model edges (poles: left / right silhouette; houses: "
-          f"each label piece to its nearest allowed rigid edge, house_check's classes). Flag > {FLAG_PX:.0f} px (results then "
-          "flagged, not refitted). 09-18 labels compared in 09-18 px (+ the IR → colour offset (0.68, −0.39) px, as "
-          "house_check); the 09-04 cohort house_1 labels mapped to 09-18 px with `Corrections.to_09_18` at the label time "
-          f"({rj['cohort_label_correction']['label_time']}; correction sample {rj['cohort_label_correction']['correction_used']}, "
-          f"flag {rj['cohort_label_correction']['flag']}; its shift at the frame centre "
-          f"({rj['cohort_label_correction']['B_shift_at_centre_px'][0]:+.1f}, {rj['cohort_label_correction']['B_shift_at_centre_px'][1]:+.1f}) px; "
-          "the daily 12:00 track of that frame gives (−10.1, −2.0) px — the night sample is used as instructed, the "
-          "difference is stated).", "",
-          "| object | labels | model | label points | median px | p90 px | flagged |", "|---|---|---|---:|---:|---:|---|"]
+        L.append(f"| {k} | ({h['centre_in'][0]:.1f}, {h['centre_in'][1]:.1f}), ridge {h['ridge_deg']:.1f}° | {pl[k]['source']} | "
+                 f"{h['footprint_cm'][0]:.2f} × {h['footprint_cm'][1]:.2f} cm, eaves {h['eave_mm'] / 10:.1f} cm, ridge {h['ridge_mm'] / 10:.1f} cm, "
+                 f"soil at z {h['soil_z_mm']:.0f} mm |")
+    L += ["", f"Map check on house_2 (unchanged): its WISER ROI through the accepted map lands {pl['house_2']['map_check_in']:.1f} in from "
+          "its calibrated position — the hand-placed ROI rectangles carry errors of that order, which is why v1's house_1 was off.", "",
+          "Pole re-measurement (amendment 1, unchanged): the pole-check method re-run read-only on the rev g cameras; B1, B2, B3 "
+          "measured (CH01 + CH02), the other 12 at the design grid; per-height triangulations in `pole_triangulation_revg.csv`; "
+          "tape check at 1.05 m: " + tape_txt(scene) + ".", ""]
+    L += ["## Landmark checks (v2)", "",
+          f"Median pixel distance from the user's labels to the model (flag > {FLAG_PX:.0f} px on checks and fit residuals; results "
+          "of a flagged object carry the flag). *kind*: **check** = labels not used to build the object; **fit residual** = "
+          "the labels built the object (the 09-04 house_1 labels are now the house_1 fit's data, so their row is no longer an "
+          "independent check; the label-plane poles reproduce their own labels up to the edges' straightness); **reference** = "
+          "a model v2 does not use for hiding; **code check** = projection sanity check.", "",
+          "| object | labels | model | kind | label points | median px | p90 px | flagged |", "|---|---|---|---|---:|---:|---:|---|"]
     for r in chk.itertuples():
-        L.append(f"| {r.object} | {r.labels} | {r.model} | {r.n_points} | {r.median_px:.1f} | {r.p90_px:.1f} | {'**yes**' if r.flagged else 'no'} |")
+        L.append(f"| {r.object} | {r.labels} | {r.model} | {r.kind} | {r.n_points} | {r.median_px:.1f} | {r.p90_px:.1f} | "
+                 f"{'**yes**' if r.flagged else 'no'} |")
     fl = chk[chk["flagged"]]["object"].tolist()
-    L += ["", ("Flagged: " + ", ".join(fl) + ". The occlusion results involving a flagged object carry that flag (the pooled "
-               "by-occluder rows above name the object)." if fl else "No object is flagged."), "",
-          "Why (descriptive, amendment 2): the design-grid poles A0, B0, C0, C1 miss their labels by 25–58 px, i.e. ≈ 0.6–1.4° "
-          "or ≈ 8–15 cm across the line of sight at 4.9–8.2 m — the 10-ft grid is not control (the calibration says so). "
-          "B2 stands 0.82 m from CH01, and CH01 and CH02 see it from nearly opposite sides (17° from collinear), so its "
-          "position along that line is poorly constrained; its 45 px are ≈ 1° ≈ 15 mm across CH01's line of sight (a "
-          "diagnostic exact-ray triangulation, not used, is far less stable). house_1's 125 px is the WISER-ROI placement "
-          "error (house_2's ROI through the same map lands 7.2 in from its calibrated position). The code check (the "
-          "calibration's own post-move house_1 against the 09-18 labels, 19.5 px; house_2 9.8 px) matches the calibration's "
-          "reported fit (rays miss by a median 24 / 11 mm), so the projection itself is sound. The 3-px agreement of B1 and B3 "
-          "is not an independent test: CH01's own pole-edge labels entered their triangulation. The 09-04 label correction "
-          "(night sample) and the daily 12:00 track differ by ≈ 5 px at the frame centre, immaterial next to house_1's miss.", ""]
+    L += ["", ("Flagged in v2: " + ", ".join(fl) + "." if fl else "Nothing is flagged in v2.") + " The capsule rows of the "
+          "label-plane poles show how far v1's cylinders were from CH01's labels (v2 keeps them only for the front / behind "
+          "distance).", ""]
     L += ["## Definitions", "",
           "Units: paddock mm / inches (origin pole A0); z = the calibration's absolute height datum (camera centre, terrain, "
           "house soil levels). $\\mathbf C$ = CH01's centre; $\\mathbf p$ = an animal's paddock position (WISER through the "
@@ -1036,34 +1392,47 @@ def write_report(rep_dir: Path, run: Path, rj: dict, scene: Scene, houses: dict,
           "\\ o_l\\in\\{-40,0,40\\}\\,\\mathrm{mm} $$ **Text:** a rat's body as 9 points; $\\hat{\\mathbf n}$ = horizontal unit "
           "normal to the line of sight from CH01.", "",
           "### Hidden share $h$",
-          "$$ h(\\mathbf p)=\\frac{1}{9}\\sum_{k,l}\\mathbb 1\\big[\\exists\\,O:\\ [\\mathbf C,\\mathbf q_{kl}]\\cap O\\neq\\emptyset\\big] $$ "
-          "**Text:** share of the body points whose line of sight to the camera passes through a pole capsule (segment–axis "
-          "distance ≤ radius) or a house part (Cyrus–Beck clipping of the segment by the convex part). Range [0, 1].", "",
+          "$$ h(\\mathbf p)=\\frac{1}{9}\\sum_{k,l}\\mathbb 1\\big[\\exists\\,O:\\ \\mathbf q_{kl}\\ \\text{hidden by}\\ O\\big] $$ **Text:** share "
+          "of the body points hidden from CH01. Range [0, 1]. *Hidden by a house*: the segment $[\\mathbf C,\\mathbf q]$ passes "
+          "through a convex house part (Cyrus–Beck). *Hidden by a capsule pole*: segment–axis distance ≤ radius. *Hidden by a "
+          "label-plane pole*: $\\mathbf n_L\\cdot\\mathbf d\\ge0\\ \\wedge\\ \\mathbf n_R\\cdot\\mathbf d\\ge0\\ \\wedge\\ z_\\rho\\in[z_{lo},z_{hi}]\\ "
+          "\\wedge\\ \\lVert\\mathbf d_{xy}\\rVert>\\rho$ with $\\mathbf d=\\mathbf q-\\mathbf C$, $\\mathbf n_{L,R}$ = the edge planes' normals "
+          "(least squares of the labelled rays, oriented towards the other edge), $\\rho$ = the pole's horizontal distance, "
+          "$z_\\rho=C_z+\\rho\\,d_z/\\lVert\\mathbf d_{xy}\\rVert$ = the ray's height at the pole, $[z_{lo},z_{hi}]$ = the same for the "
+          "labelled rays.", "",
           "### Classes",
-          "nominal: hidden $h\\ge0.8$, partly $0<h<0.8$, clear $h=0$. Robust over the nominal position and 8 positions "
-          "7 in away (WISER uncertainty): robustly hidden = hidden at all 9, robustly clear = $h=0$ at all 9. **Category** "
-          "(amendment 1): hidden = robustly hidden; clear = robustly clear; partly = nominal $0<h<0.8$; ambiguous = otherwise. "
+          "nominal: hidden $h\\ge0.8$, partly $0<h<0.8$, clear $h=0$. Robust over the nominal position and 8 positions 7 in away "
+          "(v2: each clamped to $[1,479]\\times[1,239]$ in): robustly hidden = hidden at all 9, robustly clear = $h=0$ at all 9. "
+          "**Category**: hidden = robustly hidden; clear = robustly clear; partly = nominal $0<h<0.8$; ambiguous = otherwise. "
           "**Episode class** = the unique majority category of its seconds (ties → ambiguous). **Occluder** of a second = the "
           "object blocking the most sample points summed over the 9 positions; of an episode = the most frequent occluder of "
           "its non-clear seconds.", "",
+          "### house_1 fit",
+          "$$ \\hat{\\mathbf x}=\\arg\\min_{x,y,\\theta,dz}\\sum_{\\text{label rays}}\\rho_{\\text{soft-}\\ell_1}\\big(\\min_{e\\in E(\\text{class})}"
+          "\\mathrm{dist}(\\text{ray},\\,e(x,y,\\theta,dz))\\big) $$ **Text:** house_check's fit: the rigid edges $E$ of the surveyed "
+          "house posed at centre $(x,y)$, ridge angle $\\theta$, soil $dz$ below z = 0; each label piece is matched to the nearest "
+          "allowed edge (roof labels → roof edges, BASE_Z → vertical corners). Ray miss = the 3-D distance between a label ray "
+          "and its edge (mm).", "",
           "### Landmark distance",
           "$$ d_i=\\min_{\\mathbf s\\in\\pi(E)}\\lVert \\mathbf u_i-\\mathbf s\\rVert $$ **Text:** pixel distance from a densified "
-          "label point $\\mathbf u_i$ (every ≈ 15 px) to the projected model edge $\\pi(E)$ (3-D edge points projected with the "
-          "calibration's own inverse, each verified to 0.02°); median per object.", "",
+          "label point $\\mathbf u_i$ (every ≈ 15 px) to the projected model edge $\\pi(E)$ (3-D points projected with the "
+          "calibration's own inverse, verified to 0.02°); for a label-plane pole, the angle of each label ray from its plane "
+          "converted to px with the local pixel scale. Median per object.", "",
           "## Caveats", "",
           "- Grass, other rats, the animal's posture and objects not surveyed (water dish, feeders, cables) are not modelled: "
           "they can hide a *clear* animal. One hour, one camera.",
-          "- house_1's cohort position comes from a hand-placed WISER ROI through the map (house_2's ROI lands "
-          f"{pl['house_2']['map_check_in']:.1f} in from its calibrated position); its landmark check says how far off the box is.",
-          "- Poles not measured cleanly stand vertical at the design grid; the survey shows the B row 11 in short (B0 / B4 "
-          "inside the line).",
+          "- house_1's pose rests on two cameras about 40° apart: the soil level and the centre trade along the rays (sensitivity "
+          "above); the roof is the lid, set back after each round.",
+          "- Label-plane poles hide only within the labelled span; the grass-hidden pole foot is not modelled (grass hides an "
+          "animal there anyway). Poles CH01 did not label stay capsules (vertical at the design grid unless measured).",
           "- The 7-in perturbation is the WISER error scale; WISER's own error is larger in some seconds.", "",
           "## Outputs", "",
           f"Run folder `{run.as_posix()}`: `occluders.json`, `checks.csv`, `visibility_mask.npz`, `miss_seconds_rebuilt.csv.gz`, "
           "`pole_edges_revg.csv`, `pole_triangulation_revg.csv`, `run.json`, `run_log.txt`; **sealed**: `episodes.csv`, "
-          "`seconds.csv.gz` (`SEALED_README.txt`). Figures `results/2026c/cv_field/figures/ch01_occlusion/`. Pointer "
-          f"`{POINTER_NAME}`.", "",
-          "## Rerun", "", "```", "C:/Python313/python.exe cv/cv_field/ch01_occlusion.py --run", "```", ""]
+          "`seconds.csv.gz` (`SEALED_README.txt`). house_1 pose `cv/configs/house1_cohort_pose_2026c.json`. Figures "
+          f"`results/2026c/cv_field/figures/ch01_occlusion/`. Pointer `{POINTER_NAME}`.", "",
+          "## Rerun", "", "```", "C:/Python313/python.exe cv/cv_field/ch01_occlusion.py --house1-fit   # the house_1 pose JSON",
+          "C:/Python313/python.exe cv/cv_field/ch01_occlusion.py --run          # v2 (--v1 reproduces v1)", "```", ""]
     rep_dir.mkdir(parents=True, exist_ok=True)
     p = rep_dir / REPORT_NAME
     p.write_text("\n".join(L), encoding="utf-8")
@@ -1148,6 +1517,38 @@ def selftest() -> int:
         f"behind min {behind.min()}, front max {front.max()}")
     # point-to-polyline distance
     rec("point_poly_dist", np.allclose(point_poly_dist(np.array([[0.0, 5.0], [15.0, 0.0]]), np.array([[0.0, 0.0], [10.0, 0.0]])), [5.0, 5.0]))
+    # v2 label-plane pole: planes through C containing the pole's edge lines (x = 1000, y = -+70), span 0.3-1.8 m at the pole
+    class _Cam:
+        centre = C
+
+        @staticmethod
+        def rays(uv):                                   # synthetic: uv = (y, z) of a point on the plane x = 1000
+            uv = np.asarray(uv, float).reshape(-1, 2)
+            d = np.c_[np.full(len(uv), 1000.0), uv[:, 0], uv[:, 1]] - C
+            return d / np.linalg.norm(d, axis=1, keepdims=True)
+    labs = {"POLE_P_L": [[[-70.0, 300.0], [-70.0, 1800.0]]], "POLE_P_R": [[[70.0, 300.0], [70.0, 1800.0]]]}
+    rec_p = {"A": np.array([1000.0, 0.0, 0.0]), "B": np.array([1000.0, 0.0, 2400.0]), "radius_mm": 70.0}
+    pl = pole_planes(_Cam(), rec_p, labs, "P")
+    Qp = np.array([[3000.0, 0.0, 60.0], [500.0, 0.0, 60.0], [3000.0, 600.0, 60.0], [1100.0, 0.0, 60.0], [3000.0, 150.0, 60.0]])
+    hp_ = planes_hidden(C, Qp, pl)
+    rec("label planes: behind the pole hidden; in front, outside the wedge and below the labelled span not; the plane "
+        "edge at 3 m lies at +-210 mm", list(hp_) == [True, False, False, False, True]
+        and planes_hidden(C, np.array([[3000.0, 230.0, 60.0]]), pl)[0] == False and abs(pl["rho_mm"] - 1000) < 1e-6,  # noqa: E712
+        f"{hp_.tolist()}, span {pl['z_lo']:.0f}-{pl['z_hi']:.0f} mm, width {pl['angular_width_deg']:.2f} deg")
+    # v2 clamp: perturbations near a wall are clamped inside the paddock (inset 1 in)
+    st = {}
+    df3 = classify(sc, np.array([[3.0, 120.0], [240.0, 120.0]]), clamp=True, stats=st)
+    rec("clamp: a position 3 in from the x = 0 wall has 3 perturbations clamped (x - 7 cos a < 1); one in mid-field none",
+        st["clamped"] == 3 and st["perturbations"] == 16 and len(df3) == 2, str(st))
+    # house_check.py functions reused read-only (smoke test, needs the recording repo)
+    try:
+        cams_, cd_ = calib()
+        hc = load_house_check(cd_)
+        E, he, hr, run_ = hc["house_edges"]("HOUSE_1")
+        rec("house_check.py loaded read-only (functions only): 15 rigid edges, eaves ~59 cm, ridge ~88 cm",
+            len(E) == 15 and 580 < he < 600 and 870 < hr < 890 and set(HC_FUNCS) <= set(hc), f"{len(E)} edges, {he:.0f} / {hr:.0f} mm")
+    except SystemExit as e:
+        print(f"[SKIP] house_check smoke test ({e})")
     print(("PASS" if ok else "FAIL") + " — ch01_occlusion self-test")
     return 0 if ok else 1
 
@@ -1169,7 +1570,9 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0], allow_abbrev=False)
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--poles-only", action="store_true")
+    ap.add_argument("--house1-fit", action="store_true", help="fit house_1's cohort pose -> cv/configs/house1_cohort_pose_2026c.json")
     ap.add_argument("--run", action="store_true")
+    ap.add_argument("--v1", action="store_true", help="reproduce v1 (WISER-ROI house_1, capsule poles, no clamp)")
     ap.add_argument("--phase0", default=str(PHASE0_RUN))
     ap.add_argument("--out", default=None)
     a = ap.parse_args(argv)
@@ -1177,8 +1580,17 @@ def main(argv=None) -> int:
         return selftest()
     if a.poles_only:
         return poles_only()
+    if a.house1_fit:
+        cams, cd = calib()
+        res = fit_house1_cohort(cams, cd)
+        p = write_house1_json(res, cd)
+        print(json.dumps({k: res[k] for k in ("main", "per_camera", "per_camera_spread_mm", "per_camera_pairwise_mm")}, indent=1, default=float)[:3000])
+        print(json.dumps({k: (v if not isinstance(v, dict) else {kk: vv for kk, vv in v.items() if kk != "per_camera_residual"})
+                          for k, v in res["sensitivity"].items()}, indent=1, default=float))
+        print(f"-> {p}")
+        return 0
     if a.run:
-        return run(Path(a.phase0), Path(a.out) if a.out else None)
+        return run(Path(a.phase0), Path(a.out) if a.out else None, v2=not a.v1)
     ap.error("nothing to do (--selftest, --poles-only or --run)")
 
 

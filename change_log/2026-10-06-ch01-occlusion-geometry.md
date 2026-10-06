@@ -5,6 +5,35 @@ Plan: [`implementation_plan/2026-10-06-ch01-occlusion-geometry.md`](../implement
 Report: [`results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`](../results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md).
 Data map: [`cv/cv_field/DATA_MAP_c1yolo_wiser.md`](../cv/cv_field/DATA_MAP_c1yolo_wiser.md), section H.
 
+## v2 (amendment 3, after results — supersedes the v1 numbers below)
+
+The calibration agent's answers (relayed by the user): `cv/cv_field/CAMERA_GEOMETRY_2026c.md`, recording repo
+`calibration_qc/NOTE_HOUSE1_COHORT_LABELS_2026-10-06.md` (20e6c9b; calibration files byte-identical to v1's), the noon
+correction (7985aee). v2 run `D:/Field2026_analysis_out/2026c/cv_field_ch01_occlusion_20261006_1555/`; v1 run kept with
+`SUPERSEDED.txt`. Code: `ch01_occlusion.py --house1-fit` (new `cv/configs/house1_cohort_pose_2026c.json`), `--run` (v2;
+`--v1` reproduces v1); self-test 14 checks (+ label planes, clamp, read-only house_check loader).
+
+- **house_1 cohort pose** (house_check.py's fit, functions reused read-only, on the CH01 + CH02 09-04 12:00:02 labels via
+  the inverse noon affines + IR → colour; LABEL excluded; 4 free): **centre (142.23, 123.46) in, ridge 88.5°, soil 45 mm
+  below z = 0**; ray misses CH01 10.6 / 17.7 mm, CH02 4.6 / 9.9 mm (median / p90); each camera alone (142.11, 123.58) /
+  (142.15, 123.35) in → spread 2.9 mm, 5.9 mm apart; soil fixed at 58 / 93 mm → centre shifts 14 / 56 mm; roof-only vs
+  BASE_Z-only 21 mm apart (< 30 mm: the lid offset does not matter). 5.56 in from the post-move calibration position
+  (147.5, 121.7), 9.27 in from v1's WISER-ROI placement. One pointer line added to `CAMERA_GEOMETRY_2026c.md` §4.
+- **Poles A0, B0, B1, B2, B3, C0, C1** hide by CH01's own L / R edge planes (between the planes, within the labelled span,
+  farther than the pole); A1–A4, B4, C2–C4 keep the capsule.
+- **Perturbations clamped** to the paddock inset by 1 in: 2 283 of 27 856.
+
+| pooled | hidden | partly | clear | ambiguous |
+|---|---:|---:|---:|---:|
+| episodes v1 → v2 | 10.3 → **5.0 %** | 4.7 → **5.0 %** | 51.3 → **50.7 %** | 33.7 → **39.3 %** |
+| seconds v1 → v2 | 11.7 → **5.2 %** | 9.1 → **10.6 %** | 49.0 → **48.8 %** | 30.2 → **35.5 %** |
+
+Non-clear episodes by occluder, v2 (hidden / partly / ambiguous): pole B2 2 / 4 / 37, pole B3 0 / 7 / 36, house_2
+13 / 4 / 16, pole C2 0 / 0 / 14, house_1 0 / 0 / 8, pole B4 0 / 0 / 4, pole B1 0 / 0 / 3 (v1: B3 46, B2 32, house_2 30, C2 19,
+house_1 6, B4 4, C1 4, B1 3, B0 2). Mask v2: a rat is hidden in 8.2 % of CH01's support. Landmark checks v2: house_2 9.8 px
+(check); house_1 7.6 px CH01 / 3.8 px CH02 (fit residuals — the labels are now the fit data); label-plane poles 0.3–3.7 px
+(fit residuals); nothing flagged. The v1 capsules of the same poles were 3–58 px off (reference rows).
+
 ## Why
 
 The user watched the phase-0 review clips: part of the suspected YOLO misses are animals hidden by a house or a pole.
@@ -25,7 +54,7 @@ A hidden animal is not a detector error and must never become a box.
 - In repo: the report, figures `results/2026c/cv_field/figures/ch01_occlusion/` (`visibility_mask.png`, `class_shares.png`),
   pointer `run_manifest_ch01_occlusion_2026c.json`; docs (plan, both index READMEs, CLAUDE.md, HANDOFF, data map H).
 
-## Results (pooled only; per-episode classes sealed until the user's verdicts in `review_template.csv`)
+## v1 results (superseded by v2 above; pooled only; per-episode classes sealed until the user's verdicts in `review_template.csv`)
 
 - **Episodes (n 300): hidden 31 (10.3 %), partly 14 (4.7 %), clear 154 (51.3 %), ambiguous 101 (33.7 %).** Seconds
   (n 3 482): 11.7 / 9.1 / 49.0 / 30.2 %; at the nominal WISER position alone 25.3 % hidden, 9.1 % partly, 65.6 % clear.

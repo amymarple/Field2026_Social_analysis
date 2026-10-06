@@ -90,6 +90,7 @@ frame is in inches: origin pole A0, x along the 40-ft side (0–480), y across (
   - Until it exists, the image labels are better evidence for house_1 than a WISER ROI.
 - **The roof is the lid**, lifted at every round, so roof edges may sit a little differently after each event; the body
   corners do not.
+- **house_1 cohort pose (fitted 2026-10-06):** `cv/configs/house1_cohort_pose_2026c.json` — house_check.py fit on the CH01 + CH02 09-04 noon labels: centre (142.2, 123.5) in, ridge 88.5°, soil 45 mm below z = 0, residuals and sensitivities inside.
 
 ## 5. Landmarks: where, names, files
 

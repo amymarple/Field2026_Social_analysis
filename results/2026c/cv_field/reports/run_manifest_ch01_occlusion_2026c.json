@@ -1,5 +1,5 @@
 {
-  "run_dir": "D:/Field2026_analysis_out/2026c/cv_field_ch01_occlusion_20261006_1445",
+  "run_dir": "D:/Field2026_analysis_out/2026c/cv_field_ch01_occlusion_20261006_1555",
   "cohort": "2026c",
   "direction": "cv_field",
   "analysis": "ch01_occlusion",
@@ -8,7 +8,7 @@
   "plan": "implementation_plan/2026-10-06-ch01-occlusion-geometry.md",
   "phase0_run": "D:/Field2026_analysis_out/2026c/cv_field_wiser_assist_p0_20261005_2211",
   "figures": "results/2026c/cv_field/figures/ch01_occlusion/",
-  "git_commit": "17cbcb42498de827366c5a14fe0eb023013948ff+dirty",
+  "git_commit": "97bf06f20c061c806a7ee652c802625e584b97a9+dirty",
   "sealed_files": [
     "episodes.csv",
     "seconds.csv.gz"

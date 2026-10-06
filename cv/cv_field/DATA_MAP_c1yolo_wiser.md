@@ -103,9 +103,11 @@ rat" + fixed-spot diagnostic).
 
 | What | Path | Status |
 |---|---|---|
-| Code | `REPO/cv/cv_field/ch01_occlusion.py` (`--selftest` 11 checks, `--poles-only`, `--run`); uses `wiser_assist_p0.prepare_boxes` + `part_c(seconds_out=…)` | final |
-| Plan, change log | `REPO/implementation_plan/2026-10-06-ch01-occlusion-geometry.md` (amendment 1 before results, 2 after results), `REPO/change_log/2026-10-06-ch01-occlusion-geometry.md` | final |
-| **Run folder** | `$OUT/2026c/cv_field_ch01_occlusion_20261006_1445/` | final |
+| Code | `REPO/cv/cv_field/ch01_occlusion.py` (`--selftest` 14 checks, `--poles-only`, `--house1-fit`, `--run` = v2, `--v1`); uses `wiser_assist_p0.prepare_boxes` + `part_c(seconds_out=…)` and `calibration_qc/house_check.py`'s functions (read-only) | final |
+| Plan, change log | `REPO/implementation_plan/2026-10-06-ch01-occlusion-geometry.md` (amendment 1 before results; 2 and 3 = v2 after results), `REPO/change_log/2026-10-06-ch01-occlusion-geometry.md` | final |
+| **house_1 cohort pose** | `REPO/cv/configs/house1_cohort_pose_2026c.json` (centre, ridge, soil offset, residuals, per-camera fits, soil / lid sensitivities, inputs + sha256, commits); from the CH01 + CH02 09-04 12:00 labels via the noon affines (`run_manifest_landmark_track_ch0102_0904noon_2026c.json`) | final |
+| **Run folder (v2, canonical)** | `$OUT/2026c/cv_field_ch01_occlusion_20261006_1555/` | final |
+| v1 run (superseded) | `$OUT/2026c/cv_field_ch01_occlusion_20261006_1445/` (`SUPERSEDED.txt`; its `episodes.csv` / `seconds.csv.gz` sealed too) | record only |
 | Rebuilt per-second table (phase 0 had not saved it) | `miss_seconds_rebuilt.csv.gz` (every eligible animal-second, `miss`, `episode_id`; the regenerated `fn_episodes.csv` / `fn_grid.csv` are byte-identical to phase 0's) | final |
 | Occluders and their sources | `occluders.json` (camera centre, 15 poles with source / radius / lean, 2 houses with pose / soil level / sizes), `pole_edges_revg.csv`, `pole_triangulation_revg.csv` | final |
 | Landmark checks | `checks.csv` (per object: median / p90 px from the user's labels, flag > 20 px) | final |

@@ -1,8 +1,9 @@
 # CH01 occlusion geometry: which WISER-flagged misses are hidden by a pole or a house
 
-Date: 2026-10-06. Status: **DONE 2026-10-06** (approved "行上吧" 2026-10-06; run
-`$OUT/2026c/cv_field_ch01_occlusion_20261006_1445`, report `results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`;
-amendment 1 before results, 2 after results, descriptive only; per-episode classes sealed). Pre-registered before any result;
+Date: 2026-10-06. Status: **DONE 2026-10-06, v2** (approved "行上吧" 2026-10-06; v2 run
+`$OUT/2026c/cv_field_ch01_occlusion_20261006_1555` (v1 `…_1445` superseded), report
+`results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`; amendment 1 before results, 2 after results (descriptive),
+3 after results = v2; per-episode classes sealed). Pre-registered before any result;
 amendments dated and marked *before* or *after results*. Data locations: `cv/cv_field/DATA_MAP_c1yolo_wiser.md`.
 
 ## Why
@@ -136,3 +137,31 @@ computed. Recording repo read at `a667cfe` (no pull; the same calibration files 
    surveyed radius would be the follow-up if wanted.
 4. The 09-04 label correction (night sample 09-04 21:00) and the daily 12:00 landmark track differ by ≈ 5 px at the frame
    centre — immaterial next to house_1's 125-px miss.
+
+### Amendment 3 — 2026-10-06, *after results*: v2 (the calibration agent's answers, relayed by the user)
+
+Sources: `cv/cv_field/CAMERA_GEOMETRY_2026c.md` (3fd96e7), recording repo `calibration_qc/NOTE_HOUSE1_COHORT_LABELS_2026-10-06.md`
+(20e6c9b; the calibration files are byte-identical to v1's), the 09-04 12:00 noon correction (7985aee). v1 run
+`cv_field_ch01_occlusion_20261006_1445` kept with `SUPERSEDED.txt`; v2 run `cv_field_ch01_occlusion_20261006_1555`.
+
+1. **house_1 cohort pose** fitted with `house_check.py`'s functions (read-only: its function definitions parsed and run,
+   the module never imported) on the CH01 + CH02 09-04 12:00:02 house_1 edge labels, converted with the inverse noon
+   affines (CH01 1.27 px, CH02 1.74 px held-out; not the night table) + IR → colour; LABEL excluded; 4 free (x, y, yaw,
+   soil). Result: centre (142.23, 123.46) in, ridge 88.5°, soil 45 mm below z = 0; ray misses CH01 10.6 / 17.7 mm, CH02
+   4.6 / 9.9 mm (median / p90); per-camera centres 5.9 mm apart (spread 2.9 mm); soil fixed 58 / 93 mm → centre shifts
+   14 / 56 mm; roof-only vs BASE_Z-only 21 mm (< 30 mm: the lid offset does not matter here). 5.56 in from the post-move
+   calibration position, 9.27 in from v1's WISER-ROI placement. → `cv/configs/house1_cohort_pose_2026c.json` (+ one
+   pointer line in `CAMERA_GEOMETRY_2026c.md` §4). The house_1 landmark check is now a fit residual (7.6 px CH01, 3.8 px
+   CH02), not an independent check.
+2. **Poles labelled in CH01** (A0, B0, B1, B2, B3, C0, C1) hide by CH01's own L / R edge labels: each edge's rays define a
+   plane through the camera centre; hidden = between the planes, within the labelled vertical span (heights at the pole's
+   distance; the grass-hidden foot is unlabelled), and farther than the pole (distance from the measured line or the
+   design grid). The other 8 poles keep the v1 capsule. The planes are world-fixed, so no pixel correction is needed.
+3. **Perturbations clamped** to the paddock inset by 1 in: 2 283 of 27 856 perturbed positions clamped.
+
+Unchanged: rat model, classes, mask, checks, house_2 on the calibration pose. **v1 → v2 (pooled):** episodes hidden 10.3 →
+5.0 %, partly 4.7 → 5.0 %, clear 51.3 → 50.7 %, ambiguous 33.7 → 39.3 %; seconds 11.7 → 5.2 / 9.1 → 10.6 / 49.0 → 48.8 /
+30.2 → 35.5 %. The robustly hidden B2 episodes become ambiguous (CH01 sees B2 as 9.4° wide, narrower than v1's capsule,
+so a 7-in WISER move leaves the wedge); C1 drops out (95 % of its v1 seconds had the unclamped ring crossing a wall) and
+B0 drops out under its label planes (narrower than v1's design-grid capsule, which missed the labels by 41 px); house_1's
+hidden episodes become ambiguous at the fitted pose. Nothing is flagged in v2. Per-episode classes stay sealed.
