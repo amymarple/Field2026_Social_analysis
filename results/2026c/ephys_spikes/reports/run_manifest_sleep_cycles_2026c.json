@@ -1,0 +1,13 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_cycles_20261006_1852",
+  "driver": "ephys/sleep_cycles.py",
+  "git_commit": "0555a7b+dirty",
+  "written_utc": "2026-10-06T23:18:38+00:00",
+  "states": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s",
+  "states_s3": "D:/3rd_rat_spikes/analysis/sleep_server/sleep_states_1s_nremgate",
+  "dt_s": 10,
+  "ma_s": 20,
+  "extra_exclude": {
+    "SF07/2_20260905_093310.289": "SW threshold failure, unresolved (user 2026-10-06)"
+  }
+}
