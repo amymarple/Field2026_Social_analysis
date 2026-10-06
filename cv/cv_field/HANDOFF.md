@@ -8,6 +8,9 @@ verified at `D:\Field2026_analysis_out\2026a\social_field_rat_backup_20261005\`;
 v5 has been run on one cohort-3 CH01 night hour with review clips for the user — see
 `change_log/2026-10-05-c1-yolo-transfer-sam3.md` (drivers `backup_social_field_rat.py`, `sam3_vs_yolo_c1.py`,
 `c1_yolo_video_test.py`).
+**2026-10-05 (later):** `wiser_assist_p0.py` maps WISER onto that CH01 hour (accepted: test median 4.39 in, L 0.0 s) and
+lists suspected YOLO misses for the user (never boxes); WISER presence at the fixed spots is **sealed** in the run's
+`wiser_spots.csv` until the user's spot verdicts — `change_log/2026-10-05-wiser-assisted-yolo-p0.md`.
 
 ## TL;DR — what this is and where it stands
 

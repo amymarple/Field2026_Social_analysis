@@ -7,7 +7,7 @@ commits only, not pushed). Status: **final** = written and committed; **in progr
 job when this file was written; **planned** = not yet produced.
 
 Plans and logs (start here): `REPO/implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md` (steps 0–3 + dated
-amendments), `REPO/implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md` (the WISER phase, planned),
+amendments), `REPO/implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md` (the WISER phase, done 2026-10-05; section G),
 `REPO/change_log/2026-10-05-c1-yolo-transfer-sam3.md`. Commits: `c76af8c` (plan, before results), `bea8c9d` (steps
 0–3 code, reports, docs), `951300d` (WISER phase-0 plan + this data map), `62309b3` (post-hoc SAM3 prompt "Long Evans
 rat" + fixed-spot diagnostic).
@@ -54,7 +54,7 @@ rat" + fixed-spot diagnostic).
 | Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_c1yolo_video_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_c1yolo_video_2026c.json` | final (fixed-spot section added in `62309b3`) |
 | Code | `REPO/cv/cv_field/c1_yolo_video_test.py` (`--selftest`, `--hour-only`, `--run`, `--steps`); `REPO/cv/cv_field/c1_yolo_fixed_spots.py` (`--selftest`) | final |
 
-## D. WISER inputs (read-only; used by step 2 and by the planned WISER phase)
+## D. WISER inputs (read-only; used by step 2 and by the WISER phase, section G)
 
 | What | Path | Producer |
 |---|---|---|
@@ -68,7 +68,7 @@ rat" + fixed-spot diagnostic).
 | Handling windows, release, population change | `REPO/cv/configs/cohort3_handling_windows.json` | — |
 | Calm / rain periods | `REPO/wiser/configs/wiser_failure_audit_2026c.json` (`periods`, `weather`) ; weather CSVs `F:/weather_data/` | — |
 
-## E. Camera geometry (used by the planned WISER phase)
+## E. Camera geometry (used by the WISER phase, section G)
 
 | What | Path |
 |---|---|
@@ -84,11 +84,19 @@ rat" + fixed-spot diagnostic).
 | Round-0 frames, 60 | `REPO/cv/dataset/rat_pano/images/` (gitignored, local only) |
 | **Frozen test frames, 40 (night 09-05)** | `REPO/cv/dataset/rat_pano_test/images/` — not to be opened by any model run or used for tuning |
 
-## G. Planned WISER phase (nothing exists yet)
+## G. WISER phase 0 (WISER → CH01 mapping, fixed-spot presence, suspected misses)
 
-Run folder `$OUT/2026c/cv_field_wiser_assist_p0_<ts>/`, report
-`REPO/results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`, pointer
-`run_manifest_wiser_assist_p0_2026c.json`, code `REPO/cv/cv_field/wiser_assist_p0.py` — see the plan.
+| What | Path | Status |
+|---|---|---|
+| Code | `REPO/cv/cv_field/wiser_assist_p0.py` (`--selftest` 22 checks, `--run`) | final |
+| **Run folder (canonical)** | `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/` | final |
+| Mapping (A) | `mapping.json` (selection, accepted map d / θ / s / L, acceptance, fit histories), `model_selection.csv` (inner validation, fit blocks 3, 7, 11), `pairs.csv.gz` (one row per A detection, all blocks, role), `residuals_test.csv`, `residuals_test_by_x.csv`, `control.json`, `lag_profiles.csv` | final — accepted |
+| **Fixed-spot WISER presence (B)** | `wiser_spots.csv` (122 rows: 2 spot summaries + 120 spot-minutes) | **sealed** until the user's verdicts in `cv_field_c1yolo_video_20261005_1848/fixed_spots/fixed_spots_review.csv`; the agreement table is a later step |
+| Suspected misses (C) | `support_polygon.json` (CH01 ground support), `fn_episodes.csv` (`kind = suspected_miss`; never boxes), `fn_grid.csv` | final; for the user's eyes |
+| Run metadata | `run.json` (inputs + sha256, calibration files, versions, no B numbers), `run_log.txt` | final |
+| Superseded first run | `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2158/` (`SUPERSEDED.txt`: model chosen on the test blocks; same map, B file byte-identical, same verdict) | record only |
+| Report, figures, pointer | `REPO/results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`, `REPO/results/2026c/cv_field/figures/wiser_assist_p0/*.png` (4, no B figure), `REPO/results/2026c/cv_field/reports/run_manifest_wiser_assist_p0_2026c.json` | final |
+| Plan, change log | `REPO/implementation_plan/2026-10-05-wiser-assisted-yolo-p0.md` (amendment 1 before results, 2–3 after), `REPO/change_log/2026-10-05-wiser-assisted-yolo-p0.md` | final |
 
 ## Rules an auditor should hold the work to
 

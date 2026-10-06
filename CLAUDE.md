@@ -322,6 +322,12 @@ review clips with `index.html` → `$OUT_ROOT/2026c/cv_field_c1yolo_video_<ts>/`
 `results/2026c/cv_field/reports/cv_field_c1yolo_video_2026c.md`): count ρ 0.10 vs WISER (plausibility only, awaiting the
 user's review; the user saw many fixed-position false positives / negatives → `c1_yolo_fixed_spots.py --run <run>` maps them from the cached detections into `<run>/fixed_spots/index.html` for the user's verdicts). Reolink PTS come in bursts (frames < 1 ms apart) — join frames by PTS at 1 µs, and seek a frame with
 `grab_frames.grab` at the midpoint to the previous PTS. Plan `implementation_plan/2026-10-05-c1-yolo-transfer-sam3.md`.
+**WISER-assisted YOLO phase 0** (`wiser_assist_p0.py --run`, plan `2026-10-05-wiser-assisted-yolo-p0.md`, 2026-10-05): on that
+CH01 hour, WISER default tracks → paddock = similarity d (−272.85, −605.80) in, θ 0.11°, s 0.963, L 0.0 s, chosen on fit
+blocks only; test median 4.39 in, 88.5 % of boxes with an animal ≤ 14 in vs 2.9 % (+1 h control) → **accepted** (one hour,
+CH01 only). → `$OUT_ROOT/2026c/cv_field_wiser_assist_p0_<ts>/` (`mapping.json`, `fn_episodes.csv` = suspected YOLO misses,
+never boxes; `wiser_spots.csv` = WISER presence at the fixed spots, **sealed until the user's spot verdicts**), report
+`results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`. WISER only adds presence, never a negative.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

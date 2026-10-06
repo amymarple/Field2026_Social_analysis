@@ -1,7 +1,10 @@
 # WISER-assisted YOLO, phase 0: WISER → CH01 mapping, WISER presence at the fixed spots, missed-rat candidates
 
-Date: 2026-10-05. Status: **PLANNED** — the user agreed to having this written as a plan ("可以"); it runs only after
-the user approves this file. Pre-registered before any result; amendments dated and marked *before* or *after results*.
+Date: 2026-10-05. Status: **DONE 2026-10-05** (approved "可以试试" 2026-10-05; run
+`$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211`, report
+`results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`; amendment 1 before results, 2–3 after results). The
+user agreed to having this written as a plan ("可以"). Pre-registered before any result; amendments dated and marked
+*before* or *after results*.
 Every data location involved is listed in [`cv/cv_field/DATA_MAP_c1yolo_wiser.md`](../cv/cv_field/DATA_MAP_c1yolo_wiser.md).
 
 ## Why
@@ -94,3 +97,92 @@ scratch.
 ## Cost
 
 CPU only, ≈ 10–20 min (3 600 frames × ≤ 10 boxes, grid search, two fits, control).
+
+## Amendments
+
+### Amendment 1 — 2026-10-05, *before results*: implementation clarifications
+
+Written after the code and its synthetic self-test, before the driver touched the real hour. None changes a
+threshold, a split or the acceptance rule; each fixes a choice the plan left open.
+
+1. **Frame per second** = the frame whose PTS is nearest each whole second s = 0 … 3 599 after the file-name start.
+2. **WISER time**: `t_ms` (WISER = field-PC clock), local = UTC − 4 h. `t_al_ms` is not used; L absorbs WISER's
+   0.1–0.2 s fix latency (below the 0.5-s grid). **Interpolation**: linear between the two bracketing clean fixes only
+   when they are ≤ 5 s apart, else the animal is not located at that time; IMU state = that of the nearer fix.
+   *Outside the houses* = not inside either `wiser_rois.json` house rectangle grown by 14 in, judged on the
+   interpolated position.
+3. **Box mapping**: box centre at z = 60 mm, `to_paddock` evaluated once per whole-second window (frames with PTS
+   within ± 0.5 s) at that second's time; the correction moves by a fraction of a pixel per hour. A frame whose
+   correction flag is not `ok` loses all its boxes; a NaN (outside the verified support) loses that box; both counted.
+   **Fixed-spot exclusion** (A): box centre inside a 40-px cell with occupancy ≥ 5 % in the step-2
+   `fixed_spots/cells.csv.gz` (= the cells of the two spots).
+4. **Coarse grid** evaluated at L = 0; its centre = mean paddock position of the fit detections − mean WISER position
+   of the animals outside the houses over all fit seconds; ties → the grid point nearest the centre.
+5. **L choice** at each iteration: minimise the mean truncated Huber cost of the per-second Hungarian assignment,
+   C(L) = mean over fit detections of ρ₆(min(r, 30)), an unmatched detection costing ρ₆(30); ties → smallest |L|.
+   **Hungarian cost** = Euclidean distance capped at the 30-in gate; pairs beyond the gate dropped. **Huber LS** =
+   IRLS on the residual norm (k = 6 in). Convergence: d moves < 0.1 in (max 50 iterations); L is then re-chosen once
+   at the final d.
+6. **Similarity**: p = s R(θ)(w − c) + c + d with c = the mean WISER position of the final primary fit pairs (so its d
+   is comparable with the primary d); weighted Umeyama under Huber weights; the same L / Hungarian loop, starting from
+   the primary fit; converged when no fit pair's mapped position moves ≥ 0.1 in. Acceptance (A5) is judged on the
+   primary model; if the similarity is adopted (≥ 10 % better test median) B and C use it.
+7. **Test statistics**: residual median / p90 over the test Hungarian pairs (truncated at 30 in by the gate; the
+   matched share is reported with it). Within-14-in share = per test detection, nearest animal outside the houses (no
+   one-to-one constraint), denominator = all test detections. IMU split: still = `imu_state` 1, moving = 2 (active) or
+   3 (locomoting), also reported separately, plus 0 (unusable); residuals grouped by the matched animal's state, the
+   within-14 share by the nearest animal's state.
+8. **Negative control**: WISER queried at frame time + 3 600 s + L, L on the same ± 90-s grid relative to that shift;
+   own coarse grid, own fit; evaluated on the test blocks with its own (d, L).
+9. **B**: spot centre = the median pano centre in `fixed_spots.csv`, mapped at the time of the spot's middle frame
+   (`frame_middle`). Minute *on* = the step-2 per-minute occupancy (`occ_minNN`, boxes ≥ 0.25) ≥ 0.5. Per second the
+   distance to the nearest located animal (in or out of houses) at second + L; minute distance = median over the
+   minute's seconds with ≥ 1 animal located; minute's animal = the most frequent per-second nearest one; its still
+   share = share of the minute's seconds (where it is located) with `imu_state` 1; *still animal within 14 in* =
+   minute distance ≤ 14 in and still share ≥ 0.5. Spearman ρ over the 60 minutes. `wiser_spots.csv` holds one row per
+   spot (summary) and per spot-minute (`level` column).
+10. **C**: support = union of the 40-px pixel cells whose four corners map (to_paddock at 21:30, z = 60 mm), rasterised
+    at 1 in, its outline = the raster's external contours; nearest grid point = nearest mapped 40-px cell centre.
+    Boxes for a miss = the sampled frame's boxes with conf ≥ 0.25, fixed-spot boxes included. Episodes = strictly
+    consecutive miss seconds. Added descriptive columns (no threshold): share of the frames within ± 0.5 s of each
+    episode second holding a box within 20 in (a flicker indicator), seconds without any box, nearest-box distance.
+11. **Blinding of B**: B's numbers go only to `wiser_spots.csv`; the driver prints only the file name and row count,
+    and the report, `run.json`, `mapping.json` and the figures carry none.
+
+### Amendment 2 — 2026-10-05, *after results* (external review relayed by the user): model selection on the fit blocks only
+
+**Why.** A4 picked between the translation (d) and the similarity (θ, s, d) by the test-block residual and A5 then
+judged acceptance on the same test blocks, which turns the test blocks into a validation set.
+
+**Change.** The model and its lag L are chosen on the fit blocks only: both models fitted on fit blocks 1, 5, 9 and
+compared on fit blocks 3, 7, 11 (inner validation); the "≥ 10 % better" rule now applies to the inner-validation median
+residual. The chosen model is refitted (with its L) on all six fit blocks. The test blocks (2, 4, …, 12) are used once,
+for the acceptance verdict and the reported test numbers of the chosen model; A5 reads "the chosen model's test median
+≤ 14 in and the control's within-14-in share ≤ half the chosen model's". The negative control is unchanged (translation,
+six fit blocks). Also made explicit in code and report (both already the plan's intent): WISER never creates a negative
+(an animal WISER does not locate is unknown, never "no rat"; nothing is marked empty), and C episodes are *suspected
+misses* (`kind = suspected_miss`), never boxes — an occluded animal must not get a box.
+
+**Old vs new selection** (part A had already run when this arrived):
+
+| | first run `cv_field_wiser_assist_p0_20261005_2158` (superseded) | amended run `cv_field_wiser_assist_p0_20261005_2211` |
+|---|---|---|
+| selection basis | test blocks: median translation 5.54 in vs similarity 4.39 in, gain 20.8 % | inner validation (3, 7, 11): translation 6.03 in vs similarity 4.17 in, gain 30.9 % |
+| model chosen | similarity | similarity |
+| map, L (six fit blocks) | d = (−272.85, −605.80) in, θ 0.114°, s 0.9634, L 0.0 s | identical |
+| acceptance judged on | translation's test median 5.54 in; within-14 87.1 % vs control 2.9 % | similarity's test median 4.39 in; within-14 88.5 % vs control 2.9 % |
+| verdict | accepted | **accepted — unchanged** |
+
+Because the chosen model and its refit are identical, B (`wiser_spots.csv`, byte-identical by sha256; never opened) and C
+(`fn_episodes.csv` identical apart from the new `kind` column) are unchanged. The first run folder carries
+`SUPERSEDED.txt`.
+
+### Amendment 3 — 2026-10-05, *after results*: descriptive diagnostics (no decision depends on them)
+
+Added to the amended run and its report: test residuals and within-14-in shares by 80-in paddock x band, with the signed
+median residual per axis (a local mapping offset would show there), in `residuals_test_by_x.csv`; the lag-cost shape
+(relative cost at L ± 0.5 s; the L range within 5 % of the minimum); how many test detections without an outside animal
+within 14 in have an in-house-zone animal within 14 in; the C cell with the most suspected-miss seconds and the part-A
+residual of the detections inside it; a top-5 table of `fn_grid.csv`. Reason: the first report showed a strong
+cluster of suspected misses at the paddock's +x end, and whether the map is locally off there decides how the user should
+read it (it is not: the 106 detections inside that cell match with median residual 5.0 in).
