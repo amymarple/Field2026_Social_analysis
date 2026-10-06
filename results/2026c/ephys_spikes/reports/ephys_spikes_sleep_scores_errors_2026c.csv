@@ -1,0 +1,6 @@
+animal,session,variant,error,written_utc
+SF07,11_20260904_140054.476,imu_nremgate,SystemExit: 11_20260904_140054.476: IMU has frozen / invalid / NaN samples - excluded time is not supported yet (see docstring),2026-10-06T02:42:56+00:00
+SF07,12_20260910_204411.854,imu_nremgate,SystemExit: 12_20260910_204411.854: IMU has frozen / invalid / NaN samples - excluded time is not supported yet (see docstring),2026-10-06T02:42:56+00:00
+SF07,9_20260906_194035.495,imu_nremgate,SystemExit: 9_20260906_194035.495: IMU has frozen / invalid / NaN samples - excluded time is not supported yet (see docstring),2026-10-06T02:43:11+00:00
+SF11,13_20260906_195234.827,imu_nremgate,SystemExit: 13_20260906_195234.827: IMU has frozen / invalid / NaN samples - excluded time is not supported yet (see docstring),2026-10-06T03:05:33+00:00
+SF12,14_20260902_191103.245,imu_nremgate,SystemExit: 14_20260902_191103.245: IMU has frozen / invalid / NaN samples - excluded time is not supported yet (see docstring),2026-10-06T03:08:49+00:00
