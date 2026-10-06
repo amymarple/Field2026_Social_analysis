@@ -1896,8 +1896,11 @@ def compose_frame(img: np.ndarray, ov: dict, r: int, x0y0, labels, ep_j: int, cl
         cv2.putText(panel, txt, (int(24 * k), y), cv2.FONT_HERSHEY_SIMPLEX, fs * s, col, max(1, int(th * k + 0.5)), cv2.LINE_AA)
         y += int(lh * s)
 
+    if clip.get("per_episode"):                               # per-episode clips (2026-10-06): the target, large
+        put(f"TARGET: {clip['animal']} (episode {clip['episode_id']})", RED, 1.9, 4)
     put(f"CH01  {t:%Y-%m-%d %H:%M:%S}.{t.microsecond // 1000:03d} field-PC   frame {fidx}")
-    put(f"clip {clip['k']}   episode {clip['episode_id']}   {clip['animal']}", RED)
+    if not clip.get("per_episode"):
+        put(f"clip {clip['k']}   episode {clip['episode_id']}   {clip['animal']}", RED)
     put("SUSPECTED MISS (WISER proposal, not a box)", RED)
     s0, s1 = clip["episode_start_sec"], clip["episode_end_sec"]
     tt = (t - HOUR_START).total_seconds()
@@ -2084,6 +2087,100 @@ def write_clip_index(cdir: Path, rows: list[dict], meta: dict) -> None:
                  f"<video controls preload='metadata' src='{_h.escape(r['file'])}'></video>")
     H.append("</body></html>")
     (cdir / "index.html").write_text("\n".join(H), encoding="utf-8")
+
+
+EP_PAD, EP_CAP = 3.0, 90.0
+
+
+def episode_windows(ep: pd.DataFrame, ids: list[int], n_sec: int = 3600) -> list[dict]:
+    """One window per episode: [start - 3 s, end + 3 s] (end inclusive second), capped at 90 s from its start."""
+    out = []
+    for e in ids:
+        r = ep.loc[e]
+        w0 = max(0.0, float(r.start_sec) - EP_PAD)
+        w1 = min(float(n_sec), float(r.end_sec) + EP_PAD, w0 + EP_CAP)
+        out.append({"episode_id": int(e), "animal": str(r.animal), "w0": w0, "w1": w1, "episode_start_sec": int(r.start_sec),
+                    "episode_end_sec": int(r.end_sec), "episode_duration_s": int(r.duration_s), "start_t_pc": str(r.start_t_pc),
+                    "pano_u": int(r.pano_u), "pano_v": int(r.pano_v), "capped": bool(float(r.end_sec) + EP_PAD > w0 + EP_CAP)})
+    return out
+
+
+def run_episode_clips(run: Path, step2: Path = STEP2_RUN, only: int | None = None) -> int:
+    """One review clip per covered episode (2026-10-06, the user's bug report: in the 12 shared clips the crop and the red
+    circle follow only each clip's primary animal). Same renderer as run_clips; this episode's animal is the red target,
+    the panel shows "TARGET: SFxx (episode N)". -> <run>/review_clips_per_episode/ep<id>_<animal>_<HH-MM-SS>.mp4."""
+    import c1_yolo_video_test as cvt
+    t_start = time.perf_counter()
+    prm = Params()
+    cdir = run / "review_clips_per_episode"
+    cdir.mkdir(exist_ok=True)
+    logf = open(cdir / "clips_log.txt", "a", encoding="utf-8")
+
+    def log(msg):
+        print(msg, flush=True)
+        logf.write(msg + "\n")
+        logf.flush()
+
+    mj = json.loads((run / "mapping.json").read_text(encoding="utf-8"))
+    am = mj["accepted_map"]
+    m = Map(float(am["dx_in"]), float(am["dy_in"]), float(np.radians(am["theta_deg"])), float(am["scale"]),
+            float(am["centre_wiser_in"][0]), float(am["centre_wiser_in"][1]))
+    L = float(mj["accepted_L_s"])
+    mapdesc = (f"accepted map ({mj['adopted']}): d ({am['dx_in']:.2f}, {am['dy_in']:.2f}) in, theta {am['theta_deg']:.3f} deg, "
+               f"s {am['scale']:.4f}, L {L:+.1f} s")
+    clips = pd.read_csv(run / "review_clips" / "clips.csv")
+    covered = []
+    for c in clips.sort_values("k").itertuples():
+        for x in str(c.episodes_covered).split(";"):
+            if int(x) not in covered:
+                covered.append(int(x))
+    ep = pd.read_csv(run / "fn_episodes.csv").set_index("episode_id")
+    wins = episode_windows(ep, covered, prm.n_sec)
+    log(f"per-episode clips: {len(wins)} episodes (deduplicated from {sum(len(str(s).split(';')) for s in clips['episodes_covered'])} "
+        f"clip-episode rows); window [start - {EP_PAD:g}, end + {EP_PAD:g}] s capped at {EP_CAP:g} s; {mapdesc}")
+    s2 = json.loads((step2 / "run.json").read_text(encoding="utf-8"))
+    video = Path(s2["video"])
+    fr = pd.read_csv(step2 / "frames.csv.gz")
+    det = pd.read_csv(step2 / "detections.csv.gz")
+    track_data, _ = load_tracks_real(prm)
+    tracks = Tracks(track_data, prm.gap_max)
+    houses = load_houses()
+    mapper = real_mapper()
+    sup = Support(mapper, HOUR_START + timedelta(seconds=prm.n_sec / 2), prm)
+    ff, ffprobe = cvt.gf.find_ffmpeg()
+    old_of = {e: [int(c.k) for c in clips.itertuples() if str(e) in str(c.episodes_covered).split(";")] for e in covered}
+    rows = []
+    for w in wins:
+        name = f"ep{w['episode_id']}_{w['animal']}_{w['start_t_pc'][11:19].replace(':', '-')}.mp4"
+        if only is not None and w["episode_id"] != only:
+            continue
+        clip = {**w, "k": 0, "per_episode": True}
+        st = render_clip(video, clip, fr, det, tracks, houses, m, L, sup, mapper, HOUR_START, prm, cdir / name, ff, mapdesc)
+        st["frames_probe"] = probe_frames(ffprobe, cdir / name)
+        st["frames_check"] = bool(st["frames_probe"] == st["frames_expected"] == st["frames_written"] and st["encoder_rc"] == 0)
+        log(f"  {name}: {st['frames_written']} / {st['frames_expected']} frames, ffprobe {st['frames_probe']}, check {st['frames_check']}, "
+            f"target drawn in {st['episode_animal_frames_ok']} frames, {st['render_s']} s")
+        rows.append({"file": name, "episode_id": w["episode_id"], "animal": w["animal"], "old_clips": ";".join(map(str, old_of[w["episode_id"]])),
+                     "window": f"{fmt_hms(w['w0'])} -> {fmt_hms(w['w1'])}", "window_start_sec": w["w0"], "window_end_sec": w["w1"],
+                     "duration_s": round(w["w1"] - w["w0"], 1), "episode_start_sec": w["episode_start_sec"],
+                     "episode_end_sec": w["episode_end_sec"], "episode_duration_s": w["episode_duration_s"], "capped": w["capped"],
+                     "frames_expected": st["frames_expected"], "frames_written": st["frames_written"], "frames_probe": st["frames_probe"],
+                     "frames_check": st["frames_check"], "frames_unmatched_pts": st["frames_unmatched_pts"],
+                     "packet_errors": st["packet_errors"], "target_frames_drawn": st["episode_animal_frames_ok"],
+                     "inverse_roundtrip_max_in": st["inverse_roundtrip_max_in"], "bytes": st["bytes"], "render_s": st["render_s"]})
+    if only is None:
+        df = pd.DataFrame(rows)
+        df.to_csv(cdir / "clips_per_episode.csv", index=False)
+        summ = {"n_clips": int(len(df)), "n_clip_episode_rows_before": int(sum(len(str(s).split(";")) for s in clips["episodes_covered"])),
+                "total_video_s": float(df["frames_written"].sum() / CLIP_FPS), "frames_total": int(df["frames_written"].sum()),
+                "all_frame_checks": bool(df["frames_check"].all()), "n_capped_90s": int(df["capped"].sum()),
+                "runtime_s": round(time.perf_counter() - t_start, 1), "rule": f"[start - {EP_PAD:g}, end + {EP_PAD:g}] s capped at {EP_CAP:g} s",
+                "canvas": [prm.width // 2, prm.height], "fps": CLIP_FPS, "video": video.as_posix(), "map": mapdesc, "git_commit": git_commit(REPO)}
+        (cdir / "clips_summary.json").write_text(json.dumps(jsonable(summ), indent=2), encoding="utf-8")
+        log(f"per-episode clips done: {summ['n_clips']} clips, {summ['total_video_s']:.0f} s of video, all checks {summ['all_frame_checks']}, "
+            f"{summ['runtime_s']} s")
+    logf.close()
+    return 0
 
 
 def run_clips(run: Path, step2: Path = STEP2_RUN, only: int | None = None) -> int:
@@ -2492,11 +2589,16 @@ def main(argv=None) -> int:
     ap.add_argument("--clips", default=None, help="amendment 4: render the suspected-miss review clips of this phase-0 run "
                                                   "into <run>/review_clips/ (cv env: PyAV)")
     ap.add_argument("--clip-only", type=int, default=None, help="render only clip k (a timing check; writes no tables)")
+    ap.add_argument("--episode-clips", default=None, help="one review clip per covered episode of this phase-0 run -> "
+                                                          "<run>/review_clips_per_episode/ (cv env, PyAV)")
+    ap.add_argument("--episode-only", type=int, default=None, help="render only this episode id (a timing check; writes no tables)")
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
     if a.clips:
         return run_clips(Path(a.clips), Path(a.step2), a.clip_only)
+    if a.episode_clips:
+        return run_episode_clips(Path(a.episode_clips), Path(a.step2), a.episode_only)
     if not a.run:
         ap.error("nothing to do (--run or --selftest)")
     return run_real(Path(a.step2), Path(a.out) if a.out else None)

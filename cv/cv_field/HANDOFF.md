@@ -16,6 +16,8 @@ lists suspected YOLO misses for the user (never boxes); WISER presence at the fi
 cohort pose in `cv/configs/house1_cohort_pose_2026c.json` — `change_log/2026-10-06-ch01-occlusion-geometry.md`.
 **Review GUI (2026-10-06):** `D:\Field2026_analysis_out\2026c\cv_field_c1yolo_review_gui_20261006_1614\index.html` (`c1yolo_review_gui.py --build`) —
 click verdicts for the 2 fixed spots, then (unlocked) the 59 suspected-miss episodes; Export CSV + JSON → `cv/configs/c1yolo_review_2026c/`.
+Since the user's "frozen viewer" report each episode plays its own clip that follows its animal (`wiser_assist_p0.py --episode-clips`,
+`review_clips_per_episode/`, 58 clips); old Step-2 verdicts migrate automatically.
 **2026-10-06: read [`CAMERA_GEOMETRY_2026c.md`](CAMERA_GEOMETRY_2026c.md) before using any cohort-3 pixel position** —
 how every camera moved (per day, per night, at lid events), house_1's 09-18 move, the landmark names / files and the
 occluder image regions, and the correction table (`frame_correction.Corrections`; nights for CH01–CH06, all day for CH07/CH08).

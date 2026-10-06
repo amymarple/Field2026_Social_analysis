@@ -334,7 +334,8 @@ CH01 only). → `$OUT_ROOT/2026c/cv_field_wiser_assist_p0_<ts>/` (`mapping.json`
 never boxes; `wiser_spots.csv` = WISER presence at the fixed spots, **sealed until the user's spot verdicts**), report
 `results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`. WISER only adds presence, never a negative.
 `--clips <run>` (cv env, PyAV) renders 12 rule-chosen review clips of the suspected misses (pano + crop + panel, WISER
-14-in circles via a Newton inverse of `to_paddock`) → `<run>/review_clips/index.html` + empty `review_template.csv`.
+14-in circles via a Newton inverse of `to_paddock`) → `<run>/review_clips/index.html` + empty `review_template.csv`;
+`--episode-clips <run>` renders one clip per episode that follows THAT animal (`<run>/review_clips_per_episode/`, 58) — the review GUI plays these.
 **CH01 occlusion geometry** (`ch01_occlusion.py --run`, plan `2026-10-06-ch01-occlusion-geometry.md`): rays from CH01's rev g
 centre to each suspected-miss rat; v2: CH01-labelled poles hide by CH01's own edge planes, other poles capsules, gabled
 houses (house_2 calibration pose; house_1 at its fitted cohort pose `cv/configs/house1_cohort_pose_2026c.json`, made by

@@ -1,12 +1,19 @@
 r"""c1yolo_review_gui.py — one clickable review page for the cohort-3 CH01 YOLO work: Step 1 the two YOLO fixed spots (object
-/ rat / unsure), Step 2 the 12 WISER suspected-miss clips (59 clip-episode rows). Replaces typing verdicts into CSVs.
+/ rat / unsure), Step 2 the WISER suspected-miss episodes (58 episodes, one clip each, shown as 59 rows grouped by the 12
+old shared clips; episode 204 sits in two groups). Replaces typing verdicts into CSVs.
 
 Pattern: wiser/scripts/make_wiser_event_review.py (one self-contained index.html, data embedded, works from file://,
 verdicts in localStorage, Export CSV + JSON, Import JSON). Media are referenced by absolute file:/// URLs (nothing is
 copied or re-rendered):
   Step 1  $OUT/2026c/cv_field_c1yolo_video_20261005_1848/fixed_spots/ (locator.png, heatmap.png, crops/, fixed_spots.csv)
-  Step 2  $OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/review_clips/ (12 mp4, clips.csv) + that run's fn_episodes.csv
-          (episode times only) + the step-2 frames.csv.gz (exact seek offsets inside each clip).
+  Step 2  $OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/review_clips_per_episode/ (one mp4 per episode that follows THAT
+          episode's animal, clips_per_episode.csv; wiser_assist_p0.py --episode-clips) + review_clips/clips.csv (the old
+          shared clips, used only to group the rows) + fn_episodes.csv (episode times) + the step-2 frames.csv.gz (seek
+          offsets). The 12 shared clips (review_clips/) followed only each clip's primary animal (the user's bug report
+          2026-10-06), so the page no longer plays them.
+Storage migration (2026-10-06): Step-2 verdicts saved under the old item ids c<k>_ep<id> are mapped on load to ep<id>
+(earliest saved verdict -> verdict_first, latest -> the current verdict; old keys kept as a backup); Import JSON accepts
+the old export format the same way. Step 1 (items spot_1, spot_2, fn_notes) and the storage key are unchanged.
 Step 2 stays locked until both Step-1 spot verdicts are saved (part-B blinding: the WISER circles in the clips reveal what
 part B tests). The page shows no geometry class, occluder or sealed number (it never reads the occlusion run's
 episodes.csv / seconds.csv.gz or phase 0's wiser_spots.csv).
@@ -91,36 +98,43 @@ def spot_payload(step2: Path) -> tuple[list[dict], dict, list[Path]]:
     return spots, imgs, media
 
 
-def clip_payload(step2: Path, p0: Path) -> tuple[list[dict], list[Path]]:
-    cd = p0 / "review_clips"
-    clips = pd.read_csv(cd / "clips.csv")
+def episode_payload(step2: Path, p0: Path) -> tuple[list[dict], list[dict], list[Path]]:
+    """-> (groups = the 12 old shared clips with their rows (episode item ids), unique episodes with their own clip, media).
+    Seek offsets inside each episode's own clip are exact: the clip holds every source frame of its window at 20 fps."""
+    clips = pd.read_csv(p0 / "review_clips" / "clips.csv")
+    pe_dir = p0 / "review_clips_per_episode"
+    pe = pd.read_csv(pe_dir / "clips_per_episode.csv").set_index("episode_id")
     ep = pd.read_csv(p0 / "fn_episodes.csv", usecols=["episode_id", "animal", "start_sec", "end_sec", "duration_s", "start_t_pc",
                                                       "end_t_pc", "start_frame", "end_frame"]).set_index("episode_id")
     fr = pd.read_csv(step2 / "frames.csv.gz", usecols=["frame", "pts_s"])
     pts, fid = fr["pts_s"].to_numpy(float), fr["frame"].to_numpy(int)
-    out, media = [], []
+    groups, episodes, seen, media = [], [], set(), []
     for c in clips.sort_values("k").itertuples():
-        w0, w1 = float(c.window_start_sec), float(c.window_end_sec)
-        cf = fid[(pts >= w0 - 1e-6) & (pts < w1 - 1e-6)]              # the clip's frames, in order (render: every frame, 20 fps)
-        dur = len(cf) / FPS
-        rows = []
-        for e in sorted(int(x) for x in str(c.episodes_covered).split(";")):
-            r = ep.loc[e]
+        ids = sorted(int(x) for x in str(c.episodes_covered).split(";"))
+        groups.append({"k": int(c.k), "window": str(c.window), "primary_animal": str(c.animal), "primary_episode": int(c.episode_id),
+                       "rows": [f"ep{e}" for e in ids]})
+        for e in ids:
+            if e in seen:
+                continue
+            seen.add(e)
+            r, q = ep.loc[e], pe.loc[e]
+            w0, w1 = float(q.window_start_sec), float(q.window_end_sec)
+            cf = fid[(pts >= w0 - 1e-6) & (pts < w1 - 1e-6)]
+            dur = len(cf) / FPS
             s0 = float((cf < int(r.start_frame)).sum()) / FPS
             s1 = float((cf <= int(r.end_frame)).sum()) / FPS
-            rows.append({"item_id": f"c{int(c.k):02d}_ep{e}", "episode_id": e, "animal": str(r.animal),
-                         "start": str(r.start_t_pc)[11:19], "end": str(r.end_t_pc)[11:19], "duration_s": int(r.duration_s),
-                         "seek_s": round(s0, 3), "end_s": round(min(s1, dur), 3), "starts_before_clip": bool(int(r.start_sec) < w0),
-                         "ends_after_clip": bool(int(r.end_sec) >= w1)})
-        media.append(cd / c.file)
-        out.append({"k": int(c.k), "file": c.file, "url": uri(cd / c.file), "main_episode": int(c.episode_id), "main_animal": c.animal,
-                    "window": str(c.window), "duration_s": round(dur, 2), "n_frames": int(len(cf)), "episodes": rows})
-    return out, media
+            media.append(pe_dir / q.file)
+            episodes.append({"item_id": f"ep{e}", "episode_id": e, "animal": str(r.animal), "start": str(r.start_t_pc)[11:19],
+                             "end": str(r.end_t_pc)[11:19], "duration_s": int(r.duration_s),
+                             "clip": {"file": str(q.file), "url": uri(pe_dir / q.file), "window": str(q.window), "duration_s": round(dur, 2),
+                                      "n_frames": int(len(cf)), "seek_s": round(s0, 3), "end_s": round(min(s1, dur), 3),
+                                      "capped": bool(q.capped), "ends_after_clip": bool(int(r.end_sec) >= w1)}})
+    return groups, episodes, media
 
 
 def build_payload(step2: Path = STEP2_RUN, p0: Path = P0_RUN, run_id: str = "gui") -> tuple[dict, list[Path]]:
     spots, imgs, m1 = spot_payload(step2)
-    clips, m2 = clip_payload(step2, p0)
+    groups, episodes, m2 = episode_payload(step2, p0)
     help_ = [
         "Step 1 first. Judge the two fixed spots — places where YOLO keeps a box in the same spot for long stretches of the hour. For each, "
         "look at the locator / heatmap and the four crops (first, middle and last frame with a box, and the nearest frame without one) and "
@@ -128,10 +142,12 @@ def build_payload(step2: Path = STEP2_RUN, p0: Path = P0_RUN, run_id: str = "gui
         "misses (pano x/y or field-PC time + clip) and save that note.",
         "Step 2 unlocks only after both spot verdicts are saved: the WISER circles in the clips show where the tagged rats were, which is "
         "exactly what the fixed-spot test checks, so judge the spots first.",
-        "Step 2: 12 clips of CH01 (field-PC 2026-09-06 21:00–22:00), chosen by rule where a tagged rat (WISER) was in view for ≥ 3 s with no "
-        "YOLO box within 20 in. Top: whole panorama; bottom left: native crop following the episode's rat; bottom right: per-animal panel. Red "
-        "circle = the episode's rat, cyan = other tagged rats, circle radius ≈ 14 in (WISER position ± error); dimmed / dashed = WISER puts it in "
-        "a house zone; green boxes = YOLO v5. Each row under the video is one suspected-miss episode; ⇥ seeks to its start.",
+        "Step 2: one row per suspected-miss episode (a tagged rat, by WISER, in CH01's view for ≥ 3 s with no YOLO box within 20 in), "
+        "grouped by the 12 earlier clips for context; episode 204 sits in two groups but is one item. Selecting a row loads THAT episode's own "
+        "clip (episode start − 3 s to end + 3 s, at most 90 s) and shows 'Now viewing: SFxx, episode N' above the video. In the clip: top = whole "
+        "panorama; bottom left = native crop following the target rat; bottom right = panel with 'TARGET: SFxx (episode N)'. Red circle = the "
+        "target rat, cyan = other tagged rats, radius ≈ 14 in (WISER position ± error); dimmed / dashed = WISER puts it in a house zone; green "
+        "boxes = YOLO v5. ⇥ seeks to the episode start.",
         "Verdicts per episode: visible_missed = the rat is visible and YOLO has no box on it (a real detector miss); occluded = a rat is there but "
         "hidden (choose: pole / house / grass / other) — a hidden rat never gets a box; not_there_wiser_wrong = no rat at or near the red "
         "circle; box_present = YOLO does box the rat; unsure. Notes are free text. Save each episode (Save button or Enter on the selected row).",
@@ -141,9 +157,9 @@ def build_payload(step2: Path = STEP2_RUN, p0: Path = P0_RUN, run_id: str = "gui
     ]
     payload = {"cohort": COHORT, "run_id": run_id, "tool": TOOL, "schema": SCHEMA, "generated": time.strftime("%Y-%m-%d %H:%M"),
                "dest": DEST, "fps": FPS, "spot_verdicts": SPOT_VERDICTS, "ep_verdicts": EP_VERDICTS, "occ_kinds": OCC_KINDS,
-               "sources": {"fixed_spots": (step2 / "fixed_spots").as_posix(), "review_clips": (p0 / "review_clips").as_posix(),
-                           "episodes": (p0 / "fn_episodes.csv").as_posix()},
-               "images": imgs, "spots": spots, "clips": clips, "help": help_}
+               "sources": {"fixed_spots": (step2 / "fixed_spots").as_posix(), "review_clips": (p0 / "review_clips_per_episode").as_posix(),
+                           "groups": (p0 / "review_clips" / "clips.csv").as_posix(), "episodes": (p0 / "fn_episodes.csv").as_posix()},
+               "images": imgs, "spots": spots, "groups": groups, "episodes": episodes, "help": help_}
     return payload, m1 + m2
 
 
@@ -170,8 +186,12 @@ table{border-collapse:collapse}td,th{border-bottom:1px solid var(--line);padding
 textarea{width:100%;min-height:44px}
 .state{font-size:12px;margin-left:6px}
 #locked{padding:14px;color:var(--warn);font-weight:600}
-#clipnav{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px}#clipnav button{font-size:12px}
-#clipnav button.cur{border-color:var(--acc);background:#20324a}
+#s2grid{display:grid;grid-template-columns:minmax(380px,1fr) minmax(0,2fr);gap:12px;align-items:start}
+#eplist{max-height:calc(100vh - 70px);overflow:auto;padding-right:4px}
+#player{position:sticky;top:52px}
+#nowviewing{font-size:24px;font-weight:700;color:#ff6b6b;margin:2px 0 4px}
+.grouphead{color:var(--mut);font-size:12px;margin:12px 0 2px;border-top:1px solid var(--line);padding-top:4px}
+.ep .view{font-weight:600}
 video{width:100%;max-height:72vh;background:#000;border-radius:4px}
 #controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}
 #tread{font-variant-numeric:tabular-nums;color:var(--mut)}
@@ -209,18 +229,22 @@ kbd{border:1px solid var(--line);border-radius:3px;background:#0b0e12;color:var(
  <h2>Step 2 — WISER suspected misses <span class="mut" id="s2prog"></span></h2>
  <div id="locked">Locked: save both Step-1 spot verdicts first (the WISER circles in these clips would reveal what the fixed-spot test checks).</div>
  <div id="s2body" hidden>
-  <div id="clipnav"></div>
-  <div id="cliphead" class="mut"></div>
-  <video id="vid" preload="metadata" playsinline></video>
-  <div id="controls">
-   <button id="bPlay" title="Space">▶ / ❚❚</button>
-   <button id="bBackS" title="Shift+←">−1 s</button><button id="bBackF" title="←">−1 frame</button>
-   <button id="bFwdF" title="→">+1 frame</button><button id="bFwdS" title="Shift+→">+1 s</button>
-   <span>speed</span><button data-r="0.5" title="[">0.5×</button><button data-r="1" title="\">1×</button><button data-r="2" title="]">2×</button>
-   <button id="bSeek" title="j">⇥ selected episode</button>
-   <span id="tread"></span>
+  <div id="s2grid">
+   <div id="eplist"></div>
+   <div id="player">
+    <div id="nowviewing">Select an episode on the left</div>
+    <div id="cliphead" class="mut"></div>
+    <video id="vid" preload="metadata" playsinline></video>
+    <div id="controls">
+     <button id="bPlay" title="Space">▶ / ❚❚</button>
+     <button id="bBackS" title="Shift+←">−1 s</button><button id="bBackF" title="←">−1 frame</button>
+     <button id="bFwdF" title="→">+1 frame</button><button id="bFwdS" title="Shift+→">+1 s</button>
+     <span>speed</span><button data-r="0.5" title="[">0.5×</button><button data-r="1" title="\">1×</button><button data-r="2" title="]">2×</button>
+     <button id="bSeek" title="j">⇥ episode start</button>
+     <span id="tread"></span>
+    </div>
+   </div>
   </div>
-  <div id="eps"></div>
  </div>
 </section>
 </main>
@@ -229,12 +253,13 @@ kbd{border:1px solid var(--line);border-radius:3px;background:#0b0e12;color:var(
 "use strict";
 // ------------------------------------------------------------------ data + pure logic (no DOM; the self-test runs this block in node)
 const DATA = __DATA_JSON__;
-const SPOTS = DATA.spots, CLIPS = DATA.clips;
-const EPS = [];
-CLIPS.forEach(c => c.episodes.forEach(e => EPS.push(Object.assign({clip: c.file, k: c.k}, e))));
+const SPOTS = DATA.spots, GROUPS = DATA.groups, EPS = DATA.episodes;
+const ROWS = [];                                  // displayed rows: grouped by the old shared clips (an episode can sit in two)
+GROUPS.forEach(g => g.rows.forEach(id => ROWS.push({item_id: id, k: g.k})));
 const ITEMS = [].concat(SPOTS.map(s => ({item_id: s.item_id, step: 1, clip: "", animal: "", episode_id: "", kind: "spot"})),
   [{item_id: "fn_notes", step: 1, clip: "", animal: "", episode_id: "", kind: "notes"}],
-  EPS.map(e => ({item_id: e.item_id, step: 2, clip: e.clip, animal: e.animal, episode_id: e.episode_id, kind: "episode"})));
+  EPS.map(e => ({item_id: e.item_id, step: 2, clip: e.clip.file, animal: e.animal, episode_id: e.episode_id, kind: "episode"})));
+function epById(id){ return EPS.find(e => e.item_id === id); }
 let J = {}, reviewer = "";
 function nowIso(){ return new Date().toISOString(); }
 function item(id){ return ITEMS.find(x => x.item_id === id); }
@@ -294,9 +319,44 @@ function csvText(){
   const q = v => { const s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? "\"" + s.replace(/"/g, "\"\"") + "\"" : s; };
   return [cols.join(",")].concat(R.map(r => cols.map(c => q(r[c])).join(","))).join("\r\n") + "\r\n";
 }
+// ---- migration of the old Step-2 item ids c<k>_ep<id> (one per shared clip) to the per-episode ids ep<id>
+function oldToNew(id){ const m = /^c(\d+)_ep(\d+)$/.exec(String(id)); return m ? "ep" + Number(m[2]) : null; }
+function hasContent(j){ return !!(j && (j.saved_at || j.verdict || j.notes)); }
+function mergeOld(entries){
+  // current state = the entry saved last (else the one updated last); verdict_first = the earliest first save of any entry
+  const key = e => String(e.saved_at || e.updated || "");
+  const saved = entries.filter(e => e && e.saved_at);
+  const base = Object.assign({}, (saved.length ? saved : entries).slice().sort((a, b) => key(a).localeCompare(key(b))).pop());
+  if (saved.length) {
+    const fk = e => String(e.first_saved_at || e.saved_at);
+    const first = saved.slice().sort((a, b) => fk(a).localeCompare(fk(b)))[0];
+    base.verdict_first = first.verdict_first || first.s_verdict || "";
+    base.first_saved_at = first.first_saved_at || first.saved_at;
+    base.n_saves = saved.reduce((s, e) => s + (e.n_saves || 1), 0);
+  }
+  return base;
+}
+function migrateState(S, overwrite){
+  const groups = {};
+  Object.keys(S || {}).forEach(k => { const nid = oldToNew(k); if (nid && item(nid) && hasContent(S[k])) (groups[nid] = groups[nid] || []).push(Object.assign({}, S[k], {_from: k})); });
+  let n = 0;
+  Object.keys(groups).forEach(nid => {
+    if (!overwrite && hasContent(J[nid])) return;      // already migrated (or answered under the new id): never overwrite
+    const m = mergeOld(groups[nid]); m.migrated_from = groups[nid].map(e => e._from).sort(); delete m._from;
+    J[nid] = Object.assign(jget(nid), m); n++;
+  });
+  return n;
+}
 function importObject(o){
+  // accepts the current export (state keyed by item ids) and the old one (Step-2 state keyed c<k>_ep<id>); old keys are
+  // also kept in the state as a backup
   const src = (o && o.state) || {}; let n = 0;
-  Object.keys(src).forEach(id => { if (src[id] && item(id)) { J[id] = Object.assign(jget(id), src[id]); n++; } });
+  Object.keys(src).forEach(id => {
+    if (!src[id]) return;
+    if (item(id)) { J[id] = Object.assign(jget(id), src[id]); n++; }
+    else if (oldToNew(id)) J[id] = Object.assign({}, src[id]);
+  });
+  n += migrateState(src, true);
   if (o && o.reviewer && !reviewer) reviewer = o.reviewer;
   return n;
 }
@@ -308,16 +368,17 @@ function fname(ext, stamp){ return DATA.dest.replace(/\//g, "-") + "__review_" +
 const KEY = "c1yolo_review_" + DATA.cohort + "_" + DATA.run_id;
 const $ = id => document.getElementById(id);
 const vid = $("vid");
-let curClip = 0, curEp = 0;
+let curRow = 0, pendingSeek = null, migratedOnLoad = 0;
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 function loadState(){
   try { const s = JSON.parse(localStorage.getItem(KEY) || "null");
     if (s && typeof s === "object") { J = s.judgements || {}; reviewer = s.reviewer || "";
-      if (Number.isInteger(s.curClip) && s.curClip >= 0 && s.curClip < CLIPS.length) curClip = s.curClip; }
+      if (Number.isInteger(s.curRow) && s.curRow >= 0 && s.curRow < ROWS.length) curRow = s.curRow; }
   } catch (e) { console.warn("localStorage unavailable", e); }
+  migratedOnLoad = migrateState(J, false);           // old c<k>_ep<id> verdicts -> ep<id>; the old keys stay as a backup
 }
 function saveState(){
-  try { localStorage.setItem(KEY, JSON.stringify({judgements: J, reviewer: reviewer, curClip: curClip, saved: nowIso()}));
+  try { localStorage.setItem(KEY, JSON.stringify({judgements: J, reviewer: reviewer, curRow: curRow, saved: nowIso()}));
     $("saved").textContent = "autosaved " + new Date().toLocaleTimeString();
   } catch (e) { $("saved").innerHTML = "<span class='warn'>autosave unavailable — Export often</span>"; }
 }
@@ -331,7 +392,7 @@ function progress(){
   const c = counts();
   $("progress").textContent = "Step 1: " + c.spots_saved + " / " + c.n_spots + " · Step 2: " + c.episodes_saved + " of " + c.n_episodes + " done";
   $("s1prog").textContent = "(" + c.spots_saved + " / " + c.n_spots + " saved)";
-  $("s2prog").textContent = "(" + c.episodes_saved + " of " + c.n_episodes + " episodes done)";
+  $("s2prog").textContent = "(" + c.episodes_saved + " of " + c.n_episodes + " episodes done; " + ROWS.length + " rows — episodes shown in two groups share one verdict)";
 }
 // ---------------------------------------------------------------- step 1
 function rasterHtml(m){
@@ -362,43 +423,62 @@ function bindItemControls(root){
 }
 function doSave(id){
   const r = saveItem(id); saveState(); rerender();
-  const m = $("msg_" + id); if (m) m.textContent = r.ok ? "" : r.msg;
-  if (!r.ok && !m) alert(r.msg);
+  const ms = [$("msg_" + id)].concat(Array.from(document.querySelectorAll("[data-msg='" + id + "']"))).filter(Boolean);
+  ms.forEach(m => m.textContent = r.ok ? "" : r.msg);
+  if (!r.ok && !ms.length) alert(r.msg);
   return r.ok;
 }
 // ---------------------------------------------------------------- step 2
+function rowHtml(i){
+  const r = ROWS[i], e = epById(r.item_id), j = jget(e.item_id), c = e.clip;
+  return "<div class='ep" + (i === curRow ? " sel" : "") + "' data-row='" + i + "'><div class='head'><span class='dot " + status(e.item_id) + "'></span>" +
+    "<button class='view' data-view='" + i + "' title='load this episode&#39;s own clip'>▶ view</button><b>episode " + e.episode_id + "</b> · <b>" + esc(e.animal) + "</b>" +
+    " · " + esc(e.start) + " → " + esc(e.end) + " (" + e.duration_s + " s)" + (c.capped ? " <span class='mut'>(clip shows the first 87 s)</span>" : "") +
+    " <button data-seek='" + i + "' title='seek to the episode start in its clip (j)'>⇥ start</button><span class='state'>" + stateLabel(e.item_id) + "</span></div>" +
+    "<div class='vbtns'>" + DATA.ep_verdicts.map(o => "<button data-item='" + e.item_id + "' data-v='" + o[0] + "' title='" + esc(o[1]) + "' class='" + (j.verdict === o[0] ? "on" : "") + "'>" + esc(o[0]) + "</button>").join("") + "</div>" +
+    (j.verdict === "occluded" ? "<div class='vbtns'><span class='mut'>occluded by:</span>" + DATA.occ_kinds.map(o => "<button data-item='" + e.item_id + "' data-occ='" + o[0] + "' class='" + (j.occluder_kind === o[0] ? "on" : "") + "'>" + esc(o[1]) + "</button>").join("") + "</div>" : "") +
+    "<textarea data-notes='" + e.item_id + "' placeholder='notes (optional)'>" + esc(j.notes) + "</textarea>" +
+    "<button class='primary' data-save='" + e.item_id + "'>Save episode " + e.episode_id + "</button><span class='state warn' data-msg='" + e.item_id + "'></span></div>";
+}
 function renderStep2(){
   const open = step2Unlocked();
   $("locked").hidden = open; $("s2body").hidden = !open;
-  if (!open) { if (vid.getAttribute("src")) { vid.pause(); vid.removeAttribute("src"); vid.load(); } return; }
-  $("clipnav").innerHTML = CLIPS.map((c, i) => { const done = c.episodes.filter(e => isSaved(e.item_id)).length;
-    return "<button data-clip='" + i + "' class='" + (i === curClip ? "cur" : "") + "'>" + String(c.k).padStart(2, "0") + " · " + esc(c.main_animal) + " " + esc(c.window.slice(0, 8)) +
-      " <span class='" + (done === c.episodes.length ? "okc" : "mut") + "'>" + done + "/" + c.episodes.length + "</span></button>"; }).join("");
-  $("clipnav").querySelectorAll("button[data-clip]").forEach(b => b.onclick = () => selectClip(+b.dataset.clip));
-  const c = CLIPS[curClip];
-  if (vid.dataset.url !== c.url) { vid.dataset.url = c.url; vid.src = c.url; vid.load(); }
-  $("cliphead").innerHTML = "Clip " + String(c.k).padStart(2, "0") + " · " + esc(c.file) + " · field-PC " + esc(c.window) + " (" + c.duration_s.toFixed(0) + " s, " + c.n_frames + " frames) · " + c.episodes.length + " episode(s)";
-  $("eps").innerHTML = c.episodes.map((e, i) => { const j = jget(e.item_id);
-    return "<div class='ep" + (i === curEp ? " sel" : "") + "' data-ep='" + i + "'><div class='head'><span class='dot " + status(e.item_id) + "'></span><b>episode " + e.episode_id + "</b> · " + esc(e.animal) +
-      " · " + esc(e.start) + " → " + esc(e.end) + " (" + e.duration_s + " s)" + (e.starts_before_clip ? " <span class='mut'>(starts before the clip)</span>" : "") + (e.ends_after_clip ? " <span class='mut'>(continues after the clip)</span>" : "") +
-      " <button data-seek='" + i + "' title='seek the video to this episode (j)'>⇥ " + e.seek_s.toFixed(1) + " s</button><span class='state'>" + stateLabel(e.item_id) + "</span></div>" +
-      "<div class='vbtns'>" + DATA.ep_verdicts.map(o => "<button data-item='" + e.item_id + "' data-v='" + o[0] + "' title='" + esc(o[1]) + "' class='" + (j.verdict === o[0] ? "on" : "") + "'>" + esc(o[0]) + "</button>").join("") + "</div>" +
-      (j.verdict === "occluded" ? "<div class='vbtns'><span class='mut'>occluded by:</span>" + DATA.occ_kinds.map(o => "<button data-item='" + e.item_id + "' data-occ='" + o[0] + "' class='" + (j.occluder_kind === o[0] ? "on" : "") + "'>" + esc(o[1]) + "</button>").join("") + "</div>" : "") +
-      "<textarea data-notes='" + e.item_id + "' placeholder='notes (optional)'>" + esc(j.notes) + "</textarea>" +
-      "<button class='primary' data-save='" + e.item_id + "'>Save episode " + e.episode_id + "</button><span class='state warn' id='msg_" + e.item_id + "'></span></div>"; }).join("");
-  bindItemControls($("eps"));
-  $("eps").querySelectorAll("button[data-seek]").forEach(b => b.onclick = () => { curEp = +b.dataset.seek; seekEp(); rerenderEpsSel(); });
-  $("eps").querySelectorAll(".ep").forEach(d => d.addEventListener("click", ev => { if (ev.target.tagName === "DIV" || ev.target.tagName === "B") { curEp = +d.dataset.ep; rerenderEpsSel(); } }));
+  if (!open) { if (vid.getAttribute("src")) { vid.pause(); vid.removeAttribute("src"); vid.load(); vid.dataset.url = ""; } return; }
+  const box = $("eplist"), top = box.scrollTop;
+  let i = 0, h = "";
+  GROUPS.forEach(g => {
+    h += "<div class='grouphead'>earlier clip " + String(g.k).padStart(2, "0") + " · " + esc(g.window) + " · " + g.rows.length + " episode(s)</div>";
+    g.rows.forEach(() => { h += rowHtml(i); i++; });
+  });
+  box.innerHTML = h; box.scrollTop = top;
+  bindItemControls(box);
+  box.querySelectorAll("button[data-view]").forEach(b => b.onclick = () => selectRow(+b.dataset.view, true));
+  box.querySelectorAll("button[data-seek]").forEach(b => b.onclick = () => { selectRow(+b.dataset.seek, true); });
+  box.querySelectorAll(".ep .head").forEach(d => d.addEventListener("click", ev => { if (ev.target.tagName !== "BUTTON") selectRow(+d.parentNode.dataset.row, true); }));
+  loadCurrent(false);
 }
-function rerenderEpsSel(){ $("eps").querySelectorAll(".ep").forEach(d => d.classList.toggle("sel", +d.dataset.ep === curEp)); }
-function selectClip(i){ curClip = Math.max(0, Math.min(CLIPS.length - 1, i)); curEp = 0; saveState(); rerender(); }
-function seekEp(){ const e = CLIPS[curClip].episodes[curEp]; if (!e) return; vid.pause(); vid.currentTime = Math.max(0, e.seek_s); }
+function loadCurrent(seek){
+  const e = epById(ROWS[curRow].item_id), c = e.clip;
+  $("nowviewing").textContent = "Now viewing: " + e.animal + ", episode " + e.episode_id;
+  $("cliphead").innerHTML = "episode " + esc(e.start) + " → " + esc(e.end) + " (" + e.duration_s + " s) · clip " + esc(c.file) + " · field-PC " + esc(c.window) +
+    " (" + c.duration_s.toFixed(0) + " s) · the episode starts at " + c.seek_s.toFixed(1) + " s of the clip · red circle = this rat";
+  if (vid.dataset.url !== c.url) { vid.dataset.url = c.url; pendingSeek = c.seek_s; vid.src = c.url; vid.load(); }
+  else if (seek) { vid.pause(); vid.currentTime = c.seek_s; }
+}
+function selectRow(i, seek){
+  curRow = Math.max(0, Math.min(ROWS.length - 1, i)); saveState();
+  $("eplist").querySelectorAll(".ep").forEach(d => d.classList.toggle("sel", +d.dataset.row === curRow));
+  const sel = $("eplist").querySelector(".ep.sel"); if (sel) sel.scrollIntoView({block: "nearest"});
+  loadCurrent(seek);
+}
+function seekEp(){ const c = epById(ROWS[curRow].item_id).clip; vid.pause(); vid.currentTime = Math.max(0, c.seek_s); }
 function rerender(){ renderSpots(); renderStep2(); progress(); }
-function clockAt(t){ const c = CLIPS[curClip]; return c.window.slice(0, 8) + " + " + t.toFixed(2) + " s"; }
-function drawTread(){ $("tread").textContent = "clip " + (vid.currentTime || 0).toFixed(2) + " s · " + clockAt(vid.currentTime || 0) + " · " + vid.playbackRate + "×"; }
+function curClip(){ return epById(ROWS[curRow].item_id).clip; }
+function drawTread(){ const c = curClip(); $("tread").textContent = "clip " + (vid.currentTime || 0).toFixed(2) + " s · field-PC " + c.window.slice(0, 8) + " + " + (vid.currentTime || 0).toFixed(2) + " s · " + vid.playbackRate + "×"; }
+vid.addEventListener("loadedmetadata", () => { if (pendingSeek != null) { vid.currentTime = Math.max(0, pendingSeek); pendingSeek = null; } });
 ["seeked", "timeupdate", "pause", "loadeddata", "ratechange"].forEach(n => vid.addEventListener(n, drawTread));
-vid.addEventListener("error", () => { $("tread").innerHTML = "<span class='warn'>cannot load " + esc(CLIPS[curClip].url) + " — the clip must stay at that path</span>"; });
-function stepBy(dt){ vid.pause(); vid.currentTime = Math.max(0, Math.min((vid.duration || CLIPS[curClip].duration_s) - 0.001, (vid.currentTime || 0) + dt)); }
+vid.addEventListener("error", () => { if (vid.dataset.url) $("tread").innerHTML = "<span class='warn'>cannot load " + esc(vid.dataset.url) + " — the clip must stay at that path</span>"; });
+function stepBy(dt){ vid.pause(); vid.currentTime = Math.max(0, Math.min((vid.duration || curClip().duration_s) - 0.001, (vid.currentTime || 0) + dt)); }
 function setRate(r){ vid.playbackRate = r; vid.defaultPlaybackRate = r; drawTread(); }
 $("bPlay").onclick = () => { vid.paused ? vid.play() : vid.pause(); };
 $("bBackS").onclick = () => stepBy(-1); $("bFwdS").onclick = () => stepBy(1);
@@ -418,10 +498,9 @@ document.addEventListener("keydown", e => {
   else if (k === "ArrowRight") { e.preventDefault(); stepBy(e.shiftKey ? 1 : 1 / DATA.fps); }
   else if (k === "[") setRate(0.5); else if (k === "\\") setRate(1); else if (k === "]") setRate(2);
   else if (k === "j") seekEp();
-  else if (k === "ArrowDown") { e.preventDefault(); curEp = Math.min(CLIPS[curClip].episodes.length - 1, curEp + 1); rerenderEpsSel(); }
-  else if (k === "ArrowUp") { e.preventDefault(); curEp = Math.max(0, curEp - 1); rerenderEpsSel(); }
-  else if (k === "n") selectClip(curClip + 1); else if (k === "p") selectClip(curClip - 1);
-  else if (k === "Enter") { e.preventDefault(); const ep = CLIPS[curClip].episodes[curEp]; if (ep) doSave(ep.item_id); }
+  else if (k === "ArrowDown" || k === "n") { e.preventDefault(); selectRow(curRow + 1, true); }
+  else if (k === "ArrowUp" || k === "p") { e.preventDefault(); selectRow(curRow - 1, true); }
+  else if (k === "Enter") { e.preventDefault(); doSave(ROWS[curRow].item_id); }
 });
 // ---------------------------------------------------------------- export / import
 function stamp(){ const d = new Date(), p = n => String(n).padStart(2, "0"); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "_" + p(d.getHours()) + p(d.getMinutes()); }
@@ -498,12 +577,13 @@ def page_checks(html: Path) -> dict:
     txt = html.read_text(encoding="utf-8")
     ext = sorted(set(re.findall(r"(?:src|href)\s*=\s*['\"](https?://[^'\"]+)", txt)) | set(re.findall(r"https?://[^\s'\"<>)]+", txt)))
     D = embedded_data(html)
-    n_ep = sum(len(c["episodes"]) for c in D["clips"])
-    urls = [D["images"]["locator"], D["images"]["heatmap"]] + [c["url"] for s in D["spots"] for c in s["crops"] if c["url"]] + [c["url"] for c in D["clips"]]
+    n_rows = sum(len(g["rows"]) for g in D["groups"])
+    urls = [D["images"]["locator"], D["images"]["heatmap"]] + [c["url"] for s in D["spots"] for c in s["crops"] if c["url"]] + [e["clip"]["url"] for e in D["episodes"]]
     forbidden = [w for w in ("cv_field_ch01_occlusion", "hidden_share", "h_mean", "geometry class", "category", "occluder_nominal",
                              "wiser_spots", "seconds.csv", "hotspot", "paddock_x", "pano_u") if w in json.dumps(D)]
     okj, msg = check_js(html)
-    return {"n_spots": len(D["spots"]), "n_clips": len(D["clips"]), "n_episode_rows": n_ep, "external_urls": ext,
+    return {"n_spots": len(D["spots"]), "n_groups": len(D["groups"]), "n_episodes": len(D["episodes"]), "n_episode_rows": n_rows,
+            "n_episode_clips": len({e["clip"]["file"] for e in D["episodes"]}), "external_urls": ext,
             "all_media_file_uris": all(u.startswith("file:///") for u in urls), "forbidden_words_in_data": forbidden,
             "node_check": okj, "node_msg": msg, "bytes": html.stat().st_size}
 
@@ -525,11 +605,13 @@ def build(out: Path | None) -> int:
            "sources": payload["sources"], "media_total": int(len(mc)), "media_missing": mc.loc[~mc["exists"], "path"].tolist(),
            "checks": chk, "runtime_s": round(time.perf_counter() - t0, 2)}
     (out / "run.json").write_text(json.dumps(run, indent=2), encoding="utf-8")
-    print(f"page -> {html.as_posix()} ({chk['bytes'] / 1e3:.0f} kB); spots {chk['n_spots']}, clips {chk['n_clips']}, episode rows "
-          f"{chk['n_episode_rows']}; media {len(mc)} referenced, {int((~mc['exists']).sum())} missing; external URLs {chk['external_urls']}; "
-          f"node --check {chk['node_check']}; forbidden words {chk['forbidden_words_in_data']}")
+    print(f"page -> {html.as_posix()} ({chk['bytes'] / 1e3:.0f} kB); spots {chk['n_spots']}, groups {chk['n_groups']}, episodes "
+          f"{chk['n_episodes']} ({chk['n_episode_clips']} own clips), episode rows {chk['n_episode_rows']}; media {len(mc)} referenced, "
+          f"{int((~mc['exists']).sum())} missing; external URLs {chk['external_urls']}; node --check {chk['node_check']}; "
+          f"forbidden words {chk['forbidden_words_in_data']}")
     return 0 if (chk["node_check"] and mc["exists"].all() and not chk["external_urls"] and chk["n_spots"] == 2
-                 and chk["n_episode_rows"] == 59 and not chk["forbidden_words_in_data"]) else 1
+                 and chk["n_episode_rows"] == 59 and chk["n_episodes"] == chk["n_episode_clips"] == 58
+                 and not chk["forbidden_words_in_data"]) else 1
 
 
 # ----------------------------------------------------------------------------------------------- selftest
@@ -565,27 +647,34 @@ def selftest() -> int:
                             "end_t_pc": ["2026-09-06 21:00:19.000", "2026-09-06 21:00:16.000", "2026-09-06 21:00:52.000", "2026-09-06 21:01:00.000"],
                             "start_frame": [200, 280, 800, 1000], "end_frame": [380, 320, 1040, 1200], "paddock_x_in": 1.0})
         eps.to_csv(p0 / "fn_episodes.csv", index=False)
+        # old shared clips (grouping only; episode 3 sits in both, like episode 204) + one clip per episode
         clips = pd.DataFrame({"file": ["01_ep1_SF07_21-00-10.mp4", "02_ep3_SF09_21-00-40.mp4"], "k": [1, 2], "episode_id": [1, 3],
-                              "episodes_covered": ["1;2", "3;4"], "animal": ["SF07", "SF09"], "window": ["21:00:05 -> 21:00:24", "21:00:35 -> 21:00:57"],
+                              "episodes_covered": ["1;2;3", "3;4"], "animal": ["SF07", "SF09"], "window": ["21:00:05 -> 21:00:24", "21:00:35 -> 21:00:57"],
                               "window_start_sec": [5.0, 35.0], "window_end_sec": [24.0, 57.0], "hotspot": ["yes", "no"]})
         clips.to_csv(p0 / "review_clips" / "clips.csv", index=False)
-        for f in clips["file"]:
-            (p0 / "review_clips" / f).write_bytes(b"mp4")
+        (p0 / "review_clips_per_episode").mkdir()
+        pe = pd.DataFrame({"file": ["ep1_SF07_21-00-10.mp4", "ep2_SF08_21-00-14.mp4", "ep3_SF09_21-00-40.mp4", "ep4_SF10_21-00-50.mp4"],
+                           "episode_id": [1, 2, 3, 4], "window": ["21:00:07 -> 21:00:22", "21:00:11 -> 21:00:19", "21:00:37 -> 21:00:55", "21:00:47 -> 21:01:03"],
+                           "window_start_sec": [7.0, 11.0, 37.0, 47.0], "window_end_sec": [22.0, 19.0, 55.0, 63.0], "capped": [False] * 4})
+        pe.to_csv(p0 / "review_clips_per_episode" / "clips_per_episode.csv", index=False)
+        for f in pe["file"]:
+            (p0 / "review_clips_per_episode" / f).write_bytes(b"mp4")
         payload, media = build_payload(s2, p0, "selftest")
         payload["help"].append("a </script> inside the data")
         html = write_html(T, payload)
         D = embedded_data(html)
-        check("payload: 2 spots, 2 clips, 4 episode rows; crops and raster embedded; '</script>' in the data escaped",
-              len(D["spots"]) == 2 and len(D["clips"]) == 2 and sum(len(c["episodes"]) for c in D["clips"]) == 4
+        check("payload: 2 spots, 2 groups, 4 unique episodes shown as 5 rows (episode 3 in both groups); crops and raster embedded; "
+              "'</script>' escaped", len(D["spots"]) == 2 and len(D["groups"]) == 2 and len(D["episodes"]) == 4
+              and sum(len(g["rows"]) for g in D["groups"]) == 5 and D["groups"][0]["rows"][2] == D["groups"][1]["rows"][0] == "ep3"
               and len(D["spots"][0]["minutes"]) == 60 and all(c["url"] for c in D["spots"][0]["crops"])
               and html.read_text(encoding="utf-8").count("</script>") == 2)
-        e1 = D["clips"][0]["episodes"][0]
-        e4 = D["clips"][1]["episodes"][1]
-        check("seek offsets: episode start frame 200 in a clip starting at frame 100 -> 5.0 s; end clamped to the clip",
-              abs(e1["seek_s"] - 5.0) < 1e-9 and abs(e1["end_s"] - 14.05) < 1e-9 and e4["ends_after_clip"] and e4["end_s"] <= D["clips"][1]["duration_s"],
-              f"{e1['seek_s']} {e1['end_s']} {e4}")
-        check("media: every referenced path exists; file:/// URLs only; no network URL in the page",
-              media_check(media)["exists"].all() and len(media) == 2 + 8 + 2 and page_checks(html)["all_media_file_uris"]
+        e1 = D["episodes"][0]
+        check("per-episode clip mapping: each episode has its own clip; seek = episode start in that clip (frame 200 in a clip from frame "
+              "140 -> 3.0 s), end 12.05 s", [e["clip"]["file"] for e in D["episodes"]] == list(pe["file"]) and e1["item_id"] == "ep1"
+              and abs(e1["clip"]["seek_s"] - 3.0) < 1e-9 and abs(e1["clip"]["end_s"] - 12.05) < 1e-9 and abs(e1["clip"]["duration_s"] - 15.0) < 1e-9,
+              str(e1))
+        check("media: every referenced path exists (2 images + 8 crops + 4 episode clips; the old shared clips are not used); file:/// "
+              "URLs only; no network URL", media_check(media)["exists"].all() and len(media) == 2 + 8 + 4 and page_checks(html)["all_media_file_uris"]
               and not page_checks(html)["external_urls"])
         check("no geometry / occluder / sealed fields in the embedded data (the hotspot and paddock columns of the inputs are dropped)",
               not page_checks(html)["forbidden_words_in_data"], str(page_checks(html)["forbidden_words_in_data"]))
@@ -594,6 +683,22 @@ def selftest() -> int:
         harness = script_blocks(html)[0] + r"""
 ;(function(){
   const r = {};
+  // migration of old per-clip ids: episode 3 answered in both groups (c01 at 10:00 = occluded/pole, c02 earlier at 09:00 =
+  // visible_missed), episode 1 once; an unknown old id is ignored
+  J = {c01_ep3: {verdict: "occluded", occluder_kind: "pole", notes: "late", s_verdict: "occluded", s_occluder_kind: "pole", s_notes: "late",
+                 saved_at: "2026-10-06T10:00:00Z", first_saved_at: "2026-10-06T10:00:00Z", verdict_first: "occluded", n_saves: 1},
+       c02_ep3: {verdict: "visible_missed", occluder_kind: "", notes: "early", s_verdict: "visible_missed", s_occluder_kind: "", s_notes: "early",
+                 saved_at: "2026-10-06T09:00:00Z", first_saved_at: "2026-10-06T09:00:00Z", verdict_first: "visible_missed", n_saves: 1},
+       c01_ep1: {verdict: "box_present", s_verdict: "box_present", s_occluder_kind: "", s_notes: "", notes: "", occluder_kind: "",
+                 saved_at: "2026-10-06T08:00:00Z", first_saved_at: "2026-10-06T08:00:00Z", verdict_first: "box_present", n_saves: 1},
+       c09_ep999: {verdict: "unsure", saved_at: "2026-10-06T08:00:00Z"}, spot_1: {verdict: "rat"}};
+  r.mig1 = migrateState(J, false);
+  r.mig2 = migrateState(J, false);
+  r.ep3 = Object.assign({}, J.ep3); r.ep1 = Object.assign({}, J.ep1);
+  r.oldKept = ["c01_ep3", "c02_ep3", "c01_ep1"].every(k => !!J[k]) && !J.ep999;
+  r.spotUntouched = J.spot_1.verdict === "rat" && !J.spot_1.migrated_from;
+  r.migRow = exportRows().find(x => x.item_id === "ep3");
+  J = {};
   const sp1 = SPOTS[0].item_id, sp2 = SPOTS[1].item_id, e1 = EPS[0].item_id, e2 = EPS[1].item_id;
   r.locked0 = step2Unlocked();
   setVerdict(e1, "visible_missed"); r.saveLocked = saveItem(e1);
@@ -615,6 +720,11 @@ def selftest() -> int:
   const n = importObject({state: {[EPS[2].item_id]: {verdict: "occluded", occluder_kind: "house", s_verdict: "occluded", s_occluder_kind: "house",
                                                        saved_at: "2026-10-06T00:00:00Z", verdict_first: "occluded", first_saved_at: "2026-10-06T00:00:00Z"}}, reviewer: "zz"});
   r.imported = n; r.reviewer = reviewer;
+  // the old export format (rows / state keyed c<k>_ep<id>) imports through the same mapping; the old keys are kept
+  const nOld = importObject({schema: "c1yolo_review/1", rows: [{item_id: "c02_ep4", verdict: "unsure"}],
+                             state: {c02_ep4: {verdict: "unsure", s_verdict: "unsure", s_occluder_kind: "", s_notes: "old", notes: "old",
+                                               occluder_kind: "", saved_at: "2026-10-06T07:00:00Z", first_saved_at: "2026-10-06T07:00:00Z", verdict_first: "unsure"}}});
+  r.oldImport = {n: nOld, ep4: Object.assign({}, J.ep4), kept: !!J.c02_ep4};
   r.fname = fname("csv", "20261006_1200");
   process.stdout.write(JSON.stringify({r: r, obj: o, csv: csvText()}));
 })();
@@ -649,6 +759,18 @@ def selftest() -> int:
                   and cr[1]["notes"] == 'a "quoted", note\nline2', str(cr[1]))
             check("import restores saved state; file name starts with the destination folder",
                   R["imported"] == 1 and R["reviewer"] == "zz" and R["fname"].startswith("cv-configs-c1yolo_review_2026c__review_"), R["fname"])
+            e3, m1 = R["ep3"], R["migRow"]
+            check("migration: old c<k>_ep<id> -> ep<id>; the duplicate episode keeps the EARLIER first save as verdict_first and the "
+                  "LATER save as the verdict (changed); runs once; old keys kept; unknown ids and Step-1 items untouched",
+                  R["mig1"] == 2 and R["mig2"] == 0 and e3["verdict_first"] == "visible_missed" and e3["first_saved_at"] == "2026-10-06T09:00:00Z"
+                  and e3["s_verdict"] == "occluded" and e3["s_occluder_kind"] == "pole" and e3["saved_at"] == "2026-10-06T10:00:00Z"
+                  and e3["migrated_from"] == ["c01_ep3", "c02_ep3"] and e3["n_saves"] == 2 and R["ep1"]["s_verdict"] == "box_present"
+                  and R["oldKept"] and R["spotUntouched"] and m1["verdict"] == "occluded" and m1["verdict_first"] == "visible_missed"
+                  and m1["changed"] is True and m1["clip"] == "ep3_SF09_21-00-40.mp4", f"{e3} | {m1}")
+            oi = R["oldImport"]
+            check("old-format import (state keyed c02_ep4) maps to ep4, keeps the old key; export rows carry the per-episode clip file",
+                  oi["n"] == 1 and oi["ep4"]["s_verdict"] == "unsure" and oi["ep4"]["migrated_from"] == ["c02_ep4"] and oi["kept"]
+                  and rows["ep1"]["clip"] == "ep1_SF07_21-00-10.mp4", str(oi))
     print(("PASS" if ok else "FAIL") + " — c1yolo_review_gui self-test")
     return 0 if ok else 1
 
