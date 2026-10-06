@@ -14,6 +14,8 @@ lists suspected YOLO misses for the user (never boxes); WISER presence at the fi
 **2026-10-06:** `ch01_occlusion.py` classifies those suspected misses by CH01 geometry (poles, houses); v2 pooled 5.0 % hidden,
 39.3 % ambiguous, 50.7 % clear; per-episode classes sealed until the user's clip verdicts; visibility mask for CH01; house_1's
 cohort pose in `cv/configs/house1_cohort_pose_2026c.json` — `change_log/2026-10-06-ch01-occlusion-geometry.md`.
+**Review GUI (2026-10-06):** `D:\Field2026_analysis_out\2026c\cv_field_c1yolo_review_gui_20261006_1614\index.html` (`c1yolo_review_gui.py --build`) —
+click verdicts for the 2 fixed spots, then (unlocked) the 59 suspected-miss episodes; Export CSV + JSON → `cv/configs/c1yolo_review_2026c/`.
 **2026-10-06: read [`CAMERA_GEOMETRY_2026c.md`](CAMERA_GEOMETRY_2026c.md) before using any cohort-3 pixel position** —
 how every camera moved (per day, per night, at lid events), house_1's 09-18 move, the landmark names / files and the
 occluder image regions, and the correction table (`frame_correction.Corrections`; nights for CH01–CH06, all day for CH07/CH08).

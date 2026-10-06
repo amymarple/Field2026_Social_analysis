@@ -50,6 +50,7 @@ rat" + fixed-spot diagnostic).
 | Orientation check | `identity_check.json`, `identity_frame_26200.png` (pipeline frame vs `grab_frames.grab`, max diff 0) | final |
 | Review media for the user | `review_10min.mp4` (21:21:50–21:31:50), `review_clips/` (5 clips + `clips.csv`, `eligible_windows.csv`, `index.html`, `review_template.csv`) | final; user review pending |
 | **Fixed-spot diagnostic** (cached detections only) | `fixed_spots/` (`index.html`, `fixed_spots.csv`, `fixed_spots.json`, `cells.csv.gz`, `locator.png`, `heatmap.png`, `crops/`, `fixed_spots_review.csv` and `fn_notes.txt` for the user) | final (`62309b3`); user review pending |
+| **Clickable review GUI** (Step 1 fixed spots, Step 2 the phase-0 suspected-miss clips; replaces typing into `fixed_spots_review.csv`, `fn_notes.txt`, `review_template.csv`) | `$OUT/2026c/cv_field_c1yolo_review_gui_20261006_1614/index.html` (+ `media_check.csv`, `run.json`); code `REPO/cv/cv_field/c1yolo_review_gui.py` (`--selftest`, `--build`); exports (CSV + JSON) go to `REPO/cv/configs/c1yolo_review_2026c/` | final; user review pending |
 | Run metadata | `run.json` (video, weights + sha256, versions, runtime) | final |
 | Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_c1yolo_video_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_c1yolo_video_2026c.json` | final (fixed-spot section added in `62309b3`) |
 | Code | `REPO/cv/cv_field/c1_yolo_video_test.py` (`--selftest`, `--hour-only`, `--run`, `--steps`); `REPO/cv/cv_field/c1_yolo_fixed_spots.py` (`--selftest`) | final |
