@@ -74,6 +74,32 @@ scoring is not needed for this purpose.
 **Outputs:** `G:\3rd_rat_spikes\analysis\inspect\SF08_xml_check\` (README, derived XMLs, gated and ungated profiles,
 logs) and the SF07 folder (gated XMLs and profiles, `*.rip.evt`).
 
+## 2026-10-05 (late): NREM bout mode
+
+User: the layer profile belongs to NREM SWRs, so take short NREM segments from the sleep score instead of IMU-gating a
+window.
+
+**New mode in `lfp_profile_check.py`:** `--lfp <session .lfp> --states <SleepState.states.mat>`.
+- Bouts of `--state` (default NREM) are trimmed by `--edge-s` (5 s) and kept if ≥ `--bout-min-s` (15 s) remain.
+- Each bout is cut to its middle `--bout-max-s` (60 s). Bouts are optionally limited to `--range-min A B` and spread
+  evenly over the range up to `--max-bout-min` (20 min).
+- Ripples are z-scored on NREM only. Filters and the Hilbert transform run per bout, and ripples < 150 ms from a join are
+  dropped.
+- Theta comes from REM bouts of the same range.
+- `--states` without `--lfp` gates the ripples of a window instead.
+- The npz adds `ripple_peaks_session_s` and `segments_session_s`.
+- `--imu-offset-s` became `--session-offset-s` (the old name still works).
+- Regression: window mode reproduces the saved 09-01 reference profile exactly (all arrays identical).
+
+**SF07, 09-02 session** (NREM of the `imu_nremgate` review copy = `imu_remclean` NREM, identical, unedited):
+- NREM inside the user's 56–80 min window: 7 bouts, 16.6 min, 558 ripples.
+- 22 short bouts over the whole session: 17.2 min, 566 ripples.
+- Both orders match the window-derived C: ρ 0.997–1.000, every site within ±1.
+- They agree with the gated 09-01 order at ρ 0.994–1.000.
+- Against the current spike-verified map: ρ 0.90 / 0.46 / 0.80 / 0.99.
+- The order holds across the whole 8.5-h session.
+- The 09-01 evening session `9_20260901_192912.215` has essentially no scored NREM.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.

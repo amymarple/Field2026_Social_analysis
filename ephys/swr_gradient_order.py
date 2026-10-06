@@ -100,8 +100,8 @@ def main() -> None:
         wname = Path(p).stem
         feat = site_features(z)
         base_groups = orders[next(iter(orders))] if orders else []
-        print(f"\n=== {wname}: {meta['animal']} {meta['session']} {meta['window_start_min']:.0f}-"
-              f"{meta['window_start_min'] + meta['window_min']:.0f} min, {int(z['n_ripples'])} ripples")
+        where = meta.get("window_desc") or f"{meta['window_start_min']:.0f}-{meta['window_start_min'] + meta['window_min']:.0f} min"
+        print(f"\n=== {wname}: {meta['animal']} {meta['session']} {where}, {int(z['n_ripples'])} ripples")
         # SWR-score order per shank (shank membership from the first candidate order; membership is not in question)
         dgs = []
         for g in base_groups:
@@ -135,7 +135,7 @@ def main() -> None:
         if a.derive_xml_dir and base_groups:
             from make_session_xml import build_session_xml, write_xml
             desc = (f"{meta['animal']} within-shank order by the SWR gradient (SPW amplitude, SPW FWHM, ripple amplitude, ripple FWHM; "
-                    f"mean rank) on {meta['session']} {meta['window_start_min']:.0f}-{meta['window_start_min'] + meta['window_min']:.0f} min "
+                    f"mean rank) on {meta['session']} {where} "
                     f"({int(z['n_ripples'])} ripples); top = smallest/shortest SWR; channels = exported columns")
             skip = sorted(int(x) for x in z["skipped"])
             out = Path(a.derive_xml_dir) / f"{meta['animal']}_swr_order_{wname}.xml"

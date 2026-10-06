@@ -40,7 +40,14 @@ CAVEAT on --derive-xml (2026-10-05, SF08): the rule assumes negative SPW = radia
 reversal below the tip, top sites negative from an offset) it orders the shank BACKWARDS. Derive only on windows with a clear
 reversal or an all-positive profile; check a candidate on other days by the signed profile (monotone along the order,
 ripple maximum at the pyramidale end), never by the sign of individual sites.
---imu-csv/--imu-thr/--imu-offset-s keep only ripples with the animal IMU-still for +-2 s (NREM / quiet wake; user 2026-10-05).
+--imu-csv/--imu-thr/--session-offset-s keep only ripples with the animal IMU-still for +-2 s (NREM / quiet wake; user 2026-10-05).
+BOUT mode (user 2026-10-05: the layer profile belongs to NREM SWRs; take short NREM bouts from the sleep score):
+  --lfp <ar>/lfp/<SFxx>/<s>.lfp --states <ar>/sleep/<variant>/<SFxx>/<s>/complex_system/<s>.SleepState.states.mat
+  [--state NREMstate --edge-s 5 --bout-min-s 15 --bout-max-s 60 --range-min A B --max-bout-min 20] reads only the trimmed bouts
+  (the middle <= 60 s of each; bouts spread evenly over the range when they exceed the cap) of the session LFP, z-scores the
+  ripple band on NREM alone, filters per bout, drops ripples < 150 ms from a join, and takes theta from REM bouts of the same
+  range. --states without --lfp gates a window's ripples instead (whole trimmed bouts).
+  The npz adds ripple_peaks_session_s and segments_session_s (session seconds = the .lfp / Neuroscope time base).
 Appends results/<cohort>/ephys_spikes/reports/ephys_spikes_lfp_profile_check_<cohort>.csv.
 """
 from __future__ import annotations
@@ -67,16 +74,24 @@ UV = 0.195
 PITCH_UM = 50.0
 
 
-def bp(x: np.ndarray, fs: float, lo: float, hi: float, order: int = 3) -> np.ndarray:
+def _segwise(fn, x: np.ndarray, bounds) -> np.ndarray:
+    """Apply fn to every [s, e) segment of x separately (state bouts concatenated: no filter / Hilbert transient across a join)."""
+    if bounds is None:
+        return fn(x)
+    return np.concatenate([fn(x[s:e]) for s, e in bounds], axis=0)
+
+
+def bp(x: np.ndarray, fs: float, lo: float, hi: float, order: int = 3, bounds=None) -> np.ndarray:
     b, a = butter(order, [lo / (fs / 2), hi / (fs / 2)], btype="band")
-    return filtfilt(b, a, x, axis=0)
+    return _segwise(lambda v: filtfilt(b, a, v, axis=0), x, bounds)
 
 
-def detect_ripples(lfp: np.ndarray, fs: float, live: np.ndarray, thr: float = 4.0, min_ms: float = 20.0, merge_ms: float = 50.0):
-    rip = bp(lfp[:, live], fs, 130.0, 200.0)
-    env = np.abs(hilbert(rip, axis=0))
+def detect_ripples(lfp: np.ndarray, fs: float, live: np.ndarray, thr: float = 4.0, min_ms: float = 20.0, merge_ms: float = 50.0,
+                   bounds=None):
+    rip = bp(lfp[:, live], fs, 130.0, 200.0, bounds=bounds)
+    env = _segwise(lambda v: np.abs(hilbert(v, axis=0)), rip, bounds)
     k = max(1, int(0.008 * fs)); ker = np.ones(k) / k
-    env = np.apply_along_axis(lambda v: np.convolve(v, ker, mode="same"), 0, env)
+    env = _segwise(lambda v: np.apply_along_axis(lambda u: np.convolve(u, ker, mode="same"), 0, v), env, bounds)
     z = (env - env.mean(0)) / (env.std(0) + 1e-9)
     zmax = z.max(1); zsum = z.sum(1)
     above = zmax > thr
@@ -96,8 +111,9 @@ def detect_ripples(lfp: np.ndarray, fs: float, live: np.ndarray, thr: float = 4.
     return np.array(peaks, dtype=int), env, rip
 
 
-def profiles(lfp: np.ndarray, fs: float, peaks: np.ndarray, env_live: np.ndarray, live: np.ndarray, half_ms: float = 15.0):
-    slow = bp(lfp, fs, 1.0, 50.0)
+def profiles(lfp: np.ndarray, fs: float, peaks: np.ndarray, env_live: np.ndarray, live: np.ndarray, half_ms: float = 15.0,
+             bounds=None):
+    slow = bp(lfp, fs, 1.0, 50.0, bounds=bounds)
     h = int(half_ms / 1000 * fs); W = int(0.15 * fs)
     ok = peaks[(peaks > W) & (peaks < lfp.shape[0] - W)]
     spw = np.zeros(lfp.shape[1]); rp = np.zeros(lfp.shape[1]); n = 0
@@ -111,14 +127,16 @@ def profiles(lfp: np.ndarray, fs: float, peaks: np.ndarray, env_live: np.ndarray
     return spw, rp, n
 
 
-def theta_profile(lfp: np.ndarray, fs: float, live: np.ndarray, win_s: float = 2.0, top_frac: float = 0.3):
+def theta_profile(lfp: np.ndarray, fs: float, live: np.ndarray, win_s: float = 2.0, top_frac: float = 0.3, bounds=None):
     """Circular-mean theta (6-10 Hz) phase of every live column relative to the column with the most theta power, over the
-    windows with the highest theta/delta ratio. Returns (phase_deg[64], theta_power[64], ref_col, n_windows)."""
-    th = bp(lfp[:, live], fs, 6.0, 10.0); de = bp(lfp[:, live], fs, 1.0, 4.0)
-    w = int(win_s * fs); nwin = lfp.shape[0] // w
-    ratio = np.array([(th[i * w:(i + 1) * w] ** 2).mean() / ((de[i * w:(i + 1) * w] ** 2).mean() + 1e-9) for i in range(nwin)])
-    keep = np.argsort(ratio)[-max(3, int(top_frac * nwin)):]
-    sel = np.concatenate([np.arange(i * w, (i + 1) * w) for i in sorted(keep)])
+    windows with the highest theta/delta ratio (windows never straddle a bout join). Returns (phase_deg[64], theta_power[64],
+    ref_col, n_windows)."""
+    th = bp(lfp[:, live], fs, 6.0, 10.0, bounds=bounds); de = bp(lfp[:, live], fs, 1.0, 4.0, bounds=bounds)
+    w = int(win_s * fs)
+    starts = [s + i * w for s, e in (bounds or [(0, lfp.shape[0])]) for i in range((e - s) // w)]
+    ratio = np.array([(th[s:s + w] ** 2).mean() / ((de[s:s + w] ** 2).mean() + 1e-9) for s in starts])
+    keep = np.argsort(ratio)[-max(3, int(top_frac * len(starts))):]
+    sel = np.concatenate([np.arange(starts[i], starts[i] + w) for i in sorted(keep)])
     an = hilbert(th[sel], axis=0)
     power = (np.abs(an) ** 2).mean(0)
     ref_i = int(np.argmax(power))
@@ -162,6 +180,59 @@ def load_raw_lfp(raw_dir: Path, minutes: float, offset_min: float, cfg: dict, ta
     mean = S1 / N; cov = S2 / N - np.outer(mean, mean); sd = np.sqrt(np.clip(np.diag(cov), 1e-12, None))
     C_hp = cov / np.outer(sd, sd)
     return np.concatenate(chunks, 0), fs0 / q, int(cp.firmware_version), C_hp
+
+
+def state_bouts(states_mat: Path, state: str, edge_s: float, min_s: float, range_min=None, max_s: float | None = None) -> np.ndarray:
+    """Bouts of one state from a SleepScoreMaster `<session>.SleepState.states.mat` (ints.<state>, seconds from the start of the
+    session .lfp), each trimmed by edge_s at both ends (state transitions are fuzzy at the 1-s scoring step), clipped to
+    range_min = (start, end) session minutes, kept when >= min_s remain, and cut to its middle max_s (short segments from many
+    bouts sample the session better than a few long ones). Returns an (n, 2) array of session seconds."""
+    from scipy.io import loadmat
+    ints = loadmat(states_mat, simplify_cells=True)["SleepState"]["ints"]
+    if state not in ints:
+        raise SystemExit(f"{states_mat}: no ints.{state} (has {sorted(ints)})")
+    x = np.asarray(ints[state], dtype=float)
+    x = x.reshape(-1, 2) if x.size else np.zeros((0, 2))
+    x = np.c_[x[:, 0] + edge_s, x[:, 1] - edge_s]
+    if range_min is not None:
+        x = np.c_[np.maximum(x[:, 0], range_min[0] * 60.0), np.minimum(x[:, 1], range_min[1] * 60.0)]
+    x = x[(x[:, 1] - x[:, 0]) >= min_s]
+    if max_s:
+        mid = x.mean(1); half = np.minimum((x[:, 1] - x[:, 0]) / 2, max_s / 2)
+        x = np.c_[mid - half, mid + half]
+    return x
+
+
+def select_bouts(bouts: np.ndarray, max_total_s: float) -> np.ndarray:
+    """All bouts if they fit in max_total_s, else the largest set of bouts spread evenly over the range (not just the first ones)."""
+    d = bouts[:, 1] - bouts[:, 0]
+    if d.sum() <= max_total_s:
+        return bouts
+    best = None
+    for m in range(1, len(bouts) + 1):
+        idx = np.unique(np.round(np.linspace(0, len(bouts) - 1, m)).astype(int))
+        if d[idx].sum() > max_total_s:
+            break
+        best = idx
+    if best is None:                                   # the first bout alone is longer than the cap
+        return np.array([[bouts[0, 0], bouts[0, 0] + max_total_s]])
+    return bouts[best]
+
+
+def load_bouts(lfp_path: Path, bouts_s: np.ndarray, fs: float, nch: int) -> tuple[np.ndarray, list, np.ndarray]:
+    """Concatenate the bouts (session seconds) of a 1250-Hz session .lfp. Returns (lfp float64, [(start, end) sample of each bout
+    in the concatenation], the bouts actually read in session seconds (n, 2))."""
+    ns = lfp_path.stat().st_size // (2 * nch)
+    mm = np.memmap(lfp_path, dtype=np.int16, mode="r", shape=(ns, nch))
+    parts, bounds, used, n = [], [], [], 0
+    for t0, t1 in bouts_s:
+        s, e = int(round(t0 * fs)), min(ns, int(round(t1 * fs)))
+        if e - s < int(fs):
+            continue
+        parts.append(np.asarray(mm[s:e]).astype(np.float64)); bounds.append((n, n + e - s)); used.append((s / fs, e / fs)); n += e - s
+    if not parts:
+        raise SystemExit(f"{lfp_path}: no usable bout")
+    return np.concatenate(parts, 0), bounds, np.array(used)
 
 
 def tv_and_flips(p: np.ndarray) -> tuple[float, int]:
@@ -225,12 +296,13 @@ DEGLITCH_APPLIED = None   # set by load_raw_lfp (raw mode)
 
 def save_profile_npz(path: Path, *, lfp: np.ndarray, fs: float, peaks: np.ndarray, live: np.ndarray, dead: set, skipped: set,
                      spw, rp, theta, tpow, ref_col: int, nwin: int, n_rip: int, xml_path: Path, all_groups: list,
-                     new_groups: list | None, meta: dict, wave_ms: float = 100.0) -> Path:
+                     new_groups: list | None, meta: dict, wave_ms: float = 100.0, bounds=None, extra: dict | None = None) -> Path:
     """Keep every intermediate LFP profile of one window for later use (user, 2026-09-29):
     per-column SPW / ripple / theta profiles, the ripple times, ripple-triggered mean waveforms (1-50 Hz LFP and the 130-200 Hz
-    envelope, +-wave_ms), per-column LFP rms, the spike-band correlation (raw mode), and the groupings they were read with."""
-    slow = bp(lfp, fs, 1.0, 50.0)
-    env = np.abs(hilbert(bp(lfp, fs, 130.0, 200.0), axis=0))
+    envelope, +-wave_ms), per-column LFP rms, the spike-band correlation (raw mode), and the groupings they were read with.
+    `extra` adds arrays (ripple_peaks_session_s; in bout mode segments_session_s)."""
+    slow = bp(lfp, fs, 1.0, 50.0, bounds=bounds)
+    env = _segwise(lambda v: np.abs(hilbert(v, axis=0)), bp(lfp, fs, 130.0, 200.0, bounds=bounds), bounds)
     h = int(wave_ms / 1000 * fs)
     ok = peaks[(peaks > h) & (peaks < lfp.shape[0] - h)]
     spw_wave = np.mean([slow[t - h:t + h + 1] for t in ok], axis=0) * UV if len(ok) else np.full((2 * h + 1, lfp.shape[1]), np.nan)
@@ -247,6 +319,7 @@ def save_profile_npz(path: Path, *, lfp: np.ndarray, fs: float, peaks: np.ndarra
         d["spikeband_corr"] = C_HP
     if new_groups is not None:
         d["derived_group_cols"], d["derived_group_len"] = flat(new_groups)
+    d.update(extra or {})
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(path, **d)
     return path
@@ -273,22 +346,62 @@ def main() -> None:
     ap.add_argument("--save-profile", default=None, help="write all intermediate profiles of the window to this .npz")
     ap.add_argument("--imu-csv", default=None, help="per-second IMU table of the session (ephys/make_imu.py *.imu_1s.csv): keep only ripples "
                     "with the animal IMU-still for +-GATE s (NREM / quiet-wake SWRs; drops movement artefacts in the ripple band)")
-    ap.add_argument("--imu-offset-s", type=float, default=0.0, help="session time (s) at the start of the analysed folder (a staged __w<S>s window starts at S)")
+    ap.add_argument("--session-offset-s", "--imu-offset-s", dest="session_offset_s", type=float, default=0.0,
+                    help="session time (s) at the start of the analysed folder (a staged __w<S>s window starts at S); used by the IMU and state gates")
     ap.add_argument("--imu-thr", type=float, default=None, help="animal immobility threshold on vedba_mean (m/s^2; VeDBA valley, change_log 2026-09-28)")
     ap.add_argument("--imu-gate-s", type=float, default=2.0, help="the animal must be still for every second within +- this many seconds of the ripple")
+    ap.add_argument("--lfp", default=None, help="BOUT mode: a full-session 1250-Hz .lfp (ephys/make_lfp.py, already de-glitched); analyse only "
+                    "the --state bouts of --states, concatenated (filters and Hilbert run per bout; ripples < 150 ms from a join dropped)")
+    ap.add_argument("--states", default=None, help="SleepScoreMaster <session>.SleepState.states.mat (the user-reviewed copy is "
+                    "complex_system/<session>.SleepState.states.mat). With --lfp: the bouts to analyse; otherwise: keep only ripples inside the bouts")
+    ap.add_argument("--state", default="NREMstate", choices=["NREMstate", "REMstate", "WAKEstate"])
+    ap.add_argument("--edge-s", type=float, default=5.0, help="trim this much from both ends of every bout (state transitions are fuzzy)")
+    ap.add_argument("--bout-min-s", type=float, default=15.0, help="use a bout only if this much remains after trimming")
+    ap.add_argument("--bout-max-s", type=float, default=60.0, help="BOUT mode: use at most the middle this-many seconds of a bout (0 = whole bout)")
+    ap.add_argument("--range-min", type=float, nargs=2, default=None, metavar=("START", "END"),
+                    help="only bouts within these session minutes (stay inside one probe depth)")
+    ap.add_argument("--max-bout-min", type=float, default=20.0, help="BOUT mode: at most this many minutes of bouts, spread evenly over the "
+                    "range (memory ~1 GB per 20 min)")
+    ap.add_argument("--theta-max-min", type=float, default=10.0, help="BOUT mode: theta profile from at most this many minutes of REM bouts in the same range")
     a = ap.parse_args()
 
     an = a.animal.upper(); an = f"SF{int(an[2:]):02d}" if an.startswith("SF") and an[2:].isdigit() else an
     sdir = sort_root(a.cohort, a.sort_root) / an / a.session
-    if a.raw:
+    seg_bounds = seg_s = None; th_lfp = th_bounds = None; theta_src = "the analysed window"
+    if a.raw or a.lfp:
         from _common import PROJECT_ROOT, ephys_block
         import yaml
         cfg = ephys_block(a.cohort)
+        xml_path = Path(a.xml) if a.xml else PROJECT_ROOT / yaml.safe_load((PROJECT_ROOT / cfg.get("probe_config", f"ephys/configs/probes_{a.cohort}.yaml")).read_text(encoding="utf-8"))["animals"][an]["xml"]
+    if a.lfp:
+        if not a.states:
+            raise SystemExit("--lfp needs --states (the bouts to analyse)")
+        lfp_path = Path(a.lfp)
+        side = lfp_path.with_name(lfp_path.name + ".json")
+        sj = json.loads(side.read_text(encoding="utf-8")) if side.exists() else {}
+        nch = int(sj.get("n_channels", 64)); fs = float(sj.get("fs_out", 1250.0)); fw = sj.get("firmware")
+        rng = tuple(a.range_min) if a.range_min else None
+        avail = state_bouts(Path(a.states), a.state, a.edge_s, a.bout_min_s, rng, a.bout_max_s or None)
+        if not len(avail):
+            raise SystemExit(f"no {a.state} bout >= {a.bout_min_s:g} s after trimming {a.edge_s:g} s in range {rng}")
+        lfp, seg_bounds, seg_s = load_bouts(lfp_path, select_bouts(avail, a.max_bout_min * 60.0), fs, nch)
+        if a.state != "REMstate":
+            rem = state_bouts(Path(a.states), "REMstate", a.edge_s, a.bout_min_s, rng, a.bout_max_s or None)
+            if len(rem):
+                th_lfp, th_bounds, rem_s = load_bouts(lfp_path, select_bouts(rem, a.theta_max_min * 60.0), fs, nch)
+                theta_src = f"{len(rem_s)} REM bouts ({(rem_s[:, 1] - rem_s[:, 0]).sum() / 60:.1f} min)"
+            else:
+                theta_src = "the analysed bouts (no REM bout in range)"
+        win = lfp.shape[0]; a0 = 0; bad = set()
+        win_desc = (f"{len(seg_s)} {a.state} bouts, {win / fs / 60:.1f} of {(avail[:, 1] - avail[:, 0]).sum() / 60:.1f} min available "
+                    f"(edges -{a.edge_s:g} s, >= {a.bout_min_s:g} s, middle <= {a.bout_max_s:g} s) within session min "
+                    f"{(rng[0] if rng else 0):.0f}-{(rng[1] if rng else seg_s[-1, 1] / 60):.0f}")
+        print(f"   bout mode: {lfp_path} (FM{fw}), states {a.states}, grouping XML {xml_path}")
+    elif a.raw:
         off = a.offset_min if a.offset_min is not None else 0.0
         lfp, fs, fw, C_hp = load_raw_lfp(Path(a.raw), a.minutes, off, cfg, allow_deglitch=not a.no_deglitch)
         global C_HP; C_HP = C_hp
         nch = lfp.shape[1]; win = lfp.shape[0]; a0 = int(off * 60 * fs); bad = set()
-        xml_path = Path(a.xml) if a.xml else PROJECT_ROOT / yaml.safe_load((PROJECT_ROOT / cfg.get("probe_config", f"ephys/configs/probes_{a.cohort}.yaml")).read_text(encoding="utf-8"))["animals"][an]["xml"]
         print(f"   raw mode: {a.raw} (FM{fw}), grouping XML {xml_path}")
     else:
         pm = json.loads((sdir / "preprocessSession_manifest.json").read_text(encoding="utf-8"))
@@ -299,40 +412,59 @@ def main() -> None:
         a0 = int(a.offset_min * 60 * fs) if a.offset_min is not None else max(0, (ns - win) // 2)
         lfp = np.asarray(np.memmap(lfp_path, dtype=np.int16, mode="r", shape=(ns, nch))[a0:a0 + win]).astype(np.float64)
         xml_path = Path(a.xml) if a.xml else sdir / f"{a.session}.xml"
+    if seg_bounds is None:
+        win_desc = f"{win / fs / 60:.0f} min from {a0 / fs / 60:.0f} min"
+        to_session_s = lambda idx: a.session_offset_s + (a0 + np.asarray(idx, dtype=float)) / fs
+    else:
+        b_starts = np.array([b[0] for b in seg_bounds])
+        def to_session_s(idx):
+            idx = np.asarray(idx, dtype=float); k = np.searchsorted(b_starts, idx, side="right") - 1
+            return seg_s[k, 0] + (idx - b_starts[k]) / fs
     flat = set(int(c) for c in np.where(lfp.std(0) < 1.0)[0])
     xroot = ET.parse(xml_path).getroot()
     skipped = set(int(c.text) for c in xroot.iter("channel") if c.get("skip") == "1")
     dead = bad | flat | skipped | (set(int(c) for c in a.bad) if a.bad else set())
     live = np.array([c for c in range(nch) if c not in dead])
-    peaks, env, rip_live = detect_ripples(lfp, fs, live, thr=a.thr)
-    n_detected = int(len(peaks)); gate_info = None
+    peaks, env, rip_live = detect_ripples(lfp, fs, live, thr=a.thr, bounds=seg_bounds)
+    n_detected = int(len(peaks)); gate_info = None; state_info = None
+    if seg_bounds is not None and len(peaks):                       # ripple-triggered windows must not cross a bout join
+        joins = np.array([b for se in seg_bounds for b in se])
+        peaks = peaks[np.min(np.abs(peaks[:, None] - joins[None, :]), axis=1) >= int(0.15 * fs)]
+        print(f"   {len(peaks)}/{n_detected} ripples >= 150 ms from a bout edge")
+    sec_grid = np.unique(np.floor(to_session_s(np.arange(0, lfp.shape[0], int(fs))))).astype(int)   # session seconds analysed
+    if a.states and seg_bounds is None:
+        bouts = state_bouts(Path(a.states), a.state, a.edge_s, a.bout_min_s)
+        inside = lambda t: bool(np.any((bouts[:, 0] <= t) & (t <= bouts[:, 1])))
+        keep = np.array([inside(t) for t in to_session_s(peaks)], dtype=bool)
+        frac = float(np.mean([inside(s + 0.5) for s in sec_grid]))
+        state_info = {"states": a.states, "state": a.state, "edge_s": a.edge_s, "bout_min_s": a.bout_min_s,
+                      "n_detected": int(len(peaks)), "n_kept": int(keep.sum()), "window_state_fraction": frac}
+        print(f"   state gate: {int(keep.sum())}/{len(peaks)} ripples inside {a.state} bouts (edges -{a.edge_s:g} s; window {frac:.0%} in state)")
+        peaks = peaks[keep]
     if a.imu_csv:
         import pandas as pd
         if a.imu_thr is None:
             raise SystemExit("--imu-csv needs --imu-thr (the animal's VeDBA immobility threshold)")
         imu = pd.read_csv(a.imu_csv, usecols=["sec", "vedba_mean", "unreliable", "saturated"]).set_index("sec")
-        win_start_s = a.imu_offset_s + a0 / fs                     # session second of window sample 0
         still = (imu.vedba_mean < a.imu_thr) & (imu.unreliable == 0)
-        keep = []
-        for pk in peaks:
-            s0 = int(np.floor(win_start_s + pk / fs - a.imu_gate_s)); s1 = int(np.floor(win_start_s + pk / fs + a.imu_gate_s))
-            secs = range(s0, s1 + 1)
-            keep.append(all(bool(still.get(s, False)) for s in secs))
-        keep = np.array(keep, dtype=bool)
-        wsec = np.arange(int(np.floor(win_start_s)), int(np.ceil(win_start_s + lfp.shape[0] / fs)))
-        still_frac = float(np.mean([bool(still.get(s, False)) for s in wsec]))
-        gate_info = {"imu_csv": a.imu_csv, "imu_offset_s": a.imu_offset_s, "imu_thr": a.imu_thr, "gate_s": a.imu_gate_s,
-                     "window_start_session_s": win_start_s, "n_detected": n_detected, "n_kept": int(keep.sum()),
+        keep = np.array([all(bool(still.get(s, False)) for s in range(int(np.floor(t - a.imu_gate_s)), int(np.floor(t + a.imu_gate_s)) + 1))
+                         for t in to_session_s(peaks)], dtype=bool)
+        still_frac = float(np.mean([bool(still.get(s, False)) for s in sec_grid]))
+        win_start_s = float(to_session_s(0))
+        gate_info = {"imu_csv": a.imu_csv, "session_offset_s": a.session_offset_s, "imu_thr": a.imu_thr, "gate_s": a.imu_gate_s,
+                     "window_start_session_s": win_start_s, "n_detected": int(len(peaks)), "n_kept": int(keep.sum()),
                      "window_still_fraction": still_frac}
-        print(f"   IMU gate: {int(keep.sum())}/{n_detected} ripples kept (animal still +-{a.imu_gate_s:g} s; window still {still_frac:.0%}, "
-              f"thr {a.imu_thr} m/s^2, session second {win_start_s:.0f} at window start)")
+        print(f"   IMU gate: {int(keep.sum())}/{len(peaks)} ripples kept (animal still +-{a.imu_gate_s:g} s; analysed seconds still {still_frac:.0%}, "
+              f"thr {a.imu_thr} m/s^2, session second {win_start_s:.0f} at the start)")
         peaks = peaks[keep]
-    spw, rp, n = profiles(lfp, fs, peaks, env, live)
-    theta, tpow, ref_col, nwin = theta_profile(lfp, fs, live)
+    spw, rp, n = profiles(lfp, fs, peaks, env, live, bounds=seg_bounds)
+    if th_lfp is None:
+        th_lfp, th_bounds = lfp, seg_bounds
+    theta, tpow, ref_col, nwin = theta_profile(th_lfp, fs, live, bounds=th_bounds)
     all_groups = [[int(c.text) for c in g.findall("channel")] for g in xroot.findall("anatomicalDescription/channelGroups/group")]
     xml_groups = [[c for c in g if c not in dead] for g in all_groups]
-    print(f"== {an} {a.session}: {win / fs / 60:.0f} min from {a0 / fs / 60:.0f} min, {len(live)} live columns (dead {sorted(dead)}), "
-          f"{n} ripples, theta ref col {ref_col} over {nwin} x 2-s windows")
+    print(f"== {an} {a.session}: {win_desc}, {len(live)} live columns (dead {sorted(dead)}), "
+          f"{n} ripples, theta ref col {ref_col} over {nwin} x 2-s windows of {theta_src}")
 
     # reference correlation scale (one pitch)
     r_ref = None
@@ -391,21 +523,30 @@ def main() -> None:
             print(f"     group {k}: {fmt_profile(o, spw, rp, theta, sc['gaps'])}  | spw tv {sc['spw_tv']:.2f} rip {sc['ripple_tv']:.2f} th {sc['theta_tv']:.2f}"
                   + (f"  | dead placed: {[c for c in placed if c in dead]} at positions {[placed.index(c) + 1 for c in placed if c in dead]}" if deadc else ""))
             new_groups.append(placed)
-        desc = (f"{an} data-derived within-shank order from the ripple-triggered LFP profile of {a.session} ({n} ripples, {win / fs / 60:.0f} min): "
+        desc = (f"{an} data-derived within-shank order from the ripple-triggered LFP profile of {a.session} ({n} ripples, {win_desc}): "
                 f"positive-SPW sites by ripple power asc, then negative-SPW sites by SPW desc; groups {sorted(a.keep_groups)} kept from the verified map; "
                 f"dead columns {sorted(dead & set(c for g in all_groups for c in g))} skip=1, placed as pace makers at the largest SPW-gradient gap of their shank; "
                 f"channels = exported columns")
         out = write_xml(build_session_xml(n_channels=nch, fs=20000.0, groups=new_groups, reject=sorted(dead), layout="linear", description_extra=desc), Path(a.derive_xml))
         print(f"   -> {out}")
     if a.save_profile:
-        meta = {"animal": an, "session": a.session, "source": a.raw or str(sdir), "window_start_min": float(a0 / fs / 60),
-                "window_min": float(win / fs / 60), "fs": fs, "ripple_thr_z": a.thr, "grouping_xml": str(xml_path),
-                "firmware": (fw if a.raw else None), "deglitch_applied": DEGLITCH_APPLIED if a.raw else None,
-                "units": "uV relative (0.195 uV/count)", "imu_gate": gate_info, "n_ripples_detected": n_detected,
+        meta = {"animal": an, "session": a.session, "source": a.lfp or a.raw or str(sdir),
+                "mode": "bouts" if seg_bounds is not None else ("raw" if a.raw else "sort"), "window_desc": win_desc,
+                "window_start_min": float(to_session_s(0) / 60), "window_min": float(win / fs / 60), "fs": fs, "ripple_thr_z": a.thr,
+                "grouping_xml": str(xml_path), "firmware": (fw if (a.raw or a.lfp) else None),
+                "deglitch_applied": DEGLITCH_APPLIED if a.raw else None, "units": "uV relative (0.195 uV/count)",
+                "imu_gate": gate_info, "state_gate": state_info, "n_ripples_detected": n_detected, "theta_source": theta_src,
+                "bouts": ({"states": a.states, "state": a.state, "edge_s": a.edge_s, "bout_min_s": a.bout_min_s,
+                           "bout_max_s": a.bout_max_s, "range_min": a.range_min, "max_bout_min": a.max_bout_min, "n_bouts": int(len(seg_s)),
+                           "total_min": float(win / fs / 60)} if seg_bounds is not None else None),
                 "git_commit": git_commit(), "written_utc": utc_now_iso()}
+        extra = {"ripple_peaks_session_s": to_session_s(peaks)}
+        if seg_bounds is not None:
+            extra["segments_session_s"] = seg_s
         out_npz = save_profile_npz(Path(a.save_profile), lfp=lfp, fs=fs, peaks=peaks, live=live, dead=dead, skipped=skipped, spw=spw,
                                    rp=rp, theta=theta, tpow=tpow, ref_col=ref_col, nwin=nwin, n_rip=n, xml_path=xml_path,
-                                   all_groups=all_groups, new_groups=locals().get("new_groups") if a.derive_xml else None, meta=meta)
+                                   all_groups=all_groups, new_groups=locals().get("new_groups") if a.derive_xml else None, meta=meta,
+                                   bounds=seg_bounds, extra=extra)
         print(f"   profiles -> {out_npz}")
     if a.profile_only or a.derive_xml or a.permute_tail:
         return
