@@ -1,0 +1,12 @@
+# Per-session channel overrides for ephys/score_sleep.py (cohort 2026c).
+# Channels are 1-BASED, the scorer's own SWchanID / THchanID numbering (= amplifier.dat column + 1).
+# A listed session is scored with these channels instead of the scorer's automatic pick; omit th_channel to keep the
+# automatic theta pick. Rescore after editing: score_sleep.py --sessions <A:S> ... --variants imu_nremgate imu_remclean --redo
+overrides:
+  # 2026-10-06: the automatic slow-wave pick (channel 2 resp. 45) set the SW threshold at 0.29 (SF07 otherwise 0.46-0.62), so
+  # NREM (decided first) swallowed REM: 0.0 % / 0.2 % REM in a sleep-rich day session while 21.6 % / 11.4 % of the NREM
+  # epochs met REM's theta + EMG criteria (other day sessions: median 1.5 %, p90 5.8 %). The IMU was fine (SF07 still 86 %).
+  # Channel 23 = SF07's most frequent automatic SW pick in the sessions the user marked ok (6 of 24 sessions >= 2 h).
+  # User decision 2026-10-06 ("re-pick the SWS channel for these two sessions").
+  - {animal: SF07, session: "5_20260910_082351.495", sw_channel: 23, reason: "auto SW pick ch 2 -> threshold 0.29, REM absorbed into NREM (0.0 % REM)"}
+  - {animal: SF07, session: "2_20260905_093310.289", sw_channel: 23, reason: "auto SW pick ch 45 -> threshold 0.29, REM absorbed into NREM (0.2 % REM)"}

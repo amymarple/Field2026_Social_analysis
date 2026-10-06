@@ -181,12 +181,52 @@ def score_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varian
     cfg.state_score = True
     cfg.useEMG_NREM = bool(nrem_gate)
     cfg.state_save_lfp_mat = True
+    ov = load_overrides(cohort).get(key, {})
+    if ov.get("sw_channel"):
+        cfg.sw_channels = [int(ov["sw_channel"]) - 1]          # config takes 0-based columns
+    if ov.get("th_channel"):
+        cfg.theta_channels = [int(ov["th_channel"]) - 1]
     t0 = time.time()
     res = ss.run_state_scoring(basepath=bp, basename=session, session_struct=sess, pulses=None, config=cfg)
     sslfp = bp / f"{session}.SleepScoreLFP.LFP.mat"
     if sslfp.exists():
         sslfp_cache.setdefault(key, sslfp)
-    return summarize(bp, animal, session, variant, imu_root, pp_commit, sess["_xml"], t0)
+    extra = {f"{k}_forced": v for k, v in ov.items() if k in ("sw_channel", "th_channel")}
+    if ov:
+        extra["override_reason"] = ov.get("reason", "")
+    return summarize(bp, animal, session, variant, imu_root, pp_commit, sess["_xml"], t0, extra=extra)
+
+
+_OVERRIDES: dict = {}
+
+
+def load_overrides(cohort: str, path: str | None = None) -> dict:
+    """{(animal, session): {sw_channel, th_channel, reason}} from ephys/configs/sleep_channel_overrides_<c>.yaml (1-based)."""
+    if cohort not in _OVERRIDES:
+        p = Path(path or os.environ.get("SLEEP_CHANNEL_OVERRIDES") or PROJECT_ROOT / "ephys" / "configs" / f"sleep_channel_overrides_{cohort}.yaml")
+        rows = (yaml.safe_load(open(p, encoding="utf-8")) or {}).get("overrides") or [] if p.exists() else []
+        _OVERRIDES[cohort] = {(r["animal"], r["session"]): r for r in rows}
+    return _OVERRIDES[cohort]
+
+
+def clear_outputs(bp: Path, session: str) -> bool:
+    """Before a rescore: remove the scorer's products (it reuses existing ones) but never the EMG file (the IMU enters
+    through it). The manual-review copy is removed only if it is still identical to the automatic file (the user has not
+    edited it); returns True when a user-edited review copy was kept."""
+    auto = bp / f"{session}.SleepState.states.mat"
+    review = bp / "complex_system" / f"{session}.SleepState.states.mat"
+    kept = False
+    if review.exists():
+        if auto.exists() and review.read_bytes() == auto.read_bytes():
+            review.unlink()
+        else:
+            kept = True
+    for name in (f"{session}.SleepScoreLFP.LFP.mat", f"{session}.SleepState.states.mat", f"{session}.SleepStateEpisodes.states.mat",
+                 "score_sleep.json"):
+        (bp / name).unlink(missing_ok=True)
+    for f in (bp / "StateScoreFigures").glob("*.jpg") if (bp / "StateScoreFigures").exists() else []:
+        f.unlink()
+    return kept
 
 
 def summarize(bp: Path, animal: str, session: str, variant: str, imu_root: Path, pp_commit: str, xml: str, t0: float,
@@ -276,7 +316,9 @@ def derive_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varia
     ss._states_to_episodes(st, bp, session, microarousal_sec=float(Cfg(basepath=bp).state_microarousal_sec), overwrite=True)
     ss._save_state_figures(bp, session, st, overwrite=True)
     return summarize(bp, animal, session, variant, imu_root, pp_commit, session_struct(cohort, animal)["_xml"], t0,
-                     extra={"derived_from": base, **counts})
+                     extra={"derived_from": base, **counts,
+                            **{f"{k}_forced": v for k, v in load_overrides(cohort).get((animal, session), {}).items()
+                               if k in ("sw_channel", "th_channel")}})
 
 
 IMU_STILL_THR = {"SF07": 0.387, "SF08": 0.307, "SF09": 0.325, "SF10": 0.325, "SF11": 0.387, "SF12": 0.365}  # m/s^2, 2026-09-28
@@ -325,6 +367,8 @@ def process_session(job: dict) -> list[dict]:
         if not job["redo"] and (bp / "score_sleep.json").exists():
             results.append({"animal": animal, "session": session, "variant": v, "status": "done before"})
             continue
+        if job["redo"] and bp.exists() and clear_outputs(bp, session):
+            print(f"  {animal} {session} {v}: the manual-review copy differs from the automatic file (user edits) - kept", flush=True)
         try:
             run = derive_one if v in DERIVED else score_one
             info = run(ss, Cfg, pp_commit, job["cohort"], animal, session, v, out_root, lfp_root, imu_root, cache)
