@@ -36,6 +36,11 @@ Usage: python ephys/lfp_profile_check.py --cohort 2026c --animal SF10 --session 
         [--derive-xml OUT --keep-groups 1 4   write a DATA-DERIVED order (positive-SPW sites by ripple power asc, then
          negative-SPW sites by SPW desc); each dead column is placed as a PACE MAKER at the largest SPW-gradient gap of its
          shank, never at the end of the group (its exact site stays unknown, but the position keeps the geometry honest)]
+CAVEAT on --derive-xml (2026-10-05, SF08): the rule assumes negative SPW = radiatum. When the shank sits higher (09-09: the
+reversal below the tip, top sites negative from an offset) it orders the shank BACKWARDS. Derive only on windows with a clear
+reversal or an all-positive profile; check a candidate on other days by the signed profile (monotone along the order,
+ripple maximum at the pyramidale end), never by the sign of individual sites.
+--imu-csv/--imu-thr/--imu-offset-s keep only ripples with the animal IMU-still for +-2 s (NREM / quiet wake; user 2026-10-05).
 Appends results/<cohort>/ephys_spikes/reports/ephys_spikes_lfp_profile_check_<cohort>.csv.
 """
 from __future__ import annotations
@@ -266,6 +271,11 @@ def main() -> None:
     ap.add_argument("--no-write", action="store_true")
     ap.add_argument("--no-deglitch", action="store_true", help="raw mode: do not de-glitch (the folder is an already de-glitched staged copy)")
     ap.add_argument("--save-profile", default=None, help="write all intermediate profiles of the window to this .npz")
+    ap.add_argument("--imu-csv", default=None, help="per-second IMU table of the session (ephys/make_imu.py *.imu_1s.csv): keep only ripples "
+                    "with the animal IMU-still for +-GATE s (NREM / quiet-wake SWRs; drops movement artefacts in the ripple band)")
+    ap.add_argument("--imu-offset-s", type=float, default=0.0, help="session time (s) at the start of the analysed folder (a staged __w<S>s window starts at S)")
+    ap.add_argument("--imu-thr", type=float, default=None, help="animal immobility threshold on vedba_mean (m/s^2; VeDBA valley, change_log 2026-09-28)")
+    ap.add_argument("--imu-gate-s", type=float, default=2.0, help="the animal must be still for every second within +- this many seconds of the ripple")
     a = ap.parse_args()
 
     an = a.animal.upper(); an = f"SF{int(an[2:]):02d}" if an.startswith("SF") and an[2:].isdigit() else an
@@ -295,6 +305,28 @@ def main() -> None:
     dead = bad | flat | skipped | (set(int(c) for c in a.bad) if a.bad else set())
     live = np.array([c for c in range(nch) if c not in dead])
     peaks, env, rip_live = detect_ripples(lfp, fs, live, thr=a.thr)
+    n_detected = int(len(peaks)); gate_info = None
+    if a.imu_csv:
+        import pandas as pd
+        if a.imu_thr is None:
+            raise SystemExit("--imu-csv needs --imu-thr (the animal's VeDBA immobility threshold)")
+        imu = pd.read_csv(a.imu_csv, usecols=["sec", "vedba_mean", "unreliable", "saturated"]).set_index("sec")
+        win_start_s = a.imu_offset_s + a0 / fs                     # session second of window sample 0
+        still = (imu.vedba_mean < a.imu_thr) & (imu.unreliable == 0)
+        keep = []
+        for pk in peaks:
+            s0 = int(np.floor(win_start_s + pk / fs - a.imu_gate_s)); s1 = int(np.floor(win_start_s + pk / fs + a.imu_gate_s))
+            secs = range(s0, s1 + 1)
+            keep.append(all(bool(still.get(s, False)) for s in secs))
+        keep = np.array(keep, dtype=bool)
+        wsec = np.arange(int(np.floor(win_start_s)), int(np.ceil(win_start_s + lfp.shape[0] / fs)))
+        still_frac = float(np.mean([bool(still.get(s, False)) for s in wsec]))
+        gate_info = {"imu_csv": a.imu_csv, "imu_offset_s": a.imu_offset_s, "imu_thr": a.imu_thr, "gate_s": a.imu_gate_s,
+                     "window_start_session_s": win_start_s, "n_detected": n_detected, "n_kept": int(keep.sum()),
+                     "window_still_fraction": still_frac}
+        print(f"   IMU gate: {int(keep.sum())}/{n_detected} ripples kept (animal still +-{a.imu_gate_s:g} s; window still {still_frac:.0%}, "
+              f"thr {a.imu_thr} m/s^2, session second {win_start_s:.0f} at window start)")
+        peaks = peaks[keep]
     spw, rp, n = profiles(lfp, fs, peaks, env, live)
     theta, tpow, ref_col, nwin = theta_profile(lfp, fs, live)
     all_groups = [[int(c.text) for c in g.findall("channel")] for g in xroot.findall("anatomicalDescription/channelGroups/group")]
@@ -369,7 +401,8 @@ def main() -> None:
         meta = {"animal": an, "session": a.session, "source": a.raw or str(sdir), "window_start_min": float(a0 / fs / 60),
                 "window_min": float(win / fs / 60), "fs": fs, "ripple_thr_z": a.thr, "grouping_xml": str(xml_path),
                 "firmware": (fw if a.raw else None), "deglitch_applied": DEGLITCH_APPLIED if a.raw else None,
-                "units": "uV relative (0.195 uV/count)", "git_commit": git_commit(), "written_utc": utc_now_iso()}
+                "units": "uV relative (0.195 uV/count)", "imu_gate": gate_info, "n_ripples_detected": n_detected,
+                "git_commit": git_commit(), "written_utc": utc_now_iso()}
         out_npz = save_profile_npz(Path(a.save_profile), lfp=lfp, fs=fs, peaks=peaks, live=live, dead=dead, skipped=skipped, spw=spw,
                                    rp=rp, theta=theta, tpow=tpow, ref_col=ref_col, nwin=nwin, n_rip=n, xml_path=xml_path,
                                    all_groups=all_groups, new_groups=locals().get("new_groups") if a.derive_xml else None, meta=meta)

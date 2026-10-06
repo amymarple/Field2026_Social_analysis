@@ -8,7 +8,12 @@ Per site c (from the ripple-triggered averages over the window's N ripples, +-10
   ripple amp.     A_rip(c)  = max_t env_wave_c(t) - baseline         (|Hilbert| of 130-200 Hz)
   ripple duration D_rip(c)  = FWHM of env_wave_c - baseline around t = 0 (ms)
   SWR score       S(c)      = mean over the four features of rank(feature)/n  (rank within the shank, 1 = smallest)
-Order of a shank = sites by S ascending (top = smallest / shortest SWR). Monotonicity of an order for feature f =
+Order of a shank = sites by S ascending (top = smallest / shortest SWR).
+VALID ONLY FOR SHANKS WITHOUT A POLARITY REVERSAL (e.g. SF07, all-positive SPW). Where the SPW reverses (SF08/SF10/SF12:
+positive above, negative in radiatum) the absolute amplitude rises toward BOTH ends of the shank, so these scores are
+meaningless there; check the signed SPW profile instead (monotone along the order, ripple maximum at the pyramidale end).
+Also note (SF08, 2026-10-05): when the probe sits at a different depth the whole profile shifts (top sites can turn
+negative), so the SIGN of a site is not a depth label - the direction of the gradient and the ripple maximum are. Monotonicity of an order for feature f =
 Spearman rho(position, f) (1 = f rises steadily along the order) and total variation tv = sum|diff f| / range (1 = monotonic).
 
 Usage: python ephys/swr_gradient_order.py --profiles A.npz [B.npz ...] --orders NAME=file.xml ... [--derive-xml-dir DIR]

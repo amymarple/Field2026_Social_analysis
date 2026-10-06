@@ -43,6 +43,37 @@ ripple-amplitude order (0.97–0.99). So ripple amplitude is the most reliable s
 
 **Outputs on G:** per-site features `profiles/swr_features_*.csv`; combined-order XMLs `SF07_swr_order_*.xml`.
 
+## 2026-10-05: IMU gate, SF07 re-check, SF08 cross-check (user: the LFP is the reference, not the spike-verified map)
+
+**IMU gate.** New `lfp_profile_check.py` options `--imu-csv` / `--imu-thr` / `--imu-offset-s` / `--imu-gate-s`. A ripple
+counts only if the animal is IMU-still (`make_imu` per-second VeDBA below the animal's valley threshold, reliable) for
+every second within ±2 s. This keeps NREM and quiet-wake SWRs and drops movement artefacts in the ripple band. Full NREM
+scoring is not needed for this purpose.
+
+**SF07.**
+- Reference window: 13 of 95 ripples kept. The window is only 59 % still, and 82 detections fell during or next to movement.
+- Cross-check window: 462 of 824 kept.
+- Gated orders: on the cross-check window the gated order equals the ungated one (ρ 0.997–1.000). 13 clean reference events
+  reproduce it at ρ 0.994–1.000.
+- Neuroscope event files `*.rip.evt` (kept / moving) were written for a manual spot-check.
+
+**SF08** (adopted `SF08_A4x16-Lin_dataorder_20260908.xml`, which is byte-identical in mapping to the Neuroscope-re-saved
+`amplifier.xml`).
+- 09-03 06:00 window: 206 of 440 ripples kept.
+- 09-09 08:07 window: 520 of 589 kept.
+- Along the same order the signed SPW rises steadily on both days, and the ripple maximum sits at the deep end on both.
+- On 09-09 the radiatum reversal is below the tip and the top sites read negative: the shank sat higher, consistent with
+  Notion 09-09 "probe sat high; moved down" at 18:10.
+- Verdict: **the order passes.**
+
+**Method caveats** (now in the docstrings):
+- The `--derive-xml` rule assumes negative SPW = radiatum. It orders a shifted profile backwards (SF08 09-09).
+- `swr_gradient_order.py` uses absolute amplitude and is valid only without a reversal (SF07).
+- The sign of a site is not a depth label. The gradient direction and the ripple maximum are.
+
+**Outputs:** `G:\3rd_rat_spikes\analysis\inspect\SF08_xml_check\` (README, derived XMLs, gated and ungated profiles,
+logs) and the SF07 folder (gated XMLs and profiles, `*.rip.evt`).
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
