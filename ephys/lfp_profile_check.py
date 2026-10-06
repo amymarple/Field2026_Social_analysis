@@ -128,6 +128,23 @@ def profiles(lfp: np.ndarray, fs: float, peaks: np.ndarray, env_live: np.ndarray
     return spw, rp, n
 
 
+def ripple_corr(rip_live: np.ndarray, peaks: np.ndarray, fs: float, live: np.ndarray, nch: int, half_ms: float = 25.0) -> np.ndarray:
+    """Event-averaged Pearson correlation of the 130-200 Hz signal between columns over +-half_ms around each ripple peak
+    (nch x nch, NaN for dead columns). The ripple keeps its phase above and through stratum pyramidale and REVERSES 150-200 um
+    below it, where its envelope grows again (Csicsvari 1999; Schomburg 2012): corr(site, the shank's ripple-maximum site) x
+    ripple amplitude = a SIGNED ripple that separates the two sides of the layer. Gain-free and reference-robust."""
+    h = int(half_ms / 1000 * fs)
+    ok = peaks[(peaks > h) & (peaks < rip_live.shape[0] - h)]
+    C = np.zeros((rip_live.shape[1],) * 2)
+    for t in ok:
+        x = rip_live[t - h:t + h + 1]; x = x - x.mean(0)
+        s = np.sqrt((x ** 2).sum(0)) + 1e-12
+        C += (x.T @ x) / np.outer(s, s)
+    full = np.full((nch, nch), np.nan)
+    full[np.ix_(live, live)] = C / max(len(ok), 1)
+    return full
+
+
 def theta_profile(lfp: np.ndarray, fs: float, live: np.ndarray, win_s: float = 2.0, top_frac: float = 0.3, bounds=None):
     """Circular-mean theta (6-10 Hz) phase of every live column relative to the column with the most theta power, over the
     windows with the highest theta/delta ratio (windows never straddle a bout join). Returns (phase_deg[64], theta_power[64],
@@ -301,7 +318,8 @@ def save_profile_npz(path: Path, *, lfp: np.ndarray, fs: float, peaks: np.ndarra
     """Keep every intermediate LFP profile of one window for later use (user, 2026-09-29):
     per-column SPW / ripple / theta profiles, the ripple times, ripple-triggered mean waveforms (1-50 Hz LFP and the 130-200 Hz
     envelope, +-wave_ms), per-column LFP rms, the spike-band correlation (raw mode), and the groupings they were read with.
-    `extra` adds arrays (ripple_peaks_session_s; in bout mode segments_session_s)."""
+    `extra` adds arrays (ripple_peaks_session_s, ripple_corr = event-averaged 130-200 Hz correlation between columns; in bout
+    mode segments_session_s)."""
     slow = bp(lfp, fs, 1.0, 50.0, bounds=bounds)
     env = _segwise(lambda v: np.abs(hilbert(v, axis=0)), bp(lfp, fs, 130.0, 200.0, bounds=bounds), bounds)
     h = int(wave_ms / 1000 * fs)
@@ -554,7 +572,7 @@ def main() -> None:
                            "bout_max_s": a.bout_max_s, "range_min": a.range_min, "max_bout_min": a.max_bout_min, "n_bouts": int(len(seg_s)),
                            "total_min": float(win / fs / 60)} if seg_bounds is not None else None),
                 "git_commit": git_commit(), "written_utc": utc_now_iso()}
-        extra = {"ripple_peaks_session_s": to_session_s(peaks)}
+        extra = {"ripple_peaks_session_s": to_session_s(peaks), "ripple_corr": ripple_corr(rip_live, peaks, fs, live, nch)}
         if seg_bounds is not None:
             extra["segments_session_s"] = seg_s
         out_npz = save_profile_npz(Path(a.save_profile), lfp=lfp, fs=fs, peaks=peaks, live=live, dead=dead, skipped=skipped, spw=spw,

@@ -124,6 +124,54 @@ ripple, theta phase, log theta power) space.
 - SF08: ρ ≥ 0.98 on most shanks. The exceptions are single sites (47, 53, tip col 3).
 - SF07 shanks 2–4: equal to the LFP-derived order. Shank 1 gives the same path with the orientation flipped.
 
+## 2026-10-06: `swr_layer_order.py` — seriation of the SWR layer profile, multi-day consensus, proposed orders
+
+**Literature** (summary by a reading agent; Mizuseki 2011, Csicsvari 1999, Schomburg 2012, Buzsáki 1986, Suzuki & Smith 1987,
+Oliva 2016, Liu 2022 consensus, Paleologos 2025):
+- The ripple maximum marks mid stratum pyramidale and is flat over ±1 site.
+- The ripple keeps its phase above and through the layer. It reverses 150–200 µm below, where its envelope grows again.
+- The sharp wave is positive in oriens/pyramidale and reverses just below the layer. It is most negative about 200 µm below
+  the reversal and weakens toward SLM.
+- Theta phase is constant above the layer and shifts below it.
+- A reference that picks up the sharp wave moves signs, not differences.
+
+**New `ephys/swr_layer_order.py`.** Reads saved profiles; no raw data.
+- Features per site:
+  - SPW;
+  - signed ripple = amplitude × the event-averaged 130–200 Hz correlation with the shank's ripple-maximum site (new
+    `ripple_corr` in the profile npz);
+  - theta phase;
+  - log theta power.
+- Each feature is range-scaled per shank. The order is the exact shortest open path (Held–Karp). Distances are summed over
+  days, which gives a consensus: the order is the wiring and does not move with depth.
+- Orientation comes from four votes:
+  - the reversed-ripple side is the bottom;
+  - theta departs more on the bottom side, compared at equal distances from the ripple maximum;
+  - the SPW maximum lies at or above the ripple maximum;
+  - without a reversal, the larger-ripple end is the bottom.
+- Dead, skipped and `--exclude` columns stay after their predecessor in the reference XML.
+
+**Validation.** On the template the method recovers CA1 shank 1 exactly and puts the orientation right on all four shanks.
+The errors are confined to the fold below the radiatum trough and to the featureless cortex top.
+
+**Profiles re-run with `ripple_corr`.** Every array reproduces exactly. The one exception is SF07 09-02, whose theta now
+comes from the final `imu_remclean` REM: max 6°.
+- New SF10 windows: 09-03 06:38 (staged) and 09-09 08:10 (read from raw E:, because the staged folder lacks
+  `CE_params.bin`). Both are IMU-gated.
+
+**Proposed orders** (`G:\3rd_rat_spikes\analysis\inspect\<SF>_*\<SF>_layer_order_consensus.xml`). None is in `configs/`
+yet; they await the user's Neuroscope check.
+- **SF07:** a large change on shanks 1–3. Against the current spike-verified XML: ρ 0.89 / 0.47 / 0.78 / 0.99. Against
+  the earlier LFP-derived order: 0.99–1.00.
+- **SF08:** shanks 1–2 identical (col 47 excluded: it correlates with nothing and has an odd theta phase).
+  - Shank 3: two neighbour swaps.
+  - Shank 4: top 18, 27, 22, 20 → 20, 27, 18, 22 and 21/19 swapped. The SPW is monotone along the new top on all three days.
+- **SF10:** shank 2: 17 and 3 move up 2–3, and 5 moves down 2. All three days are smoother.
+  - Shank 3: two neighbour swaps.
+  - Shank 4 kept: impedance split, and the days disagree.
+
+The Neuroscope review sets (`CURRENT` / `PROPOSED`, `.rip.evt`) are in each folder.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
