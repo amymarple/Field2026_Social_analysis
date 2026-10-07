@@ -28,6 +28,22 @@ the reviewer ticks "start circle off" (`map_flag`). Answers stored in v1's brows
 storage key is per run). Export them from v1 first; **Import** of a v1 export into v2 works because the W ids are the
 same.
 
+## Student copy on the H: drive — PAUSED 2026-10-07 (incomplete; the user scores first)
+
+Target `H:\wiser_event_review_2026c_student\` (SanDisk Extreme 2 TB external SSD, exFAT; `H:\wiser_label_loop\` on the same
+drive belongs to another session). The copy was **stopped by the user** at 2026-10-07 15:54: only `clips\` is there, **32 of
+80 files (2.24 GB of ≈ 11 GB; the last one may be partial)**, plus an empty `exports\`. Missing: the rest of `clips\`, all of
+`clips_reveal\` and `panels\`, `index.html`, `START_HERE.html`. To finish later:
+1. `robocopy <run>\clips <dst>\clips /E` (re-copies the partial file), the same for `clips_reveal` and `panels`, and copy
+   `index.html`, with `<run>` = `D:\Field2026_analysis_out\2026c\wiser_event_review_20261006_1637`. Do **not** copy
+   `selection.csv`, `event_summary.csv`, `events.json` or the run README — they reveal which events are the largest.
+2. In the copied `index.html` set `"run_id"` to `wiser_event_review_20261006_1637_student` (own browser-storage key) and replace
+   the help sentence "Verdicts autosave … --with-verdicts)." by an instruction to move the exports into `exports\`.
+3. Copy [`STUDENT_INSTRUCTIONS.html`](STUDENT_INSTRUCTIONS.html) to `<dst>\START_HERE.html`.
+4. Verify it stands alone: every referenced clip / reveal / panel present with the source's byte size, every mp4 probes as
+   H.264, no network URL or absolute-path resource in the page, and `msedge --headless=new --dump-dom file:///H:/…/index.html`
+   renders all 80 W ids. Student exports come back in `exports\` and are committed here like any other export.
+
 ## File naming
 
 The page's **Export JSON** / **Export CSV** buttons write `wiser_event_review_2026c_<reviewer>_<YYYYMMDD_HHMM>.{json,csv}`.

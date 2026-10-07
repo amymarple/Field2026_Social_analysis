@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rat Video Review</title>
+<style>
+:root{--bg:#ffffff;--fg:#1d1d1f;--mut:#5f6368;--line:#d9dce1;--accent:#1a5fb4;--box:#f4f6f9;--warn:#9a4d00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16181c;--fg:#e8eaed;--mut:#a0a5ad;--line:#33373e;--accent:#8ab4f8;--box:#1f2329;--warn:#f0b35a}}
+:root[data-theme="dark"]{--bg:#16181c;--fg:#e8eaed;--mut:#a0a5ad;--line:#33373e;--accent:#8ab4f8;--box:#1f2329;--warn:#f0b35a}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0}
+main{max-width:860px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:1.6em;margin:0 0 4px}
+h2{font-size:1.2em;margin:32px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+p.sub{color:var(--mut);margin:0 0 16px}
+.box{background:var(--box);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:12px 0}
+.warn{color:var(--warn);font-weight:600}
+table{border-collapse:collapse;width:100%;margin:8px 0}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--box)}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 6px;font:0.9em ui-monospace,Consolas,monospace;background:var(--box)}
+code{font:0.92em ui-monospace,Consolas,monospace}
+ol li,ul li{margin:4px 0}
+.wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Rat Video Review</h1>
+<p class="sub">Instructions for reviewers. Read once before you start (about 10 minutes). The review itself takes about 2–3 hours for 80 short events; you can split it over several sessions.</p>
+
+<div class="box">
+<b>What you are doing.</b> Rats wearing a small radio tag lived in an outdoor enclosure. A radio tracking system
+("the tracker") recorded where each rat was. Sometimes the tracker says a rat moved or turned when its head sensor says it did
+not. You will watch short video clips of those moments and record <b>what the rat really did</b>. Your answers are used as the
+ground truth for checking the tracker, so please judge only what you can see.
+</div>
+
+<h2>1. Before you start</h2>
+<ul>
+<li>Use a desktop or laptop computer with <b>Google Chrome</b> or <b>Microsoft Edge</b> (Safari and phones are not supported).
+No internet connection or installation is needed.</li>
+<li>Keep the folder <code>wiser_event_review_2026c_student</code> exactly as it is: <code>index.html</code> must stay next to the folders
+<code>clips</code>, <code>clips_reveal</code> and <code>panels</code>. You may work directly from this drive, or copy the <b>whole</b>
+folder (about 11 GB) to your own disk first — playback is smoother from a local disk.</li>
+<li>The clips are night infrared video: black and white, sometimes grainy. That is normal.</li>
+<li class="warn">Do not share or upload the videos.</li>
+</ul>
+
+<h2>2. Start</h2>
+<ol>
+<li>Double-click <code>index.html</code>. If it opens in another browser, right-click it → <i>Open with</i> → Chrome or Edge.</li>
+<li>Type your initials in the <b>Reviewer</b> box at the top. Use the same initials every session.</li>
+<li>The list on the left shows 80 events, <b>W01 … W80</b>, in random order. Work through them in any order;
+<kbd>n</kbd> / <kbd>p</kbd> go to the next / previous event. <b>Help (?)</b> at the top repeats the key information.</li>
+</ol>
+
+<h2>3. For each event</h2>
+<p><b>Step A — find the rat.</b> Each clip starts 10 s before the event and ends 10 s after it; a red <b>EVENT</b> box in the
+banner and a red stretch of the time bar mark the event. Usually two camera views are shown. The banner names the rat and its
+marks. At night the video is black and white, so use the <b>IR pattern</b> on the rat's back (table below), not the colour.
+A <b>dashed white circle labelled "start"</b> shows where the tracker placed the rat just before the event — use it to find
+the right rat. Some clips have no circle ("no projection — use the IR mark"); then find the rat by its pattern.</p>
+
+<div class="wrap"><table>
+<tr><th>Rat</th><th>IR pattern (night / black-and-white video)</th><th>Neck band colour (colour video only)</th></tr>
+<tr><td>SF07</td><td>x</td><td>green</td></tr>
+<tr><td>SF08</td><td>none (no pattern)</td><td>red</td></tr>
+<tr><td>SF09</td><td>star</td><td>pink / black / brown</td></tr>
+<tr><td>SF10</td><td>square with a cross</td><td>yellow (blue before 31 Aug)</td></tr>
+<tr><td>SF11</td><td>circle</td><td>white</td></tr>
+<tr><td>SF12</td><td>two lines</td><td>blue (yellow before 31 Aug)</td></tr>
+</table></div>
+<p>From 11 Sep 19:40 five more rats without tags or known marks are also in the enclosure — be careful with identity on and
+after that date. <b>Never read the clock printed inside the video image</b>; it is about one hour wrong. The clock in the
+page banner is the right one.</p>
+
+<p><b>Step B — answer the first question (keys <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>).</b> There are two kinds of event; the
+page shows which.</p>
+<div class="wrap"><table>
+<tr><th>Event</th><th>Question</th><th>Answers</th></tr>
+<tr><td><b>Place</b> (I1)</td><td>Did this rat actually change place during the EVENT?</td>
+<td><kbd>1</kbd> <b>moved</b> — the whole body went to a new spot at least about one body length (≈ 30 cm / 1 ft) away.<br>
+<kbd>2</kbd> <b>stayed</b> — it stayed on the same spot: turning round, grooming, sniffing, rearing, shuffling inside a huddle all
+count as <i>stayed</i>.<br>
+<kbd>3</kbd> <b>cannot tell</b>.</td></tr>
+<tr><td><b>Turn</b> (I2)</td><td>Did the rat's body turn sharply during the EVENT?</td>
+<td><kbd>1</kbd> <b>turned sharply</b> — the body changed direction by about 90° or more.<br>
+<kbd>2</kbd> <b>ran straight</b> — straight or only a gentle curve; a head turn alone does not count.<br>
+<kbd>3</kbd> <b>cannot tell</b>.</td></tr>
+</table></div>
+<p>Choose <b>cannot tell</b> whenever you are not sure — that is a useful answer, not a failure. Then press the reason:
+<kbd>4</kbd> rat not visible, <kbd>5</kbd> not sure it is the named rat, <kbd>6</kbd> other (write it in the note).
+Add a short note whenever something is unusual.</p>
+
+<p><b>Step C — save (<kbd>Enter</kbd>).</b> Your first saved answer is locked as your <b>blind</b> answer. The clip then changes:</p>
+<ul>
+<li>a <b>solid yellow circle</b> = where the tracker placed the rat, moving over time;</li>
+<li>a <b>red dot</b> = the tracker's raw reading;</li>
+<li>a side panel with the tracker and sensor numbers.</li>
+</ul>
+
+<p><b>Step D — answer the second question (keys <kbd>7</kbd> <kbd>8</kbd> <kbd>9</kbd>):</b> Does the yellow circle stay on the rat?
+<kbd>7</kbd> <b>on the rat</b> (it follows the rat) · <kbd>8</kbd> <b>drifts off the rat</b> (it wanders away from where the rat
+really is) · <kbd>9</kbd> <b>cannot tell</b>. If the clip has no circle, this question is skipped automatically.<br>
+If, at the very start of the event, the dashed "start" circle was clearly <b>not</b> on the rat, press <kbd>m</kbd>
+("start circle off").</p>
+
+<p><b>Step E — next event (<kbd>Enter</kbd> again).</b> Please do not change your first answer after seeing the circles unless you
+pressed a wrong key; any change is recorded separately.</p>
+
+<h2>4. Keys</h2>
+<div class="wrap"><table>
+<tr><td><kbd>Space</kbd></td><td>play / pause</td></tr>
+<tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>one frame back / forward; with <kbd>Shift</kbd>: one second</td></tr>
+<tr><td><kbd>[</kbd> <kbd>]</kbd> <kbd>\</kbd></td><td>slower / faster / normal speed</td></tr>
+<tr><td><kbd>j</kbd></td><td>jump to the start of the EVENT</td></tr>
+<tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>first question</td></tr>
+<tr><td><kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd></td><td>reason for "cannot tell"</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>save the answer (then Enter again = next event)</td></tr>
+<tr><td><kbd>7</kbd> <kbd>8</kbd> <kbd>9</kbd></td><td>second question (after saving)</td></tr>
+<tr><td><kbd>m</kbd></td><td>"start circle off"</td></tr>
+<tr><td><kbd>n</kbd> / <kbd>p</kbd></td><td>next / previous event</td></tr>
+<tr><td><kbd>?</kbd> / <kbd>Esc</kbd></td><td>help</td></tr>
+</table></div>
+
+<h2>5. Saving and returning your answers</h2>
+<div class="box">
+<p>Answers are saved automatically, but <b>only inside this browser on this computer</b>. At the end of <b>every</b> session:</p>
+<ol>
+<li>Click <b>Export JSON</b> and then <b>Export CSV</b>. The browser saves two files named like
+<code>wiser_event_review_2026c_&lt;your initials&gt;_&lt;date&gt;.json / .csv</code>, usually into your <i>Downloads</i> folder.</li>
+<li>Move both files into the <code>exports</code> folder of this drive.</li>
+</ol>
+<p>When you have finished all 80 events, export once more and return the drive (or send the two newest files) to the person who
+gave it to you.</p>
+<p>Changing computer or browser? Your answers do not move with you: on the new computer click <b>Import</b> and choose your
+latest <code>.json</code> export, then continue. Do not clear the browser's site data while you are working.</p>
+</div>
+
+<h2>6. If something does not work</h2>
+<ul>
+<li><b>Page is empty or videos do not play:</b> use Chrome or Edge, and check that <code>index.html</code> is still next to the
+<code>clips</code> and <code>clips_reveal</code> folders.</li>
+<li><b>Video stutters:</b> copy the whole folder to your computer's disk and open it from there, or pause and step with the arrow keys.</li>
+<li><b>A clip shows "NO VIDEO" for a moment:</b> a short gap in the original recording; answer from the rest of the clip.</li>
+<li><b>Answers disappeared:</b> you are in another browser, profile or private window — go back, or use <b>Import</b>.</li>
+</ul>
+<p class="sub">Questions: ask the person who gave you this drive. Thank you!</p>
+</main>
+</body>
+</html>
