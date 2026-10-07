@@ -60,3 +60,7 @@ the CH02 occlusion scene has no independent pole check beyond its own label-plan
 New: `cv/cv_field/build_wiser_pixel_kit.py`, `cv/cv_field/select_label_round1.py`, this file, the report + pointer.
 Edited: `cv/cv_field/ch01_occlusion.py` (`build_scene(cam=…)`), the plan (status, amendments 1–4), both index READMEs,
 `CLAUDE.md` (cv_field map), `cv/cv_field/HANDOFF.md`, `cv/cv_field/DATA_MAP_c1yolo_wiser.md` (section I).
+
+## Addendum — part C (coordinator, 2026-10-06)
+
+Part C DONE 2026-10-06 in `D:/Documents/GitHub/social-field-rat-wiser-loop` (import `56840d9` on main; branch `wiser-loop` b3f380f..07c6c9d, local, not pushed; patches in `patches_wiser-loop/`): `label_frames.py --wiser/--test/--labeller` (blind first, overlay after `d`, per-box provenance), `wiser_loop/` select_round / eval_test / progress (READY gate) / paths profiles / slurm; self-test 110/110; integration test on the real round-1 package, kit and pool passed (420 sidecars parse, progress gate, test guard; the port's selection shares 137 / 400 frames with round 1 because the kit carries no paddock position or robust hidden share — an exact port needs those columns). Format fix agreed by both sides before the package was built: the editable `.txt` exists only where the model has a box; a frame counts as reviewed only when its `.prov.json` exists.

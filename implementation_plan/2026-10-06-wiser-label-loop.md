@@ -1,6 +1,6 @@
 # WISER-guided labelling loop for the CH01/CH02 rat detector (round 1 + the loop in the undergrad's repo)
 
-Date: 2026-10-06. Status: **A and B DONE 2026-10-06** (approved "做吧"; amendments 1–3 before results, 4 after the first
+Date: 2026-10-06. Status: **A, B and C DONE 2026-10-06** (approved "做吧"; amendments 1–3 before results, 4 after the first
 package build; kit `D:/Field2026_analysis_out/2026c/wiser_pixel_kit_20261006_1952/`, package
 `D:/Field2026_analysis_out/2026c/label_round1_20261006_2015/`, report
 `results/2026c/cv_field/reports/cv_field_wiser_label_loop_round1_2026c.md`, change log
@@ -200,3 +200,7 @@ other and from the 4 existing 'zero' frames of each camera. The plan fixes 30 pe
 the strata that still have candidates (mix renormalised, same 5-min spacing, the same seeded rng stream continued). The
 first package (`label_round1_20261006_2003`, 98 test frames) was deleted unused and rebuilt by the same code; the training
 selection is deterministic and unchanged. Nothing about the shortfall depends on an image or a score.
+
+## Part C result (coordinator, 2026-10-06)
+
+Part C DONE 2026-10-06 in `D:/Documents/GitHub/social-field-rat-wiser-loop` (import `56840d9` on main; branch `wiser-loop` b3f380f..07c6c9d, local, not pushed; patches in `patches_wiser-loop/`): `label_frames.py --wiser/--test/--labeller` (blind first, overlay after `d`, per-box provenance), `wiser_loop/` select_round / eval_test / progress (READY gate) / paths profiles / slurm; self-test 110/110; integration test on the real round-1 package, kit and pool passed (420 sidecars parse, progress gate, test guard; the port's selection shares 137 / 400 frames with round 1 because the kit carries no paddock position or robust hidden share — an exact port needs those columns).
