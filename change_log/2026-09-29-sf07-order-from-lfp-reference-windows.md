@@ -262,6 +262,19 @@ consensus path, never at an end).
 **Proposal:** `G:\…\SF09_xml_candidates\SF09_proposed.xml` with a Neuroscope set (current A / B / proposed). The yaml is
 unchanged until the user reviews it.
 
+**User decision 2026-10-07:** "SF09 用 proposed".
+- The proposal has the same live membership as the 09-07 data-derived A. It adds the 5-shank 12/12/16/12/12 structure with
+  dead columns as placeholders, and a real depth order.
+- **Open point, noted when the user accepted:** the silent far-above sites 21, 51 and 55 have no spikes, so they cannot be
+  grouped by correlation. B (datasheet) puts them at the top of the middle shank, and the WT2 template's middle shank also
+  has three such sites at its top. A hybrid was offered and not taken.
+- Repo: `ephys/configs/xml/SF09_A5x12-16_lfporder_20261007.xml`. In `probes_2026c.yaml`, SF09 points at it with
+  `verified: true` and `reject_channels` holding the ten dead columns. `layout` stays `linear`, so the sorting geometry is
+  unchanged.
+- Stage: new `<session>.xml` in `10_20260902_083015.335` (`.xml.done` and `.xml.7groups` not touched). The window
+  `16_…__w22691s_600s` `.xml` and `amplifier.xml` were replaced; the old ones are kept as `.pre_20261007`.
+- Added to the Q: bundle `G:\3rd_rat_spikes\analysis\channel_maps_final_20261006\`, which now holds all six animals.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.
