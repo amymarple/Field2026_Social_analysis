@@ -39,6 +39,12 @@ Quick rules (all detailed in CONVENTIONS.md):
   validated on this PC against the local raw copy `E:\3rd_rat_spikes` (read-only) before it runs on BioHPC. The server
   runs only code already validated here, deployed from a commit, and its output is spot-checked against the local result
   (e.g. the LFP of SF07 `9_20260901_192912.215` is byte-identical on both machines).
+- **Derived data lives on storage; analyse from there (user rule, 2026-10-07).** The cohort-3 LFP and sleep scores
+  are on BioHPC storage `Q:\hc997\SocialFieldRat2026\3rd_rat\analysis\{lfp,sleep}\` (server
+  `/fs/cbsuruizfs1/storage/hc997/…`, each folder with `README.md`, `VERIFY.txt`, `MD5SUMS`), next to `pc_time\`. The
+  BioHPC workdir is scratch: a server job writes there, `ephys/server/copy_to_storage.sh` (`UPDATE=1` for additions)
+  copies and verifies the result into storage, and the workdir copy is then deleted (sleep tree deleted 2026-10-07;
+  the workdir LFP is kept for now for pending rescores). Local `D:` copies are partial working copies.
 - Medium/large change: `implementation_plan/<date>-topic.md` **before**, `change_log/<date>-topic.md` **after**, and
   both index READMEs updated.
 - `/analysis-definitions` for any deliverable; `/regime-aware-wiser-tracking` / `/regime-aware-cv-measurement` before

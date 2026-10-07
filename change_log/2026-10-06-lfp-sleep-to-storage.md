@@ -48,3 +48,39 @@ nothing deleted.
 
   The sleep folders on storage have no `.lfp`; a rescore from storage needs the session's `.lfp` staged into the folder.
 - No note in field2026-sync (the storage map) yet.
+
+## Update 2026-10-07: pass-2 versions added, workdir sleep tree deleted, notes in all three repos
+
+- **User decision:** delete the workdir sleep folder, keep the workdir LFP for now, and have every agent analyse from
+  storage from now on.
+- **The workdir sleep tree had grown since the first copy.** The pass-2 session (`field2026-social-analysis-94`) had
+  added:
+  - `imu_fixch` (incl. `SleepScoreRaw.npz`), `pass2_remclean`, `pass2med_remclean`;
+  - `sleep_states_1s_{pass2,pass2med,nremgate}`;
+  - 5 `_errors` records.
+
+  Its writes ended at 14:20:13, and it confirmed nothing else would write there.
+- **Script changes** to `ephys/server/copy_to_storage.sh`:
+  - `UPDATE=1` adds new / changed files to an already verified copy and re-verifies everything (the previous
+    result kept as `VERIFY_previous.txt`);
+  - every `sleep_states_1s_<x>` folder now goes to `sleep/states_1s_<x>/`;
+  - a fifth self-test case covers `UPDATE`. A first update attempt at 14:18 overlapped the last pass-2 run and was
+    stopped (only `copy_to_storage.sh` and `rsync` were killed).
+- **Update copy:** 14:21–16:12, `analysis/sleep/` = **11,711 files, 349 GiB, RESULT PASS**.
+  - V1 (paths + sizes) and V2 (MD5 vs an O_DIRECT read-back) pass.
+  - Through Q:, `states_1s_pass2med/SF07/2_20260905_093310.289.states.npz` matches the pass-2 session's local copy
+    (`b4496c1e…`).
+- **Deleted:** `/workdir/hc997/ephys_2026c/sleep`, after confirming no file had changed since 14:21:30 and nothing was
+  running. That was 10,712 files + 1,000 `.lfp` hard links.
+  - The 203 LFPs stay (link count 1; 3 re-checked against `lfp_md5.txt`).
+  - Kept on the workdir: `lfp/`, `imu_sleep_bundle/`, `sleep_states_1s*`.
+- **`analysis/sleep/README.md` rewritten.** It states the score to use: `imu_remclean`, with SF07 `2_20260905_093310`
+  from `pass2med_remclean`, per the pass-2 session and `ephys/configs/sleep_final_2026c.yaml`. `imu_fixch` and
+  `pass2*` are controls.
+- **Rule recorded:**
+  - CONVENTIONS.md (cohort-appendable principle) and CLAUDE.md quick rules: derived data lives on storage, analyse
+    from there, the workdir is scratch.
+  - field2026-sync `0af194e`: data-guide rows + `from-lab/2026-10-07_cohort3-lfp-and-sleep-on-storage.md`.
+  - Field_2026_Social_Recording `62eb9a6`: a CLAUDE.md data-lifecycle line, plus a repaired `\3rd_rat` → 0x03
+    control byte in its calibration backup path.
+  - The storage-change notice went to the 8 local sessions that can receive messages.

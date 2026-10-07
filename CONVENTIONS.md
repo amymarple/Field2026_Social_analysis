@@ -32,6 +32,11 @@ active analysis work happens here.
   canonical report + its canonical figures + a `run_manifest.json` pointer. Large / non-regeneratable assets
   (labeled datasets, model weights) live under `<OUT_ROOT>/<cohort>/assets/` with an in-repo
   `assets_manifest.json` pointer. **Never reuse the old `WISER_OUT_ROOT` name.**
+- **Expensive shared derived data lives on BioHPC storage, not on a compute workdir** (user rule, 2026-10-07):
+  cohort-3 `pc_time`, LFP and sleep scores are under `Q:\hc997\SocialFieldRat2026\3rd_rat\analysis\` with a
+  `README.md` + verification files, registered in `cohorts/2026c.yaml raw_data_roots.biohpc`. Analyses read them
+  from there; a server job writes to the workdir and is copied + verified into storage
+  (`ephys/server/copy_to_storage.sh`) before the workdir copy is deleted.
 - **`common/output_paths.py` is the single source of truth** for every output path (`run_dir`, `report_dir`,
   `figure_dir`, `archive_report_dir`, `write_run_manifest`, cohort-aware `list_runs`/`prune`). Do not
   hard-code paths in drivers. `common/cohorts.py` loads the cohort registry.

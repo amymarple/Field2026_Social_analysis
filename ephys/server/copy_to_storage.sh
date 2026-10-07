@@ -9,6 +9,7 @@
 #   sleep  $SRC/sleep/                                -> $DST/sleep/                  all files EXCEPT *.lfp (hard links to lfp/)
 #          $SRC/sleep_states_1s/                      -> $DST/sleep/states_1s/
 #          $SRC/imu_sleep_bundle/                     -> $DST/sleep/imu_sleep_bundle/ (the scorer's IMU input)
+#          $SRC/sleep_states_1s_<x>/                  -> $DST/sleep/states_1s_<x>/   (every such folder: _pass2, _pass2med, _nremgate)
 #          $LOGS/score_sleep*.log                     -> $DST/sleep/logs/
 #
 # Verification per part (written to $DST/<part>/VERIFY.txt; PASS only if all hold):
