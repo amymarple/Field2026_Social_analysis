@@ -47,7 +47,8 @@ export -f md5_direct md5_plain
 units() {        # one line per copy unit: <source dir>|<destination dir relative to $DST/part>|<exclude glob or ->
   case $1 in
     lfp)   echo "$SRC/lfp||-" ;;
-    sleep) echo "$SRC/sleep||*.lfp"; echo "$SRC/sleep_states_1s|states_1s|-"; echo "$SRC/imu_sleep_bundle|imu_sleep_bundle|-" ;;
+    sleep) echo "$SRC/sleep||*.lfp"; echo "$SRC/sleep_states_1s|states_1s|-"; echo "$SRC/imu_sleep_bundle|imu_sleep_bundle|-"
+           for d in "$SRC"/sleep_states_1s_*; do [ -d "$d" ] && echo "$d|states_1s_${d##*/sleep_states_1s_}|-"; done ;;   # e.g. _pass2, _pass2med, _nremgate
   esac
 }
 log_glob() { case $1 in lfp) echo "make_lfp*.log" ;; sleep) echo "score_sleep*.log" ;; esac; }
