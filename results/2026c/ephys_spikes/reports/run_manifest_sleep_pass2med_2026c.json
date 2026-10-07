@@ -1,0 +1,15 @@
+{
+  "src": "/workdir/hc997/ephys_2026c/sleep",
+  "base": "imu_fixch",
+  "out_variant": "pass2med_remclean",
+  "driver": "ephys/sleep_pass2.py",
+  "git_commit": "2f67fe5 (deployed)",
+  "scorer": "PreprocessPipeline eb3dad4",
+  "q": [
+    0.001,
+    0.999
+  ],
+  "threshold_rule": "median_session",
+  "med_min_nrem": 0.3,
+  "written_utc": "2026-10-07T18:18:52+00:00"
+}
