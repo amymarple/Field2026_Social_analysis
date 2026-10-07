@@ -139,6 +139,29 @@ Evidence to weigh (not a licence to merge):
 - **Open tasks.** Check `tasks/` before assuming a question is unanswered (e.g. 2026-09-28
   `lab-request-cohort3-weather-and-sync-logs`).
 
+## Sleep scores: which to use (user decision 2026-10-07)
+
+- **FINAL = `imu_remclean`** (the per-session scores the user reviewed). **Only SF07 `2_20260905_093310`** is replaced, by
+  its `pass2med_remclean` rescore: its per-session SW threshold of 0.29 had swallowed REM.
+  - Config: `ephys/configs/sleep_final_2026c.yaml`; assembled by `ephys/sleep_final.py`.
+  - 1-s states: `D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final/`.
+  - Table: `results/2026c/ephys_spikes/reports/ephys_spikes_sleep_review_2026c.csv` (scores + verdicts + tags), plus
+    `…sleep_scores_final_2026c.csv`.
+  - On storage (`Q:/…/3rd_rat/analysis/sleep/`): `imu_remclean/` plus that one session from `pass2med_remclean/`.
+- **Why per-session.** The probe may move every day, and per-session thresholds follow it. The fixed per-animal
+  rescores **`imu_fixch`, `pass2med_remclean`, `pass2_remclean` are CONTROLS only**: kept, never the main score.
+  `pass2_remclean` (pooled dip) is wrong for SF07, whose REM is absorbed.
+  - Details: `change_log/2026-10-07-sleep-fixed-thresholds.md`.
+- **Always excluded:**
+  - sessions the user marked `noise` (7);
+  - tag `SF12_contact_failing`;
+  - time after a session's `valid_until`;
+  - the 5 sessions the scorer refused (frozen / invalid IMU);
+  - sessions < 0.5 h (per-session thresholds rest on too little data).
+- **Kept but flagged:**
+  - `SF12_shank1_degraded` (scored on shanks 2/3);
+  - the user's `bad` (3 SF07 sessions, suspect REM; sensitivity only).
+
 ## Known gaps between the field record and `cohorts/2026c.yaml` (2026-09-28)
 
 The YAML is what the code reads, so each of these is a place where the code currently ignores the record:

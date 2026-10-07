@@ -1,25 +1,25 @@
 outcome,model,term,beta_logit,se,p,pp_per_SD,n_animal_days,n_days,pp_per_day,r
-NREM,temp_C,temp_C,-0.0721,0.0224,0.0093,-1.74,56.0,11,,
-NREM,rh_pct,rh_pct,-0.0344,0.0208,0.13,-0.83,56.0,11,,
-NREM,rain_mm,rain_mm,-0.0507,0.0189,0.0228,-1.22,56.0,11,,
-NREM,temp_C + rh_pct + rain_mm,temp_C,-0.0699,0.0258,0.022,-1.69,56.0,11,,
-NREM,temp_C + rh_pct + rain_mm,rh_pct,0.0142,0.0134,0.3156,0.34,56.0,11,,
-NREM,temp_C + rh_pct + rain_mm,rain_mm,-0.0146,0.0063,0.0428,-0.35,56.0,11,,
-NREM,day,day,0.0071,0.0063,0.2818,,56.0,11,0.17,
-NREM,day + rh_pct,day,-0.008,0.0164,0.6365,,56.0,11,-0.19,
-NREM,day + rh_pct,rh_pct,-0.057,0.0555,0.3286,-1.38,56.0,11,,
-NREM,day means ~ temp_C,temp_C,,0.193,0.0168,-1.44,,11,,-0.7
-NREM,day means ~ rh_pct,rh_pct,,0.1405,0.3934,-0.59,,11,,-0.29
-NREM,day means ~ rain_mm,rain_mm,,0.0518,0.0902,-1.1,,11,,-0.53
-REM,temp_C,temp_C,0.0883,0.0299,0.0144,0.61,56.0,11,,
-REM,rh_pct,rh_pct,0.0821,0.0249,0.008,0.56,56.0,11,,
-REM,rain_mm,rain_mm,0.0667,0.0155,0.0016,0.46,56.0,11,,
-REM,temp_C + rh_pct + rain_mm,temp_C,0.0512,0.0284,0.1019,0.35,56.0,11,,
-REM,temp_C + rh_pct + rain_mm,rh_pct,0.0437,0.032,0.2031,0.3,56.0,11,,
-REM,temp_C + rh_pct + rain_mm,rain_mm,0.0157,0.0267,0.5705,0.11,56.0,11,,
-REM,day,day,-0.027,0.0092,0.0147,,56.0,11,-0.19,
-REM,day + rh_pct,day,-0.0202,0.0153,0.2171,,56.0,11,-0.14,
-REM,day + rh_pct,rh_pct,0.0253,0.0417,0.557,0.17,56.0,11,,
-REM,day means ~ temp_C,temp_C,,0.084,0.0551,0.47,,11,,0.59
-REM,day means ~ rh_pct,rh_pct,,0.0445,0.0416,0.49,,11,,0.62
-REM,day means ~ rain_mm,rain_mm,,0.0202,0.1002,0.41,,11,,0.52
+NREM,temp_C,temp_C,-0.0702,0.0228,0.0116,-1.69,56.0,11,,
+NREM,rh_pct,rh_pct,-0.0346,0.0208,0.1281,-0.83,56.0,11,,
+NREM,rain_mm,rain_mm,-0.0491,0.0188,0.0258,-1.19,56.0,11,,
+NREM,temp_C + rh_pct + rain_mm,temp_C,-0.0676,0.0259,0.0258,-1.63,56.0,11,,
+NREM,temp_C + rh_pct + rain_mm,rh_pct,0.012,0.0138,0.4072,0.29,56.0,11,,
+NREM,temp_C + rh_pct + rain_mm,rain_mm,-0.0133,0.0067,0.0761,-0.32,56.0,11,,
+NREM,day,day,0.0072,0.0061,0.2643,,56.0,11,0.17,
+NREM,day + rh_pct,day,-0.0078,0.0163,0.6449,,56.0,11,-0.19,
+NREM,day + rh_pct,rh_pct,-0.0565,0.0557,0.3344,-1.36,56.0,11,,
+NREM,day means ~ temp_C,temp_C,,0.1937,0.0186,-1.41,,11,,-0.69
+NREM,day means ~ rh_pct,rh_pct,,0.1392,0.3798,-0.6,,11,,-0.29
+NREM,day means ~ rain_mm,rain_mm,,0.0518,0.0964,-1.08,,11,,-0.53
+REM,temp_C,temp_C,0.0835,0.0291,0.0168,0.57,56.0,11,,
+REM,rh_pct,rh_pct,0.0822,0.0243,0.007,0.57,56.0,11,,
+REM,rain_mm,rain_mm,0.0631,0.0151,0.0019,0.43,56.0,11,,
+REM,temp_C + rh_pct + rain_mm,temp_C,0.0454,0.0252,0.1017,0.31,56.0,11,,
+REM,temp_C + rh_pct + rain_mm,rh_pct,0.0485,0.0298,0.1348,0.33,56.0,11,,
+REM,temp_C + rh_pct + rain_mm,rain_mm,0.0131,0.0276,0.6439,0.09,56.0,11,,
+REM,day,day,-0.0271,0.0088,0.0118,,56.0,11,-0.19,
+REM,day + rh_pct,day,-0.0206,0.0152,0.2048,,56.0,11,-0.14,
+REM,day + rh_pct,rh_pct,0.0241,0.0428,0.5863,0.17,56.0,11,,
+REM,day means ~ temp_C,temp_C,,0.0822,0.058,0.45,,11,,0.59
+REM,day means ~ rh_pct,rh_pct,,0.042,0.031,0.5,,11,,0.65
+REM,day means ~ rain_mm,rain_mm,,0.0198,0.1054,0.4,,11,,0.51

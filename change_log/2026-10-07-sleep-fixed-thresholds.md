@@ -81,7 +81,34 @@ Plan: [implementation_plan/2026-10-07-sleep-fixed-thresholds.md](../implementati
   - The comparison mixes state composition with electrode position. SF12's post-09-10 08:35 data are one day session
     (the contact failure follows), so no split was made; flagged for the review.
 
-## Review (pending)
+## Decision (user, 2026-10-07): not adopted; one substitution; rescores kept as controls
+
+**Comparison** (`results/2026c/ephys_spikes/figures/ephys_spikes_sleep_pass2med_vs_original_2026c.png`, every session
+≥ 0.5 h, rescored vs original):
+
+| Sessions | Median κ | Changed materially |
+|---|---|---|
+| Day | 0.90 | 39 / 84 |
+| Night | 0.92 | 25 / 88 |
+
+**Decision.**
+- Keep the reviewed per-session scores, `imu_remclean`: the probe may move every day, and per-session thresholds follow
+  it.
+- Replace **only SF07 `2_20260905_093310`** with its `pass2med_remclean` version: REM 0.3 → 9.1 % of the session, i.e.
+  0.6 → 20.2 min.
+  - Config `ephys/configs/sleep_final_2026c.yaml`; new `ephys/sleep_final.py` writes
+    `D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final/` and `…sleep_scores_final_2026c.csv`.
+  - The review table (`…sleep_review_2026c.csv`, rebuilt with `--variant final`) differs from the committed one in that
+    single row.
+- `imu_fixch`, `pass2med_remclean` and `pass2_remclean` are kept as controls (the user: "留着不用删，可以以后做control").
+  The 74-session review page is not needed.
+
+**Downstream, on the final scores.**
+- `sleep_quant.py` rerun. Window: NREM 9.7 ± 0.2 h, REM 1.8 ± 0.1 h per 24 h, REM 15.9 ± 0.7 % of sleep (N = 6).
+- REM falls over all days in 6/6 animals: −0.18 pp/day, $t(5) = -7.69$, p = 0.0006.
+- `sleep_cycles_v2.py` runs on `states_1s_final` (tag `final`).
+
+## Review (superseded by the decision above)
 
 - Page:
   `D:\3rd_rat_spikes\analysis\sleep_server\review_pass2med_remclean_review_subset_pass2med.html`.

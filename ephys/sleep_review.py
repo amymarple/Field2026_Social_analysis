@@ -195,6 +195,8 @@ def merge_review(cohort: str, review_csv: Path, scores_csv: Path, variant: str) 
             "SWchan", "THchan", "sustained_moving_scored_wake", "still_scored_sleep"]
     s = s[keep]
     err_csv = scores_csv.with_name(scores_csv.name.replace(f"_{cohort}.csv", f"_errors_{cohort}.csv"))
+    if not err_csv.exists():                              # e.g. the final scores: the refusals are those of the base run
+        err_csv = report_dir(cohort) / f"ephys_spikes_sleep_scores_errors_{cohort}.csv"
     if err_csv.exists():
         e = pd.read_csv(err_csv)[["animal", "session", "error"]].drop_duplicates(["animal", "session"])
         s = pd.concat([s, e.assign(not_scored=e.error)[["animal", "session", "not_scored"]]], ignore_index=True)

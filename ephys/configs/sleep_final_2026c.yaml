@@ -1,0 +1,10 @@
+# The FINAL cohort-2026c sleep scores used by the analyses (sleep_quant, sleep_cycles_v2), assembled by ephys/sleep_final.py.
+# User decision 2026-10-07: keep the reviewed per-session scores (`imu_remclean`) - per-session thresholds follow the
+# probe, which may move every day - and substitute only the sessions listed here. The fixed-threshold rescore
+# (`pass2med_remclean`, change_log/2026-10-07-sleep-fixed-thresholds.md) is NOT adopted otherwise.
+base_variant: imu_remclean
+substitutions:
+  - animal: SF07
+    session: "2_20260905_093310.289"
+    from_variant: pass2med_remclean
+    reason: "per-session SW threshold 0.29 (auto channel 45, and again with channel 23) swallowed REM: 0.6 min REM in a 3.7-h day session; pass2med (median of SF07's accepted per-session thresholds) gives 20.2 min. Previously excluded (sleep_cycles EXTRA_EXCLUDE). User 2026-10-07: fix only this session."
