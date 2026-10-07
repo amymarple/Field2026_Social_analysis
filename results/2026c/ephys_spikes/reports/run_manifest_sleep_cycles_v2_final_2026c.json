@@ -1,0 +1,14 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_cycles_v2_final_20261007_1500",
+  "driver": "ephys/sleep_cycles_v2.py",
+  "git_commit": "d51e211+dirty",
+  "states": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+  "review": "../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_review_2026c.csv",
+  "join_s": 60,
+  "windows_min": [
+    10,
+    60,
+    180
+  ],
+  "written_utc": "2026-10-07T20:07:39+00:00"
+}
