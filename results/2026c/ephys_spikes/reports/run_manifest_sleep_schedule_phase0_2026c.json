@@ -1,0 +1,12 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase0_20261007_1818",
+  "git_commit": "9465206+dirty",
+  "states": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+  "review": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_review_2026c.csv",
+  "cutoff": "2026-09-11 19:40:00",
+  "ma_limits": [
+    40,
+    100,
+    20
+  ]
+}
