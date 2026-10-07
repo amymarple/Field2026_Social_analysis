@@ -17,7 +17,8 @@
 #      this host's NFS page cache so the bytes come back from the storage server, not from the copy still in RAM;
 #   V3 (lfp) every .lfp also matches lfp_md5.txt, the manifest written when the LFP was made (the source is unchanged).
 # $DST/<part>/MD5SUMS = the destination checksums (md5sum -c format). Re-running resumes: rsync re-copies differing
-# files, then everything is verified again.
+# files, then everything is verified again. UPDATE=1 does the same on a folder already verified (adds files the
+# workdir gained since; nothing on storage is deleted, so a file removed on the workdir makes V1 fail - by design).
 #
 # Launch from the analysis PC over the shared SSH connection:
 #   ssh -S ~/.ssh/cm-gpu gpu 'nohup bash ~/src/Field2026_Social_analysis/ephys/server/copy_to_storage.sh \
@@ -76,8 +77,13 @@ df -h "$SRC" "$DST" | sed 's/^/    /'
 for part in $PARTS; do
   D="$DST/$part"
   if [ -d "$D" ] && [ ! -e "$D/$MARK" ]; then
-    if [ -e "$D/VERIFY.txt" ] && grep -q '^RESULT PASS' "$D/VERIFY.txt"; then say "$part: already copied and verified - skipped"; continue; fi
-    say "$part: $D exists and was not created by this script - refusing to write into it"; ok_all=0; continue
+    if [ -e "$D/VERIFY.txt" ] && grep -q '^RESULT PASS' "$D/VERIFY.txt"; then
+      if [ -z "${UPDATE:-}" ]; then say "$part: already copied and verified - skipped (UPDATE=1 adds new / changed files)"; continue; fi
+      say "$part: UPDATE - adding new and changed files to the verified copy, then verifying everything again"
+      mv "$D/VERIFY.txt" "$D/VERIFY_previous.txt"
+    else
+      say "$part: $D exists and was not created by this script - refusing to write into it"; ok_all=0; continue
+    fi
   fi
   mkdir -p "$D" && touch "$D/$MARK"
   list_src "$part" | LC_ALL=C sort > "$WORK/$part.expected"
@@ -105,7 +111,7 @@ for part in $PARTS; do
   t1=$(date +%s); say "$part: copy done in $((t1 - t0)) s"
 
   # ---- V1: paths + sizes
-  ( cd "$D" && find . -type f ! -name "$MARK" ! -name MD5SUMS ! -name VERIFY.txt ! -name README.md -printf '%P\t%s\n' ) \
+  ( cd "$D" && find . -type f ! -name "$MARK" ! -name MD5SUMS ! -name VERIFY.txt ! -name VERIFY_previous.txt ! -name README.md -printf '%P\t%s\n' ) \
     | LC_ALL=C sort > "$WORK/$part.found"
   if diff -q "$WORK/$part.expected" "$WORK/$part.found" > /dev/null; then v1=PASS; else v1=FAIL; fi
   diff "$WORK/$part.expected" "$WORK/$part.found" | head -20 > "$WORK/$part.v1diff"
