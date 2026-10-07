@@ -73,6 +73,10 @@ Claim audit: [ephys_spikes_sleep_cycles_v2_claim_audit_2026c.md](../results/2026
 - **No trade-off.** Nothing here shows "one stage longer → the other shorter"; the descriptive relations are as in v1.
 - **Sensitivity still open:** no joining across the 28 file splits. Per-session thresholds differ at a join, but the
   joins hold only 670 s.
+- **Sensitivity done: v2 on `imu_remclean` without the SF07 09-05 substitution.** That run (tag `remclean`) was stopped
+  after its held-out comparison, before the coefficients, so it has no report. Its
+  `…sleep_cycles_v2_remclean_{cv,model_comparison}_2026c.csv` show M1 vs M0 −1.98 % (22 blocks) and M2 vs M1 +0.03 %
+  (12/22): the same as the final scores.
 
 ## Verification
 
