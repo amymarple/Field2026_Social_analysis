@@ -1,0 +1,12 @@
+# Fixed per-animal sleep-scoring channels for ephys/score_sleep.py variant `imu_fixch` (plan:
+# implementation_plan/2026-10-07-sleep-fixed-thresholds.md). Channels are 1-BASED (the scorer's SWchanID / THchanID numbering
+# = amplifier.dat column + 1). A per-session entry in sleep_channel_overrides_2026c.yaml still wins.
+# Rule (2026-10-07): the MODE of the scorer's own automatic picks over the sessions >= 2 h the user marked `ok`
+# (results/2026c/ephys_spikes/reports/ephys_spikes_sleep_review_2026c.csv); counts = picks / sessions.
+animals:
+  SF07: {sw_channel: 23, th_channel: 31, note: "SW 23 in 8/24, TH 31 in 18/24"}
+  SF08: {sw_channel: 12, th_channel: 44, note: "SW 12 in 4/25 (picks split: 43 and 9 in 3 each), TH 44 in 19/25"}
+  SF09: {sw_channel: 52, th_channel: 56, note: "SW 52 in 10/27 (22 in 9), TH 56 in 15/27"}
+  SF10: {sw_channel: 38, th_channel: 8, note: "SW 38 in 14/27, TH 8 in 17/27"}
+  SF11: {sw_channel: 12, th_channel: 35, note: "SW 12 in 7/17, TH 35 in 6/17 (37 in 5)"}
+  SF12: {sw_channel: 43, th_channel: 44, note: "SW 43 in 12/22, TH 44 in 20/22; both shank 2 (column 42 / 43), clear of the degraded shank 1"}

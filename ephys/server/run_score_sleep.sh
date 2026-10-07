@@ -17,13 +17,14 @@ IMU=${IMU:-/workdir/hc997/ephys_2026c/imu_sleep_bundle}
 OUT=${OUT:-/workdir/hc997/ephys_2026c/sleep}
 WORKERS=${WORKERS:-32}
 SESSIONS=${SESSIONS:-}            # empty = --all; else "SF10:<session> SF07:<session> ..."
-REDO=${REDO:-}                    # non-empty = rescore listed sessions (clears old outputs; keeps user-edited review copies)
+REDO=${REDO:-}
+VARIANTS=${VARIANTS:-"imu_nremgate imu_remclean"}   # e.g. VARIANTS=imu_fixch for pass 1 of the fixed-threshold scoring                    # non-empty = rescore listed sessions (clears old outputs; keeps user-edited review copies)
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 mkdir -p "$OUT"
 cd "$REPO/ephys" || exit 1
 echo "start $(date -Is)  repo $(cat ../.git_commit 2>/dev/null || echo unknown)  workers $WORKERS  out $OUT"
 if [ -z "$SESSIONS" ]; then SEL="--all"; else SEL="--sessions $SESSIONS"; fi
-"$PY" score_sleep.py --cohort 2026c $SEL --variants imu_nremgate imu_remclean --lfp-root "$LFP" --imu-root "$IMU" \
-    --out-root "$OUT" --pipeline-root "$PIPE" --workers "$WORKERS" --report-name sleep_scores ${REDO:+--redo}
+"$PY" score_sleep.py --cohort 2026c $SEL --variants $VARIANTS --lfp-root "$LFP" --imu-root "$IMU" \
+    --out-root "$OUT" --pipeline-root "$PIPE" --workers "$WORKERS" --report-name ${REPORT:-sleep_scores} ${REDO:+--redo}
 echo "exit $? at $(date -Is)"
 echo "scored: $(find "$OUT/imu_remclean" -name score_sleep.json | wc -l) sessions; errors: $(ls "$OUT/_errors" 2>/dev/null | wc -l); $(du -sh "$OUT" | cut -f1)"

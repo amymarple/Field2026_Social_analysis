@@ -57,7 +57,8 @@ from scipy.io import loadmat, savemat
 
 from _common import PROJECT_ROOT, analysis_root, ephys_block, git_commit, report_dir, resolve_cohort, utc_now_iso
 
-VARIANTS = {"imu": ("imu", False), "imu_nremgate": ("imu", True), "lfpemg": ("lfp", False)}
+VARIANTS = {"imu": ("imu", False), "imu_nremgate": ("imu", True), "lfpemg": ("lfp", False), "imu_fixch": ("imu", True)}
+FIXED_CH_VARIANTS = {"imu_fixch"}                   # channels fixed per animal (ephys/configs/sleep_channels_<c>.yaml)
 DERIVED = {"imu_remclean": "imu_nremgate"}          # derived variant -> the scored variant it post-processes
 REMCLEAN_MAX_WAKE_BEFORE_REM_S = 10.0
 REMCLEAN_WIN_S, REMCLEAN_MIN_MOVING_S = 5, 3
@@ -181,13 +182,16 @@ def score_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varian
     cfg.state_score = True
     cfg.useEMG_NREM = bool(nrem_gate)
     cfg.state_save_lfp_mat = True
-    ov = load_overrides(cohort).get(key, {})
+    ov = dict(load_channels(cohort).get(animal, {})) if variant in FIXED_CH_VARIANTS else {}
+    ov.update(load_overrides(cohort).get(key, {}))       # a per-session override wins over the per-animal channels
     if ov.get("sw_channel"):
         cfg.sw_channels = [int(ov["sw_channel"]) - 1]          # config takes 0-based columns
     if ov.get("th_channel"):
         cfg.theta_channels = [int(ov["th_channel"]) - 1]
     t0 = time.time()
-    res = ss.run_state_scoring(basepath=bp, basename=session, session_struct=sess, pulses=None, config=cfg)
+    with capture_raw_metrics(ss) as rec:
+        res = ss.run_state_scoring(basepath=bp, basename=session, session_struct=sess, pulses=None, config=cfg)
+    save_raw_metrics(rec, bp, session)
     sslfp = bp / f"{session}.SleepScoreLFP.LFP.mat"
     if sslfp.exists():
         sslfp_cache.setdefault(key, sslfp)
@@ -195,6 +199,62 @@ def score_one(ss, Cfg, pp_commit, cohort: str, animal: str, session: str, varian
     if ov:
         extra["override_reason"] = ov.get("reason", "")
     return summarize(bp, animal, session, variant, imu_root, pp_commit, sess["_xml"], t0, extra=extra)
+
+
+_CHANNELS: dict = {}
+
+
+def load_channels(cohort: str) -> dict:
+    """{animal: {sw_channel, th_channel}} (1-based) from ephys/configs/sleep_channels_<c>.yaml, for FIXED_CH_VARIANTS."""
+    if cohort not in _CHANNELS:
+        p = PROJECT_ROOT / "ephys" / "configs" / f"sleep_channels_{cohort}.yaml"
+        rows = (yaml.safe_load(open(p, encoding="utf-8")) or {}).get("animals") or {} if p.exists() else {}
+        _CHANNELS[cohort] = {an: {k: v for k, v in r.items() if k in ("sw_channel", "th_channel")} for an, r in rows.items()}
+    return _CHANNELS[cohort]
+
+
+from contextlib import contextmanager  # noqa: E402
+
+
+@contextmanager
+def capture_raw_metrics(ss):
+    """Observation-only shim: while the scorer's _compute_sleep_state runs, record the arrays it passes to _norm_to_range
+    with bounds (0, 1) - the raw slow-wave, theta and EMG metrics just before the per-session min-max rescaling (lines
+    1921-1923 of state_scoring.py at eb3dad4). The scorer receives the original function's output unchanged."""
+    rec = {"active": False, "calls": []}
+    orig_norm, orig_css = ss._norm_to_range, ss._compute_sleep_state
+
+    def norm(x, lo=0.0, hi=1.0):
+        if rec["active"] and lo == 0.0 and hi == 1.0:
+            rec["calls"].append(np.array(x, dtype=np.float64, copy=True))
+        return orig_norm(x, lo, hi)
+
+    def css(*args, **kwargs):
+        rec["active"] = True
+        try:
+            return orig_css(*args, **kwargs)
+        finally:
+            rec["active"] = False
+    ss._norm_to_range, ss._compute_sleep_state = norm, css
+    try:
+        yield rec
+    finally:
+        ss._norm_to_range, ss._compute_sleep_state = orig_norm, orig_css
+
+
+def save_raw_metrics(rec: dict, bp: Path, session: str) -> None:
+    """<session>.SleepScoreRaw.npz = sw, th, emg (raw, on the stored t_clus grid) + t_clus. Skipped (with a note) if the
+    scorer reused an existing state file and so never rescaled anything."""
+    if len(rec["calls"]) != 3:
+        print(f"  {session}: raw-metric capture saw {len(rec['calls'])} rescaling calls (expected 3) - not written", flush=True)
+        return
+    st = loadmat(bp / f"{session}.SleepState.states.mat", simplify_cells=True)["SleepState"]
+    t = np.asarray(st["detectorinfo"]["detectionparms"]["SleepScoreMetrics"]["t_clus"], dtype=np.float64).reshape(-1)
+    sw, th, emg = (np.asarray(c).reshape(-1) for c in rec["calls"])
+    if not (len(sw) == len(th) == len(emg) == len(t)):
+        print(f"  {session}: raw-metric lengths {len(sw)}/{len(th)}/{len(emg)} vs t_clus {len(t)} - not written", flush=True)
+        return
+    np.savez_compressed(bp / f"{session}.SleepScoreRaw.npz", sw=sw, th=th, emg=emg, t_clus=t)
 
 
 _OVERRIDES: dict = {}
@@ -463,8 +523,12 @@ def write_summary(c: str, out_root: Path, name: str = "sleep_pilot") -> None:
     """
     import pandas as pd
     rows = []
+    foreign = 0
     for p in sorted(out_root.glob("*/*/*/score_sleep.json")):
         info = json.loads(p.read_text(encoding="utf-8"))
+        if Path(info.get("basepath", "")).name != p.parent.name or not (p.parent / f"{info['session']}.SleepState.states.mat").exists():
+            foreign += 1                                   # a copy placed here from another tree (e.g. review copies only)
+            continue
         if "sustained_moving_scored_wake" not in info:     # rows written before the run-length split: add it
             ts, s = load_states(p.parent, info["session"])
             info.update(imu_consistency(load_imu(out_root.parent / "imu", info["animal"], info["session"]), info["animal"], ts, s))
@@ -473,6 +537,8 @@ def write_summary(c: str, out_root: Path, name: str = "sleep_pilot") -> None:
     errors = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((out_root / "_errors").glob("*.json"))]
     if errors:
         pd.DataFrame(errors).drop(columns=["traceback"]).to_csv(report_dir(c) / f"ephys_spikes_{name}_errors_{c}.csv", index=False)
+    if foreign:
+        print(f"  skipped {foreign} score_sleep.json copied from another tree (basepath elsewhere or no state file)", flush=True)
     if not rows:
         return
     df = pd.DataFrame(rows).sort_values(["animal", "session", "variant"])

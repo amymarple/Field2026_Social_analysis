@@ -121,6 +121,44 @@ question is declared **not answerable** (too few cycles).
 **Secondary, only after the core.** Does the day's weather add held-out information to M1? Weather is a day-level
 variable, shared by all animals and confounded with day order (r(humidity, day) = −0.87), so no causal reading.
 
+## Revision 2 (2026-10-07, user review of v1 + the session-boundary quantification; approved "上吧")
+
+**Why.**
+- v1 predicted only daytime transitions.
+- It reset history at every session boundary. That dropped the NREM before a session's first REM: 57.9 h = 11.6 % of
+  NREM, 1296 bout endings, 142 REM entries. The loss is concentrated in the evening sessions, after a long wake (median
+  3.6 h to the first REM): exactly "sleep after long wake".
+- Of the 162 boundaries between consecutive sessions, 41 are ≤ 1 min (median 12 s); the rest are real gaps ≥ 30 min,
+  mostly battery rounds with handling.
+
+**Design changes**
+- **States.** `pass2_remclean` (fixed per-animal channels / rescaling / thresholds,
+  `2026-10-07-sleep-fixed-thresholds.md`), so that history across sessions uses one state definition.
+- **Main analysis over the full 24 h.** Light / dark is a stratum for display. The v1 light-only fit is kept as a
+  sensitivity check, and the night-transfer test is kept.
+- **Continuous records.** Consecutive sessions separated by ≤ 60 s are joined: the gap epochs are marked unknown and are
+  not counted as any state. A real gap (> 60 s) ends the record. Nothing is ever assumed about a gap's state.
+- **History** at each step:
+  - (a) since the last REM, when that REM lies in the same continuous record: $\text{REM}_\text{pre}$, $N_\text{prior}$,
+    $W_\text{cum}$, as in v1;
+  - (b) rolling windows that need no REM anchor: Wake and NREM seconds in the last 10 min, 60 min and 180 min, each with
+    its completeness $c_w$ = the recorded share of the window;
+  - (c) indicators: "no REM yet in this record" and "window incomplete".
+  - Steps without a REM anchor enter the model through (b) and (c), so the post-gap NREM is no longer dropped.
+- **Time.** Circadian phase = 2 harmonics of the clock hour ($\sin, \cos$ of $2\pi h/24$ and $4\pi h/24$), plus
+  experiment time = hours since release (a natural spline). This replaces the integer day index.
+- **Models.**
+  - **M0:** animal + phase + experiment time + the elapsed-bout spline.
+  - **M1:** M0 + history (a) + (b) + (c).
+  - **M2:** M1 + history × phase (first harmonic), including **Wake × phase**.
+- **Validation.**
+  - **Main:** leave out one block, where blocks are the continuous records grouped by the battery-round gap that ends them
+    (all animals sharing that day-half go together), so no cycle and no history crosses a fold boundary. In practice, one
+    block per day-half.
+  - **Secondary:** forward chaining (train on earlier blocks, test on the next). REM declines over days, so this tests
+    extrapolation and is reported as such.
+- **Support masks** on every time-of-day × history figure. Night interactions will be weakly supported (183 → REM in v1).
+
 ## Outputs (cohort-parameterised)
 
 - Bulk (cycle table, person-period table, fold predictions): `$OUT_ROOT/2026c/sleep_cycles_<ts>/` + run manifest.
