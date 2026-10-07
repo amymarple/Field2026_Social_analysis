@@ -114,6 +114,97 @@ def load_session(src: Path, animal: str, session: str) -> dict | None:
     return d
 
 
+_SS = None
+
+
+def _ss(pipeline_root):
+    global _SS
+    if _SS is None:
+        _SS = pipeline_module(pipeline_root)
+    return _SS
+
+
+def gate_one(job: dict) -> dict:
+    ss = _ss(job["pipeline_root"])[0]
+    d = load_session(Path(job["src"]), job["animal"], job["session"])
+    bb, th, emg = (ss._norm_to_range(d[k], 0.0, 1.0) for k in ("sw", "th", "emg"))
+    same_norm = all(np.allclose(x, d["stored_norm"][k], rtol=0, atol=1e-12) for x, k in
+                    zip((bb, th, emg), ("broadbandSlowWave", "thratio", "EMG")))
+    thr_found = dip_thresholds(ss, bb, th, emg)
+    same_thr = all(abs(thr_found[k] - d["stored_thr"][k]) < 1e-12 for k in d["stored_thr"])
+    states, ts = classify_chain(ss, bb, th, emg, d["t_clus"], d["stored_thr"])
+    n = min(len(states), len(d["stored_states"]))
+    return {"animal": d["animal"], "session": d["session"], "same_rescaled_metrics": same_norm, "same_thresholds": same_thr,
+            "same_states": len(states) == len(d["stored_states"]) and np.array_equal(states, d["stored_states"]),
+            "n_epochs": len(d["stored_states"]), "n_diff": int(np.sum(states[:n] != d["stored_states"][:n]))}
+
+
+def finish_one(job: dict) -> dict:
+    """Reclassify one session with its animal's scale + thresholds, REM rules, write the pass-2 outputs."""
+    ss, Cfg, pp_commit, _ = _ss(job["pipeline_root"])
+    src, imu_root, c = Path(job["src"]), Path(job["imu_root"]), job["cohort"]
+    d = load_session(src, job["animal"], job["session"])
+    an, se = d["animal"], d["session"]
+    t0 = time.time()
+    b, thr = job["bounds"], job["thr"]
+    bb, th, emg = (np.clip((d[k] - b[k][0]) / (b[k][1] - b[k][0]), 0.0, 1.0) for k in ("sw", "th", "emg"))
+    states, ts = classify_chain(ss, bb, th, emg, d["t_clus"], thr)
+    imu = load_imu(imu_root, an, se)
+    states, counts = remclean_states(ss, states, ts, imu["vedba_1s"], IMU_STILL_THR[an])
+    bp = src / OUT / an / se
+    (bp / "StateScoreFigures").mkdir(parents=True, exist_ok=True)
+    for name in (f"{se}.session.mat", f"{se}.EMGFromLFP.LFP.mat", f"{se}.SleepScoreLFP.LFP.mat", f"{se}.lfp"):
+        if (d["bp"] / name).exists() and not (bp / name).exists():
+            try:
+                os.link(d["bp"] / name, bp / name)       # never written by this script or the editor
+            except OSError:
+                shutil.copy2(d["bp"] / name, bp / name)
+    st = d["st"]
+    st["idx"]["states"], st["idx"]["timestamps"] = states.reshape(-1, 1), ts.reshape(-1, 1)
+    for k, v in ss._idx_to_int(states, ts, STATENAMES).items():
+        st["ints"][k] = v
+    m = st["detectorinfo"]["detectionparms"]["SleepScoreMetrics"]
+    m["broadbandSlowWave"], m["thratio"], m["EMG"] = bb.reshape(-1, 1), th.reshape(-1, 1), emg.reshape(-1, 1)
+    h = m["histsandthreshs"]
+    for k in ("swthresh", "EMGthresh", "THthresh"):
+        h[k] = thr[k]
+    for x, key in ((bb, "sw"), (emg, "EMG"), (th, "TH")):
+        hh, bins = ss._hist_counts_centers(x, 20)
+        h[f"{key}hist" if key != "sw" else "swhist"], h[f"{key}histbins" if key != "sw" else "swhistbins"] = hh, bins
+    st["detectorinfo"]["pass2"] = {"base_variant": BASE, "driver": "ephys/sleep_pass2.py", "git_commit": git_commit(),
+                                   "rescale": f"per animal, pooled q{Q_LO}..q{Q_HI}", "remclean": counts}
+    ss._append_theta_epochs(st, bp, se)                        # writes the state file
+    ss._states_to_episodes(st, bp, se, microarousal_sec=float(Cfg(basepath=bp).state_microarousal_sec), overwrite=True)
+    ss._save_state_figures(bp, se, st, overwrite=True)
+    info = summarize(bp, an, se, OUT, imu_root, pp_commit, session_struct(c, an)["_xml"], t0,
+                     extra={"derived_from": BASE, **counts, **{f"{k}_animal": thr[k] for k in ("swthresh", "EMGthresh", "THthresh")}})
+    old = src / "imu_remclean" / an / se / f"{se}.SleepState.states.mat"
+    row = {"animal": an, "session": se, "frac_rem_pass2": info["frac_rem"], "frac_nrem_pass2": info["frac_nrem"]}
+    if old.exists():
+        so = np.asarray(loadmat(old, simplify_cells=True)["SleepState"]["idx"]["states"]).reshape(-1)
+        row.update({"kappa_vs_imu_remclean": round(kappa(so, states), 4), "frac_rem_old": round(float(np.mean(so == 5)), 4),
+                    "frac_nrem_old": round(float(np.mean(so == 3)), 4)})
+        row["d_rem_pp"] = round(100 * (row["frac_rem_pass2"] - row["frac_rem_old"]), 2)
+        row["d_nrem_pp"] = round(100 * (row["frac_nrem_pass2"] - row["frac_nrem_old"]), 2)
+    return row
+
+
+def pool_map(fn, jobs: list[dict], workers: int) -> list:
+    if workers <= 1:
+        return [fn(j) for j in jobs]
+    from concurrent.futures import ProcessPoolExecutor
+    with ProcessPoolExecutor(workers) as ex:
+        return list(ex.map(fn, jobs, chunksize=1))
+
+
+def load_raw(src: Path, animal: str, session: str) -> dict | None:
+    raw = src / BASE / animal / session / f"{session}.SleepScoreRaw.npz"
+    if not raw.exists():
+        return None
+    with np.load(raw) as z:
+        return {"animal": animal, "session": session, **{k: z[k] for k in z.files}}
+
+
 def kappa(a: np.ndarray, b: np.ndarray) -> float:
     n = min(len(a), len(b))
     a, b = a[:n], b[:n]
@@ -132,28 +223,19 @@ def main() -> None:
     ap.add_argument("--pipeline-root", default=None)
     ap.add_argument("--force", action="store_true", help="continue past a reproduction mismatch")
     ap.add_argument("--report-name", default="sleep_pass2")
+    ap.add_argument("--workers", type=int, default=1)
     a = ap.parse_args()
     c = resolve_cohort(a.cohort)
     src, imu_root = Path(a.src), Path(a.imu_root)
     ss, Cfg, pp_commit, _ = pipeline_module(a.pipeline_root)
     rd = report_dir(c)
     specs = [s.split(":") for s in a.sessions] or [[p.parent.parent.name, p.parent.name] for p in sorted((src / BASE).glob("*/*/*.SleepScoreRaw.npz"))]
-    S = [d for d in (load_session(src, an, se) for an, se in specs) if d is not None]
+    S = [d for d in (load_raw(src, an, se) for an, se in specs) if d is not None]      # light: raw metrics only
     print(f"{len(S)} sessions with raw metrics in {src / BASE}", flush=True)
 
     # 1. reproduction gate
-    gate = []
-    for d in S:
-        bb, th, emg = (ss._norm_to_range(d[k], 0.0, 1.0) for k in ("sw", "th", "emg"))
-        same_norm = all(np.allclose(x, d["stored_norm"][k], rtol=0, atol=1e-12) for x, k in
-                        zip((bb, th, emg), ("broadbandSlowWave", "thratio", "EMG")))
-        thr_found = dip_thresholds(ss, bb, th, emg)
-        same_thr = all(abs(thr_found[k] - d["stored_thr"][k]) < 1e-12 for k in d["stored_thr"])
-        states, ts = classify_chain(ss, bb, th, emg, d["t_clus"], d["stored_thr"])
-        same_states = len(states) == len(d["stored_states"]) and np.array_equal(states, d["stored_states"])
-        gate.append({"animal": d["animal"], "session": d["session"], "same_rescaled_metrics": same_norm, "same_thresholds": same_thr,
-                     "same_states": same_states, "n_epochs": len(d["stored_states"]),
-                     "n_diff": int(np.sum(states[:len(d["stored_states"])] != d["stored_states"][:len(states)]))})
+    base_job = {"src": str(src), "imu_root": str(imu_root), "cohort": c, "pipeline_root": a.pipeline_root}
+    gate = pool_map(gate_one, [{**base_job, "animal": d["animal"], "session": d["session"]} for d in S], a.workers)
     gate = pd.DataFrame(gate)
     gate.to_csv(rd / f"ephys_spikes_{a.report_name}_gate_{c}.csv", index=False)
     ok = gate[["same_rescaled_metrics", "same_thresholds", "same_states"]].all(axis=1)
@@ -187,57 +269,9 @@ def main() -> None:
     pd.DataFrame(rows).to_csv(rd / f"ephys_spikes_{a.report_name}_scale_{c}.csv", index=False)
 
     # 4. reclassify, REM rules, outputs
-    changes = []
-    for d in S:
-        an, se = d["animal"], d["session"]
-        if an not in scale:
-            continue
-        t0 = time.time()
-        b = scale[an]["bounds"]
-        bb, th, emg = (np.clip((d[k] - b[k][0]) / (b[k][1] - b[k][0]), 0.0, 1.0) for k in ("sw", "th", "emg"))
-        thr = scale[an]["thr"]
-        states, ts = classify_chain(ss, bb, th, emg, d["t_clus"], thr)
-        imu = load_imu(imu_root, an, se)
-        states, counts = remclean_states(ss, states, ts, imu["vedba_1s"], IMU_STILL_THR[an])
-        bp = src / OUT / an / se
-        (bp / "StateScoreFigures").mkdir(parents=True, exist_ok=True)
-        for name in (f"{se}.session.mat", f"{se}.EMGFromLFP.LFP.mat", f"{se}.SleepScoreLFP.LFP.mat", f"{se}.lfp"):
-            if (d["bp"] / name).exists() and not (bp / name).exists():
-                try:
-                    os.link(d["bp"] / name, bp / name)       # never written by this script or the editor
-                except OSError:
-                    shutil.copy2(d["bp"] / name, bp / name)
-        st = d["st"]
-        st["idx"]["states"], st["idx"]["timestamps"] = states.reshape(-1, 1), ts.reshape(-1, 1)
-        for k, v in ss._idx_to_int(states, ts, STATENAMES).items():
-            st["ints"][k] = v
-        m = st["detectorinfo"]["detectionparms"]["SleepScoreMetrics"]
-        m["broadbandSlowWave"], m["thratio"], m["EMG"] = bb.reshape(-1, 1), th.reshape(-1, 1), emg.reshape(-1, 1)
-        h = m["histsandthreshs"]
-        for k in ("swthresh", "EMGthresh", "THthresh"):
-            h[k] = thr[k]
-        for x, key in ((bb, "sw"), (emg, "EMG"), (th, "TH")):
-            hh, bins = ss._hist_counts_centers(x, 20)
-            h[f"{key}hist" if key != "sw" else "swhist"], h[f"{key}histbins" if key != "sw" else "swhistbins"] = hh, bins
-        st["detectorinfo"]["pass2"] = {"base_variant": BASE, "driver": "ephys/sleep_pass2.py", "git_commit": git_commit(),
-                                       "rescale": f"per animal, pooled q{Q_LO}..q{Q_HI}", "remclean": counts}
-        ss._append_theta_epochs(st, bp, se)                        # writes the state file
-        ss._states_to_episodes(st, bp, se, microarousal_sec=float(Cfg(basepath=bp).state_microarousal_sec), overwrite=True)
-        review = bp / "complex_system" / f"{se}.SleepState.states.mat"
-        if review.exists() and (bp / f"{se}.SleepState.states.mat").exists():
-            pass                                                   # an existing review copy is never touched here
-        ss._save_state_figures(bp, se, st, overwrite=True)
-        info = summarize(bp, an, se, OUT, imu_root, pp_commit, session_struct(c, an)["_xml"], t0,
-                         extra={"derived_from": BASE, **counts, **{f"{k}_animal": thr[k] for k in ("swthresh", "EMGthresh", "THthresh")}})
-        old = src / "imu_remclean" / an / se / f"{se}.SleepState.states.mat"
-        row = {"animal": an, "session": se, "frac_rem_pass2": info["frac_rem"], "frac_nrem_pass2": info["frac_nrem"]}
-        if old.exists():
-            so = np.asarray(loadmat(old, simplify_cells=True)["SleepState"]["idx"]["states"]).reshape(-1)
-            row.update({"kappa_vs_imu_remclean": round(kappa(so, states), 4), "frac_rem_old": round(float(np.mean(so == 5)), 4),
-                        "frac_nrem_old": round(float(np.mean(so == 3)), 4)})
-            row["d_rem_pp"] = round(100 * (row["frac_rem_pass2"] - row["frac_rem_old"]), 2)
-            row["d_nrem_pp"] = round(100 * (row["frac_nrem_pass2"] - row["frac_nrem_old"]), 2)
-        changes.append(row)
+    jobs = [{**base_job, "animal": d["animal"], "session": d["session"], "bounds": scale[d["animal"]]["bounds"],
+             "thr": {k: scale[d["animal"]]["thr"][k] for k in ("swthresh", "EMGthresh", "THthresh")}} for d in S if d["animal"] in scale]
+    changes = pool_map(finish_one, jobs, a.workers)
     ch = pd.DataFrame(changes)
     ch["review"] = (ch.get("kappa_vs_imu_remclean", pd.Series(1.0, index=ch.index)) < 0.9) | (ch.get("d_rem_pp", pd.Series(0.0, index=ch.index)).abs() > 2)
     ch.to_csv(rd / f"ephys_spikes_{a.report_name}_changes_{c}.csv", index=False)
