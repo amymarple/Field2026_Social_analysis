@@ -18,6 +18,14 @@ cohort pose in `cv/configs/house1_cohort_pose_2026c.json` — `change_log/2026-1
 click verdicts for the 2 fixed spots, then (unlocked) the 59 suspected-miss episodes; Export CSV + JSON → `cv/configs/c1yolo_review_2026c/`.
 Since the user's "frozen viewer" report each episode plays its own clip that follows its animal (`wiser_assist_p0.py --episode-clips`,
 `review_clips_per_episode/`, 58 clips); old Step-2 verdicts migrate automatically.
+**2026-10-06 (evening): WISER-guided labelling loop, round 1** (plan `implementation_plan/2026-10-06-wiser-label-loop.md`,
+parts A + B done, part C = the loop code in the undergrad's repo clone `social-field-rat-wiser-loop`, branch `wiser-loop`, built
+separately): `build_wiser_pixel_kit.py` → WISER pixel kit `D:\Field2026_analysis_out\2026c\wiser_pixel_kit_20261006_1952\`
+(1-Hz animal pixels, occluders, support, visibility masks for CH01/CH02, 11 nights; map validated on 19 / 22 camera-nights,
+not CH01/CH02 09-01 and CH02 09-02); `select_label_round1.py` → pool `label_round1_pool_20261006_1840\` (3 000 frames + v5 +
+DINOv3, never re-grabbed) and the **label package `label_round1_20261006_2015`** (400 train frames with v5 prelabels and WISER sidecars, test set
+100 on 09-05, 20 overlap frames; the user copies it to Q: and verifies with `verify_manifest.py`) —
+`change_log/2026-10-06-wiser-label-loop.md`, data map section I.
 **2026-10-06: read [`CAMERA_GEOMETRY_2026c.md`](CAMERA_GEOMETRY_2026c.md) before using any cohort-3 pixel position** —
 how every camera moved (per day, per night, at lid events), house_1's 09-18 move, the landmark names / files and the
 occluder image regions, and the correction table (`frame_correction.Corrections`; nights for CH01–CH06, all day for CH07/CH08).

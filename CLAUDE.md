@@ -343,7 +343,20 @@ houses (house_2 calibration pose; house_1 at its fitted cohort pose `cv/configs/
 `--house1-fit` = house_check on the CH01 + CH02 09-04 noon labels), 7-in perturbations clamped → pooled 5.0 % hidden / 5.0 %
 partly / 50.7 % clear / 39.3 % ambiguous of 300 episodes; `$OUT_ROOT/2026c/cv_field_ch01_occlusion_<ts>/` (`visibility_mask.npz`, `occluders.json`,
 `checks.csv`; per-episode classes **sealed** in `episodes.csv` until the user's clip verdicts), report
-`results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`. Geometry never makes a label.
+`results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`. Geometry never makes a label. `build_scene(cam=…)`
+also builds the same scene seen from CH02 (its own 09-18 L/R labels of A0, A4, B0–B4).
+**WISER-guided labelling loop, round 1** (plan `2026-10-06-wiser-label-loop.md`; parts A + B here, part C = the loop code in
+the undergrad's repo clone `D:/Documents/GitHub/social-field-rat-wiser-loop/`, branch `wiser-loop`, reads only the kit and
+the videos): `select_label_round1.py --pool` (cv env) → `$OUT_ROOT/2026c/label_round1_pool_<ts>/` (per camera 1 500 night
+times, WISER-stratified + uniform, ≥ 10 s apart, test night 09-05 excluded; PNG via the grab_frames command + v5 conf ≥ 0.05 +
+DINOv3 1024 × 288 CLS; frame index from the fMP4 sample table; resumable, never re-grabbed) → `build_wiser_pixel_kit.py
+--build --pool <pool>` → **WISER pixel kit** `$OUT_ROOT/2026c/wiser_pixel_kit_<ts>/` (per camera and night 08-30…09-10 except
+09-05: 1-Hz `t_pc, animal, tracked, in_house, u, v, r_px, hidden_share, in_support, motion, all_tracked, map_validated`;
+`support.json`, `occluders.json` by night, `visibility_mask.npz`; map validated per camera-night from the pool's v5 boxes:
+19 / 22 pass, not CH01/CH02 09-01 and CH02 09-02) → `select_label_round1.py --select --pool <pool> --kit <kit>` →
+**label package** `$OUT_ROOT/2026c/label_round1_<ts>/` (400 train frames with editable v5 txt only where v5 has a box,
+`prelabels_v5/`, WISER sidecars `wiser_sidecar/1`; test 100 on 09-05 — never a model, prelabel or sidecar; 20 overlap frames;
+`MANIFEST_sha256.csv` + `verify_manifest.py`) + report `results/2026c/cv_field/reports/cv_field_wiser_label_loop_round1_2026c.md`.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

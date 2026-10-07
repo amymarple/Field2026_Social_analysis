@@ -119,6 +119,24 @@ rat" + fixed-spot diagnostic).
 | Report, figures, pointer | `REPO/results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`, `REPO/results/2026c/cv_field/figures/ch01_occlusion/{visibility_mask,class_shares}.png`, `REPO/results/2026c/cv_field/reports/run_manifest_ch01_occlusion_2026c.json` | final (pooled only) |
 | Calibration inputs (read-only) | `../Field_2026_Social_Recording/calibration_qc/`: `paddock_map.py` (rev g RayCamera + terrain), `survey_2026-10-03.json`, `HOUSE_CHECK_2026-10-04_revg.txt`, `pole_check.py` (method re-run); labels `REPO/cv/configs/landmarks/2026c/landmarks_CH0[1-4]_20260918_*.json`, `landmarks_CH01_20260904_120002.json` | external |
 
+## I. WISER-guided labelling loop, round 1 (WISER pixel kit, 400-frame package, test set to 100)
+
+Plan `REPO/implementation_plan/2026-10-06-wiser-label-loop.md` (approved 2026-10-06 "做吧"; amendments 1–3 before
+results, 4 after the first package build), change log `REPO/change_log/2026-10-06-wiser-label-loop.md`. Parts A and B are
+here; part C (the loop code) is built separately in the undergrad's repo clone `D:/Documents/GitHub/social-field-rat-wiser-loop/`
+(branch `wiser-loop`), reading only the kit and the videos.
+
+| What | Path | Status |
+|---|---|---|
+| Code | `REPO/cv/cv_field/build_wiser_pixel_kit.py` (`--selftest` 12 checks, `--build --pool`), `REPO/cv/cv_field/select_label_round1.py` (`--selftest` 16 checks, `--pool`, `--select --pool --kit`); `ch01_occlusion.build_scene(cam=…)` extended to CH02 (CH01 unchanged: its mask reproduces the v2 run's on all 18 976 support cells) | final |
+| **Pool** (never re-grabbed) | `$OUT/2026c/label_round1_pool_20261006_1840/`: `pool/CH0x/<video stem>_f<frame>.png` (3 000 upright PNG, ~57 GB), `pool_targets.csv` (draw: stratum, kind), `pool_frames.csv` (video, frame index, PTS ticks, frame time, snap), `pool_detections.csv.gz` (v5 `rat_m_v5`, imgsz 1280, conf ≥ 0.05; 22 858 boxes), `pool_embeddings.npz` (DINOv3 ViT-B/16 CLS, 1024 × 288), `video_index/` (fMP4 sample tables), `pool_draw_stats.json`, `pool_run.json` (weights sha256, identity check vs `grab_frames.grab` = 0 px), `pool_log.txt`; `emb/` and `pool_detections.csv` = the incremental files | final |
+| **WISER pixel kit** | `$OUT/2026c/wiser_pixel_kit_20261006_1952/` (32 MB): `kit.json` (versions, commits, map, sha256 of every input, validation table), `README.md`, `validation.csv`, per camera `support.json`, `occluders.json` (`by_night`), `<night>.csv.gz` × 11 (1 Hz × 6 animals), `visibility_mask.npz`, `checks.csv`; `MANIFEST_sha256.csv` + `verify_manifest.py` | final; 19 / 22 camera-nights validated |
+| **Label package** | `$OUT/2026c/label_round1_20261006_2015/`: `train/{images (png + editable txt only where v5 has a box ≥ 0.25), prelabels_v5, wiser, manifest.csv}` (400), `test/{images, manifest.csv}` (100: 40 existing `.jpg` + 60 new `.png`, no txt, no sidecar), `overlap/` (20), `MANIFEST_sha256.csv`, `verify_manifest.py`, `README.md` (copy to Q:, labelling rules) | final; for the user to copy to Q: and label |
+| Selection records | `$OUT/2026c/label_round1_20261006_2015_selection/`: `pool_scores.csv.gz` (every pool frame's scores), `selected.csv`, `select_run.json`, `select_log.txt` | final |
+| Superseded first package | `label_round1_20261006_2003` (98 test frames; deleted unused, amendment 4) | gone |
+| Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_wiser_label_loop_round1_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_wiser_label_loop_round1_2026c.json` | final |
+| Inputs (read-only) | `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/mapping.json` (accepted map), default WISER tracks, `REPO/results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv`, calibration rev g (`F:/calibration/qc/camera_fit.npz`, `ray_correction.json` = the recording repo's), labels `REPO/cv/configs/landmarks/2026c/`, `REPO/cv/configs/house1_cohort_pose_2026c.json`, video `F:/3rd_rat/`, the existing test frames `REPO/cv/dataset/rat_pano_test/images/` (copied unchanged) | — |
+
 ## Rules an auditor should hold the work to
 
 The agent never judged images; every visual verdict is the user's. Machine boxes (YOLO, SAM3, WISER projections) are

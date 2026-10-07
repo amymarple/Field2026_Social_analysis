@@ -849,6 +849,10 @@ def write_house1_json(res: dict, cd: Path) -> Path:
 
 # ----------------------------------------------------------------------------------------------- pole planes (v2)
 CH01_LABELLED_POLES = ("A0", "B0", "B1", "B2", "B3", "C0", "C1")
+# per camera (2026-10-06, the WISER pixel kit): the poles with both L / R edges in that camera's own 09-18 labels, and the
+# label file; CH01 unchanged (build_scene(cam="CH01") reproduces v2)
+LABELLED_POLES = {"CH01": CH01_LABELLED_POLES, "CH02": ("A0", "A4", "B0", "B1", "B2", "B3", "B4")}
+LM_0918_BY_CAM = {"CH01": LM_0918, "CH02": "landmarks_CH02_20260918_152230.json"}
 
 
 def pole_planes(cam, rec: dict, labels: dict, p: str, offset=(0.0, 0.0)) -> dict | None:
@@ -903,9 +907,10 @@ def tojson(o):
     return o
 
 
-def build_scene(cams, cd, mj: dict, log=print, v2: bool = True) -> tuple[Scene, dict, pd.DataFrame, pd.DataFrame, dict]:
+def build_scene(cams, cd, mj: dict, log=print, v2: bool = True, cam: str = CAM) -> tuple[Scene, dict, pd.DataFrame, pd.DataFrame, dict]:
     """v2 (amendment 3): house_1 at the fitted cohort pose (house1_cohort_pose_2026c.json); poles labelled in CH01 hide by
-    CH01's own L / R edge planes. v1: house_1 from the WISER ROI, all poles capsules."""
+    CH01's own L / R edge planes. v1: house_1 from the WISER ROI, all poles capsules. cam (2026-10-06, WISER pixel kit):
+    the same scene seen from another camera (CH02: its own 09-18 L / R labels of A0, A4, B0-B4); CH01 is unchanged."""
     import wiser_assist_p0 as wp
     sv = survey(cd)
     radii = {p: per * IN / (2 * np.pi) for p, per in sv["poles"]["perimeter"].items()}
@@ -915,12 +920,12 @@ def build_scene(cams, cd, mj: dict, log=print, v2: bool = True) -> tuple[Scene, 
         rec["model"] = "cylinder (capsule)"
         rec["planes"] = None
     if v2:
-        lab18 = load_labels(LM_0918)["landmarks"]
-        for p in CH01_LABELLED_POLES:
-            pl = pole_planes(cams[CAM], poles[p], lab18, p, IR2COL[CAM])
+        lab18 = load_labels(LM_0918_BY_CAM[cam])["landmarks"]
+        for p in LABELLED_POLES[cam]:
+            pl = pole_planes(cams[cam], poles[p], lab18, p, IR2COL[cam])
             if pl is not None:
                 poles[p]["planes"] = pl
-                poles[p]["model"] = "CH01 L/R label planes"
+                poles[p]["model"] = f"{cam} L/R label planes"
     am = mj["accepted_map"]
     m = wp.Map(float(am["dx_in"]), float(am["dy_in"]), float(np.radians(am["theta_deg"])), float(am["scale"]),
                float(am["centre_wiser_in"][0]), float(am["centre_wiser_in"][1]))
@@ -947,7 +952,7 @@ def build_scene(cams, cd, mj: dict, log=print, v2: bool = True) -> tuple[Scene, 
         h1 = {"source": "WISER ROI house_1 centre through the accepted map", "wiser_roi_in": h1w.tolist(),
               "paddock_in": h1p.tolist(), "ridge_deg": ridge1, "soil_z_mm": -HOUSE1_SOIL_BELOW_MM,
               "vs_calibration_postmove_in": float(np.hypot(*(h1p - post)))}
-    c1 = cams[CAM]
+    c1 = cams[cam]
     scene = Scene(c1.centre, poles, [house1, house2], lambda xy: ground(c1, xy))
     place = {"house_1": h1,
              "house_2": {"source": "calibration house check (rev g)", "paddock_in": [HOUSE2_POSE["cx_in"], HOUSE2_POSE["cy_in"]],

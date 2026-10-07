@@ -1,6 +1,11 @@
 # WISER-guided labelling loop for the CH01/CH02 rat detector (round 1 + the loop in the undergrad's repo)
 
-Date: 2026-10-06. Status: **PLANNED** — design answers from the user 2026-10-06 (new clone + branch of the undergrad's
+Date: 2026-10-06. Status: **A and B DONE 2026-10-06** (approved "做吧"; amendments 1–3 before results, 4 after the first
+package build; kit `D:/Field2026_analysis_out/2026c/wiser_pixel_kit_20261006_1952/`, package
+`D:/Field2026_analysis_out/2026c/label_round1_20261006_2015/`, report
+`results/2026c/cv_field/reports/cv_field_wiser_label_loop_round1_2026c.md`, change log
+`change_log/2026-10-06-wiser-label-loop.md`); **C PENDING** (the loop code, built by another agent in
+`D:/Documents/GitHub/social-field-rat-wiser-loop/`). Earlier status: PLANNED — design answers from the user 2026-10-06 (new clone + branch of the undergrad's
 repo; packages built on D: and copied to Q: by the user; round 1 = 400 training frames + test set extended to 100;
 training both on a Windows PC and on BioHPC); runs only after the user approves this file. Pre-registered before any
 result; amendments dated and marked *before* or *after results*. Data locations: `cv/cv_field/DATA_MAP_c1yolo_wiser.md`.
@@ -108,3 +113,90 @@ labelling of round 1). GPU only for v5 on the pool and DINOv3 embeddings.
 Reports `results/2026c/cv_field/reports/cv_field_wiser_label_loop_round1_2026c.md` (+ pointer), code
 `cv/cv_field/build_wiser_pixel_kit.py`, `cv/cv_field/select_label_round1.py` (both `--selftest`); change_log, both
 index READMEs, CLAUDE.md cv_field map, HANDOFF, data map.
+
+## Amendment 1 (2026-10-06, **before results**: written after the code and its self-tests, before the pool was drawn)
+
+Shared file formats for A/B (fixed by the coordinator so that part C, built in parallel by another agent, can code
+against them): kit `<CAM>/support.json`, `<CAM>/occluders.json` (both `by_night`), `<CAM>/<night>.csv.gz` with the columns
+`t_pc, animal, tracked, in_house, u, v, r_px, hidden_share, in_support, motion, all_tracked, map_validated`; sidecar
+`wiser_sidecar/1`; manifest columns `image … overlap`; package layout incl. `overlap/` (20 of the 400, 10 per camera,
+random seed 0). Implementation choices fixed now:
+
+1. **Test extension spacing 5 min** (per camera, from each other and from that camera's existing 20): 50 frames at 10 min
+   need 490 min > the 440-min night. Same rule otherwise (`select_pano_targets.draw`, zero / few / many 0.2 / 0.4 / 0.4,
+   c3_bins5), seeds 1000 (CH01) / 1001 (CH02).
+2. **No kit table for night 09-05** (no model may run on its frames → no validation; no WISER pixels written for it).
+   Kit nights = 08-30 … 09-10 minus 09-05 (11); handling windows ± 5 min have no rows; booleans 0/1.
+3. **Validation statistic** (A2) per camera-night from that camera-night's pool frames: v5 boxes conf ≥ 0.5 →
+   `Corrections.to_paddock` (z = 60 mm); WISER animals outside the house zones at the frame time (L = 0) through the
+   accepted map. *Median distance* = median matched residual of the per-frame Hungarian assignment (gate 30 in, the
+   phase-0 test statistic); *within-14 share* = share of all mapped boxes with an outside animal within 14 in;
+   control = WISER + 3 600 s with the same map (no refit). Pass iff median ≤ 14 in AND share ≥ 2 × control share;
+   ≥ 20 mapped boxes and ≥ 10 pairs, else "insufficient data" (= not validated). No fixed-spot exclusion.
+4. **Motion** = head-IMU state where its QC passes (1 still / 2 active / 3 locomoting), else the default track's speed at
+   the nearer fix (< 2 in/s still, 2–10 active, ≥ 10 locomoting); untracked = unknown.
+5. **Pool strata**: n_out = tagged animals tracked and outside the house zones (0 / 1–2 / ≥ 3), motion = the most active
+   state among them ("none" when 0) → 7 strata; 1 200 frames drawn equally over the strata (a stratum short of
+   candidates hands its shortfall to the others, round-robin), within a stratum round-robin over its (night, clock hour)
+   cells in random order; + 300 uniform; ≥ 10 s apart per camera; seconds without video excluded; seeds 0 (CH01) and
+   1 (CH02).
+6. **Rain nights** (no suspected-miss quota) = rain ≥ 1 mm 21:00–04:20 in the correction table (AWN): 08-31, 09-03, 09-09.
+7. **Pixel radius** r_px = 14 √|det J| (J = ∂ cohort px / ∂ paddock in): the area-equivalent radius of the 14-in ring's
+   image. **Robust hidden share 0** (B3a) = the camera's visibility mask (2-in cells) is 0 at the nominal position and at
+   the 8 positions 7 in away (clamped 1 in inside the paddock) — the occlusion-v2 rule; the mask ships in the kit.
+   CH02's scene = CH01's v2 scene seen from CH02, with CH02's own 09-18 L/R labels (A0, A4, B0–B4) as label planes
+   (`ch01_occlusion.build_scene(cam=…)`; CH01 unchanged).
+8. **Scores (B3)** use the paddock geometry: a box is within 20 in when its centre maps (`to_paddock`) within 20 in, or —
+   if it maps outside the support — when its pixel is within 20/14 · r_px of the animal's pixel; social = two animals
+   tracked, in support, outside the house zones within 20 in. Only map-validated camera-nights; misses not on rain nights.
+9. **Merged event** (one frame per event): per animal, the runs of kit seconds in which it is tracked, outside the house
+   zones, in support and robustly unhidden (gaps ≤ 5 s bridged); a frame's miss animals join their runs (union).
+10. **Quota fill order**: visible suspected miss → social → hard negative → WISER strata (+ the shortfalls of the first
+    three) → DINOv3 diversity → uniform random. Misses and social in random order (seed); hard negatives by v5 max conf
+    descending (frames where v5 fires though WISER puts all six animals in the houses). WISER strata over all 11 nights
+    (they use WISER counts in the WISER frame, not the map): round-robin over the 7 strata, each time the frame whose
+    (night, hour) cell is least represented. DINOv3 diversity: k-means k = 20 (seed 0) on PCA-50 + L2 embeddings of the
+    camera's pool, the nearest eligible frame to each centroid. ≤ 25 frames per camera-night, ≥ 10 s apart.
+11. **DINOv3**: `field_embed`'s DINOv3 ViT-B/16 CLS token on the whole upright frame resized aspect-preserving to
+    1024 × 288 (multiples of 16), not field_embed's square 224 resize (a 3.6:1 panorama squashed to a square).
+12. **Frame index** in `<video stem>_f<frame>.png` = 0-based index of the video sample in the hourly file, read from the
+    fragmented-MP4 index (= ffprobe packet order; PTS monotone, no B-frames); the grab is grab_frames.py's command plus
+    the integer PTS from showinfo (its `pts_time` has only 6 significant digits). Existing test frames keep their names;
+    their manifest `frame` is derived from their grab manifest (first sample ≥ the seek offset), empty if inconsistent.
+13. **SF12 on night 08-30**: its second tag (`SF12_tag12376`) is used where the main tag has no fix.
+14. **Kit pixels**: u, v are given whenever the inverse converges inside the frame; `in_support` says whether the
+    camera's verified calibration covers it. Occluder outlines = convex hulls of the user's edge labels (house_1 from the
+    09-04 noon labels through the inverse noon affine), unlabelled poles = projected 2.4-m capsule (in-frame points;
+    dropped if wider than 1 500 px, i.e. wrapped around the panorama), carried into each night by the night's median
+    correction and clipped to the frame.
+
+## Amendment 2 (2026-10-06, **before results**: no package existed yet; the coordinator's correction of the shared format)
+
+In `train/images/` and `overlap/images/` the editable `<stem>.txt` is written **only when v5 has ≥ 1 box at conf ≥ 0.25**;
+no `.txt` when v5 found nothing. Reason: the undergrad's workflow (`WORKFLOW.md` in social-field-rat) leaves model-empty
+frames unlabelled — `check_labels.py` counts a frame as reviewed when its `.txt` exists and `finalize_negatives.py` writes
+the empties only after the human pass, so an empty `.txt` at packaging time would turn a never-opened frame into a
+confirmed negative. `train/prelabels_v5/<stem>.txt` is unchanged: always written, empty when v5 found nothing (the
+pristine provenance record). The package README says: frames with no `.txt` are the ones the model found nothing in —
+open them, and press `s` even when they are empty. Part C aligns `select_round.py` to the same rule. Wording (the
+coordinator, relaying part C's cross-check, same evening, still before any package): a frame is **reviewed only when its
+`<stem>.prov.json` exists** (saved with `label_frames.py --wiser`; a frame with prelabel boxes has a `.txt` before anyone
+looked at it); `finalize_negatives` only after `progress.py <pkg>` reports "train READY" (0 never-saved frames) — in the
+package README and the report.
+
+## Amendment 3 (2026-10-06, **before results**: after the pool grab, before the kit validation and the selection)
+
+The pool grab lands on the first frame at or after each target second. In one CH02 hour (09-04 04:00, a video with
+missing frames) and two other CH02 targets of 09-04, 7 of the 3 000 frames lie 0.69–15.2 s after their target second
+(two targets share one frame). A pool frame is used for the validation (A2) and the selection (B3–B4) only if its frame
+time is ≤ 0.5 s after the target second (the WISER row of that second then describes it), one row per image; the others
+stay in the pool, unused. (Median frame − target 0.029 s.)
+
+## Amendment 4 (2026-10-06, **after results**: after the first package build, before anyone used it)
+
+The test extension drew 29 instead of 30 frames per camera: `select_pano_targets.draw` does not refill a stratum that
+runs out of spaced bins, and night 09-05 has only 319 'zero' bins (27 min), too few for 6 more frames ≥ 5 min from each
+other and from the 4 existing 'zero' frames of each camera. The plan fixes 30 per camera, so the shortfall is drawn from
+the strata that still have candidates (mix renormalised, same 5-min spacing, the same seeded rng stream continued). The
+first package (`label_round1_20261006_2003`, 98 test frames) was deleted unused and rebuilt by the same code; the training
+selection is deterministic and unchanged. Nothing about the shortfall depends on an image or a score.
