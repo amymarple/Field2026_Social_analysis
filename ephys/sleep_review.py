@@ -224,6 +224,7 @@ def main() -> None:
     ap.add_argument("--variant", default="imu_remclean")
     ap.add_argument("--merge", default=None, metavar="REVIEW_CSV", help="merge an exported review CSV with scores + YAML tags")
     ap.add_argument("--scores", default=None, help="scores CSV (default reports/ephys_spikes_sleep_scores_<c>.csv)")
+    ap.add_argument("--subset", default=None, help="CSV (animal, session[, note]): only these sessions; the note is shown on the card")
     a = ap.parse_args()
     c = resolve_cohort(a.cohort)
     if a.merge:
@@ -231,13 +232,23 @@ def main() -> None:
         return
     root = Path(a.root) if a.root else analysis_root(c) / "sleep"
     items = collect(root, a.variant, c)
+    suffix = ""
+    if a.subset:
+        sub = pd.read_csv(a.subset)
+        notes = {(r.animal, r.session): (r.note if "note" in sub.columns and isinstance(r.note, str) else "") for r in sub.itertuples()}
+        items = [it for it in items if (it["animal"], it["session"]) in notes]
+        for it in items:
+            it["subset_note"] = notes[(it["animal"], it["session"])]
+        suffix = "_" + Path(a.subset).stem
     cards = [card(it) for it in items]
-    for cd in cards:
+    for it, cd in zip(items, cards):
+        if it.get("subset_note"):
+            cd["lines"].append(it["subset_note"])
         cd["lines"] = [html.escape(l) for l in cd["lines"]]
     page = (PAGE.replace("__ITEMS__", json.dumps(cards))
-                .replace("__STORE__", f"sleep_review::{c}::{a.variant}::{root.as_posix()}")
-                .replace("__CSVNAME__", f"sleep_review_{c}_{a.variant}.csv"))
-    out = root / f"review_{a.variant}.html"
+                .replace("__STORE__", f"sleep_review::{c}::{a.variant}{suffix}::{root.as_posix()}")
+                .replace("__CSVNAME__", f"sleep_review_{c}_{a.variant}{suffix}.csv"))
+    out = root / f"review_{a.variant}{suffix}.html"
     out.write_text(page, encoding="utf-8")
     n_fig = sum(1 for cd in cards if cd["img"])
     print(f"{len(cards)} sessions ({n_fig} with a figure, {len(cards) - n_fig} not scored) -> {out}  [{utc_now_iso()}]")

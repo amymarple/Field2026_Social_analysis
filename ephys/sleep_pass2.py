@@ -43,7 +43,9 @@ from _common import git_commit, report_dir, resolve_cohort, utc_now_iso  # noqa:
 
 Q_LO, Q_HI = 0.001, 0.999
 MIN_LEN = 6.0                    # the scorer's state_min_state_length
-BASE, OUT = "imu_fixch", "pass2_remclean"
+BASE = "imu_fixch"
+OUT = "pass2_remclean"             # set from --out-variant in main()
+MED_MIN_NREM = 0.30                # median_session rule: sessions with >= this NREM share in pass 1 (a defined NREM peak)
 
 
 def dip_thresholds(ss, bb: np.ndarray, th: np.ndarray, emg: np.ndarray, emg_alpha: float = 1.0) -> dict:
@@ -151,7 +153,8 @@ def finish_one(job: dict) -> dict:
     states, ts = classify_chain(ss, bb, th, emg, d["t_clus"], thr)
     imu = load_imu(imu_root, an, se)
     states, counts = remclean_states(ss, states, ts, imu["vedba_1s"], IMU_STILL_THR[an])
-    bp = src / OUT / an / se
+    out_v = job["out"]
+    bp = src / out_v / an / se
     (bp / "StateScoreFigures").mkdir(parents=True, exist_ok=True)
     for name in (f"{se}.session.mat", f"{se}.EMGFromLFP.LFP.mat", f"{se}.SleepScoreLFP.LFP.mat", f"{se}.lfp"):
         if (d["bp"] / name).exists() and not (bp / name).exists():
@@ -172,11 +175,11 @@ def finish_one(job: dict) -> dict:
         hh, bins = ss._hist_counts_centers(x, 20)
         h[f"{key}hist" if key != "sw" else "swhist"], h[f"{key}histbins" if key != "sw" else "swhistbins"] = hh, bins
     st["detectorinfo"]["pass2"] = {"base_variant": BASE, "driver": "ephys/sleep_pass2.py", "git_commit": git_commit(),
-                                   "rescale": f"per animal, pooled q{Q_LO}..q{Q_HI}", "remclean": counts}
+                                   "rescale": f"per animal, pooled q{Q_LO}..q{Q_HI}", "threshold_rule": job["rule"], "remclean": counts}
     ss._append_theta_epochs(st, bp, se)                        # writes the state file
     ss._states_to_episodes(st, bp, se, microarousal_sec=float(Cfg(basepath=bp).state_microarousal_sec), overwrite=True)
     ss._save_state_figures(bp, se, st, overwrite=True)
-    info = summarize(bp, an, se, OUT, imu_root, pp_commit, session_struct(c, an)["_xml"], t0,
+    info = summarize(bp, an, se, out_v, imu_root, pp_commit, session_struct(c, an)["_xml"], t0,
                      extra={"derived_from": BASE, **counts, **{f"{k}_animal": thr[k] for k in ("swthresh", "EMGthresh", "THthresh")}})
     old = src / "imu_remclean" / an / se / f"{se}.SleepState.states.mat"
     row = {"animal": an, "session": se, "frac_rem_pass2": info["frac_rem"], "frac_nrem_pass2": info["frac_nrem"]}
@@ -224,8 +227,15 @@ def main() -> None:
     ap.add_argument("--force", action="store_true", help="continue past a reproduction mismatch")
     ap.add_argument("--report-name", default="sleep_pass2")
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--threshold-rule", choices=["pooled_dip", "median_session"], default="pooled_dip",
+                    help="pooled_dip: the scorer's dip search on the pooled per-animal rescaled metrics; median_session: the median "
+                         "over the animal's accepted sleep-rich sessions of the scorer's own per-session thresholds, converted to raw "
+                         "units and then to the animal's scale (amendment 2026-10-07 after pooled_dip absorbed SF07's REM)")
+    ap.add_argument("--out-variant", default="pass2_remclean")
     a = ap.parse_args()
     c = resolve_cohort(a.cohort)
+    global OUT
+    OUT = a.out_variant
     src, imu_root = Path(a.src), Path(a.imu_root)
     ss, Cfg, pp_commit, _ = pipeline_module(a.pipeline_root)
     rd = report_dir(c)
@@ -234,7 +244,8 @@ def main() -> None:
     print(f"{len(S)} sessions with raw metrics in {src / BASE}", flush=True)
 
     # 1. reproduction gate
-    base_job = {"src": str(src), "imu_root": str(imu_root), "cohort": c, "pipeline_root": a.pipeline_root}
+    base_job = {"src": str(src), "imu_root": str(imu_root), "cohort": c, "pipeline_root": a.pipeline_root, "out": OUT,
+                "rule": a.threshold_rule}
     gate = pool_map(gate_one, [{**base_job, "animal": d["animal"], "session": d["session"]} for d in S], a.workers)
     gate = pd.DataFrame(gate)
     gate.to_csv(rd / f"ephys_spikes_{a.report_name}_gate_{c}.csv", index=False)
@@ -259,13 +270,36 @@ def main() -> None:
         def resc(x, k, b=bounds):
             return np.clip((x - b[k][0]) / (b[k][1] - b[k][0]), 0.0, 1.0)
         pooled = {k: np.concatenate([resc(d[k], k) for d in Ds]) for k in ("sw", "th", "emg")}
-        thr = dip_thresholds(ss, pooled["sw"], pooled["th"], pooled["emg"])
-        scale[an] = {"bounds": bounds, "thr": thr, "n_sessions": len(Ds), "pooled_h": len(pooled["sw"]) / 3600}
+        if a.threshold_rule == "pooled_dip":
+            thr = dip_thresholds(ss, pooled["sw"], pooled["th"], pooled["emg"])
+        else:
+            # per session s: raw threshold = min_s + thr_s (max_s - min_s) (the inverse of the scorer's own min-max), on the
+            # sessions the user marked ok, >= 2 h, with >= MED_MIN_NREM NREM in pass 1; animal threshold = the median, rescaled
+            okset = set(map(tuple, rv[(rv.verdict == "ok") & (rv.duration_h >= 2)][["animal", "session"]].to_numpy()))
+            per = {"swthresh": [], "EMGthresh": [], "THthresh": []}
+            for d in Ds:
+                js = src / BASE / an / d["session"] / "score_sleep.json"
+                if (an, d["session"]) not in okset or not js.exists():
+                    continue
+                info = json.loads(js.read_text(encoding="utf-8"))
+                if (info.get("frac_nrem") or 0) < MED_MIN_NREM:
+                    continue
+                for tk, mk in (("swthresh", "sw"), ("EMGthresh", "emg"), ("THthresh", "th")):
+                    lo_s, hi_s = float(np.nanmin(d[mk])), float(np.nanmax(d[mk]))
+                    raw = lo_s + float(info[tk]) * (hi_s - lo_s)
+                    per[tk].append((raw - bounds[mk][0]) / (bounds[mk][1] - bounds[mk][0]))
+            if not per["swthresh"]:
+                raise SystemExit(f"{an}: no accepted sleep-rich session for the median_session rule")
+            thr = {k: float(np.median(v)) for k, v in per.items()}
+            thr["n_sessions_median"] = len(per["swthresh"])
+        scale[an] = {"bounds": bounds, "thr": thr, "n_sessions": len(Ds), "pooled_h": len(pooled["sw"]) / 3600,
+                     "n_sessions_threshold": thr.get("n_sessions_median", len(Ds))}
         print(f"{an}: {len(Ds)} sessions, {scale[an]['pooled_h']:.0f} h; thresholds SW {thr['swthresh']:.3f} EMG {thr['EMGthresh']:.3f} "
               f"TH {thr['THthresh']:.3f}", flush=True)
     rows = [{"animal": an, "n_sessions": s["n_sessions"], "pooled_h": round(s["pooled_h"], 1),
              **{f"{k}_lo": s["bounds"][k][0] for k in ("sw", "th", "emg")}, **{f"{k}_hi": s["bounds"][k][1] for k in ("sw", "th", "emg")},
-             **{k: s["thr"][k] for k in ("swthresh", "EMGthresh", "THthresh")}} for an, s in scale.items()]
+             **{k: s["thr"][k] for k in ("swthresh", "EMGthresh", "THthresh")}, "threshold_rule": a.threshold_rule,
+             "n_sessions_threshold": s["n_sessions_threshold"]} for an, s in scale.items()]
     pd.DataFrame(rows).to_csv(rd / f"ephys_spikes_{a.report_name}_scale_{c}.csv", index=False)
 
     # 4. reclassify, REM rules, outputs
@@ -297,7 +331,8 @@ def main() -> None:
     pd.DataFrame(adv).to_csv(rd / f"ephys_spikes_{a.report_name}_probe_advance_check_{c}.csv", index=False)
     (rd / f"run_manifest_{a.report_name}_{c}.json").write_text(json.dumps(
         {"src": str(src), "base": BASE, "out_variant": OUT, "driver": "ephys/sleep_pass2.py", "git_commit": git_commit(),
-         "scorer": f"PreprocessPipeline {pp_commit}", "q": [Q_LO, Q_HI], "written_utc": utc_now_iso()}, indent=2), encoding="utf-8")
+         "scorer": f"PreprocessPipeline {pp_commit}", "q": [Q_LO, Q_HI], "threshold_rule": a.threshold_rule,
+         "med_min_nrem": MED_MIN_NREM, "written_utc": utc_now_iso()}, indent=2), encoding="utf-8")
     print("done", flush=True)
 
 
