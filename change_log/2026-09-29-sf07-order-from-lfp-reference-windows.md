@@ -241,6 +241,27 @@ to the new orders; the final XMLs to go to `Q:\hc997\SocialFieldRat2026\3rd_rat`
   `G:\3rd_rat_spikes\analysis\channel_maps_final_20261006\`: the five XMLs, `probes_2026c.yaml`, a SHA-256
   `MANIFEST.csv` and a README. SF09 is not included (not final).
 
+## 2026-10-06 (night): SF09 — grouping and order from data (proposal)
+
+**Data.** NREM bouts (`imu_remclean`) from 09-02, 09-03 and 09-06, plus 2 min of 300–3000 Hz correlation from raw `E:`
+inside each day's longest NREM bout.
+
+**Grouping.** Spectral clustering of the spike-band correlation.
+- Template check: 98.4 % of WT2 probe 3's channels land in their true shank. Average-linkage clustering fails (59–83 %).
+- SF09: the three days agree (0.97–1.00).
+- Candidate purity: B 0.85–0.87, C 0.55, D 0.65.
+- B's shanks 1, 2 and 4 are confirmed, except col 21, which belongs to shank 1.
+- B's middle shank (16 sites) and shank 5 are mixed: the data move 35, 39, 40, 46 to the middle shank and 43, 49, 51, 55, 57
+  to shank 5.
+
+**Order.** `swr_layer_order.py --dead-at-gaps` (new option: dead columns as pace makers at the largest remaining step of the
+consensus path, never at an end).
+- Under the data grouping the days agree on every shank; under B shanks 3 and 5 contradict across days.
+- The profiles are physical: shanks 1–2 lie above the layer; 4 and 5 cross it; the long middle shank lies in radiatum.
+
+**Proposal:** `G:\…\SF09_xml_candidates\SF09_proposed.xml` with a Neuroscope set (current A / B / proposed). The yaml is
+unchanged until the user reviews it.
+
 ## Definitions
 - **Ripple:** 130–200 Hz band, |Hilbert| envelope smoothed 8 ms, z-scored per column. An event is max_z > 4 for ≥ 20 ms,
   events are merged within 50 ms, and the peak is the argmax of the summed z.

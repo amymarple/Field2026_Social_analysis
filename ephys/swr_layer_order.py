@@ -35,7 +35,8 @@ bad sites (no correlation, odd theta) can be misplaced.
 
 Dead / skipped columns and --exclude columns are not ordered: each is re-inserted after the live column that precedes it in the
 reference order (the first --orders XML), keeping the user's placement of dead pace makers and bridged duplicates. Excluded
-columns stay live in the XML.
+columns stay live in the XML. --dead-at-gaps instead puts each dead column at the largest remaining step of the consensus path
+(pace maker, never at an end), for animals whose reference order says nothing about the dead columns (SF09).
 
 Usage: python ephys/swr_layer_order.py --profiles A.npz [B.npz ...] --orders NAME=file.xml [NAME2=...] [--shanks 2 3] [--exclude COL ...]
        [--xml-out OUT.xml] [--csv-out OUT.csv] [--label TEXT]
@@ -227,6 +228,8 @@ def main() -> None:
     ap.add_argument("--csv-out", default=None, help="per-site features along the consensus order, per profile")
     ap.add_argument("--exclude", type=int, nargs="*", default=[], help="columns the LFP cannot place (e.g. a site that correlates with "
                     "nothing): left out of the seriation and kept after their predecessor in the reference order, like dead columns")
+    ap.add_argument("--dead-at-gaps", action="store_true", help="place dead/skipped columns as pace makers at the largest remaining "
+                    "steps of the consensus path (never at an end) instead of after their predecessor in the reference XML")
     ap.add_argument("--method", default="unimodal", choices=["unimodal", "plain"],
                     help="unimodal (default) = shortest path with the signed ripple unimodal along it; plain = shortest path only")
     ap.add_argument("--layout", default="linear", help="layout written into --xml-out (e.g. 'Buzsaki 5x12' for SF09)")
@@ -288,12 +291,21 @@ def main() -> None:
                 j = idx[c]
                 rows.append([a.label, k, i + 1, c, name, round(f["S"][j], 2), round(f["R"][j], 2), round(f["corr"][j], 3), round(f["Rs"][j], 2),
                              round(f["TH"][j], 1), round(float(10 ** f["TP"][j]), 1)])
-        # dead / skipped columns back after the live column that precedes them in the reference order
         seq = list(order)
-        for c in g:
-            if c in dead:
-                prev = [x for x in g[:g.index(c)] if x in seq]
-                seq.insert(seq.index(prev[-1]) + 1 if prev else 0, c)
+        if a.dead_at_gaps:
+            # dead / skipped columns as pace makers at the largest remaining step of the consensus path (never at an end)
+            idx = {c: i for i, c in enumerate(live)}
+            steps = [float(Dw[idx[x], idx[y]]) for x, y in zip(order[:-1], order[1:])]
+            for c in [c for c in g if c in dead]:
+                j = int(np.argmax(steps))
+                seq.insert(j + 1, c); half = steps[j] / 2.0
+                steps[j:j + 1] = [half, half]
+        else:
+            # dead / skipped columns back after the live column that precedes them in the reference order
+            for c in g:
+                if c in dead:
+                    prev = [x for x in g[:g.index(c)] if x in seq]
+                    seq.insert(seq.index(prev[-1]) + 1 if prev else 0, c)
         out_groups.append(seq)
         if [c for c in seq if c in dead] and seq != order:
             print(f"   with dead/skipped re-inserted: {seq}")
