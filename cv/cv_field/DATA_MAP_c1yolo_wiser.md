@@ -137,6 +137,41 @@ here; part C (the loop code) is built separately in the undergrad's repo clone `
 | Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_wiser_label_loop_round1_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_wiser_label_loop_round1_2026c.json` | final |
 | Inputs (read-only) | `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/mapping.json` (accepted map), default WISER tracks, `REPO/results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv`, calibration rev g (`F:/calibration/qc/camera_fit.npz`, `ray_correction.json` = the recording repo's), labels `REPO/cv/configs/landmarks/2026c/`, `REPO/cv/configs/house1_cohort_pose_2026c.json`, video `F:/3rd_rat/`, the existing test frames `REPO/cv/dataset/rat_pano_test/images/` (copied unchanged) | — |
 
+## J. The undergrad's portable drive (2026-10-07)
+
+A **portable copy** of everything part C needs, for the undergrad who labels and trains (user request 2026-10-07: put it
+all on the external SSD H:, usable on any computer, with an English instruction). The masters stay where sections A and I
+list them (`$OUT/…`, `F:/3rd_rat`, the backup); nothing was moved. The drive is a SanDisk Extreme V3 2 TB, exFAT; on the
+analysis PC it was `H:`, under any other letter it works the same (all paths are relative to the folder holding the
+marker file `WISER_LOOP_ROOT`). Her own `H:/social-field/` (incl. `RatLabeling/` and her 2026-09-14 git bundle) was not
+touched.
+
+| What on the drive (`<drive>/wiser_label_loop/`) | Source (read-only) | Files / bytes |
+|---|---|---|
+| `START_HERE.md` (+ `.html`) — the English instruction; `WISER_LOOP_ROOT` marker; `MANIFEST_sha256.csv`; `tools/` (`verify_drive.py --quick` / full, `make_manifest.py`, `render_start_here.py`); `env/` (`environment_label.yml`, `environment_cv.yml`, `README_env.md`: PyTorch `+cuXXX` pinning and the `+cu126` trap, BioHPC `cbsuruiz01` facts) | written for the drive | — |
+| `repo/social-field-rat/` — her repo cloned from `H:/social-field/social-field-rat-backup-20260914.bundle` (main tip `8691697`, 42 commits; no remote), branch **`wiser-loop`** checked out (part C cherry-picked onto `8691697`, then the drive-profile commits; tip `1ce4db4`, identical to `D:/Documents/GitHub/social-field-rat-wiser-loop`); `repo/patches/` (7 format-patch files + README; applied to `8691697` they give the tip tree of `a10e40c`) | the bundle + the local loop repo | 201 files |
+| `data/label_round1_20261006_2015/` — the round-1 package, byte-identical | `$OUT/2026c/label_round1_20261006_2015/` | 1 777 / 9 787 916 733 |
+| `data/wiser_pixel_kit_20261006_1952/` | `$OUT/2026c/wiser_pixel_kit_20261006_1952/` | 36 / 32 857 093 |
+| `data/label_round1_pool_20261006_1840/` (whole: frames, v5 boxes, DINOv3 features, video index) | `$OUT/2026c/label_round1_pool_20261006_1840/` | 6 199 / 59 967 918 565 |
+| `data/cohort1_labels/` (everything under the backup's `computer_vision/data/`) + `SOURCES.txt` (the canonical `prepare_dataset` folder list, relative paths) | backup `…/social_field_rat_backup_20261005/computer_vision/data/` | 5 301 / 50 968 269 827 (+ SOURCES.txt) |
+| `models/rat_m_v5/` (`best.pt`, `last.pt`, `args.yaml`, `results.csv`), `models/base/` (`yolo11m/s/n.pt`, `yolo26n.pt`) | backup `…/outputs/runs/rat_m_v5/`, `…/weights/` | 8 / 152 206 295 |
+| `video/3rd_rat/<date>/CH01\|CH02/` — every hourly file overlapping a kit night D 21:00 → D+1 04:20 (08-30 … 09-04, 09-06 … 09-10), same names; **nothing overlapping the test window 09-05 21:00 → 09-06 04:20** (checked twice: the plan and a hard guard in the copier) | `F:/3rd_rat/` | 186 / 243 526 976 448 |
+| **Total copied** | | **13 507 / 364 436 144 961** (manifest: 13 718 files incl. repo, docs, tools) |
+
+Verification: every file was streamed once with sha256 of the source bytes (copy log, 0 errors); destination sizes 13 507 /
+13 507; package and kit pass their own `verify_manifest.py` from the drive (1 776 and 35 files OK); cohort-1 labels and
+models equal the backup's `MANIFEST_sha256.csv` (5 309 / 5 309); `MANIFEST_sha256.csv` written 2026-10-07 16:05:50 (sha256
+of copied files = the copy-time source hashes, the other 211 files hashed on the drive); `verify_drive.py --quick` OK.
+Full read-back of all 364 GB against the manifest: not completed (the drive was unplugged for the hand-over after ~100 GB; change log addendum 2026-10-07).
+
+Portability test (drive mapped as `K:` with `subst`, loop env vars cleared, Python under an audit hook): verify --quick,
+the self-test (113/113 `--gui`, 99/99 base Python), the kit reader (22 camera-nights, 1 722 600 rows per camera),
+`select_round.py --select-only` (drive pool + video, output on C:; 400 frames, none from round 1), one real grab from the
+drive's video, `load_frame` on 3 frames, `progress.py` on a 5-frame copy (NOT READY → READY), `eval_test.py` on synthetic
+data — all pass; no D:, F: or Q: access in any run (the audit saw only K:, scratch and the interpreter's libraries; only
+`tools/verify_drive.py` resolved `K:` back to `H:` through `Path.resolve()`, harmless, not changed after the hand-over
+freeze).
+
 ## Rules an auditor should hold the work to
 
 The agent never judged images; every visual verdict is the user's. Machine boxes (YOLO, SAM3, WISER projections) are

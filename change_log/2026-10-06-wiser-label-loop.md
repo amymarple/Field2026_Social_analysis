@@ -64,3 +64,48 @@ Edited: `cv/cv_field/ch01_occlusion.py` (`build_scene(cam=…)`), the plan (stat
 ## Addendum — part C (coordinator, 2026-10-06)
 
 Part C DONE 2026-10-06 in `D:/Documents/GitHub/social-field-rat-wiser-loop` (import `56840d9` on main; branch `wiser-loop` b3f380f..07c6c9d, local, not pushed; patches in `patches_wiser-loop/`): `label_frames.py --wiser/--test/--labeller` (blind first, overlay after `d`, per-box provenance), `wiser_loop/` select_round / eval_test / progress (READY gate) / paths profiles / slurm; self-test 110/110; integration test on the real round-1 package, kit and pool passed (420 sidecars parse, progress gate, test guard; the port's selection shares 137 / 400 frames with round 1 because the kit carries no paddock position or robust hidden share — an exact port needs those columns). Format fix agreed by both sides before the package was built: the editable `.txt` exists only where the model has a box; a frame counts as reviewed only when its `.prov.json` exists.
+
+## Addendum — the undergrad's portable drive (2026-10-07)
+
+User request (2026-10-07): put everything the undergrad needs on the external SSD `H:` (SanDisk Extreme V3, 2 TB,
+exFAT), usable on any computer under any drive letter, with an English instruction. Everything is in
+`H:/wiser_label_loop/` (her `H:/social-field/` untouched); masters stay on D: / F: (layout and sources:
+`cv/cv_field/DATA_MAP_c1yolo_wiser.md` section J).
+
+- **History.** Her bundle `H:/social-field/social-field-rat-backup-20260914.bundle` verifies (complete history); `main` =
+  `8691697` (her `origin/main` `3e46520` is its ancestor, 3 local commits behind). Its tree equals the import commit on 36
+  of the 38 imported files, including every file part C changes; the two others are explained (the import's own
+  `.gitignore` written because her working copy had none, and her untracked `verify_copy.py` of 09-14 20:24, after the
+  20:14 bundle). The six part-C commits were cherry-picked onto `8691697` without conflict (new hashes 4dc635e 9b766bb
+  0735555 586dbe6 ceb876e 4b73a21); the resulting tree differs from the old branch only in those of her own files. Then on
+  `wiser-loop`: a10e40c (portable `drive` profile), 750dd02 (`--select-only` never grabs), 33ba6c3 (`os.path.abspath`
+  instead of `resolve()`), 1ce4db4 (BioHPC facts, ffmpeg only when grabbing). The drive repo (`repo/social-field-rat`,
+  no remote) and `D:/Documents/GitHub/social-field-rat-wiser-loop` hold the same `wiser-loop` (tip 1ce4db4); the local
+  repo keeps the old branches as `old/import-main`, `old/wiser-loop-on-import`. Not pushed.
+- **Portable paths.** Profile `drive` (relative paths) is the default when the scripts find the marker file
+  `WISER_LOOP_ROOT` above themselves (env `WISER_LOOP_ROOT` overrides, `WISER_LOOP_PROFILE=none` disables). No code
+  path of the loop opens D:, F:, C:/Users or Q:; absolute paths left on the drive are provenance (`kit.json`, v5
+  `args.yaml`, the package README), docs / examples, the `windows` / `biohpc` profiles, or her non-loop tools
+  (napari labelling scripts, notebooks).
+- **Copied** (one stream per file with sha256 of the source bytes; 6 parallel writers because the drive took only
+  ~40 MB/s per stream on this PC): package 1 777 files / 9.79 GB, kit 36 / 0.03 GB, pool 6 199 / 59.97 GB, cohort-1 data
+  5 301 / 50.97 GB, models 8 / 0.15 GB, video 186 / 243.53 GB (kit nights only, nothing overlapping 09-05 21:00 →
+  09-06 04:20) — 13 507 files, 364 436 144 961 bytes, 0 errors, 2 h 20 min.
+- **Verified.** Destination sizes 13 507 / 13 507; package and kit pass their own `verify_manifest.py` on the drive;
+  cohort-1 data + models equal the backup's manifest (5 309 / 5 309); `MANIFEST_sha256.csv` (13 718 files, written
+  16:05:50) + `tools/verify_drive.py` (`--quick` OK). Full read-back of the drive against the manifest: NOT COMPLETED -- the drive was unplugged for the hand-over at ~16:50 while `verify_drive.py` (6 readers, ~44 MB/s) had read ~100 of 364 GB; the run aborted (I/O error) before its end-of-run report, so it gives no result. What stands: copy-time source hashes, all sizes, the package / kit verify scripts and the backup manifest comparison. To finish it: `python tools/verify_drive.py` on the drive (hours; `--only <folder>` for parts).
+- **Portability test** (`subst K:` of the drive folder, loop env vars cleared, Python under an audit hook; outputs on C:):
+  verify --quick, self-test 113/113 (`--gui`) and 99/99 (base Python), kit reader (22 camera-nights, 1 722 600 rows per
+  camera), `select_round.py --select-only` (drive pool + video; 400 frames, none from round 1), one real grab from the
+  drive's video, `load_frame` on 3 frames, `progress.py` NOT READY → READY on a 5-frame copy, `eval_test.py` on
+  synthetic data: all pass; no D:/F:/Q: access. Found and left as is (the drive was frozen for hand-over):
+  `tools/verify_drive.py` uses `Path.resolve()`, so under a subst it reads through the target letter (harmless).
+- **Instruction**: `H:/wiser_label_loop/START_HERE.md` (+ `.html`): folder map and drive check, setup (two conda envs,
+  exact-CUDA PyTorch, `git config safe.directory` for exFAT, fetching `wiser-loop` into her own clone), labelling round 1
+  (train, overlap by a second person, test with `--test`; keys; blind first; what to box), the `progress.py` READY gate,
+  dataset (`SOURCES.txt` + round-1 train; never test / overlap), training locally from v5 and BioHPC later
+  (`cbsuruiz01`, module python/3.12.7 + venv + cu128, `/workdir`, copy results back), evaluation, the next round,
+  tracking files, a do-not list, provenance.
+- **Notes for whoever uses the drive.** USB throughput on the analysis PC was ~40 MB/s per stream (USB 2 port or link?):
+  train from a local copy. Windows' 260-character path limit bites in deep folders (two scratch tests here); the drive's
+  own paths are well below it.
