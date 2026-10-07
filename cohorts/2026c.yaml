@@ -302,4 +302,6 @@ raw_data_roots:
     audio:             "Q:/hc997/SocialFieldRat2026/3rd_rat"   # <date>/MIC01, MIC02/ (hourly WAV)
     ephys:             "Q:/hc997/SocialFieldRat2026/3rd_rat/WILD"   # SF7..SF12 (unpadded)/<MAC>/<session>/ + recovery.bin per animal; lane-ON sessions in _quarantine_adc_lane_on/
     pc_time:           "Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/pc_time"   # SF07..SF12 (padded)/<session>/pc_time.dat + pc_time_fit.json (429 sessions)
+    lfp:               "Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/lfp"     # SF07..SF12/<session>.lfp (+ .lfp.json), 203 sessions, 736 GB, 1250 Hz int16 x 64; copied 2026-10-06 from the BioHPC workdir, verified (VERIFY.txt, MD5SUMS, lfp_md5.txt)
+    sleep:             "Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/sleep"   # <variant>/<SFxx>/<session>/ score_sleep.py outputs (imu_nremgate, imu_remclean = final; no .lfp), _errors/, states_1s/, imu_sleep_bundle/, logs/; 141 GB, copied + verified 2026-10-06
     weather:           null   # not on Q: - the record is the field PC D:\weather_data\local; git copies in field2026-sync from-field/AWN-*
