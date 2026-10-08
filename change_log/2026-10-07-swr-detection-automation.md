@@ -101,3 +101,58 @@ Reports: `D:/Field2026_analysis_out/2026c/swr_*fable*.md`.
 - Then the BioHPC run: deploy the commit, upload `states_1s_final` to `swr_inputs/`, run `run_swr.sh` → storage
   `3rd_rat/analysis/swr/`, and spot-check server vs local.
 - Per-event flags exist; strict/inclusive tiers and wake-event filters are cut downstream.
+
+## Update 2026-10-08: SF07, flags, one boundary per block, production run
+
+**SF07 (no sharp-wave reversal on any block: the probe sits above the pyramidal layer).** The user's concern: detection
+then rests on the ripple channel alone, and EMG can contaminate it. So EMG is now excluded.
+
+- **New `ephys/swr_emg.py`:** EMG from the LFP.
+  - Definition: one site per shank (the first of each spike group); 300–600 Hz (≈ 300–450 Hz on our LFP); mean pairwise
+    correlation over ±0.5 s.
+  - It is PreprocessPipeline's EMGFromLFP, reproduced to 6e-11 on the sleep pilot's SF07 file.
+  - It also computes theta/delta in ±0.5 s.
+- **Flags per event:**
+  - `x_rem`: REM second;
+  - `x_theta`: θ/δ above the reference's NREM 95th percentile;
+  - `x_moving`: IMU above the sleep scorer's own EMG threshold of the session;
+  - `x_emg_lfp`: above the reference's NREM 95th percentile.
+- **Evidence, all of it the user's judgement:**
+  - Clicks on 6 sessions: theta-flagged 7/40 ripple; movement 49/87; LFP-EMG 53/95; unflagged 388/662.
+  - Blind review of 60 SF07 block-4-night events (`swr_check_gui.py` "Review flagged sample"): flagged 1/40 ripple,
+    movement/EMG-only 0/11, unflagged 18/20.
+- **Rule:**
+  - `excluded` = REM + theta everywhere;
+  - plus movement + LFP-EMG on blocks without a sharp-wave reversal (SF07, SF11, SF12 block 3);
+  - elsewhere movement and LFP-EMG stay flags only. Nothing is deleted.
+- **Boundary on ripple power only** where there is no reversal: the user's SF07 boundary is ~90°. Event F1 vs the user
+  (2-D → 1-D): night 0.869 → 0.918, block-1 day 0.739 → 0.822, block-4 day 0.876 → 0.849.
+
+**One boundary per animal × probe block (`--fit block`, default).**
+
+- The per-session NREM refit drifted. On the SF10 09-11 night (the user scored it: 202 clicks):
+  - per-session refit: 10.8 % selected, NREM 110/min, F1 0.49;
+  - the SF10 day session's boundary in raw units: 4.3 %, 74/min, F1 0.83 (user 55.9/min);
+  - per-session normalisation + reference centres: 0.62. The user's criterion behaves like an absolute amplitude.
+- So the block's reference session (the user-scored one where it exists, else the scan session) sets the boundary and the
+  θ / LFP-EMG thresholds.
+- Drift checks in each summary:
+  - the session's own-fit fraction;
+  - its NREM median ripple amplitude / the reference's. SF09's 09-09 night is ~0.6 (fewer events: 43 vs 59–79 NREM/min);
+    SF10's 09-11 night ~0.8.
+- Bug fixed: the event CSV wrote times with 5 significant digits. They are now kept to 0.1 ms.
+
+**Final local check (kept events vs the user):** SF10 day 0.906 · SF09 day 0.850 · SF10 09-11 night 0.829 · SF07
+0.814 / 0.853 / 0.879.
+
+**Channels:**
+- `swr_channel_scan.py` proposals use the 2-h most-NREM window (same choice as the full session on SF10).
+- The sharp-wave site may be on another shank (lab PPP4 precedent), or else the least positive site.
+- Reference sessions and exact block boundaries are in the channel config.
+- All blocks were confirmed by the user on 2026-10-08. The XMLs are byte-identical to storage
+  `3rd_rat/analysis/channel_maps_final_20261006/`.
+
+**Production.**
+- Commit `d522f78`, deployed to BioHPC; `states_1s_final` (198 files) uploaded to `swr_inputs/`.
+- `run_swr.sh` was launched 2026-10-08 15:10 with all 6 animals in parallel, 18 workers each (user: ~100 cores).
+- It ends with one verified `copy_to_storage` (part `swr`).
