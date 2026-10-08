@@ -8,7 +8,13 @@ That matches the user's own day-to-day consistency (~0.92). Waveform classifiers
 Per session (channels per animal x probe block from configs/swr_channels_<c>.yaml):
   1. DetectSWR candidates and features on [ripple, sharp-wave, noise] (`swr_detect.py`, identical to the MATLAB).
   2. bad = the CleanLFP port with the helper's fixed thresholds [8 5].
-  3. Labels = the smaller cluster of a 2-cluster k-means on the helper's z, both FITTED ON NREM CANDIDATES ONLY (z
+  3. Boundary (default --fit block, 2026-10-08): ONE per animal x channel block, fitted on the block's reference session
+     (`reference_session` in the channel config: the user-scored session where there is one) and applied to every
+     session of the block in raw feature units (same channels, same gain); the reference's theta / LFP-EMG thresholds
+     too. Why: on the SF10 09-11 night a per-session fit selected 10.8 % (NREM 110/min, F1 vs the user 0.49) where the
+     day session's boundary gave 4.3 % (74/min, F1 0.83). Each summary keeps the session's own-fit selected fraction
+     as a drift diagnostic. --fit nrem = the per-session behaviour described next.
+     Per-session (--fit nrem): labels = the smaller cluster of a 2-cluster k-means on the helper's z, both FITTED ON NREM CANDIDATES ONLY (z
      from NREM non-bad candidates; < 10 min NREM -> all candidates, flagged) and applied to every non-bad candidate as
      the nearest centre. On wake-heavy nights an all-candidate fit drifted to 20-25 % of candidates. A session with
      < 10 min NREM borrows the boundary (z parameters + centres, raw feature units: same channels, same gain) of the
@@ -158,7 +164,11 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
     fit = ok & (cstate == 3)
     X = np.column_stack([swA, rpA])
     donor_from = None
-    if fit_mode == "all":
+    ref = blk.get("reference_session")
+    if fit_mode == "block" and ref and ref != session:
+        donor = json.loads((Path(out) / animal / ref / f"{ref}.swr_summary.json").read_text())
+        fit_on, donor_from = "block_reference", ref
+    elif fit_mode == "all":
         fit, fit_on = ok, "all"
     elif nrem_minutes(st_path) >= MIN_NREM_MIN:
         fit_on = "nrem"
@@ -168,14 +178,27 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
             fit, fit_on = ok, "all"
         else:
             fit_on, donor_from = "donor", donor["session"]
-    if fit_on == "donor":
+    # the session's own NREM fit, kept as a drift diagnostic whichever boundary is used
+    own_fit = ok & (cstate == 3)
+    own_sel_frac = None
+    if own_fit.sum() >= MIN_NREM_MIN * 60 * 20:
+        uo = [1] if blk.get("boundary_features") == "ripple" else [0, 1]
+        mu_o, sd_o = X[own_fit][:, uo].mean(0), X[own_fit][:, uo].std(0, ddof=1)
+        Zo = (X[:, uo] - mu_o) / sd_o
+        _, co_sel, co_rest = kmeans_minority(Zo[own_fit])
+        own_sel_frac = float(np.mean((np.sum((Zo - co_sel) ** 2, 1) < np.sum((Zo - co_rest) ** 2, 1))[ok]))
+    # features of the boundary: both (swDiff, ripPower), or ripPower only where the probe has no sharp-wave reversal
+    # (SF07 / SF11 / SF12 block 3: the user's own boundary there is ~90 deg = ripple power only; ripPower-only k-means
+    # matched the user's SF07 clicks better, mean event F1 0.863 vs 0.828)
+    use = [1] if blk.get("boundary_features") == "ripple" else [0, 1]
+    if fit_on in ("donor", "block_reference"):
         b = donor["boundary"]
         mu, sdv = np.array(b["mu"]), np.array(b["sd"])
         c_sel, c_rest = np.array(b["c_sel"]), np.array(b["c_rest"])
-        Z = (X - mu) / sdv
+        Z = (X[:, use] - mu) / sdv
     else:
-        mu, sdv = X[fit].mean(0), X[fit].std(0, ddof=1)
-        Z = (X - mu) / sdv
+        mu, sdv = X[fit][:, use].mean(0), X[fit][:, use].std(0, ddof=1)
+        Z = (X[:, use] - mu) / sdv
         m, c_sel, c_rest = kmeans_minority(Z[fit])
     # nearest centre = the k-means boundary (perpendicular bisector), applied to every non-bad candidate
     d_sel = np.sum((Z - c_sel) ** 2, axis=1)
@@ -215,7 +238,11 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
     thr_emg = swr_emg.nrem_threshold(t2, e2, st_path)
     thr_theta = swr_emg.nrem_pct_threshold(td, st_path)
     thr_src = "nrem"
-    if (thr_emg is None or thr_theta is None) and fit_on == "donor":
+    if fit_on == "block_reference":
+        thr_emg = donor.get("thresholds", {}).get("emg_lfp")
+        thr_theta = donor.get("thresholds", {}).get("theta_delta_log")
+        thr_src = f"block reference {donor_from}"
+    elif (thr_emg is None or thr_theta is None) and fit_on == "donor":
         thr_emg = donor.get("thresholds", {}).get("emg_lfp") if thr_emg is None else thr_emg
         thr_theta = donor.get("thresholds", {}).get("theta_delta_log") if thr_theta is None else thr_theta
         thr_src = f"donor {donor_from}"
@@ -252,6 +279,8 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
         ripple=cols3[0], sharpwave=cols3[1], noise=cols3[2], shank_ripple=shank_cols), channel_block=blk.get("source"),
         params={**pc.__dict__}, n_samples=int(swDiff.size), hours=round(swDiff.size / SR / 3600, 3),
         n_candidates=int(ts.size), n_bad=int(bad.sum()), boundary_fit_on=fit_on, boundary_from=donor_from,
+        own_nrem_fit_selected_frac=None if own_sel_frac is None else round(own_sel_frac, 5),
+        is_block_reference=bool(ref == session),
         n_fit_candidates=int(fit.sum()) if fit_on != "donor" else 0, nrem_minutes=round(nrem_minutes(st_path), 1),
         channel_block_valid_from=str(blk.get("valid_from")),
         boundary=dict(mu=np.round(mu, 6).tolist(), sd=np.round(sdv, 6).tolist(), c_sel=np.round(c_sel, 6).tolist(),
@@ -263,6 +292,12 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
         rate_per_min={s: round(by_state.get(s, 0) / minutes[s], 3) for s in minutes if minutes[s] > 0},
         median_SwMax_z=round(float(df.SwMax_z.median()), 3) if len(df) else None,
         median_RipMax_z=round(float(df.RipMax_z.median()), 3) if len(df) else None,
+        boundary_features="ripPower" if use == [1] else "swDiff+ripPower",
+        nrem_median_amplitude=(round(float(np.median(ev["amplitude"][state == 3])), 2) if np.any(state == 3) else None),
+        amplitude_ratio_to_reference=(round(float(np.median(ev["amplitude"][state == 3])) /
+                                            donor["nrem_median_amplitude"], 3)
+                                      if fit_on == "block_reference" and np.any(state == 3)
+                                      and donor.get("nrem_median_amplitude") else None),
         median_noise_env_ratio=round(float(np.median(ratios["noise"])), 3) if len(df) else None,
         frac_events_all_shanks=round(float(np.mean(n_sh == len(shank_cols))), 3) if len(df) else None,
         emg_channels_0based=emg_cols,
@@ -274,7 +309,8 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
                            for st_ in minutes if minutes[st_] > 0},
         seconds=round(time.time() - t0, 1), lfp=str(lfp_path), states=str(st_path) if st_path.exists() else None)
     (out_dir / f"{session}.swr_summary.json").write_text(json.dumps(summary, indent=1, default=float))
-    qc_figure(out_dir / f"{session}.swr_qc.png", session, animal, Z, ok, sel, df, st_path)
+    Zplot = (X - X[ok].mean(0)) / X[ok].std(0, ddof=1)  # 2-D plotting coordinates, whatever the boundary uses
+    qc_figure(out_dir / f"{session}.swr_qc.png", session, animal, Zplot, ok, sel, df, st_path)
     return summary
 
 
@@ -331,8 +367,9 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--redo", action="store_true")
-    ap.add_argument("--fit", choices=["nrem", "all"], default="nrem",
-                    help="fit the k-means boundary on NREM candidates (default) or on all candidates")
+    ap.add_argument("--fit", choices=["block", "nrem", "all"], default="block",
+                    help="block (default): the boundary and theta/EMG thresholds of the block's reference session; "
+                         "nrem: each session's own NREM fit; all: own fit on all candidates")
     a = ap.parse_args()
     ch_cfg = yaml.safe_load(open(a.channels))
     sessions = list(a.sessions or [])
@@ -346,6 +383,18 @@ def main():
                 print(f"skip {f.name[:-4]}: {dur / 60:.1f} min < --min-minutes {a.min_minutes}", flush=True)
     todo = [s for s in sessions if a.redo or not (Path(a.out) / a.animal / s / f"{s}.swr_summary.json").exists()]
     print(f"{a.animal}: {len(todo)} of {len(sessions)} sessions to run", flush=True)
+    if a.fit == "block":
+        refs = sorted({channels_for(ch_cfg, a.animal, s_).get("reference_session") for s_ in sessions} - {None})
+        need = [r for r in refs if not (Path(a.out) / a.animal / r / f"{r}.swr_summary.json").exists()]
+        if need:
+            print(f"block references first: {need}", flush=True)
+            for r in need:
+                rs, summ, err = _one((a.animal, r, a.lfp_root, a.states_root, a.out, ch_cfg, "block"))
+                if err:
+                    print(f"FAIL reference {r}: {err.splitlines()[-1]}", flush=True)
+                    sys.exit(1)
+                print(f"ok   reference {r}: {summ['n_events']} events, selected {100*summ['kmeans_selected_frac']:.2f} %", flush=True)
+        todo = [s_ for s_ in todo if s_ not in need]
     rich = [s for s in todo if nrem_minutes(Path(a.states_root) / a.animal / f"{s}.states.npz") >= MIN_NREM_MIN]
     poor = [s for s in todo if s not in rich]
     n_err = 0
