@@ -42,8 +42,11 @@ Automatic sharp-wave ripple events, cohort 3 (2026c), one folder per session: <S
   <session>.swr_qc.png           candidate scatter + events per 10 min
 Method: ephys/swr_auto.py docstring; channels + reference sessions: swr_channels_2026c.yaml (copied here; all blocks
 confirmed by the user 2026-10-08; SF12 09-09 18:47 -> 09-10 08:35 skipped). Downstream exclusions still to apply: user
-noise sessions, SF12_contact_failing, valid_until (SF11 to 09-07 06:10). Since 2026-10-08 only SF07 has no sharp-wave
-reversal (ripple-only boundary + movement / LFP-EMG exclusion); SF11 and SF12 block 3 are 2-D blocks like the others.
+noise sessions, SF12_contact_failing, valid_until (SF11 to 09-07 06:10). Ripple-only boundary + movement / LFP-EMG
+exclusion (no clear sharp-wave reversal): SF07, SF11, SF12 block 3. LOW CONTRAST - SF11 (every block) and SF12 block 3:
+k-means selects 19-29 % of candidates (SF07-SF10: 4-8 %) and NREM rates are ~2x, REM / wake nearly as high before
+exclusion -> NOT SWR-specific; screen sessions (kmeans_selected_frac, own_nrem_fit_selected_frac, rate_per_min by
+state in the summary) before any use. The user chose not to relabel them (2026-10-08).
 Made by ephys/server/run_swr.sh, repo commit $(cat ../.git_commit 2>/dev/null || echo unknown), $(date -Is).
 TXT
 # all animals at once, then ONE verified copy to storage

@@ -209,3 +209,13 @@ The user: "SF11 SF12 should have a reversal."
     copy.
   - `run_swr.sh` / `swr_all_animals.sh` accept `AFTER_PID`: a partial rerun waits for an earlier run on the same `OUT`
     before its single verified copy.
+
+**Then (user, after looking at the LFP):** SF11 09-05 shows no reversal and only tiny ripples ("maybe cortex, or the
+impedance is too poor"); SF12 09-10 shows no reversal either ("maybe good only at first, then degraded"). No
+relabelling ("let fate decide").
+
+- **The config is back to the confirmed rule.** SF11 ×4 and SF12 block 3 are ripple-only with movement / LFP-EMG
+  exclusion; the channels are unchanged.
+- **New flag:** "low ripple contrast … screen per session" on those blocks, also in the server README.
+- **Reading of `spw_ref` there:** a depth gradient that is negative at the top, not a layer reversal. `spw_ref` stays in
+  the scan as the sharp-wave measure; the user's view of the LFP decides.

@@ -192,9 +192,9 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
         _, co_sel, co_rest = kmeans_minority(Zo[own_fit])
         own_sel_frac = float(np.mean((np.sum((Zo - co_sel) ** 2, 1) < np.sum((Zo - co_rest) ** 2, 1))[ok]))
     # features of the boundary: both (swDiff, ripPower), or ripPower only where the probe has no sharp-wave reversal
-    # (SF07, whose sharp wave is positive at every site: the user's own boundary there is ~90 deg = ripple power only;
-    # ripPower-only k-means matched the user's SF07 clicks better, mean event F1 0.863 vs 0.828. SF11 / SF12 block 3
-    # were ripple-only until 2026-10-08, when the reference-grade sharp-wave profile showed their sign change)
+    # (SF07 / SF11 / SF12 block 3: the user's own boundary there is ~90 deg = ripple power only; ripPower-only k-means
+    # matched the user's SF07 clicks better, mean event F1 0.863 vs 0.828. On SF11 / SF12 block 3 neither rule finds a
+    # ripple cluster - 19-29 % selected - see the channel config)
     use = [1] if blk.get("boundary_features") == "ripple" else [0, 1]
     if fit_on in ("donor", "block_reference"):
         b = donor["boundary"]
