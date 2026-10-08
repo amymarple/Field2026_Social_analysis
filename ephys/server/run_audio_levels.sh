@@ -13,6 +13,7 @@ PY=${PY:-$HOME/src/PreprocessPipeline/.venv/bin/python}
 RAW=${RAW:-/fs/cbsuruizfs1/storage/hc997/SocialFieldRat2026/3rd_rat}
 OUT=${OUT:-/workdir/hc997/ephys_2026c/audio_levels}
 WORKERS=${WORKERS:-24}
+REDO=${REDO:-}                    # non-empty = overwrite existing outputs (--redo)
 STREAMS=${STREAMS:-"MIC01 MIC02 CH01 CH02"}
 DATES=${DATES:-"2026-08-30 2026-08-31 2026-09-01 2026-09-02 2026-09-03 2026-09-04 2026-09-05 2026-09-06 2026-09-07 2026-09-08 2026-09-09 2026-09-10 2026-09-11 2026-09-12 2026-09-16 2026-09-17"}
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 FFMPEG=${FFMPEG:-/usr/bin/ffmpeg}
@@ -25,11 +26,15 @@ Per-second band levels (dB re full scale) of the cohort-3 in-house UltraMics (MI
 the ceiling inside each house, user 2026-10-07; working assignment MIC01 = house_2, MIC02 = house_1, to be confirmed)
 and of the CH01 / CH02 camera audio (AAC 16 kHz). One CSV.gz per raw hourly file: <stream>/<raw file stem>.csv.gz,
 columns t_pc (field-PC time, 1 s), n_frames, <band>_mean_db, <band>_max_db. Bands: mics b0 50-500 Hz, b1 0.5-4 kHz,
-b2 4-20 kHz, b3 20-40 kHz, b4 40-100 kHz; cameras c0 50-500 Hz, c1 0.5-2 kHz, c2 2-8 kHz. extract_log.csv lists every
-file (rate, effective rate, timing = stretched | end_anchored). Definitions: ephys/mic_band_levels.py docstring.
+b2 4-20 kHz, b3 20-40 kHz, b4 40-100 kHz; cameras c0 50-500 Hz, c1 0.5-2 kHz, c2 2-8 kHz. extract_log_<time>.csv (one per
+run; the newest describes the current files) lists every file: rate, effective rate, timing = stretched | end_anchored |
+pts (camera audio decoded on its timestamps, gaps filled and left out), timing_err_s (bound on the timing error inside
+the file), missing_s. extract_log.csv = the first run (2026-10-07 18:34, before the timestamp fix; superseded).
+Definitions: ephys/mic_band_levels.py docstring.
 Made by ephys/server/run_audio_levels.sh, repo commit $(cat ../.git_commit 2>/dev/null || echo unknown), $(date -Is).
 Raw source: $RAW/<date>/<stream>/. Relative levels only; devices are not calibrated to each other.
 EOF
 PART=audio_levels bash server/run_then_store.sh "$PY" mic_band_levels.py --root "$RAW" --mics $STREAMS --dates $DATES \
-    --out "$OUT" --workers "$WORKERS"
-echo "end $(date -Is)  files: $(find "$OUT" -name '*.csv.gz' | wc -l)  errors: $(grep -c ',error' "$OUT/extract_log.csv" 2>/dev/null)"
+    --out "$OUT" --workers "$WORKERS" ${REDO:+--redo}
+LOG=$(ls -t "$OUT"/extract_log_*.csv 2>/dev/null | head -1)
+echo "end $(date -Is)  files: $(find "$OUT" -name '*.csv.gz' | wc -l)  errors: $(grep -c ',error' "$LOG" 2>/dev/null)  log: $LOG"

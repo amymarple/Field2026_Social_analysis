@@ -23,6 +23,8 @@
 # $DST/<part>/MD5SUMS = the destination checksums (md5sum -c format). Re-running resumes: rsync re-copies differing
 # files, then everything is verified again. UPDATE=1 does the same on a folder already verified (adds files the
 # workdir gained since; nothing on storage is deleted, so a file removed on the workdir makes V1 fail - by design).
+# Logs modified in the last 2 min are skipped: the log of a job that calls this script through run_then_store.sh is
+# still being written, and is copied by the next UPDATE=1 run (2026-10-07: audio_levels failed V1/V2 on that log only).
 #
 # Launch from the analysis PC over the shared SSH connection:
 #   ssh -S ~/.ssh/cm-gpu gpu 'nohup bash ~/src/Field2026_Social_analysis/ephys/server/copy_to_storage.sh \
@@ -65,7 +67,7 @@ list_src() {     # expected destination-relative paths + sizes, sorted
     ( cd "$src" && if [ "$ex" = "-" ]; then find . -type f -printf '%P\t%s\n'; else find . -type f ! -name "$ex" -printf '%P\t%s\n'; fi ) \
       | awk -v p="$rel" -F'\t' '{ print (p == "" ? $1 : p "/" $1) "\t" $2 }'
   done < <(units "$part")
-  ( cd "$LOGS" && find . -maxdepth 1 -type f -name "$(log_glob "$part")" -printf 'logs/%P\t%s\n' )
+  ( cd "$LOGS" && find . -maxdepth 1 -type f -name "$(log_glob "$part")" -mmin +2 -printf 'logs/%P\t%s\n' )   # skip a log still being written
 }
 src_path() {     # destination-relative path -> absolute source path
   local part=$1 rel=$2 src urel ex
@@ -111,7 +113,7 @@ for part in $PARTS; do
     done
   done < <(units "$part")
   mkdir -p "$D/logs"
-  ( cd "$LOGS" && find . -maxdepth 1 -type f -name "$(log_glob "$part")" -printf '%P\n' ) > "$WORK/logs.files"
+  ( cd "$LOGS" && find . -maxdepth 1 -type f -name "$(log_glob "$part")" -mmin +2 -printf '%P\n' ) > "$WORK/logs.files"
   [ -s "$WORK/logs.files" ] && rsync -rt --files-from="$WORK/logs.files" "$LOGS/" "$D/logs/"
   wait
   t1=$(date +%s); say "$part: copy done in $((t1 - t0)) s"

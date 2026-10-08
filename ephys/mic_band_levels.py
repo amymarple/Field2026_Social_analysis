@@ -20,8 +20,15 @@ Definitions:
   bands         b0 50-500 Hz (machinery, thumps), b1 0.5-4 kHz, b2 4-20 kHz (rustle, scratching), b3 20-40 kHz
                 (22-kHz rat calls), b4 40-100 kHz (50-kHz rat calls). The lowest bin is 50 Hz (20-ms frames).
   camera audio  CH01-CH08 MP4s (<CH>_<date>_<HH-MM-SS>_to_<HH-MM-SS>.mp4): the first audio stream (AAC, 16 kHz mono) is
-                decoded by ffmpeg ($FFMPEG or `ffmpeg`) and handled the same way with bands c0 50-500 Hz, c1 0.5-2 kHz,
-                c2 2-8 kHz (the camera mics stop at 8 kHz); the outdoor reference for the in-house mics.
+                decoded by ffmpeg ($FFMPEG or `ffmpeg`) ON ITS TIMESTAMPS (aresample async: gaps in the stream are filled
+                with zeros at their place; timing = "pts", anchored at the file start, never stretched) and handled the
+                same way with bands c0 50-500 Hz, c1 0.5-2 kHz, c2 2-8 kHz (the camera mics stop at 8 kHz); the outdoor
+                reference for the in-house mics. (Without the timestamps, 10-min holes in some hours shifted the rest.)
+  gaps          all-zero 20-ms frames (filled gaps, dropouts) are left out; a second without any other frame is absent
+                from the output (extract_log: missing_s).
+  timing_err_s  per file, the bound on the timing error inside it: |n / (rate x CLOCK_RATIO) - span| for stretched WAVs
+                (samples missing / extra against the device's typical clock, spread linearly), |n / rate - span| for
+                MP4s; WAV files hold no timestamps, so a dropout inside one cannot be placed.
   These are relative levels of one microphone; the devices are not calibrated to each other. Nothing here labels a
   sound as external or animal-made.
 
@@ -94,8 +101,8 @@ def load_samples(p: Path):
     if p.suffix.lower() == ".wav":
         rate, n, off = wav_info(p)
         return np.memmap(p, dtype="<i2", mode="r", offset=off, shape=(n,)), rate
-    cmd = [FFMPEG, "-v", "error", "-nostdin", "-i", str(p), "-vn", "-map", "0:a:0", "-ac", "1", "-ar", str(CAM_RATE),
-           "-f", "s16le", "-"]
+    cmd = [FFMPEG, "-v", "error", "-nostdin", "-i", str(p), "-vn", "-map", "0:a:0", "-af", "aresample=async=1:first_pts=0",
+           "-ac", "1", "-ar", str(CAM_RATE), "-f", "s16le", "-"]   # timestamp gaps -> filled with zeros at their place
     raw = subprocess.run(cmd, capture_output=True, check=True).stdout
     return np.frombuffer(raw, dtype="<i2"), CAM_RATE
 
@@ -108,10 +115,15 @@ def band_levels(p: Path) -> pd.DataFrame:
     span = (end - start).total_seconds() if end is not None else n / rate
     rate_eff = n / span
     timing, t_first = "stretched", 0.0               # t_first = PC seconds after `start` of the first sample
-    if end is not None and abs(rate_eff / rate - 1) > ANOMALY:
+    if p.suffix.lower() == ".mp4":                   # samples on the container's timeline (PTS 0 = file start), gaps filled
+        timing, rate_eff = "pts", float(rate)
+        span = max(span, n / rate)
+    elif end is not None and abs(rate_eff / rate - 1) > ANOMALY:
         timing = "end_anchored"
         rate_eff = rate * CLOCK_RATIO.get(mic, 1.0)
         t_first = span - n / rate_eff
+    # bound on the timing error inside the file: samples missing / extra against the device's typical clock
+    timing_err = abs(n / (rate * CLOCK_RATIO.get(mic, 1.0)) - span) if (end is not None and timing == "stretched") else         (abs(n / rate - (end - start).total_seconds()) if (end is not None and timing == "pts") else np.nan)
     L = int(round(FRAME_S * rate))
     win = np.hanning(L).astype(np.float32)
     freqs = np.fft.rfftfreq(L, 1.0 / rate)
@@ -126,12 +138,13 @@ def band_levels(p: Path) -> pd.DataFrame:
     for f0 in range(0, n_frames_total, step):
         f1 = min(n_frames_total, f0 + step)
         seg = np.asarray(x[f0 * L:f1 * L], dtype=np.float32).reshape(f1 - f0, L)
+        nz = np.any(seg != 0, axis=1)                # all-zero frames = filled gaps / dropouts: left out
         seg -= seg.mean(axis=1, keepdims=True)
         P = np.abs(np.fft.rfft(seg * win, axis=1)) ** 2 / norm
         pb = np.stack([P[:, s].sum(axis=1) for _, s in sel], axis=1)
         centre = t_first + ((np.arange(f0, f1) + 0.5) * L) / rate_eff
         k = np.floor(centre).astype(int)
-        ok = (k >= 0) & (k < n_sec)
+        ok = (k >= 0) & (k < n_sec) & nz
         np.add.at(acc_sum, k[ok], pb[ok])
         np.maximum.at(acc_max, k[ok], pb[ok])
         np.add.at(acc_n, k[ok], 1)
@@ -145,14 +158,15 @@ def band_levels(p: Path) -> pd.DataFrame:
     df.insert(0, "mic", mic)
     df = df[df.n_frames > 0].reset_index(drop=True)  # end-anchored files: no seconds before the first sample
     df.attrs.update({"file": p.name, "rate": rate, "rate_eff": rate_eff, "n_samples": n, "span_s": span, "timing": timing,
-                     "t_first_s": t_first})
+                     "t_first_s": t_first, "timing_err_s": timing_err, "missing_s": int(n_sec - len(df))})
     return df
 
 
-def one_file(job: tuple[str, str]) -> dict:
+def one_file(job: tuple) -> dict:
     src, out = Path(job[0]), Path(job[1])
+    redo = len(job) > 2 and job[2]
     dst = out / f"{src.stem}.csv.gz"
-    if dst.exists():
+    if dst.exists() and not redo:
         return {"file": src.name, "status": "exists"}
     t0 = time.time()
     try:
@@ -164,7 +178,9 @@ def one_file(job: tuple[str, str]) -> dict:
     tmp.replace(dst)
     a = df.attrs
     return {"file": src.name, "status": "ok", "rate": a["rate"], "rate_eff": round(a["rate_eff"], 3),
-            "span_s": a["span_s"], "timing": a["timing"], "t_first_s": round(a["t_first_s"], 2), "n_sec": len(df),
+            "span_s": a["span_s"], "timing": a["timing"], "t_first_s": round(a["t_first_s"], 2),
+            "timing_err_s": round(a["timing_err_s"], 2) if np.isfinite(a["timing_err_s"]) else None, "missing_s": a["missing_s"],
+            "n_sec": len(df),
             "secs": round(time.time() - t0, 1)}
 
 
@@ -199,15 +215,22 @@ def selftest() -> None:
             t16 = np.arange(CAM_RATE * 12) / CAM_RATE
             s3 = 1e-3 * np.random.default_rng(2).standard_normal(t16.size)
             s3[(t16 >= 4) & (t16 < 5)] += 0.5 * np.sin(2 * np.pi * 1000 * t16[(t16 >= 4) & (t16 < 5)])
+            s3[(t16 >= 8) & (t16 < 9)] += 0.5 * np.sin(2 * np.pi * 1000 * t16[(t16 >= 8) & (t16 < 9)])
             pr = Path(td) / "tone.raw"
             pr.write_bytes(np.clip(s3 * 32767, -32768, 32767).astype("<i2").tobytes())
-            p3 = Path(td) / "CH01_2026-09-06_10-00-00_to_10-00-12.mp4"
+            p3 = Path(td) / "CH01_2026-09-06_10-00-00_to_10-00-15.mp4"     # a 3-s timestamp gap after 6 s
             subprocess.run([FFMPEG, "-v", "error", "-y", "-f", "s16le", "-ar", str(CAM_RATE), "-ac", "1", "-i", str(pr),
-                            "-c:a", "aac", "-b:a", "64k", str(p3)], check=True)
-            d3 = band_levels(p3)
+                            "-af", "asetpts='if(gte(T,6),PTS+3/TB,PTS)'", "-c:a", "aac", "-b:a", "64k", str(p3)], check=True)
+            d3 = band_levels(p3).set_index("t_pc")
     if d3 is not None:
-        print("PASS camera MP4: 1 kHz tone in c1 at second 4" if d3.c1_mean_db.idxmax() == 4 else "FAIL camera MP4 tone")
-        if d3.c1_mean_db.idxmax() != 4:
+        t0 = pd.Timestamp("2026-09-06 10:00:00")
+        hi = d3.c1_mean_db[d3.c1_mean_db > -20].index
+        cam = {"camera MP4: tone before the gap at second 4": t0 + pd.Timedelta(seconds=4) in hi,
+               "camera MP4: tone after the 3-s gap at second 11 (not 8)": t0 + pd.Timedelta(seconds=11) in hi and len(hi) == 2,
+               "camera MP4: gap seconds 7-8 absent": all(t0 + pd.Timedelta(seconds=s) not in d3.index for s in (7, 8))}
+        for k, v in cam.items():
+            print(("PASS " if v else "FAIL ") + k)
+        if not all(cam.values()):
             sys.exit(1)
     else:
         print("SKIP camera MP4 check (no ffmpeg)")
@@ -239,6 +262,7 @@ def main() -> None:
     ap.add_argument("--dates", nargs="*")
     ap.add_argument("--out")
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--redo", action="store_true", help="overwrite existing outputs")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
     if a.selftest:
@@ -251,7 +275,7 @@ def main() -> None:
                 files += sorted((Path(a.root) / d / m).glob(f"{m}_*.wav")) + sorted((Path(a.root) / d / m).glob(f"{m}_*.mp4"))
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    jobs = [(str(f), str(out / parse_name(f)[0])) for f in files]
+    jobs = [(str(f), str(out / parse_name(f)[0]), a.redo) for f in files]
     for _, o in jobs:
         Path(o).mkdir(parents=True, exist_ok=True)
     rows = []
@@ -265,8 +289,8 @@ def main() -> None:
             r = one_file(j)
             print(r, flush=True)
             rows.append(r)
-    log = out / "extract_log.csv"
-    pd.DataFrame(rows).to_csv(log, mode="a", header=not log.exists(), index=False)
+    log = out / f"extract_log_{time.strftime('%Y%m%d_%H%M%S')}.csv"     # one log per run (newest = current outputs)
+    pd.DataFrame(rows).to_csv(log, index=False)
     bad = [r for r in rows if str(r.get("status", "")).startswith("error")]
     if bad:                                          # non-zero exit: run_then_store.sh then does NOT copy to storage
         print(f"{len(bad)} file(s) failed; rerun to retry (finished files are skipped)", file=sys.stderr)
