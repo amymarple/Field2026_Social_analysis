@@ -470,7 +470,7 @@ def peaks(a) -> None:
                 cand = np.flatnonzero(far)
                 cand = cand[(cand + sh - 150 >= 0) & (cand + sh + 150 < n)]
                 nul = rng.choice(cand, size=min(len(cand), 5 * len(pk)), replace=False) if len(pk) and len(cand) else np.array([], int)
-                for which, ks, sz in (("observed", pk, size), ("null", nul, np.full(len(nul), np.nan))):
+                for which, ks, sz in (("observed", pk, size), ("random_time", nul, np.full(len(nul), np.nan))):
                     for k, s_db in zip(ks, sz):
                         ki = k + sh
                         sec_abs = int((w0 - t_min).total_seconds()) + ki // FS
@@ -521,7 +521,7 @@ def peaks(a) -> None:
     Pb = P[(P.band == "b2")]
     Pb = Pb.assign(tier=pd.cut(Pb.peak_db, [10, 15, 20, 30, 200], labels=["10-15 dB", "15-20 dB", "20-30 dB", ">30 dB"], right=False))
     obs = Pb[Pb.which == "observed"].groupby(["house", "tier"], observed=True).agg(peaks=("class", "size"), any_moved=("class", lambda x: np.mean(x != "none"))).reset_index()
-    nul = Pb[Pb.which == "null"].groupby("house").agg(null_any_moved=("class", lambda x: np.mean(x != "none"))).reset_index()
+    nul = Pb[Pb.which == "random_time"].groupby("house").agg(null_any_moved=("class", lambda x: np.mean(x != "none"))).reset_index()
     T2 = obs.merge(nul, on="house")
     Rb = Rr[Rr.band == "b2"]
     T3 = (Rb.groupby(["which", "state"]).agg(rat_peaks=("moved", "size"), moved=("moved", "mean"), resp_median=("resp", "median"),

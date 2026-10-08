@@ -139,3 +139,30 @@ on 9 of 11 days, so the window follows the round.
 - whether asleep rats wake (scored WAKE) within 10 s more often after a peak than at null times.
 
 Descriptive; nothing is promoted from it without the user's listening check.
+
+### Amendment 1 — result (2026-10-08; report `results/2026c/ephys_spikes/reports/ephys_spikes_mic_imu_peaks_2026c.md`)
+
+**Coverage.** 12 windows, 11.1 h. House_2 holds most rats (4.5 in the house on average); house_1 had ~1 rat and 8
+b2 peaks per hour, too few to say anything.
+
+**House_2, b2 (4–20 kHz), as pre-registered:**
+- 565 peaks per hour. 24.8 % have ≥ 1 in-house rat with an IMU onset within [−0.3, +0.5] s, vs 11.6 % at random times;
+  31.8 % for peaks > 30 dB.
+- Asleep rats around a peak: NREM moved 11.9 % vs 3.2 % at random times; woke within 10 s 6.6 % vs 3.5 % (REM 14.4 vs
+  9.5 %).
+- Onset lags peak at −0.1…0 s, i.e. the movement coincides with or slightly precedes the sound.
+
+**Post hoc (not in the plan; scripts in the session scratchpad, numbers here), only house_2 b2 peaks while every
+in-house rat was asleep** (n = 640, 58 per hour):
+- a rat's onset 17.7 % (random 8.4 %);
+- MIC02 also ≥ 10 dB in the same second 3.8 % (0.7 %);
+- outdoor CH01 2–8 kHz ≥ 6 dB 19.4 % (16.1 %);
+- none of these 64 % (77 %).
+
+At no-onset peaks, asleep rats' head response exceeds the random-time 90th percentile in 19.7 % (NREM) / 13.6 % (REM) of
+cases (10 % expected): some small, sub-threshold head motion.
+
+**Reading.** During group sleep, most house-mic peaks are neither a rat's head-movement onset nor an outside or
+other-house sound. Body or limb movement, rat sounds and house noises are open; this needs listening.
+
+**Fix.** The random-time label is renamed from "null" to "random_time": pandas reads the string "null" as missing.
