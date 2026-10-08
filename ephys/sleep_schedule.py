@@ -312,6 +312,7 @@ def phase0(a) -> None:
 DT = 10
 BANDS_MIN = ((10, 30), (30, 90), (90, 270), (270, 720))
 JMAX = 720                                     # 2 h of NREM: horizon of the opportunity / timing integration
+GAP_MIN_S = 600                                # an unknown run this long is a gap (file splits <= 60 s are not)
 RELEASE = pd.Timestamp("2026-08-30 19:00:00")
 
 
@@ -324,9 +325,15 @@ def record_steps_s(state: np.ndarray) -> pd.DataFrame:
     bl = bouts(state)
     rows = []
     last_rem = None
+    last_gap_s, rem_since_gap = 0, True              # post-gap bookkeeping (Phase 2 B2): gap = unknown run >= GAP_MIN_S
     for i, (s, a, b) in enumerate(bl):
         if s == R:
             last_rem = (a, b) if (a > 0 and state[a - 1] != 0) else None
+            rem_since_gap = True
+            continue
+        if s == 0:
+            if b - a >= GAP_MIN_S:
+                last_gap_s, rem_since_gap = b - a, False
             continue
         if s != N:
             continue
@@ -336,7 +343,9 @@ def record_steps_s(state: np.ndarray) -> pd.DataFrame:
             y[-1] = 1 if state[b] == R else 2
         ps, pa, pb = bl[i - 1] if i else (0, a, a)
         f = {"bout_start": a, "bout_len": b - a,
-             "d_prev": (pb - pa) if ps == W else 0, "prev_rem": int(ps == R), "prev_unk": int(ps == 0 or i == 0)}
+             "d_prev": (pb - pa) if ps == W else 0, "prev_rem": int(ps == R), "prev_unk": int(ps == 0 or i == 0),
+             "u_prev": (pb - pa) if (ps == 0 and i) else 0,
+             "pg_pending": int(not rem_since_gap), "pg_gap_s": last_gap_s if not rem_since_gap else 0}
         if last_rem is not None:
             ra, rb = last_rem
             f.update(has_anchor=1, rem_pre=rb - ra, n_since=int(cn[a] - cn[rb]), w_since=int(cw[a] - cw[rb]), t_since=a - rb)
@@ -685,12 +694,12 @@ def phase1(a) -> None:
             g["n_since"], g["rem_pre"], g["has_anchor"], g["animal"] = grid, q, 1, an
             g["t_since"] = grid + med["w_since"]
             hz += predict_s(m_i, st_i, g, SPECS["M2i"], levels)[:, 1] / len(levels)
-        ax.plot(grid / 60, hz * 6, label=f"{lab} = {q:.0f} s")
-        curve_rows += [{"rem_pre_s": q, "n_since_min": x / 60, "rem_hazard_per_min": h * 6} for x, h in zip(grid, hz)]
+        ax.plot(grid / 60, hz, label=f"{lab} = {q:.0f} s")
+        curve_rows += [{"rem_pre_s": q, "n_since_at_bout_start_min": x / 60, "rem_hazard_per_10s": h} for x, h in zip(grid, hz)]
     ax.set_xscale("symlog", linthresh=1)
-    ax.set_xlabel("NREM time since the last REM (min)")
-    ax.set_ylabel("P(NREM -> REM) per min (model)")
-    ax.set_title(f"Refractoriness (M2i, full fit; description)  {gc}", fontsize=9)
+    ax.set_xlabel("NREM since the last REM at the bout START (min); within-bout time held at its median")
+    ax.set_ylabel("P(REM in the next 10 s) (model)")
+    ax.set_title(f"Bout-start accumulated NREM vs REM hazard (M2i, full fit; description, not a refractory length)  {gc}", fontsize=8)
     ax.legend(fontsize=8)
     save_fig(fig, fd / "ephys_spikes_sleep_schedule_phase1_refractory_2026c.png")
     pd.DataFrame(curve_rows).to_csv(out / "refractory_curve.csv", index=False)
@@ -817,7 +826,10 @@ def selftest() -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0", "phase1"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "phase1", "phase2"])
+    ap.add_argument("--parts", nargs="*", default=["c2", "b1", "b1b", "c1", "b2"], help="phase2 parts")
+    ap.add_argument("--b3-states", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_pass2med",
+                    help="phase2: states for the B3 threshold check (fixed per-animal thresholds)")
     ap.add_argument("--states", default=str(STATES))
     ap.add_argument("--review", default=str(REVIEW))
     ap.add_argument("--battery-log", default=None)
@@ -830,6 +842,9 @@ def main() -> None:
         phase0(a)
     elif a.cmd == "phase1":
         phase1(a)
+    elif a.cmd == "phase2":
+        from sleep_schedule_phase2 import phase2
+        phase2(a)
     else:
         ap.print_help()
 

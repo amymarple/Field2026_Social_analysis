@@ -1,0 +1,13 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase2_20261007_2036",
+  "git_commit": "a6b43b2+dirty",
+  "states": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+  "b3_states": "D:/3rd_rat_spikes/analysis/sleep_server/states_1s_pass2med",
+  "parts": [
+    "b1",
+    "b1b",
+    "b2",
+    "c1",
+    "c2"
+  ]
+}

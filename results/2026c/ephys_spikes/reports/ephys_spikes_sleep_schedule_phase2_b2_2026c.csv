@@ -1,0 +1,3 @@
+comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds,gaps_with_bouts,bouts
+C1g vs R0g,FINAL: post-gap bouts before the first REM,11768,85,0.14670704879679136,0.08015930777761318,0.2427452612801382,3,19,2,6,False,92,754
+C1g vs R0g,B3 pass2med_remclean: post-gap bouts before the first REM,10686,89,0.1673076728794816,-0.038675070329541046,0.4317164698812126,9,19,2,6,False,92,671

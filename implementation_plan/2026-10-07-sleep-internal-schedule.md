@@ -475,3 +475,56 @@ the REM rules, unless a headline depends on REM entries the rules changed.
    - experiment time is linear;
    - the hidden-state model moves to round 2, with the finite-states ≠ finite-memory caveat.
 8. **New:** the in-house microphones (§4 D), on the user's suggestion: written in now, validated later, pilot if quick.
+
+## 10. Amendment 1 (2026-10-07, AFTER the Phase 1 results; the user's review relayed, "行做")
+
+**Phase 1 reading, corrected.** The report numbers are unchanged.
+- **Wording.** "Among the models tested, the current state and the quantities accumulated since the last REM capture
+  the main predictive gain of history; the distant windows (10 min–12 h, within records) add nothing."
+  - It does not mean the brain clears its memory at REM: "since the last REM" can itself span hours.
+  - A regulator keeping a few accumulated quantities is compatible with the scheduling hypothesis. That is an
+    interpretation to test, not a finding.
+- **Opportunity vs timing must be read by how the bout ends.**
+  - For bouts ending in REM, the accumulated layer adds about equally to "whether" (0.0156) and "when" (0.0132)
+    nats/bout.
+  - For bouts ending in wake, almost all of it is "when" (0.0185 of 0.0188).
+  - The overall "mostly when" therefore comes from wake: it concerns the maintenance of, and exit from, NREM, not a
+    REM timer.
+  - "Whether" here means "this NREM bout ends in REM rather than wake", not "REM occurs in the next hours".
+- **The refractory figure is mislabelled.**
+  - N_since is fixed at the bout start, and the within-bout time is a separate term. The curve therefore compares
+    bouts that start at different accumulated NREM; it does not trace recovery within one NREM stretch after REM. The
+    30-s low point is not a refractory length.
+  - The y axis is the 10-s hazard × 6, a rate scale, not a true per-minute probability.
+  - "Unlike mice" is withdrawn: no detected REM_pre gain is not a species difference.
+  - Phase 2 C2 replaces the figure (below); the code label is fixed.
+- **Cycles ahead.** The test was: previous REM length → the NREM content k intervals later, with the intervening
+  cycles controlled. Allowed: "no stable additional cross-cycle association". Not allowed: "delayed influence
+  excluded". Effects carried through the intervening cycles are removed by the control.
+- **The clock tie (NREM vs wall time) is expected in continuous sleep.** A wake separates the two clocks (wall time
+  runs, NREM time stops), so Phase 2 B1 is the decisive comparison.
+
+**Phase 2 additions and changes:**
+- **B1, wake as the separator.** Analysed on NREM bouts that follow a wake, with the wake length d continuous.
+  - Models:
+    - reset = L0 + current conditions + ln d;
+    - carry-over = + pre-wake accumulated history: NREM since the last REM (stops during wake), wake since the last
+      REM before this wake, REM_pre, anchor;
+    - update = + pre-wake history × ln d.
+  - Clocks: NREM since REM (pre-wake) vs wall time since REM (includes d), on the same bouts.
+  - Carry-over curve: the held-out gain per wake-length bin (< 40 s, 40–120 s, 2–7 min, 7–30 min, ≥ 30 min).
+  - Natural wakes first; the battery gaps after.
+- **B1b, new: the user's original question, does a long wake affect the next REMs?** For every wake ≥ 7 min followed
+  by NREM in the record:
+  - the NREM content before the 1st, 2nd and 3rd REM after it (Watson units), regressed on ln d and the pre-wake NREM
+    since REM, with phase and animal;
+  - only cycles that reach REM before another wake ≥ 7 min are used. The conditioning is reported.
+- **B2, purge.** In the post-gap analysis, a left-out block's states are the history of the next block's post-gap
+  bouts, so those rows are dropped from that fold's training. The post-gap set is small (bouts before the first REM
+  after ~94 gaps), so it uses a lean model (linear pre-gap terms only).
+- **C1, compensation decomposed.** REM minutes, REM count and mean REM bout duration, each against its own baseline
+  (fitted leave-one-block-out on animal + phase + linear day): does catch-up come through more REM bouts or longer
+  ones? NREM is reported alongside.
+- **C2, replaced.** An empirical, model-free hazard per 10-s NREM step (REM and wake), against the TOTAL NREM since
+  the last REM at that step (bout-start value + elapsed), per animal then averaged.
+  - One held-out comparison: the step-level since-REM clock vs the bout-start clock.
