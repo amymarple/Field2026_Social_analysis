@@ -528,3 +528,14 @@ the REM rules, unless a headline depends on REM entries the rules changed.
 - **C2, replaced.** An empirical, model-free hazard per 10-s NREM step (REM and wake), against the TOTAL NREM since
   the last REM at that step (bout-start value + elapsed), per animal then averaged.
   - One held-out comparison: the step-level since-REM clock vs the bout-start clock.
+
+## 11. Amendment 2 (2026-10-07, AFTER the Phase 2 results)
+
+**C1 is reported on both scorings,** FINAL and `pass2med_remclean` (fixed per-animal thresholds).
+- Why: under FINAL, the within-record REM slope was negative (a shortfall persisted: −0.11 per min at 1 h, −0.28 at
+  3 h, 5/6 rats negative). Under fixed thresholds it was zero (+0.003, +0.001).
+- A per-session threshold error lasts a whole session, so it produces exactly this persistence.
+- The persistence reading is withdrawn as a likely scoring artefact.
+- The across-gap comparison is not affected this way: windows A and B lie in different sessions, and independent
+  session errors cannot produce a positive slope.
+- No other part changed. The rerun reproduces the other Phase 2 numbers, as the fits are deterministic.

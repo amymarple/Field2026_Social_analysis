@@ -31,6 +31,8 @@ Definitions (FINAL 1-s states; field-PC time; 10-s NREM steps as Phase 1; forwar
                   and the same for NREM minutes, REM count and mean REM bout duration (s) in B. Within records (sliding
                   by 1 h) and across battery-round gaps (A = the 3 h before the gap, B = the first 1 h / 3 h after).
                   OLS with SEs clustered by block (of A); per-animal slope signs.
+                  Run on both scorings (FINAL and pass2med_remclean, fixed per-animal thresholds; Amendment 1 follow-up):
+                  within-record persistence under FINAL vanished under fixed thresholds (scoring artefact).
   C2              empirical hazard per 10-s NREM step of REM and of WAKE against the TOTAL NREM since the last REM at
                   that step (bout-start value + elapsed), per animal then averaged (model-free description); and one
                   held-out comparison: M2 (bout-start N_since) vs M2t (step-level N_since + elapsed).
@@ -544,13 +546,23 @@ def phase2(a) -> None:
         sec["b1b"] = T
         print(T.round(4).to_string(index=False), flush=True)
 
-    if "c1" in parts:                                              # ---- C1: compensation
-        Bn, RB = bins10(recs)
-        Bn = baselines(Bn, RB)
-        Bn.to_csv(out / "c1_bins10.csv.gz", index=False)
-        Wn = comp_windows(Bn, RB, gaps)
-        Wn.to_csv(out / "c1_windows.csv.gz", index=False)
-        S = comp_slopes(Wn)
+    if "c1" in parts:                                              # ---- C1: compensation, FINAL + fixed-threshold scores
+        S_all = []
+        for lab, sdir in (("FINAL", Path(a.states)), ("pass2med_remclean", Path(a.b3_states))):
+            if not sdir.exists():
+                continue
+            recs_c = recs if lab == "FINAL" else build_records(included_sessions(Path(a.review), sdir), sdir)
+            Bn, RB = bins10(recs_c)
+            Bn = baselines(Bn, RB)
+            Wn_c = comp_windows(Bn, RB, gaps)
+            Wn_c.to_csv(out / f"c1_windows_{lab}.csv.gz", index=False)
+            S_c = comp_slopes(Wn_c)
+            S_c.insert(0, "scores", lab)
+            S_all.append(S_c)
+            if lab == "FINAL":
+                Wn = Wn_c
+                Bn.to_csv(out / "c1_bins10.csv.gz", index=False)
+        S = pd.concat(S_all, ignore_index=True)
         S.to_csv(rd / "ephys_spikes_sleep_schedule_phase2_c1_2026c.csv", index=False)
         sec["c1"] = S
         print(S.round(3).to_string(index=False), flush=True)
@@ -621,6 +633,9 @@ def phase2(a) -> None:
         L += ["## B1b A long wake (≥ 7 min) and the next three REMs", "", md_table(sec["b1b"].round(4)), ""]
     if "c1" in sec:
         L += ["## C1 Compensation (debt = expected − observed before; payback = observed − expected after)", "",
+              "Both scorings: FINAL (per-session thresholds) and pass2med_remclean (fixed per-animal thresholds). A slope "
+              "that appears only under per-session thresholds can be a scoring artefact (a session's threshold error persists "
+              "for its whole length).", "",
               md_table(sec["c1"].round(3)), "", "![](../figures/ephys_spikes_sleep_schedule_phase2_c1_compensation_2026c.png)", ""]
     if "b2" in sec:
         L += ["## B2 / B3 Across battery-round gaps (leave-one-block-out with purge)", "", md_table(sec["b2"].round(3)), ""]

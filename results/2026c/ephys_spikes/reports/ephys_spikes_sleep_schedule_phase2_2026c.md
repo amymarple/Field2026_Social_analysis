@@ -1,6 +1,6 @@
 # Internal sleep schedule — Phase 2: carry-over across wakes, compensation, refractoriness (cohort 2026c)
 
-Plan: [2026-10-07-sleep-internal-schedule.md](../../../../implementation_plan/2026-10-07-sleep-internal-schedule.md) (rev. 2 + Amendment 1). Driver `ephys/sleep_schedule.py phase2` → `ephys/sleep_schedule_phase2.py` (commit a6b43b2+dirty); bulk `D:\Field2026_analysis_out\2026c\sleep_schedule_phase2_20261007_2036`. Definitions: the module docstring (copied below).
+Plan: [2026-10-07-sleep-internal-schedule.md](../../../../implementation_plan/2026-10-07-sleep-internal-schedule.md) (rev. 2 + Amendment 1). Driver `ephys/sleep_schedule.py phase2` → `ephys/sleep_schedule_phase2.py` (commit c1e0c22+dirty); bulk `D:\Field2026_analysis_out\2026c\sleep_schedule_phase2_20261007_2102`. Definitions: the module docstring (copied below).
 
 **Status: technical ledger; no claim audit yet.** Δ = held-out log-loss change in % of the smaller model (negative = better), forward chaining over day-half blocks unless stated; holds = CI below 0 and ≥ 5/6 animals better.
 
@@ -40,6 +40,8 @@ Definitions (FINAL 1-s states; field-PC time; 10-s NREM steps as Phase 1; forwar
                   and the same for NREM minutes, REM count and mean REM bout duration (s) in B. Within records (sliding
                   by 1 h) and across battery-round gaps (A = the 3 h before the gap, B = the first 1 h / 3 h after).
                   OLS with SEs clustered by block (of A); per-animal slope signs.
+                  Run on both scorings (FINAL and pass2med_remclean, fixed per-animal thresholds; Amendment 1 follow-up):
+                  within-record persistence under FINAL vanished under fixed thresholds (scoring artefact).
   C2              empirical hazard per 10-s NREM step of REM and of WAKE against the TOTAL NREM since the last REM at
                   that step (bout-start value + elapsed), per animal then averaged (model-free description); and one
                   held-out comparison: M2 (bout-start N_since) vs M2t (step-level N_since + elapsed).
@@ -134,28 +136,50 @@ Whether / when split of the carry-over gain (C1 vs R0; nats per held-out bout; p
 
 ## C1 Compensation (debt = expected − observed before; payback = observed − expected after)
 
-| setting | B_h | outcome | predictor | n_windows | slope | ci_lo | ci_hi | p | animals_positive | animals | mean_debt | mean_payback |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| across gap (round_logged) | 1 | pay_rem | debt_rem | 81 | 0.043 | -0.051 | 0.137 | 0.369 | 4 | 6 | -1.199 | -1.489 |
-| across gap (round_logged) | 1 | pay_rem_n | debt_rem | 81 | 0.003 | -0.094 | 0.101 | 0.947 | 3 | 6 | -1.199 | -1.259 |
-| across gap (round_logged) | 1 | pay_rem_dur | debt_rem | 58 | 0.106 | -2.23 | 2.443 | 0.929 | 2 | 4 | -0.581 | 8.137 |
-| across gap (round_logged) | 1 | pay_nrem | debt_nrem | 81 | 0.186 | 0.099 | 0.273 | 0.0 | 6 | 6 | -7.343 | -3.368 |
-| across gap (round_logged) | 1 | pay_nrem | debt_rem | 81 | -0.011 | -0.374 | 0.352 | 0.954 | 4 | 6 | -1.199 | -3.368 |
-| across gap (round_logged) | 3 | pay_rem | debt_rem | 81 | 0.243 | -0.002 | 0.488 | 0.052 | 5 | 6 | -1.199 | -1.052 |
-| across gap (round_logged) | 3 | pay_rem_n | debt_rem | 81 | 0.168 | -0.091 | 0.428 | 0.203 | 5 | 6 | -1.199 | -1.0 |
-| across gap (round_logged) | 3 | pay_rem_dur | debt_rem | 63 | 0.33 | -0.672 | 1.332 | 0.519 | 3 | 5 | -0.699 | 1.932 |
-| across gap (round_logged) | 3 | pay_nrem | debt_nrem | 81 | 0.323 | 0.056 | 0.589 | 0.018 | 5 | 6 | -7.343 | -6.382 |
-| across gap (round_logged) | 3 | pay_nrem | debt_rem | 81 | 0.595 | -0.124 | 1.315 | 0.105 | 5 | 6 | -1.199 | -6.382 |
-| within record | 1 | pay_rem | debt_rem | 794 | -0.106 | -0.137 | -0.076 | 0.0 | 1 | 6 | 0.191 | 0.085 |
-| within record | 1 | pay_rem_n | debt_rem | 794 | -0.086 | -0.138 | -0.035 | 0.001 | 2 | 6 | 0.191 | 0.134 |
-| within record | 1 | pay_rem_dur | debt_rem | 471 | -0.312 | -0.853 | 0.229 | 0.258 | 2 | 6 | 0.172 | 2.097 |
-| within record | 1 | pay_nrem | debt_nrem | 794 | -0.034 | -0.122 | 0.054 | 0.449 | 1 | 6 | 2.334 | 0.511 |
-| within record | 1 | pay_nrem | debt_rem | 794 | 0.266 | -0.037 | 0.568 | 0.085 | 6 | 6 | 0.191 | 0.511 |
-| within record | 3 | pay_rem | debt_rem | 557 | -0.276 | -0.45 | -0.101 | 0.002 | 1 | 6 | 0.229 | 0.057 |
-| within record | 3 | pay_rem_n | debt_rem | 557 | -0.184 | -0.387 | 0.018 | 0.075 | 1 | 6 | 0.229 | 0.251 |
-| within record | 3 | pay_rem_dur | debt_rem | 424 | -0.211 | -0.736 | 0.314 | 0.43 | 3 | 6 | 0.298 | -0.729 |
-| within record | 3 | pay_nrem | debt_nrem | 557 | 0.094 | -0.152 | 0.339 | 0.455 | 5 | 6 | 1.443 | -0.714 |
-| within record | 3 | pay_nrem | debt_rem | 557 | 0.685 | -0.078 | 1.448 | 0.079 | 5 | 6 | 0.229 | -0.714 |
+Both scorings: FINAL (per-session thresholds) and pass2med_remclean (fixed per-animal thresholds). A slope that appears only under per-session thresholds can be a scoring artefact (a session's threshold error persists for its whole length).
+
+| scores | setting | B_h | outcome | predictor | n_windows | slope | ci_lo | ci_hi | p | animals_positive | animals | mean_debt | mean_payback |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| FINAL | across gap (round_logged) | 1 | pay_rem | debt_rem | 81 | 0.043 | -0.051 | 0.137 | 0.369 | 4 | 6 | -1.199 | -1.489 |
+| FINAL | across gap (round_logged) | 1 | pay_rem_n | debt_rem | 81 | 0.003 | -0.094 | 0.101 | 0.947 | 3 | 6 | -1.199 | -1.259 |
+| FINAL | across gap (round_logged) | 1 | pay_rem_dur | debt_rem | 58 | 0.106 | -2.23 | 2.443 | 0.929 | 2 | 4 | -0.581 | 8.137 |
+| FINAL | across gap (round_logged) | 1 | pay_nrem | debt_nrem | 81 | 0.186 | 0.099 | 0.273 | 0.0 | 6 | 6 | -7.343 | -3.368 |
+| FINAL | across gap (round_logged) | 1 | pay_nrem | debt_rem | 81 | -0.011 | -0.374 | 0.352 | 0.954 | 4 | 6 | -1.199 | -3.368 |
+| FINAL | across gap (round_logged) | 3 | pay_rem | debt_rem | 81 | 0.243 | -0.002 | 0.488 | 0.052 | 5 | 6 | -1.199 | -1.052 |
+| FINAL | across gap (round_logged) | 3 | pay_rem_n | debt_rem | 81 | 0.168 | -0.091 | 0.428 | 0.203 | 5 | 6 | -1.199 | -1.0 |
+| FINAL | across gap (round_logged) | 3 | pay_rem_dur | debt_rem | 63 | 0.33 | -0.672 | 1.332 | 0.519 | 3 | 5 | -0.699 | 1.932 |
+| FINAL | across gap (round_logged) | 3 | pay_nrem | debt_nrem | 81 | 0.323 | 0.056 | 0.589 | 0.018 | 5 | 6 | -7.343 | -6.382 |
+| FINAL | across gap (round_logged) | 3 | pay_nrem | debt_rem | 81 | 0.595 | -0.124 | 1.315 | 0.105 | 5 | 6 | -1.199 | -6.382 |
+| FINAL | within record | 1 | pay_rem | debt_rem | 794 | -0.106 | -0.137 | -0.076 | 0.0 | 1 | 6 | 0.191 | 0.085 |
+| FINAL | within record | 1 | pay_rem_n | debt_rem | 794 | -0.086 | -0.138 | -0.035 | 0.001 | 2 | 6 | 0.191 | 0.134 |
+| FINAL | within record | 1 | pay_rem_dur | debt_rem | 471 | -0.312 | -0.853 | 0.229 | 0.258 | 2 | 6 | 0.172 | 2.097 |
+| FINAL | within record | 1 | pay_nrem | debt_nrem | 794 | -0.034 | -0.122 | 0.054 | 0.449 | 1 | 6 | 2.334 | 0.511 |
+| FINAL | within record | 1 | pay_nrem | debt_rem | 794 | 0.266 | -0.037 | 0.568 | 0.085 | 6 | 6 | 0.191 | 0.511 |
+| FINAL | within record | 3 | pay_rem | debt_rem | 557 | -0.276 | -0.45 | -0.101 | 0.002 | 1 | 6 | 0.229 | 0.057 |
+| FINAL | within record | 3 | pay_rem_n | debt_rem | 557 | -0.184 | -0.387 | 0.018 | 0.075 | 1 | 6 | 0.229 | 0.251 |
+| FINAL | within record | 3 | pay_rem_dur | debt_rem | 424 | -0.211 | -0.736 | 0.314 | 0.43 | 3 | 6 | 0.298 | -0.729 |
+| FINAL | within record | 3 | pay_nrem | debt_nrem | 557 | 0.094 | -0.152 | 0.339 | 0.455 | 5 | 6 | 1.443 | -0.714 |
+| FINAL | within record | 3 | pay_nrem | debt_rem | 557 | 0.685 | -0.078 | 1.448 | 0.079 | 5 | 6 | 0.229 | -0.714 |
+| pass2med_remclean | across gap (round_logged) | 1 | pay_rem | debt_rem | 81 | 0.186 | 0.012 | 0.359 | 0.036 | 4 | 6 | -1.237 | -1.671 |
+| pass2med_remclean | across gap (round_logged) | 1 | pay_rem_n | debt_rem | 81 | 0.099 | -0.028 | 0.226 | 0.125 | 4 | 6 | -1.237 | -1.405 |
+| pass2med_remclean | across gap (round_logged) | 1 | pay_rem_dur | debt_rem | 61 | 0.72 | -2.128 | 3.567 | 0.62 | 3 | 4 | -1.051 | 7.022 |
+| pass2med_remclean | across gap (round_logged) | 1 | pay_nrem | debt_nrem | 81 | 0.187 | 0.104 | 0.271 | 0.0 | 6 | 6 | -7.946 | -3.52 |
+| pass2med_remclean | across gap (round_logged) | 1 | pay_nrem | debt_rem | 81 | 0.315 | -0.077 | 0.707 | 0.116 | 4 | 6 | -1.237 | -3.52 |
+| pass2med_remclean | across gap (round_logged) | 3 | pay_rem | debt_rem | 81 | 0.409 | 0.206 | 0.611 | 0.0 | 4 | 6 | -1.237 | -1.452 |
+| pass2med_remclean | across gap (round_logged) | 3 | pay_rem_n | debt_rem | 81 | 0.224 | 0.091 | 0.357 | 0.001 | 5 | 6 | -1.237 | -1.337 |
+| pass2med_remclean | across gap (round_logged) | 3 | pay_rem_dur | debt_rem | 66 | 0.421 | -0.312 | 1.154 | 0.261 | 3 | 5 | -1.136 | 1.401 |
+| pass2med_remclean | across gap (round_logged) | 3 | pay_nrem | debt_nrem | 81 | 0.369 | 0.119 | 0.619 | 0.004 | 6 | 6 | -7.946 | -6.864 |
+| pass2med_remclean | across gap (round_logged) | 3 | pay_nrem | debt_rem | 81 | 1.049 | 0.073 | 2.025 | 0.035 | 6 | 6 | -1.237 | -6.864 |
+| pass2med_remclean | within record | 1 | pay_rem | debt_rem | 794 | 0.003 | -0.046 | 0.052 | 0.913 | 3 | 6 | 0.174 | 0.086 |
+| pass2med_remclean | within record | 1 | pay_rem_n | debt_rem | 794 | -0.01 | -0.059 | 0.039 | 0.696 | 3 | 6 | 0.174 | 0.135 |
+| pass2med_remclean | within record | 1 | pay_rem_dur | debt_rem | 495 | -0.01 | -0.436 | 0.415 | 0.963 | 2 | 6 | 0.289 | 2.351 |
+| pass2med_remclean | within record | 1 | pay_nrem | debt_nrem | 794 | -0.004 | -0.087 | 0.079 | 0.927 | 3 | 6 | 2.567 | 0.594 |
+| pass2med_remclean | within record | 1 | pay_nrem | debt_rem | 794 | 0.315 | -0.003 | 0.633 | 0.052 | 6 | 6 | 0.174 | 0.594 |
+| pass2med_remclean | within record | 3 | pay_rem | debt_rem | 557 | 0.001 | -0.214 | 0.216 | 0.993 | 4 | 6 | 0.098 | -0.051 |
+| pass2med_remclean | within record | 3 | pay_rem_n | debt_rem | 557 | 0.043 | -0.141 | 0.227 | 0.649 | 3 | 6 | 0.098 | 0.12 |
+| pass2med_remclean | within record | 3 | pay_rem_dur | debt_rem | 453 | -0.046 | -0.511 | 0.419 | 0.846 | 4 | 6 | 0.181 | 1.209 |
+| pass2med_remclean | within record | 3 | pay_nrem | debt_nrem | 557 | 0.163 | -0.069 | 0.396 | 0.168 | 5 | 6 | 1.764 | -0.609 |
+| pass2med_remclean | within record | 3 | pay_nrem | debt_rem | 557 | 0.983 | 0.085 | 1.881 | 0.032 | 6 | 6 | 0.098 | -0.609 |
 
 ![](../figures/ephys_spikes_sleep_schedule_phase2_c1_compensation_2026c.png)
 
