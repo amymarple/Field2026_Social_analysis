@@ -260,3 +260,43 @@ Storage: `3rd_rat/analysis/emg_from_lfp/` (203 sessions, VERIFY PASS, `copy_to_s
 - Two smoke runs: the code path, and the EMG path on partial data.
 - The final run, commit ccc979c.
 - The agent judged no figure or sound.
+
+## Logic audit of Phases 0–6, and the claim-audit corrections (2026-10-08, the user's request)
+
+**What was done.**
+- The main session drafted a logic chain over all phases.
+- A Fable 5.1 subagent audited it read-only against the reports, the code and the saved tables, with the user's
+  instruction "don't be too conservative". The user added two questions during the run: day vs night sleep, and a
+  model of the implicit scheduler.
+- The scope rule (the "sleep behaviour explore"): the sequence + IMU + WISER + temperature + handling, no LFP features.
+- Record: [docs/methods/sleep_logic_audit_2026-10-08.md](../docs/methods/sleep_logic_audit_2026-10-08.md) — the main
+  session's checks in the header, then the full report.
+- Scripts: `D:/Field2026_analysis_out/2026c/sleep_logic_audit_20261008/`.
+
+**Main-session checks:**
+- **#13 confirmed as a drift** (`check_drift.py`, pass2med, per-animal-day tables).
+  - Night → day NREM slope −0.56 within rat; with a linear day term −0.06 (n.s.); with day fixed effects −0.12 (n.s.).
+  - Night NREM −0.95, day +0.77 min per recorded h per day; 6/6 rats each way, both scorings.
+- **Fable's proposed new Established claim "NREM rebound ∝ wake length" was NOT adopted.**
+  - With night in the Phase-3 Q2 regression, ln d is +0.47 / +0.90 (n.s.); dark +9.5 / +8.0 min (p < 0.001).
+  - Kept as #31, Candidate, descriptive.
+
+**Claim-audit changes:**
+- #6 split into #6a (not resumed; Candidate strong, to Established after step A1 of the new plan) and #6b (graded, night
+  only).
+- #10 re-worded: REM-specific, morning only, not "via more bouts".
+- #13 withdrawn as a balance; #24 superseded by #30 (the drift, Established descriptive).
+- #14b added (the night gain at matched prior wake; Candidate).
+- Scorer-gate caveat on #28b / #29a.
+- #4 / #16 / #29c moved to the LFP stage.
+- Wording notes on #5, #7, #9.
+- Synthesis rewritten.
+
+**Not re-checked by the main session** (Fable's own checks on our data; the new plan's step A reproduces them in repo
+code first):
+- the censored Cox for #6;
+- the dark-only grading;
+- the matched night gain;
+- the day-demeaned morning payback.
+
+**Next stage:** [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../implementation_plan/2026-10-08-sleep-behaviour-explore.md).

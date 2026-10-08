@@ -1,6 +1,6 @@
 # Does sleep follow an internal schedule that survives interruptions? Memory, carry-over across wakes, and compensation in sleep history (cohort 2026c)
 
-**Status: DONE 2026-10-08 (Phases 0–3b; rev. 2 + Amendments 1–5; see §14 and the claim audit).** History: approved 2026-10-07 ("go for it"). Phase 0 DONE
+**Status: DONE 2026-10-08 (Phases 0–6; rev. 2 + Amendments 1–10; the logic audit and the next stage: §20).** History: approved 2026-10-07 ("go for it"). Phase 0 DONE
 ([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_phase0_2026c.md)); **Phase 1 DONE**
 ([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_phase1_2026c.md); technical ledger, no claim
 audit yet); Phase 2 waits for the user. Audio levels: first run on storage (verified); the timestamp-fixed rerun pending.
@@ -807,3 +807,17 @@ followers' EMG rises like first movers'. Because a jolt could put motion artefac
 - the same comparison at matched movement size (terciles of the peak head VeDBA over 0..0.5 s);
 - the half-maximum / peak timing of the mean VeDBA vs mean EMG traces per role.
 "Active" is claimed only if both point the same way.
+
+## 20. Amendment 11 → the next stage: the "sleep behaviour explore" (2026-10-08; the user)
+
+Phases 0–6 are closed here. The user asked for a logic synthesis of all phases, audited by Fable ("don't be too
+conservative"). Result: [docs/methods/sleep_logic_audit_2026-10-08.md](../docs/methods/sleep_logic_audit_2026-10-08.md)
+(read the main session's checks in its header first). It changed the claim audit on 2026-10-08:
+- #13 withdrawn as a balance (a cohort-wide drift, #30);
+- #6 split into #6a / #6b;
+- #10 re-worded; #14b and #31 added;
+- the LFP-feature claims moved to the next stage.
+
+The next stage is planned separately: [2026-10-08-sleep-behaviour-explore.md](2026-10-08-sleep-behaviour-explore.md).
+It has three themes (the schedule; day vs night sleep; the scheduler as the implicit theme, with a model), uses the
+sleep sequence + IMU + WISER + temperature + handling only (no LFP features), and contains 25 hypotheses.
