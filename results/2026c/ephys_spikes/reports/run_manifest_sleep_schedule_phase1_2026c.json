@@ -1,0 +1,80 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase1_20261007_1930",
+  "git_commit": "3e783d2",
+  "states": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+  "review": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_review_2026c.csv",
+  "cutoff": "2026-09-11 19:40:00",
+  "validation": "forward chaining over 22 day-half blocks, first test block index 6",
+  "n_steps": 179668,
+  "specs": {
+    "M0": {
+      "L1": false,
+      "L2": null,
+      "nb": 0
+    },
+    "M1": {
+      "L1": true,
+      "L2": null,
+      "nb": 0
+    },
+    "M2": {
+      "L1": true,
+      "L2": "full",
+      "nb": 0
+    },
+    "M3_30": {
+      "L1": true,
+      "L2": "full",
+      "nb": 1
+    },
+    "M3_90": {
+      "L1": true,
+      "L2": "full",
+      "nb": 2
+    },
+    "M3_270": {
+      "L1": true,
+      "L2": "full",
+      "nb": 3
+    },
+    "M3_720": {
+      "L1": true,
+      "L2": "full",
+      "nb": 4
+    },
+    "Cl_nrem": {
+      "L1": true,
+      "L2": "nrem",
+      "nb": 0
+    },
+    "Cl_wall": {
+      "L1": true,
+      "L2": "wall",
+      "nb": 0
+    },
+    "M3_720n": {
+      "L1": true,
+      "L2": "full",
+      "nb": 4,
+      "band_clock": "nrem"
+    },
+    "M1S": {
+      "L1": true,
+      "L2": null,
+      "nb": 0,
+      "S": true
+    },
+    "M3_720S": {
+      "L1": true,
+      "L2": "full",
+      "nb": 4,
+      "S": true
+    },
+    "M2i": {
+      "L1": true,
+      "L2": "full",
+      "nb": 0,
+      "inter": true
+    }
+  }
+}

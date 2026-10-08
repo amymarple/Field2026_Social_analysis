@@ -1,8 +1,9 @@
 # Does sleep follow an internal schedule that survives interruptions? Memory, carry-over across wakes, and compensation in sleep history (cohort 2026c)
 
 **Status: PLAN, revision 2, approved by the user 2026-10-07 ("go for it"). Phase 0 DONE**
-([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_phase0_2026c.md)); Phase 1 code written and
-smoke-tested on synthetic data, not yet run on real data; mic + camera audio extraction running on BioHPC.
+([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_phase0_2026c.md)); **Phase 1 DONE**
+([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_phase1_2026c.md); technical ledger, no claim
+audit yet); Phase 2 waits for the user. Audio levels: first run on storage (verified); the timestamp-fixed rerun pending.
 - Nothing in §4 has been run on real data. The only numbers below are event counts (§3), not outcomes.
 - Revision 2 (2026-10-07, before any outcome) applies the user's review of revision 1 (see §9) and adds the in-house
   microphones (§4 D).
@@ -175,6 +176,19 @@ The 1-s scores are never edited.
   - WISER movement during the gap from the default tracks, **as description only**.
 - Movement in part of a gap does not show that the animal was awake for the whole gap.
 - Wording: "history carried across a handled interruption".
+- **Gap causes (Phase 0, from the field record):**
+  - 94 usable battery rounds (82 with a logged swap, 12 inferred on 08-31 / 09-01, where the cell table is partial);
+  - 8 probe moves, which are handling plus an electrode change and are kept apart;
+  - 2 with no handling recorded.
+- **SF10 09-06 04:02 → 05:58 is the only undisturbed unobserved gap** (`recording-inquiry`, 2026-10-07).
+  - The logger stopped by itself at 3.74 V, flat. That is far above the ~3.40 V auto-stop, and the cell had run only
+    9.1 h of its 12–14 h, so the numbers argue against battery drain.
+  - The operator suspected a loose battery contact. Never confirmed: no stop reason was read, the cell was never
+    measured at rest, and the holder was never inspected.
+  - The restart at 05:58:13 was BLE only: clock writes + Rec Start on the same cell, with no guard file and no swap.
+  - SF10 was caught at the AM round, 07:00 → 08:04.
+  - "Not handled" is inferred from how the restart was recorded; no source states it explicitly.
+  - It serves as a single descriptive contrast (unobserved but undisturbed) next to the handled gaps.
 
 **Clocks:**
 - **wall time** since an event;
