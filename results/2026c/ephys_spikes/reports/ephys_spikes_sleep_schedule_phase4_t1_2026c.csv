@@ -1,0 +1,2 @@
+comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds,full_fit_REM_vs_stay_per_SD,full_fit_Wake_vs_stay_per_SD,animals_REM_coef_positive,animals_fit
+M2t_temp vs M2t,NREM steps with weather,126200,2588,0.03749516280407017,-0.0748438640057917,0.12883599153642666,7,15,3,6,False,0.04419350140623682,0.013851357096598743,4,6

@@ -56,6 +56,15 @@ It supersedes the v1 / v2 audits ([v2](ephys_spikes_sleep_cycles_v2_claim_audit_
 | 20 | Outside sounds trigger wakes. | **Unresolved** | Cues before wakes vs 2 min earlier: housemate 41 vs 31 %, own-house sound 53 vs 44 %, outdoor 59 vs 57 %. Not specific; no validation yet. | "Sounds and housemate movement were somewhat more common just before waking." | Any causal or external attribution. |
 | 21 | The brain schedules sleep. | **Unresolved** | Design: natural data, no intervention beyond the rounds. | "The data show history-dependent, interruption-sensitive rules and balancing over the day, consistent with an internal regulation of sleep, not a fixed timetable." | Mechanistic "scheduler" wording. |
 
+**Phase 4, ambient temperature** (2026-10-08; [report](ephys_spikes_sleep_schedule_phase4_2026c.md); prediction written
+before results):
+
+| # | claim | status | main_evidence | allowed_wording | forbidden_wording |
+|---|---|---|---|---|---|
+| 22 | Warmer-than-usual ambient temperature raises the REM share of sleep. | **Candidate** (small, as predicted) | Hourly REM share of sleep: logit +0.040 per °C [0.015, 0.065], p 0.002, 5/6 rats (OR 1.04 per °C; anomaly SD 3 °C). Sleep share of recorded time: no effect (+0.005, n.s.). | "In hours warmer than usual for the time of day, a slightly larger share of sleep was REM (about 4 % higher odds per °C), with no change in how much the rats slept." | "Temperature gates REM"; anything about the houses' interior temperature (only outdoor air was measured). |
+| 23 | Temperature predicts the moment of REM entry. | **Rejected** for this range (scoped) | Held out: +0.04 % [−0.07, +0.13] (7/15 folds, 3/6 rats); full-fit REM-vs-stay +0.04 per SD. | "The temperature anomaly added nothing to predicting when NREM turns into REM." | "Temperature has no effect on REM" (see #22). |
+| 24 | The night–day NREM trade-off (#13) is explained by temperature. | **Rejected** (partly explained) | Fixed thresholds, within-rat: −0.54 → −0.39 [−0.55, −0.23] with the night and day temperature anomalies (p < 0.001). Warmer days had less day NREM. | "The night–day NREM trade-off remained with temperature controlled; warmer days had less daytime NREM." | "The trade-off is a weather artefact". |
+
 **Synthesis, at the strongest wording the statuses allow** (each part keeps its status):
 - **Established.** In the field, sleep follows rules that carry history. REM becomes more likely the more NREM has
   built up since the last REM. Brief awakenings do not erase that build-up. The night limits how often REM starts,

@@ -132,3 +132,31 @@ supersedes the v1 / v2 cycle audits where they differ.
 - Run folders: `D:/Field2026_analysis_out/2026c/sleep_schedule_phase{0,1,2,2b,3,3b}_<ts>/`.
 - In-repo pointers: `results/2026c/ephys_spikes/reports/run_manifest_sleep_schedule_<phase>_2026c.json`.
 - No server step for the sleep analyses; local only.
+
+## Phase 4 — ambient temperature (2026-10-08; plan Amendment 6, prediction written before results)
+
+`ephys/sleep_schedule_temp.py`, run by `phase4`.
+
+**Inputs:**
+- Outdoor temperature from the on-site console, 08-31 → 09-17, 8.6–28.4 °C.
+- The anomaly = temperature minus its 2-harmonic time-of-day fit (SD 3.0 °C).
+
+**Results:**
+- **REM entry, held out:** nothing (+0.04 %, 3/6).
+- **Hourly REM share of sleep:** +0.040 logit per °C (p 0.002, 5/6) — in the predicted direction, but small. Sleep
+  amount: no effect.
+- **The night–day NREM trade-off** survives temperature: −0.54 → −0.39, still p < 0.001. Warmer days had less daytime
+  NREM.
+- **Hazard by temperature tertile:** no consistent order.
+
+**Claims #22–24 in the audit.**
+
+## Mic listening review (2026-10-08)
+
+`ephys/mic_listen_review.py` builds the page → `D:/Field2026_analysis_out/2026c/mic_listen_review_20261008_1238/index.html`.
+- **Cards:** 48, blind and shuffled — 40 pilot events (8 per candidate class) and 8 controls (the rat asleep).
+- **Media per card:** own-mic audible clip and a ×8 slowed clip for ultrasonic calls; spectrograms of own / other /
+  outdoor; outdoor audio.
+- **Answers** are exported to `ephys/configs/mic_listen_review_2026c/`. Awaiting the user.
+- **Incomplete cards:** L38 (window across a file boundary) and L09 (no outdoor audio).
+

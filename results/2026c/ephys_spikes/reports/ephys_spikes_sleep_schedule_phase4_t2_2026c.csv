@@ -1,0 +1,3 @@
+outcome,n_animal_hours,logit_coef_per_degC,ci_lo,ci_hi,p,odds_ratio_per_degC,animals_positive,animals
+REM share of sleep (hours with >= 20 min sleep),723,0.03981630525598567,0.015031914153460547,0.0646006963585108,0.0016400045074218678,1.0406196002830144,5,6
+sleep share of recorded time (hours >= 30 min recorded),1230,0.004510347571093624,-0.04731288101499131,0.05633357615717855,0.8645523185748456,1.0045205344984691,4,6
