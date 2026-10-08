@@ -1,0 +1,9 @@
+role_detail,pre_state,n,vedba_halfmax_s,vedba_peak_s,emg_corr_halfmax_s,emg_corr_peak_s
+first,NREM,44281,0.0,0.0,-0.04,0.86
+first,REM,15995,0.0,0.0,-0.04,-0.02
+follower_loose,NREM,7134,0.48,0.98,0.6,1.0
+follower_loose,REM,1579,0.28,0.74,0.18,0.76
+follower_tight,NREM,3296,0.02,0.08,0.0,0.06
+follower_tight,REM,1023,0.02,0.06,-0.02,0.02
+non_mover,NREM,82442,-0.02,0.02,,
+non_mover,REM,13717,-0.02,0.02,-0.06,-0.04

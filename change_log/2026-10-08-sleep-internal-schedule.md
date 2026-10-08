@@ -202,3 +202,61 @@ supersedes the v1 / v2 cycle audits where they differ.
 
 **Claims #28a–c.** The decisive next check would be the LFP-EMG of the partner (passive jostle vs active movement).
 
+
+## LFP-EMG product for every session (2026-10-08; the user: "save it like PPP7 day8"; plan Amendment 10)
+
+`ephys/emg_from_lfp.py` (`--selftest`) writes per session:
+- `<s>.EMGFromLFP.LFP.mat` — the lab's standard. It is the pipeline's own `_compute_emg_from_lfp` (= neurocode
+  `getEMGFromLFP`): 2 Hz, ±0.5-s windows, one channel per shank.
+- `<s>.EMGFromLFP50Hz.npz` — fast, for the user's time-resolution concern. 50.4-ms windows every 20 ms on the make_imu
+  50-Hz grid, two channels per shank, `t_pc_ms`, `corr`, `log_rms`.
+
+Storage: `3rd_rat/analysis/emg_from_lfp/` (203 sessions, VERIFY PASS, `copy_to_storage.sh` part `emg_from_lfp`).
+
+- **Pipeline quirk found.** For every A4x16 animal, the scorer's earlier `lfpemg` pilot files used all 64 channels:
+  the pipeline turns a Python list of equal-length spike groups into 64 one-channel groups. The new files use one
+  channel per shank. The sleep scores are unaffected: only EMG channel selection uses that parser, and FINAL uses
+  the IMU.
+- **Route.** BioHPC was ~200× slower than this PC that afternoon. The run was done here (6 workers, 36 min), reading
+  storage read-only, then uploaded and stored with the verified copy. The LFP is read once, sequentially; outputs
+  are array-MD5-identical to the validated memmap run.
+- **Checks.**
+  - The standard file reproduces the scorer's own pilot file exactly (Δ 0.0) when given the same channels.
+  - The fast product's 1-s means correlate 0.994 with the standard.
+  - SF07 09-02 is identical from the D: copy and from storage.
+- **Copy-script fixes found on the way** (`copy_to_storage.sh`):
+  - the commit lookup is now on one line;
+  - V1 now checks a README that comes with the source.
+
+## Phase 6 — the sleep-perturbation event library (2026-10-08; plan Amendment 10 + two addenda, all before results)
+
+`ephys/sleep_events.py`, run by `sleep_schedule.py phase6 --emg-root …`. Library
+`D:/Field2026_analysis_out/2026c/sleep_events_20261008_1721/` (README); report
+`results/2026c/ephys_spikes/reports/ephys_spikes_sleep_events_2026c.md`.
+
+**Definitions** (full text in the module docstring and the report):
+- **Movement events.** A sleeping rat's 50-Hz VeDBA onset (θ = median + 8 MAD of NREM), after 2 s without any onset in
+  its house. Followers are housemates' asleep onsets within 0.1 s (tight) or 0.1–1 s (loose).
+- **Chance.** The same follower test at −47 / −31 / +31 / +47 s.
+- **Outcomes per participant.** State at +10 / 30 / 60 s, the first change within 30 s, woke within 60 s
+  (`scenario` = woke / not_woken), wake length (MA < 40 s), composition +1…+10 min.
+- **Controls.** Random co-sleep seconds.
+- **Other sources.** Sound candidates (house-mic jump ≥ 20 dB; unvalidated). Battery-round handling (94, pre / post).
+- **LFP-EMG.** Δcorr = [−0.1, +0.5] s minus [−2, −1] s. A burst is Δcorr above the 95th percentile of 200 random asleep
+  times of the same session. Controls: matched head-acceleration terciles and mean-trace timing.
+
+**Results** (claims #29a–e):
+- **Most movements leave the mover asleep.** In NREM, 71 % stay asleep for 60 s (control 80.5 %, 6 / 6 rats); the wakes
+  are mostly MA.
+- **Group movements are real.** Tight group movements run at ×6.7–9.3 chance, ≈ 5–15 above-chance events per co-sleep
+  hour.
+- **Tight followers show their own muscle activity** (Candidate): Δcorr 0.018 / 0.033 vs ≈ 0 in non-movers, 12 / 12.
+  It rises together with or just before their head acceleration, and reaches ~45–90 % of the first mover's at matched
+  size.
+- **Partners that stay still barely wake more** (20.3 % vs 19.5 %). The extra waking lies in partners that move too,
+  which refines #28c.
+
+**Verification:**
+- Two smoke runs: the code path, and the EMG path on partial data.
+- The final run, commit ccc979c.
+- The agent judged no figure or sound.
