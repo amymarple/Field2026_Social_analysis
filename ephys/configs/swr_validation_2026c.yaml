@@ -1,0 +1,18 @@
+# The user's own SWR scoring of cohort-3 sessions in ephys/swr_check_gui.py (the lab's DetectSWR check mode as a browser
+# GUI): the reference for ephys/swr_quality.py validate. Clicks are kept in configs/swr_review_2026c/ (irreplaceable human
+# work); the GUI's "Compute events" output (the user's events = DetectSWR check-mode localisation of the clicks, propagated
+# by 1-NN) lives in the GUI cache <gui_root>/<animal>/<session>/<tag>/<events>.npz (D:/Field2026_analysis_out/2026c/swr_check).
+# hide_flagged: the session was scored with flagged candidates (REM / theta / movement / LFP-EMG) hidden.
+sessions:
+  - {animal: SF10, session: "6_20260906_080449.175", tag: ch8-16-10, events: events_20261007_205924, hide_flagged: false,
+     clicks: SF10_6_20260906_080449.175_ch8-16-10_clicks_2026-10-07.json, note: "day; 114 clicks (2026-10-07)"}
+  - {animal: SF09, session: "6_20260908_072057.385", tag: ch19-60-52, events: events_20261007_214427, hide_flagged: false,
+     clicks: SF09_6_20260908_072057.385_ch19-60-52_clicks_2026-10-07.json, note: "day; 190 clicks (2026-10-07)"}
+  - {animal: SF10, session: "11_20260911_192207.153", tag: ch8-16-10, events: events_20261008_113346, hide_flagged: false,
+     clicks: SF10_11_20260911_192207.153_ch8-16-10_clicks_2026-10-08.json, note: "wake-heavy night, first with the five females; 202 clicks"}
+  - {animal: SF07, session: "15_20260902_082418.755", tag: ch49-56-23, events: events_20261008_120853, hide_flagged: true,
+     clicks: SF07_15_20260902_082418.755_ch49-56-23_clicks_2026-10-08.json, note: "block 1 day; 116 clicks; GUI channels 1-based 49/56/23 = cols 48/55/22"}
+  - {animal: SF07, session: "5_20260908_071513.175", tag: ch16-10-57, events: events_20261008_121629, hide_flagged: true,
+     clicks: SF07_5_20260908_071513.175_ch16-10-57_clicks_2026-10-08.json, note: "block 4 day; 94 clicks"}
+  - {animal: SF07, session: "2_20260909_183802.795", tag: ch16-10-57, events: events_20261008_122303, hide_flagged: true,
+     clicks: SF07_2_20260909_183802.795_ch16-10-57_clicks_2026-10-08.json, note: "block 4 night; 73 clicks + the blind review of 60 flagged / unflagged events (review_flags)"}

@@ -20,6 +20,7 @@
 #   boundary_features  ripple = classify on ripple power only (blocks with no clear sharp-wave reversal: SF07, SF11, SF12
 #                  block 3; default both)
 #   exclude_cols   columns never used in this block (e.g. for the LFP-EMG): per-period failures from the record
+#   label          optional block name for reports (SF11: 1a / 1b after the 09-02 split)
 #   confirmed      true once the user has looked at it (profile figure / Neuroscope / GUI); all confirmed by the user 2026-10-08
 SF07:   # the whole probe sits above the pyramidal layer in every block: positive sharp waves everywhere, ripple largest at the shank tips
   - {boundary_features: ripple, valid_from: null, reference_session: "15_20260902_082418.755", ripple_col: 48, sharpwave_col: 55, noise_col: 22, shank_ripple: {1: 48, 2: 34, 3: 3, 4: 0},
@@ -60,21 +61,21 @@ SF11:   # ripple largest at the shank tips but tiny; no clear reversal in the LF
   # block 1a (cohort start -> the 09-02 evening round): CLEAR RIPPLES (ripple_days test 2026-10-08: ripple-band contrast 4.1-8.9,
   # 13-18 strict events/min in NREM, REM ~0.5/min, all four shanks) - split from 1b at the user's request (10-08). Sessions to
   # 09-01 17:17 are FM64 (de-glitched LFP). Sharp wave a gradient (-42 top .. +137 tip), no reversal -> ripple-only like SF07
-  - {boundary_features: ripple, valid_from: null, reference_session: "12_20260902_083534.755", ripple_col: 51, sharpwave_col: 57, noise_col: 11, shank_ripple: {1: 51, 2: 34, 3: 1, 4: 30},
+  - {label: "block 1a", boundary_features: ripple, valid_from: null, reference_session: "12_20260902_083534.755", ripple_col: 51, sharpwave_col: 57, noise_col: 11, shank_ripple: {1: 51, 2: 34, 3: 1, 4: 30},
      source: "scan 12_20260902_083534.755 (2-h most-NREM window): ripple 51 (shank 1 tip) ratio 4.22; SW 57 (top of shank 1); noise 11 ratio 1.26 corr -0.05",
      spw_ref: "ripple 51 +137 uV, SW 57 -42 uV", flags: ["no clear reversal (gradient, SF07-like)", "split + reference agreed by the user 2026-10-08; channels = the scan proposal"], confirmed: true}
   # block 1b (09-02 19:08:52 -> the 09-04 advance): ripples lost at the 09-02 evening round on all four shanks at once (contrast
   # 2.1-3.4, 1-10 events/min) -> low contrast like the later blocks
-  - {boundary_features: ripple, valid_from: "2026-09-02 19:08:52.526", reference_session: "3_20260903_080159.850", ripple_col: 34, sharpwave_col: 37, noise_col: 11, shank_ripple: {1: 62, 2: 34, 3: 3, 4: 30},
+  - {label: "block 1b", boundary_features: ripple, valid_from: "2026-09-02 19:08:52.526", reference_session: "3_20260903_080159.850", ripple_col: 34, sharpwave_col: 37, noise_col: 11, shank_ripple: {1: 62, 2: 34, 3: 3, 4: 30},
      source: "scan 3_20260903_080159.850: ripple 34 ratio 3.40; SW 37 +17 uV; noise 11 ratio 1.48 corr 0.24",
      spw_ref: "ripple 34 +49 uV, SW 37 -67 uV (most negative on shank 2: 42 -71)", flags: ["no clear reversal (user, LFP)", "low ripple contrast: k-means selects 19-29 % of candidates (other animals 4-8 %), NREM rates ~2x - screen per session"], confirmed: true}
-  - {boundary_features: ripple, valid_from: "2026-09-04 13:56:50.425", reference_session: "3_20260905_094205.930", ripple_col: 34, sharpwave_col: 39, noise_col: 20, shank_ripple: {1: 51, 2: 34, 3: 3, 4: 21},
+  - {label: "block 2", boundary_features: ripple, valid_from: "2026-09-04 13:56:50.425", reference_session: "3_20260905_094205.930", ripple_col: 34, sharpwave_col: 39, noise_col: 20, shank_ripple: {1: 51, 2: 34, 3: 3, 4: 21},
      source: "scan 3_20260905_094205.930: ripple 34 ratio 3.41; SW 39 +14 uV; noise 20 ratio 1.52 corr 0.28",
      spw_ref: "ripple 34 +4 uV, SW 39 -100 uV (most negative on shank 2)", flags: ["no clear reversal (user, LFP 09-05)", "low ripple contrast: k-means selects 19-29 % of candidates (other animals 4-8 %), NREM rates ~2x - screen per session", "noise site not ripple-free"], confirmed: true}
-  - {boundary_features: ripple, valid_from: "2026-09-05 15:11:33.499", reference_session: "5_20260906_080735.254", ripple_col: 51, sharpwave_col: 50, noise_col: 20, shank_ripple: {1: 51, 2: 47, 3: 1, 4: 30},
+  - {label: "block 3", boundary_features: ripple, valid_from: "2026-09-05 15:11:33.499", reference_session: "5_20260906_080735.254", ripple_col: 51, sharpwave_col: 50, noise_col: 20, shank_ripple: {1: 51, 2: 47, 3: 1, 4: 30},
      source: "scan 5_20260906_080735.254: ripple 51 ratio 3.45; SW 50 +9 uV; noise 20 ratio 1.51 corr 0.28",
      spw_ref: "ripple 51 +9 uV, SW 50 -76 uV (most negative on shank 1: 57 -84)", flags: ["no clear reversal (user, LFP)", "low ripple contrast: k-means selects 19-29 % of candidates (other animals 4-8 %), NREM rates ~2x - screen per session", "noise site not ripple-free"], confirmed: true}
-  - {boundary_features: ripple, valid_from: "2026-09-06 13:33:37.885", reference_session: "9_20260906_133337.885", ripple_col: 30, sharpwave_col: 20, noise_col: 11, shank_ripple: {1: 51, 2: 47, 3: 1, 4: 30},
+  - {label: "block 4", boundary_features: ripple, valid_from: "2026-09-06 13:33:37.885", reference_session: "9_20260906_133337.885", ripple_col: 30, sharpwave_col: 20, noise_col: 11, shank_ripple: {1: 51, 2: 47, 3: 1, 4: 30},
      source: "scan 9_20260906_133337.885: ripple 30 ratio 3.37; SW 20 +11 uV; noise 11 ratio 1.55 corr 0.31",
      spw_ref: "ripple 30 +54 uV, SW 20 -55 uV (most negative on shank 4)", flags: ["no clear reversal (user, LFP)", "low ripple contrast: k-means selects 19-29 % of candidates (other animals 4-8 %), NREM rates ~2x - screen per session", "noise site not ripple-free"], confirmed: true}
 SF12:

@@ -258,3 +258,18 @@ relabelling ("let fate decide").
   | 09-02 17:04 | 1.2 % (own fit 9.4 %) | 16/min | | |
 
   - Amplitude ratio to the reference: 1.16–1.21 for 08-31 / 09-01; 0.80 for 09-02 17:04, where the decline begins.
+
+**Quality guide for users (`ephys/swr_quality.py`, user request 2026-10-08).**
+
+- `validate` compares the production events with the user's own GUI scoring (`configs/swr_validation_2026c.yaml`; all six
+  sessions' clicks are now kept in `configs/swr_review_2026c/`).
+  - SF07's scorings were made with flagged candidates hidden. They are rebuilt the same way (the GUI's events file
+    propagates over every candidate).
+  - Dry run on the local pilot: SF10 0.906 / 0.829, SF09 0.850, SF07 0.814 / 0.853 / 0.879. Server == local: True for all
+    six.
+- `build` gives one row per session:
+  - **tier:** validated / good / check / low_contrast / exclude;
+  - **`use_until`:** the earliest of valid_until, the paddock end 09-12 10:10 and the SF12 contact failure;
+  - **`info`:** post-advance settle window, FM64 sessions, females present, SF12 shank 1, sleep review 'bad'.
+  - Output: `results/2026c/ephys_spikes/reports/ephys_spikes_swr_quality_2026c.{md,csv}`, the guide other analyses
+    read first.
