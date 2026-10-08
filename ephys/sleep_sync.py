@@ -324,3 +324,182 @@ def phase5b(a) -> None:
     (rd / "ephys_spikes_sleep_schedule_phase5b_2026c.md").write_text("\n".join(flat) + "\n", encoding="utf-8")
     write_json(rd / "run_manifest_sleep_schedule_phase5b_2026c.json", {"run_dir": str(out), "git_commit": gc})
     print("written", rd / "ephys_spikes_sleep_schedule_phase5b_2026c.md")
+
+
+def phase5c(a) -> None:
+    """The coupling at 20 ms with the IMU-as-EMG signal (plan Amendment 9, before results). VeDBA at 50 Hz from make_imu
+    (field-PC clock); per animal theta = median + 8 MAD of VeDBA in scored-NREM seconds; event = first sample >= theta after
+    >= 1 s below, while scored NREM / REM. Same-house pairs (WISER), B asleep: cross-correlogram +-3 s (20-ms bins) vs the rate
+    at |lag| 30-60 s; peak lag per unordered pair; leader share per animal. Outcome: the score 10 s / 30 s after the event
+    (asleep = twitch / brief movement; WAKE = awakening), for A's events, B's coupled responses (0-1 s after A) and B's
+    other events; P(B scored WAKE within 30 s | A event) vs 60 s before."""
+    from _common import git_commit, write_json
+    from mic_wake_pilot import load_zone
+    from output_paths import figure_dir, report_dir, run_dir
+    from sleep_quant import md_table, save_fig
+    out = run_dir("sleep_schedule_phase5c" + ("_smoke" if a.smoke else ""), "2026c")
+    rd = out if a.smoke else report_dir("2026c", "ephys_spikes")
+    fd = out if a.smoke else figure_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    rv = included_sessions(Path(a.review), Path(a.states))
+    recs = build_records(rv, Path(a.states))
+    t_min = min(rc["start"] for rc in recs).floor("s")
+    t_max = max(rc["end"] for rc in recs).ceil("s")
+    span = int((t_max - t_min).total_seconds()) + 1
+    FS = 50
+    rois = {r["name"]: r for r in json.load(open(ROOT / "wiser/configs/wiser_rois.json"))["rois"] if r["name"] in ("house_1", "house_2")}
+    dates = sorted({d.strftime("%Y%m%d") for d in pd.date_range(t_min.normalize(), t_max.normalize())})
+    IMU = Path("D:/3rd_rat_spikes/analysis/imu")
+    S, Z, EVT = {}, {}, {}
+    for an in sorted({rc["animal"] for rc in recs}):
+        s = np.zeros(span, np.int8)
+        for rc in recs:
+            if rc["animal"] == an:
+                o = int((rc["start"] - t_min).total_seconds())
+                s[o:o + len(rc["state"])] = rc["state"][:max(0, span - o)]
+        S[an] = s
+        z = load_zone(an, dates, rois)
+        zz = z.reindex(pd.date_range(t_min, t_max, freq="1s")[:span]) if len(z) else pd.Series(index=range(span), dtype=object)
+        Z[an] = np.select([zz.eq("house_1").to_numpy(), zz.eq("house_2").to_numpy()], [1, 2], 0).astype(np.int8)
+        v = np.full(span * FS, np.nan, np.float32)
+        for sess in rv[rv.animal == an].session:
+            f = IMU / an / f"{sess}.imu.npz"
+            jf = IMU / an / f"{sess}.imu.json"
+            if not f.exists() or not jf.exists():
+                continue
+            with np.load(f) as zf:
+                if "t_pc_ms" not in zf.files:
+                    continue
+                tp, vd, bad = zf["t_pc_ms"], zf["vedba_ms2"], zf["unreliable"] | zf["frozen"] | zf["invalid"]
+            day = pd.Timestamp(json.loads(jf.read_text())["start_local"]).normalize()
+            k = np.round(((day - t_min).total_seconds() * 1000 + tp) / (1000 / FS)).astype(np.int64)
+            ok = (k >= 0) & (k < len(v)) & ~bad & np.isfinite(vd)
+            v[k[ok]] = vd[ok]
+        sec = np.arange(len(v)) // FS
+        nrem = (s[sec] == N) & np.isfinite(v)
+        med = np.nanmedian(v[nrem])
+        mad = np.nanmedian(np.abs(v[nrem] - med))
+        th = med + 8 * 1.4826 * mad
+        above = np.nan_to_num(v, nan=0) >= th
+        csum = np.r_[0, np.cumsum(above)]
+        kk = np.flatnonzero(above)
+        kk = kk[kk >= FS]
+        onset = kk[(csum[kk] - csum[kk - FS]) == 0]
+        onset = onset[np.isin(s[onset // FS], (N, R))]
+        EVT[an] = onset
+        print(an, "theta", round(float(th), 3), "events", len(onset), "REM", int((s[onset // FS] == R).sum()), flush=True)
+        del v
+    # ---- coupling at 20 ms
+    bins = np.arange(-3.0, 3.0 + 1e-9, 0.02)
+    rows, peaks, lead = [], [], {an: [0, 0] for an in EVT}
+    CC = {}
+    for A in EVT:
+        for B in EVT:
+            if A == B:
+                continue
+            eA, eB = EVT[A], np.sort(EVT[B])
+            secA = eA // FS
+            ok = (Z[A][secA] == Z[B][secA]) & (Z[A][secA] > 0) & np.isin(S[B][secA], (N, R))
+            eA = eA[ok]
+            if len(eA) < 30:
+                continue
+            lo = np.searchsorted(eB, eA - 60 * FS)
+            hi = np.searchsorted(eB, eA + 60 * FS)
+            d = np.concatenate([eB[l_:h_] - x for x, l_, h_ in zip(eA, lo, hi)]) / FS
+            near = np.histogram(d, bins=bins)[0].astype(float)
+            base = np.sum((np.abs(d) >= 30) & (np.abs(d) <= 60)) / (60 / 0.02)       # per 20-ms bin
+            CC[(A, B)] = (near, base, len(eA))
+            dd = d[np.abs(d) <= 1]
+            lead[A][0] += int(np.sum(dd >= 0.06))
+            lead[A][1] += int(np.sum(dd <= -0.06))
+    for (A, B), (near, base, n) in CC.items():
+        if A < B and (B, A) in CC:
+            tot = near + CC[(B, A)][0][::-1]
+            b_ = base + CC[(B, A)][1]
+            ctr = (bins[:-1] + bins[1:]) / 2
+            sel = np.abs(ctr) <= 1
+            pk = ctr[sel][np.argmax(tot[sel])]
+            peaks.append({"pair": f"{A}-{B}", "A_events": n, "peak_lag_s (+ = second animal later)": round(float(pk), 3),
+                          "peak_over_baseline": float(tot[sel].max() / b_) if b_ > 0 else np.nan,
+                          "excess_within_100ms": float(tot[np.abs(ctr) <= 0.1].sum() / (b_ * np.sum(np.abs(ctr) <= 0.1))) if b_ > 0 else np.nan,
+                          "excess_0.1_to_1s": float(tot[(np.abs(ctr) > 0.1) & (np.abs(ctr) <= 1)].sum() / (b_ * np.sum((np.abs(ctr) > 0.1) & (np.abs(ctr) <= 1)))) if b_ > 0 else np.nan})
+    P = pd.DataFrame(peaks)
+    LD = pd.DataFrame([{"animal": an, "moved_first_by_60ms_or_more": l[0], "moved_second": l[1],
+                        "leader_share": l[0] / max(l[0] + l[1], 1)} for an, l in lead.items()])
+    # pooled correlogram figure
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    ctr = (bins[:-1] + bins[1:]) / 2
+    tot = sum(v[0] for v in CC.values())
+    base = sum(v[1] for v in CC.values())
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.plot(ctr, tot / base, lw=1)
+    ax.axhline(1, color="k", lw=0.5)
+    ax.set_xlabel("lag of B's movement onset after A's (s; 20-ms bins)")
+    ax.set_ylabel("B onsets / baseline")
+    ax.set_title(f"Phase 5c: same-house sleeping pairs, IMU-as-EMG (VeDBA 50 Hz)  {gc}", fontsize=9)
+    save_fig(fig, fd / "ephys_spikes_sleep_schedule_phase5c_correlogram_2026c.png")
+    # ---- outcome: twitch or awakening?
+    orow = []
+    for A in EVT:
+        eA = EVT[A]
+        secA = eA // FS
+        ok = secA + 31 < span
+        eA, secA = eA[ok], secA[ok]
+        typ = np.where(S[A][secA] == R, "REM", "NREM")
+        coupled = np.zeros(len(eA), bool)
+        for B in EVT:
+            if B == A:
+                continue
+            eB = np.sort(EVT[B])
+            lo = np.searchsorted(eB, eA - FS)
+            hi = np.searchsorted(eB, eA)
+            same = (Z[A][secA] == Z[B][secA]) & (Z[A][secA] > 0)
+            coupled |= same & (hi > lo)                      # a housemate moved 0-1 s BEFORE this event: a response
+        for t_, cpl in ((t_, c_) for t_ in ("REM", "NREM") for c_ in (True, False)):
+            m_ = (typ == t_) & (coupled == cpl)
+            if m_.sum() < 10:
+                continue
+            s10, s30 = S[A][secA[m_] + 10], S[A][secA[m_] + 30]
+            orow.append({"animal": A, "event_state": t_, "after_a_housemate_moved_0to1s": cpl, "events": int(m_.sum()),
+                         "wake_at_10s": float(np.mean(s10 == 1)), "asleep_at_10s": float(np.mean(np.isin(s10, (N, R)))),
+                         "rem_at_10s": float(np.mean(s10 == R)), "wake_at_30s": float(np.mean(s30 == 1))})
+    O = pd.DataFrame(orow)
+    O2 = O.groupby(["event_state", "after_a_housemate_moved_0to1s"]).apply(
+        lambda g: pd.Series({"events": g.events.sum(), "wake_at_10s": np.average(g.wake_at_10s, weights=g.events),
+                             "rem_at_10s": np.average(g.rem_at_10s, weights=g.events), "wake_at_30s": np.average(g.wake_at_30s, weights=g.events),
+                             "animals": g.animal.nunique()}), include_groups=False).reset_index()
+    # partner woken? P(B scored WAKE within 30 s | A's event, B asleep) vs 60 s before
+    wrow = []
+    for A in EVT:
+        for B in EVT:
+            if A == B:
+                continue
+            secA = EVT[A] // FS
+            secA = secA[(secA >= 61) & (secA + 31 < span)]
+            ok = (Z[A][secA] == Z[B][secA]) & (Z[A][secA] > 0) & np.isin(S[B][secA], (N, R)) & np.isin(S[B][secA - 60], (N, R))
+            x = secA[ok]
+            if len(x) < 30:
+                continue
+            woke = np.array([np.any(S[B][i + 1:i + 31] == 1) for i in x])
+            woke0 = np.array([np.any(S[B][i - 59:i - 29] == 1) for i in x])
+            wrow.append({"A": A, "B": B, "events": len(x), "P_B_wakes_within_30s_after": woke.mean(), "P_B_wakes_in_30s_window_60s_before": woke0.mean()})
+    WK = pd.DataFrame(wrow)
+    if len(WK):
+        WK["ratio"] = WK.P_B_wakes_within_30s_after / WK.P_B_wakes_in_30s_window_60s_before
+    for name, T in (("pairs", P), ("leader", LD), ("outcome", O2), ("partner_wake", WK)):
+        T.to_csv(rd / f"ephys_spikes_sleep_schedule_phase5c_{name}_2026c.csv", index=False)
+        print(T.round(3).to_string(index=False), flush=True)
+    L = ["# Internal sleep schedule — Phase 5c: movement coupling at 20 ms (IMU-as-EMG); twitch or awakening? (cohort 2026c)", "",
+         f"Plan Amendment 9 (before results). Driver `ephys/sleep_schedule.py phase5c` → `ephys/sleep_sync.py` (commit {gc}); bulk `{out}`.", "",
+         "## Definitions", "", "```", (phase5c.__doc__ or "").strip(), "```", "",
+         "![](../figures/ephys_spikes_sleep_schedule_phase5c_correlogram_2026c.png)", "",
+         "## Per pair: peak lag and excess (both directions pooled; + = the second-named animal later)", "", md_table(P.round(3)), "",
+         "## Who moves first (coupled pairs within +-1 s, >= 60 ms apart)", "", md_table(LD.round(3)), "",
+         "## Twitch or awakening: the mover's score 10 s / 30 s later", "", md_table(O2.round(3)), "",
+         "## Is the partner woken? P(B scored WAKE within 30 s after A's event) vs a 30-s window 60 s before", "", md_table(WK.round(3)), ""]
+    flat = [ln for x in L for ln in (x if isinstance(x, list) else [x])]
+    (rd / "ephys_spikes_sleep_schedule_phase5c_2026c.md").write_text("\n".join(flat) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_sleep_schedule_phase5c_2026c.json", {"run_dir": str(out), "git_commit": gc})
+    print("written", rd / "ephys_spikes_sleep_schedule_phase5c_2026c.md")

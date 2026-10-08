@@ -716,3 +716,30 @@ same at +30…+60 s.
 - Asymmetric lags → propagation.
 - A zero-lag excess in all pairs → a shared trigger (e.g. a sound; to be cross-checked with the mics).
 - None → no fast coupling at the 1-s resolution of the IMU seconds cache.
+
+## 18. Amendment 9 — Phase 5c: the coupling at 20 ms with the IMU-as-EMG signal; REM twitch or awakening? (2026-10-08; the user; before results)
+
+**The user:**
+- "does this move as REM or just awake?"
+- The seconds-cache state is processed, so use the EMG-IMU (or EMG-LFP) version.
+
+**Signal.** The 50-Hz `make_imu` output (`D:/3rd_rat_spikes/analysis/imu/<SFxx>/<session>.imu.npz`):
+- VeDBA = the IMU-as-EMG the sleep scorer uses (before its 1-s binning and 15-s smoothing), and head angular speed;
+- on the field-PC clock (`t_pc_ms`, pc_time chain), so cross-animal timing is good to ms.
+
+The LFP-EMG version is the cross-check if needed (heavier; our LFP is low-passed at 450 Hz).
+
+**Events.** Per animal: θ = median + 8·MAD of its VeDBA during scored-NREM seconds. Event = the first sample ≥ θ after
+≥ 1 s below θ, while the score is NREM or REM. Typed by the score (REM vs NREM).
+
+**Coupling.**
+- Same-house pairs (WISER), B asleep; cross-correlogram of B's events at ±3 s in 20-ms bins vs the rate at |lag| 30–60 s.
+- The peak position and width per unordered pair:
+  - ≈ 0 ± 40 ms = passive or common;
+  - a shifted peak at 100–1000 ms = a response.
+- Per animal, a "leader" share: of coupled pairs within ±1 s, how often this animal moved first by ≥ 60 ms.
+
+**Outcome — the user's question.** Each event is classed by what follows:
+- A's score 10 s and 30 s later: asleep (a twitch or brief movement) vs wake (an awakening);
+- the same for B's coupled responses (B within 0–1 s after A) vs B's other events;
+- P(B wakes within 30 s | A's event, B asleep) vs the same 60 s before A's event.

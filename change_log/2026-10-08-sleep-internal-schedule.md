@@ -188,3 +188,17 @@ supersedes the v1 / v2 cycle audits where they differ.
 
 **Claim #27 (Candidate).** Open: who moves first (needs the 50-Hz IMU), and active vs passive coupling.
 
+## Phase 5c — the coupling at 20 ms with the IMU-as-EMG; twitch or awakening (2026-10-08; plan Amendment 9, before results)
+
+`sleep_sync.py` `phase5c`.
+
+**Signal:** VeDBA at 50 Hz from `make_imu` on the field-PC clock; θ = median + 8·MAD of NREM.
+
+**Results:**
+- **Timing:** peaks at 0.00–0.07 s (15 / 15 pairs); 6–10× within ±0.1 s; 1.6–2.1× at 0.1–1 s.
+- **Most sleep movements are brief:** ~92 % of NREM movements stay asleep, and 82–85 % of REM movements stay in REM.
+- **Partner's waking within 30 s:** ×1.2–1.9 (30 / 30 pairs).
+- **Leader:** SF07 moves first in 58 % of coupled pairs (likely within clock tolerance).
+
+**Claims #28a–c.** The decisive next check would be the LFP-EMG of the partner (passive jostle vs active movement).
+
