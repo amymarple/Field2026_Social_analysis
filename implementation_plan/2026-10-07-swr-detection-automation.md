@@ -95,7 +95,7 @@ The sleep state is not a classifier input, which keeps state comparisons clean.
      - SF08: 2;
      - SF09: 1;
      - SF10: 1;
-     - SF11: 4 (cortex = negative control);
+     - SF11: 4 (first read as cortex = negative control; 10-08: CA1 with a sharp-wave sign change, 2-D like the others);
      - SF12: 3 (block 2 has no usable session; block 3 ends at the contact failure).
    - Block boundaries use the exact post-move session names.
 3. The user spot-checks 1–2 wake-heavy sessions in the GUI.

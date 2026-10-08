@@ -192,8 +192,9 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
         _, co_sel, co_rest = kmeans_minority(Zo[own_fit])
         own_sel_frac = float(np.mean((np.sum((Zo - co_sel) ** 2, 1) < np.sum((Zo - co_rest) ** 2, 1))[ok]))
     # features of the boundary: both (swDiff, ripPower), or ripPower only where the probe has no sharp-wave reversal
-    # (SF07 / SF11 / SF12 block 3: the user's own boundary there is ~90 deg = ripple power only; ripPower-only k-means
-    # matched the user's SF07 clicks better, mean event F1 0.863 vs 0.828)
+    # (SF07, whose sharp wave is positive at every site: the user's own boundary there is ~90 deg = ripple power only;
+    # ripPower-only k-means matched the user's SF07 clicks better, mean event F1 0.863 vs 0.828. SF11 / SF12 block 3
+    # were ripple-only until 2026-10-08, when the reference-grade sharp-wave profile showed their sign change)
     use = [1] if blk.get("boundary_features") == "ripple" else [0, 1]
     if fit_on in ("donor", "block_reference"):
         b = donor["boundary"]
@@ -394,7 +395,9 @@ def main():
     print(f"{a.animal}: {len(todo)} of {len(sessions)} sessions to run", flush=True)
     if a.fit == "block":
         refs = sorted({channels_for(ch_cfg, a.animal, s_).get("reference_session") for s_ in sessions} - {None})
-        need = [r for r in refs if not (Path(a.out) / a.animal / r / f"{r}.swr_summary.json").exists()]
+        # every reference that will be (re)computed runs first: under --redo an old reference summary still exists and
+        # would otherwise be read as the boundary donor by sessions running in parallel with its recomputation
+        need = [r for r in refs if r in todo or not (Path(a.out) / a.animal / r / f"{r}.swr_summary.json").exists()]
         if need:
             print(f"block references first: {need}", flush=True)
             for r in need:

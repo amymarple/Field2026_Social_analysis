@@ -19,4 +19,12 @@ rc=0
 for i in "${!pids[@]}"; do
   if wait "${pids[$i]}"; then echo "[$(date +%F' '%T)] done ${pids[$i]}"; else echo "[$(date +%F' '%T)] FAILED ${pids[$i]}"; rc=1; fi
 done
+# AFTER_PID: a partial rerun (e.g. ANIMALS="SF11 SF12" REDO=1) started while an earlier run still writes to the same OUT
+# waits here for that run to end, so the single storage copy that follows covers every animal; any session failure
+# in OUT (_errors/) then blocks the copy
+if [ -n "${AFTER_PID:-}" ]; then
+  while kill -0 "$AFTER_PID" 2>/dev/null; do sleep 60; done
+  echo "[$(date +%F' '%T)] earlier run $AFTER_PID ended"
+  if [ -n "$(ls "$OUT/_errors" 2>/dev/null)" ]; then echo "[$(date +%F' '%T)] $OUT/_errors is not empty"; rc=1; fi
+fi
 exit $rc

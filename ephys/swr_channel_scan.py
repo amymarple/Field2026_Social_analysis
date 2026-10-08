@@ -6,10 +6,20 @@ Within the --hours (default 2) window of the session with the most NREM (final 1
   ratio        median envelope at NREM ripple peaks / median at random times (pass 2; peaks = z > 4 local maxima of
                the ripple column, >= 50 ms apart; the same metric used to vet the reference sessions' noise channels)
   corr         correlation of its log envelope with the ripple column's at those peaks
-  spw_uV       mean 2-50 Hz LFP at the peaks (sharp wave; positive above the pyramidal layer, negative in radiatum)
+  spw_uV       DoG 2-50 Hz LFP at those peaks (first version; kept for the record). Its loose events (z > 4 on a MAD z,
+               ~115/min in NREM) include cortical high-gamma bursts that lift the top sites by ~30 uV: on SF11 it showed
+               positive SPW everywhere where the team's profile reverses (2026-10-08).
+  spw_ref_uV   the sharp wave as in ephys/lfp_profile_check.py, used for the choice since 2026-10-08: ripple events =
+               130-200 Hz Butterworth-3 Hilbert envelope (8-ms boxcar) z-scored per live column over NREM, max over
+               columns > 4 for >= 20 ms, merged < 50 ms, peak = argmax of the summed z (NREM only); SPW = mean 1-50 Hz
+               Butterworth-3 over +-15 ms at the peak minus its mean over [-250,-150] U [150,250] ms (uV). On SF11 09-02
+               it reproduces the team's nremspread profile (-45 top .. +132 bottom on shank 1).
 Proposal:
   ripple_col     the largest pass-2 ratio
-  sharpwave_col  the most negative sharp wave on the ripple column's shank, below it
+  sharpwave_col  (spw_ref_uV; a site is "negative" below -10 uV) the most negative site below the ripple site on its
+                 shank (radiatum); else, among all negative sites, the largest contrast spw(ripple) - spw(site), taken
+                 on the ripple shank (sign change above the ripple site, e.g. SF11) unless another shank gives >= 1.5x
+                 that contrast (cross-shank radiatum, e.g. SF08 block 2); else (no reversal) the least positive site
   noise_col      among each shank's top 3 live sites, the smallest ratio (user rule: cortical, top, no ripple)
   shank_ripple   each shank's largest ratio
 Writes <out>/<SFxx>_<session>_scan.csv (per column), _proposal.yaml (paste into configs/swr_channels_<c>.yaml after the
@@ -58,6 +68,7 @@ def main():
     ap.add_argument("--redo", action="store_true", help="recompute the per-column scan")
     ap.add_argument("--hours", type=float, default=2.0, help="scan the window of this length with the most NREM")
     ap.add_argument("--extra-bad", type=int, nargs="*", default=[], help="0-based columns to exclude (e.g. per-session failures)")
+    ap.add_argument("--spw-ref", action="store_true", help="add spw_ref_uV to a cached scan (recomputes only the sharp wave)")
     a = ap.parse_args()
     xml = Path(a.xml) if a.xml else HERE / "configs/xml" / XML[a.animal]
     shanks = shanks_from_xml(xml)
@@ -71,14 +82,60 @@ def main():
         df = pd.read_csv(f"{stem}_scan.csv")
         meta = json.loads(Path(f"{stem}_scan.json").read_text()) if Path(f"{stem}_scan.json").exists() else {}
         n_pk = meta.get("n_nrem_ripple_peaks", "?")
+        if a.spw_ref or "spw_ref_uV" not in df:
+            X, in_nrem = read_window(a)
+            spw, n_ref = spw_reference(X, in_nrem, live)
+            df["spw_ref_uV"] = [round(float(spw[c]), 1) if c in spw else np.nan for c in df.col]
+            df.to_csv(f"{stem}_scan.csv", index=False)
+            meta.update(n_spw_ref_events=n_ref)
+            Path(f"{stem}_scan.json").write_text(json.dumps(meta))
     else:
-        df, n_pk = scan(a, shanks, skip, live)
+        df, n_pk, n_ref = scan(a, shanks, skip, live)
         df.to_csv(f"{stem}_scan.csv", index=False)
-        Path(f"{stem}_scan.json").write_text(json.dumps(dict(n_nrem_ripple_peaks=n_pk, xml=str(xml), skip=sorted(skip))))
+        Path(f"{stem}_scan.json").write_text(json.dumps(dict(n_nrem_ripple_peaks=n_pk, n_spw_ref_events=n_ref, xml=str(xml),
+                                                             skip=sorted(skip))))
     propose(a, df, shanks, stem, n_pk)
 
 
-def scan(a, shanks, skip, live):
+def spw_reference(X, in_nrem, live, thr=4.0, min_ms=20.0, merge_ms=50.0):
+    """{col: SPW uV} and the event count, as ephys/lfp_profile_check.py (detect_ripples + profiles) but NREM-masked
+    within one window, column by column (memory) and baseline-subtracted (see the module docstring)."""
+    from scipy.signal import butter, filtfilt, hilbert
+    br, ar = butter(3, [130 / (SR / 2), 200 / (SR / 2)], btype="band")
+    bs, as_ = butter(3, [1 / (SR / 2), 50 / (SR / 2)], btype="band")
+    k = max(1, int(0.008 * SR))
+    zmax = np.full(X.shape[0], -np.inf)
+    zsum = np.zeros(X.shape[0])
+    for c in live:
+        e = np.abs(hilbert(filtfilt(br, ar, X[:, c].astype(float))))
+        e = np.convolve(e, np.ones(k) / k, mode="same")
+        z = (e - e[in_nrem].mean()) / (e[in_nrem].std() + 1e-9)
+        zmax = np.maximum(zmax, z)
+        zsum += z
+    above = (zmax > thr) & in_nrem
+    d = np.diff(np.r_[0, above.astype(int), 0])
+    segs = np.c_[np.where(d == 1)[0], np.where(d == -1)[0]]
+    merged = []
+    for s0, e0 in segs:
+        if merged and s0 - merged[-1][1] < merge_ms / 1000 * SR:
+            merged[-1][1] = e0
+        else:
+            merged.append([s0, e0])
+    pk = np.array([s0 + int(np.argmax(zsum[s0:e0])) for s0, e0 in merged if e0 - s0 >= min_ms / 1000 * SR], int)
+    h, b0, b1 = int(0.015 * SR), int(0.15 * SR), int(0.25 * SR)
+    pk = pk[(pk > b1) & (pk < X.shape[0] - b1)]
+    win = np.arange(-h, h + 1)
+    base = np.r_[np.arange(-b1, -b0), np.arange(b0, b1)]
+    out = {}
+    for c in live:
+        lo = filtfilt(bs, as_, X[:, c].astype(float))
+        out[c] = float(np.mean(lo[pk[:, None] + win].mean(1) - lo[pk[:, None] + base].mean(1)) * UV) if pk.size else np.nan
+    print(f"spw_ref: {pk.size} NREM ripple events (multi-column z > {thr})", flush=True)
+    return out, int(pk.size)
+
+
+def read_window(a):
+    """The --hours window of the session with the most NREM: (int16 rows x columns, NREM mask)."""
     lfp_path = Path(a.lfp_root) / a.animal / f"{a.session}.lfp"
     nchan = int(json.loads(Path(str(lfp_path) + ".json").read_text())["n_channels"])
     mm = np.memmap(lfp_path, dtype=np.int16, mode="r")
@@ -102,7 +159,12 @@ def scan(a, shanks, skip, live):
         if 0 <= i0 < n:
             in_nrem[i0: i0 + int(SR)] = True
     print(f"window {w0 / 3600:.2f}-{(w0 + w) / 3600:.2f} h of {n_all / SR / 3600:.2f} h, NREM {in_nrem.mean() * 100:.0f} %", flush=True)
-    p = sd.Params()
+    return X, in_nrem
+
+
+def scan(a, shanks, skip, live):
+    X, in_nrem = read_window(a)
+    n = X.shape[0]
     h1, h2 = sd.makegausslpfir(80, SR, 6), sd.makegausslpfir(250, SR, 6)
     pw = sd.makegausslpfir(165 / np.pi, SR, 6)
     hs1, hs2 = sd.makegausslpfir(2, SR, 6), sd.makegausslpfir(50, SR, 6)
@@ -132,8 +194,11 @@ def scan(a, shanks, skip, live):
                          corr=round(float(np.corrcoef(np.log(er[pk] + 1e-9), np.log(e[pk] + 1e-9))[0, 1]), 3),
                          spw_uV=round(float(np.mean(low[pk]) * UV), 1))
             rows.append(r)
+    spw, n_ref = spw_reference(X, in_nrem, live)
+    for r in rows:
+        r["spw_ref_uV"] = round(spw[r["col"]], 1) if r["col"] in spw else np.nan
     import pandas as pd
-    return pd.DataFrame(rows), int(pk.size)
+    return pd.DataFrame(rows), int(pk.size), n_ref
 
 
 def propose(a, df, shanks, stem, n_pk):
@@ -142,20 +207,28 @@ def propose(a, df, shanks, stem, n_pk):
     ripple = int(L.loc[L.ratio.idxmax(), "col"])
     rsh = int(L.loc[L.col == ripple, "shank"].iloc[0])
     rdep = int(L.loc[L.col == ripple, "depth_index"].iloc[0])
-    # sharp wave: the most negative SPW below the ripple site on its shank; else the most negative anywhere (cross-shank,
-    # as in the lab's PPP4 run); else (no reversal on the probe = above the pyramidal layer) the least positive SPW on the
-    # ripple shank, which still contrasts depth - flagged
-    below = L[(L.shank == rsh) & (L.depth_index > rdep) & (L.spw_uV < 0)]
-    neg = L[(L.spw_uV < 0) & (L.col != ripple)]
+    # sharp wave (spw_ref_uV, the reference-grade profile; "negative" = below -10 uV): the most negative site below the
+    # ripple site on its shank (radiatum); else the most negative on the ripple shank at any depth (sign change above the
+    # ripple site, e.g. SF11); else the most negative anywhere (cross-shank, as in the lab's PPP4 run); else (no reversal
+    # on the probe) the least positive site on the ripple shank, which still contrasts depth - flagged
+    sp = "spw_ref_uV" if "spw_ref_uV" in L else "spw_uV"
+    below = L[(L.shank == rsh) & (L.depth_index > rdep) & (L[sp] < -10)]
+    shank_neg = L[(L.shank == rsh) & (L.col != ripple) & (L[sp] < -10)]
+    other_neg = L[(L.shank != rsh) & (L[sp] < -10)]
     flags = []
     if len(below):
-        sw = int(below.loc[below.spw_uV.idxmin(), "col"])
-    elif len(neg):
-        sw = int(neg.loc[neg.spw_uV.idxmin(), "col"])
+        sw = int(below.loc[below[sp].idxmin(), "col"])
+    elif len(shank_neg) and not (len(other_neg) and other_neg[sp].min() <= 1.5 * shank_neg[sp].min()
+                                 - 0.5 * float(L.loc[L.col == ripple, sp].iloc[0])):
+        # contrast c = spw(ripple) - spw(site); other shank only if c_other >= 1.5 c_same
+        sw = int(shank_neg.loc[shank_neg[sp].idxmin(), "col"])
+        flags.append("sharp-wave sign change above the ripple site (negative at the top of the shank)")
+    elif len(other_neg):
+        sw = int(other_neg.loc[other_neg[sp].idxmin(), "col"])
         flags.append("sharp wave on another shank")
     else:
         same = L[(L.shank == rsh) & (L.col != ripple)]
-        sw = int(same.loc[same.spw_uV.idxmin(), "col"])
+        sw = int(same.loc[same[sp].idxmin(), "col"])
         flags.append("no sharp-wave reversal on the probe (above the pyramidal layer): SW = least positive site")
     tops = pd.concat([g.sort_values("depth_index").head(3) for _, g in L.groupby("shank")])
     tops = tops[~tops.col.isin([ripple, sw])]
@@ -164,10 +237,11 @@ def propose(a, df, shanks, stem, n_pk):
     if nz["ratio"] > 1.5 or nz["corr"] > 0.3:
         flags.append(f"noise site not ripple-free (ratio {nz['ratio']:.2f}, corr {nz['corr']:.2f})")
     shank_ripple = {int(sh): int(g.loc[g.ratio.idxmax(), "col"]) for sh, g in L.groupby("shank")}
-    swv = float(L.loc[L.col == sw, "spw_uV"].iloc[0])
+    swv = float(L.loc[L.col == sw, sp].iloc[0])
+    rpv = float(L.loc[L.col == ripple, sp].iloc[0])
     prop = dict(ripple_col=ripple, sharpwave_col=sw, noise_col=noise, shank_ripple=shank_ripple, flags=flags,
                 source=(f"swr_channel_scan on {a.session}: {n_pk} NREM ripple peaks; ripple col {ripple} (shank {rsh}) ratio "
-                        f"{L.ratio.max():.2f}; SW col {sw} ({swv:.0f} uV); noise col {noise} ratio {nz['ratio']:.2f} "
+                        f"{L.ratio.max():.2f} ({sp} {rpv:+.0f} uV); SW col {sw} ({swv:+.0f} uV); noise col {noise} ratio {nz['ratio']:.2f} "
                         f"corr {nz['corr']:.2f}"),
                 confirmed=False)
     Path(f"{stem}_proposal.yaml").write_text(json.dumps(prop, indent=1))
@@ -175,10 +249,11 @@ def propose(a, df, shanks, stem, n_pk):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    cols_plot = [("ratio", "ripple ratio at NREM ripples"), (sp, "sharp wave (uV, " + sp + ")")]
     fig, axes = plt.subplots(2, len(shanks), figsize=(3 * len(shanks), 7), sharey="row", squeeze=False)
     for j, (sh, g) in enumerate(shanks):
         d = df[df.shank == sh].sort_values("depth_index")
-        for i, (col, lab) in enumerate((("ratio", "ripple ratio at NREM ripples"), ("spw_uV", "sharp wave (uV)"))):
+        for i, (col, lab) in enumerate(cols_plot):
             ax = axes[i, j]
             ok = d[col].notna()
             ax.plot(d.loc[ok, col], -d.loc[ok, "depth_index"], "o-", ms=3)
@@ -186,8 +261,7 @@ def propose(a, df, shanks, stem, n_pk):
                 if r.notna()[col]:
                     mark = "R" if r.col == ripple else "S" if r.col == sw else "N" if r.col == noise else ""
                     ax.annotate(f"{int(r.col)}{(' ' + mark) if mark else ''}", (r[col], -r.depth_index), fontsize=6)
-            if i == 0:
-                ax.axvline(1, color="0.6", lw=0.5)
+            ax.axvline(1 if i == 0 else 0, color="0.6", lw=0.5)
             ax.set_title(f"shank {sh}" if i == 0 else "", fontsize=9)
             ax.set_xlabel(lab, fontsize=8)
     axes[0, 0].set_ylabel("depth index (top = 0)")

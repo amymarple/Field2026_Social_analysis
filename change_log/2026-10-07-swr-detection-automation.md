@@ -156,3 +156,55 @@ then rests on the ripple channel alone, and EMG can contaminate it. So EMG is no
 - Commit `d522f78`, deployed to BioHPC; `states_1s_final` (198 files) uploaded to `swr_inputs/`.
 - `run_swr.sh` was launched 2026-10-08 15:10 with all 6 animals in parallel, 18 workers each (user: ~100 cores).
 - It ends with one verified `copy_to_storage` (part `swr`).
+
+## Update 2026-10-08 (later): SF11 and SF12 block 3 do have a sharp-wave reversal; weak blocks over-select
+
+The user: "SF11 SF12 should have a reversal."
+
+- **The first channel scan was wrong there.** Its sharp wave was the DoG 2–50 Hz value at loose ripple-envelope peaks
+  (z > 4 on a MAD z, ~115/min in NREM). Those events include cortical high-gamma bursts, which lift the top sites by
+  30–100 µV. The same LFP and NREM bouts with the team's `lfp_profile_check` events (multi-column z > 4, ≥ 20 ms) give the
+  team's profile (SF11 09-02 shank 1: −45 at the top … +132 at the tip).
+- **New per-column measure `spw_ref_uV`.**
+  $$\mathrm{spw\_ref}_c = \frac{1}{N}\sum_{k=1}^{N}\Big[\overline{y_c}(t_k \pm 15\,\mathrm{ms}) - \overline{y_c}\big(t_k + [-250,-150]\cup[150,250]\,\mathrm{ms}\big)\Big]\times 0.195\ \mu\mathrm{V}$$
+  - $y_c$ = 1–50 Hz Butterworth-3 (zero-phase) LFP of column $c$;
+  - $t_k$ = the $N$ NREM ripple peaks (130–200 Hz Hilbert envelope, 8-ms boxcar, z per column over NREM; max over
+    columns > 4 for ≥ 20 ms; merged < 50 ms; peak = argmax of the summed z);
+  - **text:** the ripple-triggered sharp wave relative to its own surroundings. Units µV, either sign. A sign change
+    along a shank = a reversal.
+  - `swr_channel_scan.py --spw-ref` adds it to cached scans; the old `spw_uV` is kept for the record.
+- **Sharp-wave rule.** The SW site is chosen by contrast to the ripple site ($\mathrm{spw\_ref}_{rip} - \mathrm{spw\_ref}_c$,
+  negative sites only):
+  1. below the ripple site on its shank;
+  2. else on the ripple shank, unless another shank gives ≥ 1.5× the contrast;
+  3. else the least positive site (no reversal).
+  - It reproduces every confirmed channel of SF07, SF08, SF10, SF12 and SF11 blocks 2/4.
+  - On SF11 blocks 1/3 it would pick a neighbouring top site 4–8 µV more negative (42 for 37, 57 for 50); the
+    confirmed sites are kept.
+- **Result per animal (spw_ref, reference sessions).**
+  - SF07: positive everywhere (least positive +39 … +72 µV), so it stays ripple-only. It is the only such animal.
+  - SF11, all four blocks: the top is −55 … −100 µV, the ripple site +4 … +54 µV.
+  - SF12 block 3: weak, −30 vs +31 µV.
+  - The config now treats SF11 and SF12 block 3 as 2-D blocks; the channels are unchanged.
+  - The SF12 09-09 weakness is a loosening connector contact, not the probe (Notion + field2026-sync
+    `2026-09-11_sf12-connector-answer`).
+- **But the boundary does not separate ripples on these weak blocks.** The ripple-band ratio there is ≈ 3.4–3.6 (SF07
+  3.8–4.5). Reference sessions, both rules:
+
+  | Block | Selected | NREM rate | Kept NREM |
+  |---|---|---|---|
+  | SF11 block 1 (ripple-only) | 22.8 % | | |
+  | SF11 blocks 2–3 | 26–29 % | 136–163/min | 123–154/min |
+  | SF12 block 3 | 19–20 % | 138–160/min | 127–152/min |
+
+  - Before exclusion, SF11 blocks 2–3 run REM 93–129 and wake 98–115/min.
+  - Compare 4–8 % selected and kept NREM 44–79/min on SF07/SF09/SF10, and the user's own 44–68/min.
+  - So two-cluster k-means cuts into the bulk of the cloud there. **SF11 and SF12 block 3 are held from production**
+    until the user scores one reference session of each in the GUI.
+- **Bug fixed in `swr_auto.py --redo`.** A block reference whose summary already existed was run in the same pool as
+  its dependants, which could read its stale boundary. Every reference that will be recomputed now runs first.
+- **Server.**
+  - The SF11 / SF12 jobs of the 15:10 run were stopped; SF07–SF10 continue. That run therefore ends without a storage
+    copy.
+  - `run_swr.sh` / `swr_all_animals.sh` accept `AFTER_PID`: a partial rerun waits for an earlier run on the same `OUT`
+    before its single verified copy.

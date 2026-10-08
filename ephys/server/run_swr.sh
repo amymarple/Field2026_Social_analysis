@@ -20,6 +20,7 @@ OUT=${OUT:-/workdir/hc997/ephys_2026c/swr}
 WORKERS_PER_ANIMAL=${WORKERS_PER_ANIMAL:-18}   # x 6 animals in parallel = 108 processes (user 2026-10-08: ~100 cores)
 ANIMALS=${ANIMALS:-"SF07 SF08 SF09 SF10 SF11 SF12"}
 REDO=${REDO:-}
+AFTER_PID=${AFTER_PID:-}   # partial rerun: wait for an earlier run writing to the same OUT before the storage copy
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 mkdir -p "$OUT"
 cd "$REPO/ephys" || exit 1
@@ -41,11 +42,12 @@ Automatic sharp-wave ripple events, cohort 3 (2026c), one folder per session: <S
   <session>.swr_qc.png           candidate scatter + events per 10 min
 Method: ephys/swr_auto.py docstring; channels + reference sessions: swr_channels_2026c.yaml (copied here; all blocks
 confirmed by the user 2026-10-08; SF12 09-09 18:47 -> 09-10 08:35 skipped). Downstream exclusions still to apply: user
-noise sessions, SF12_contact_failing, valid_until, SF11 = cortex (negative control).
+noise sessions, SF12_contact_failing, valid_until (SF11 to 09-07 06:10). Since 2026-10-08 only SF07 has no sharp-wave
+reversal (ripple-only boundary + movement / LFP-EMG exclusion); SF11 and SF12 block 3 are 2-D blocks like the others.
 Made by ephys/server/run_swr.sh, repo commit $(cat ../.git_commit 2>/dev/null || echo unknown), $(date -Is).
 TXT
 # all animals at once, then ONE verified copy to storage
-export PY LFP INPUTS OUT ANIMALS REDO WORKERS_PER_ANIMAL
+export PY LFP INPUTS OUT ANIMALS REDO WORKERS_PER_ANIMAL AFTER_PID
 PART=swr bash server/run_then_store.sh bash server/swr_all_animals.sh
 rc=$?
 echo "end $(date -Is)  sessions: $(find "$OUT" -name '*.swr_summary.json' | wc -l)  errors: $(ls "$OUT/_errors" 2>/dev/null | wc -l)"
