@@ -463,3 +463,100 @@ def phase3(a) -> None:
     write_json(rd / "run_manifest_sleep_schedule_phase3_2026c.json", {"run_dir": str(out), "git_commit": gc, "states": str(a.states),
                                                                      "b3_states": str(a.b3_states), "parts": sorted(parts)})
     print("written", rd / "ephys_spikes_sleep_schedule_phase3_2026c.md")
+
+
+# ================================================================== Phase 3b (Amendment 5: two checks before the claim audit)
+def phase3b(a) -> None:
+    """(1) Same-events catch-up: natural wakes followed >= 3 h (>= 6 h): REM excess at 1 / 3 (/ 6) h on the SAME events,
+    and the paired change; battery rounds likewise. (2) 24-h budget robustness: both scorings, minutes (obs - exp over the
+    recorded part) and rates, >= 50 % / >= 80 % recorded in both periods, animal fixed effects + per-animal slopes, REM and
+    NREM."""
+    import statsmodels.api as sm
+    from _common import git_commit, write_json
+    from output_paths import report_dir, run_dir
+    from sleep_quant import md_table, sun_times
+    out = run_dir("sleep_schedule_phase3b" + ("_smoke" if a.smoke else ""), "2026c")
+    rd = out if a.smoke else report_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    p3 = Path(json.load(open(ROOT / "results/2026c/ephys_spikes/reports/run_manifest_sleep_schedule_phase3_2026c.json"))["run_dir"])
+    rows, brow = [], []
+    for lab in ("FINAL", "pass2med_remclean"):
+        T = pd.read_csv(p3 / f"q2_trajectories_{lab}.csv.gz", parse_dates=["t0"])
+        nat = T[T.cls != "battery round"].copy()
+        for hs in ((60, 180), (60, 180, 360)):
+            g = nat.dropna(subset=[f"rem_{h}" for h in hs]).copy()
+            for h in hs:
+                g[f"x{h}"] = g[f"rem_{h}"] - g[f"erem_{h}"]
+            X = pd.DataFrame({"l_d": np.log(g.d_s), "dark": g.dark.astype(float)}, index=g.index)
+            X = sm.add_constant(pd.concat([X, pd.get_dummies(g.animal, drop_first=True, dtype=float)], axis=1))
+            ys = {f"REM excess at {h} min": g[f"x{h}"] for h in hs}
+            ys[f"change {hs[0]} -> {hs[-1]} min"] = g[f"x{hs[-1]}"] - g[f"x{hs[0]}"]
+            for yl, y in ys.items():
+                fit = sm.OLS(y, X).fit(cov_type="cluster", cov_kwds={"groups": pd.factorize(g.block)[0]})
+                sg = []
+                for _, ga in g.groupby("animal"):
+                    if len(ga) >= 15 and ga.dark.nunique() > 1:
+                        Xa = sm.add_constant(pd.DataFrame({"l_d": np.log(ga.d_s), "dark": ga.dark.astype(float)}))
+                        sg.append(np.sign(sm.OLS(y.loc[ga.index], Xa).fit().params["l_d"]))
+                rows.append({"scores": lab, "events": f"followed >= {hs[-1]} min", "n": len(g), "outcome": yl,
+                             "l_d_coef": fit.params["l_d"], "ci_lo": fit.conf_int().loc["l_d", 0], "ci_hi": fit.conf_int().loc["l_d", 1],
+                             "p": fit.pvalues["l_d"], "animals_negative": int(np.sum(np.array(sg) < 0)), "animals": len(sg)})
+        b = T[T.cls == "battery round"].dropna(subset=["rem_60", "rem_180", "rem_360"])
+        for h in (60, 180, 360):
+            x = b[f"rem_{h}"] - b[f"erem_{h}"]
+            brow.append({"scores": lab, "n": len(b), "h_min": h, "REM_excess_mean": x.mean(), "se": x.std() / np.sqrt(len(b)),
+                         "animals_below_0": int((b.assign(x=x).groupby("animal").x.mean() < 0).sum()), "animals": b.animal.nunique()})
+    S1, S1b = pd.DataFrame(rows), pd.DataFrame(brow)
+    S1.to_csv(rd / "ephys_spikes_sleep_schedule_phase3b_same_events_2026c.csv", index=False)
+    S1b.to_csv(rd / "ephys_spikes_sleep_schedule_phase3b_battery_same_events_2026c.csv", index=False)
+    print(S1.round(3).to_string(index=False), flush=True)
+    print(S1b.round(3).to_string(index=False), flush=True)
+    brows = []
+    for lab, sdir in (("FINAL", Path(a.states)), ("pass2med_remclean", Path(a.b3_states))):
+        recs = records_with_metrics(included_sessions(Path(a.review), sdir), sdir)
+        Bn, RB = bins10(recs)
+        Bn = baselines(Bn, RB)
+        drows = []
+        for an, g in Bn.groupby("animal"):
+            for d in pd.date_range("2026-08-30", "2026-09-11"):
+                ss0 = pd.Timestamp(sun_times(d.date())[1])
+                sr1, ss1 = (pd.Timestamp(x) for x in sun_times((d + pd.Timedelta(days=1)).date()))
+                rr = {"animal": an, "night_of": d}
+                for k, (t0, t1) in {"night": (ss0, sr1), "day": (sr1, ss1)}.items():
+                    gg = g[(g.t >= t0) & (g.t < t1)]
+                    rr[f"{k}_cov"] = gg.rec_s.sum() / (t1 - t0).total_seconds()
+                    for q, (o, e) in {"REM": ("rem_s", "e_rem_s"), "NREM": ("nrem_s", "e_nrem_s")}.items():
+                        rr[f"{k}_{q}_dev_min"] = (gg[o].sum() - gg[e].sum()) / 60
+                        rr[f"{k}_{q}_rate_dev"] = (gg[o].sum() - gg[e].sum()) / max(gg.rec_s.sum(), 1) * 60
+                drows.append(rr)
+        D = pd.DataFrame(drows)
+        D.to_csv(out / f"budget_days_{lab}.csv", index=False)
+        for cov in (0.5, 0.8):
+            for q in ("REM", "NREM"):
+                for unit, suf in (("min per recorded h (rate)", "rate_dev"), ("minutes over the recorded part", "dev_min")):
+                    x, y = f"night_{q}_{suf}", f"day_{q}_{suf}"
+                    g = D[(D.night_cov >= cov) & (D.day_cov >= cov)].dropna(subset=[x, y])
+                    if len(g) < 12:
+                        continue
+                    pooled = sm.OLS(g[y], sm.add_constant(g[[x]])).fit(cov_type="HC3")
+                    Xf = sm.add_constant(pd.concat([g[[x]], pd.get_dummies(g.animal, drop_first=True, dtype=float)], axis=1))
+                    fe = sm.OLS(g[y], Xf).fit(cov_type="HC3")
+                    sg = [np.sign(sm.OLS(ga[y], sm.add_constant(ga[[x]])).fit().params[x]) for _, ga in g.groupby("animal") if len(ga) >= 4]
+                    brows.append({"scores": lab, "coverage_min": cov, "quantity": q, "unit": unit, "n_animal_days": len(g),
+                                  "pooled_slope": pooled.params[x], "pooled_ci_lo": pooled.conf_int().loc[x, 0], "pooled_ci_hi": pooled.conf_int().loc[x, 1],
+                                  "within_animal_slope": fe.params[x], "within_ci_lo": fe.conf_int().loc[x, 0], "within_ci_hi": fe.conf_int().loc[x, 1],
+                                  "within_p": fe.pvalues[x], "animals_negative": int(np.sum(np.array(sg) < 0)), "animals": len(sg)})
+    S2 = pd.DataFrame(brows)
+    S2.to_csv(rd / "ephys_spikes_sleep_schedule_phase3b_budget_2026c.csv", index=False)
+    print(S2.round(3).to_string(index=False), flush=True)
+    L = ["# Internal sleep schedule — Phase 3b: same-events catch-up and the 24-h budget checks (cohort 2026c)", "",
+         f"Plan Amendment 5. Driver `ephys/sleep_schedule.py phase3b` (commit {gc}); bulk `{out}`. Technical ledger.", "",
+         "## Definitions", "", "```", (phase3b.__doc__ or "").strip(), "```", "",
+         "## 1. Same events: REM excess after natural wakes (coefficient of ln wake length; animal FE, dark; SEs by block)", "",
+         md_table(S1.round(3)), "", "Battery rounds, the same events at 1 / 3 / 6 h (REM observed − expected, min):", "",
+         md_table(S1b.round(3)), "", "## 2. 24-h budget: next-day deviation on the preceding night's deviation", "",
+         md_table(S2.round(3)), ""]
+    flat = [ln for x in L for ln in (x if isinstance(x, list) else [x])]
+    (rd / "ephys_spikes_sleep_schedule_phase3b_2026c.md").write_text("\n".join(flat) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_sleep_schedule_phase3b_2026c.json", {"run_dir": str(out), "git_commit": gc})
+    print("written", rd / "ephys_spikes_sleep_schedule_phase3b_2026c.md")
