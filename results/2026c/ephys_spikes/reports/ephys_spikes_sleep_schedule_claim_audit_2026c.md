@@ -65,6 +65,14 @@ before results):
 | 23 | Temperature predicts the moment of REM entry. | **Rejected** for this range (scoped) | Held out: +0.04 % [−0.07, +0.13] (7/15 folds, 3/6 rats); full-fit REM-vs-stay +0.04 per SD. | "The temperature anomaly added nothing to predicting when NREM turns into REM." | "Temperature has no effect on REM" (see #22). |
 | 24 | The night–day NREM trade-off (#13) is explained by temperature. | **Rejected** (partly explained) | Fixed thresholds, within-rat: −0.54 → −0.39 [−0.55, −0.23] with the night and day temperature anomalies (p < 0.001). Warmer days had less day NREM. | "The night–day NREM trade-off remained with temperature controlled; warmer days had less daytime NREM." | "The trade-off is a weather artefact". |
 
+**Phase 5, REM synchrony between animals** (2026-10-08; [report](ephys_spikes_sleep_schedule_phase5_2026c.md); test
+written before results):
+
+| # | claim | status | main_evidence | allowed_wording | forbidden_wording |
+|---|---|---|---|---|---|
+| 25 | A housemate's REM onset (or ongoing REM) raises an animal's own REM-entry hazard. | **Rejected** (scoped) | Held out, with the animal's own clock, time of day, and housemates present and asleep in the base: +0.08 % (worse), 2/15 folds, 0/6 animals; coefficients ≈ 0 (−0.002, +0.005). | "REM entry was not coupled to housemates' REM: once each rat's own sleep history and the time of day were known, a housemate entering REM did not make it more likely to enter REM." | "Rats never synchronise sleep" (shared timing exists, #26); claims beyond the 60-s window, WISER house membership (14-in buffer, not body contact) and ~1-s clock offsets. |
+| 26 | REM co-occurs across animals more than chance through shared timing. | **Established** (descriptive) | P(mate in REM given this rat in REM vs in NREM): median ≈ 1.2× across pairs. The raw REM-entry ratio after a REM onset is 1.10 for housemates but 1.25 for animals elsewhere, so it is not specific to housemates. | "Rats tended to be in REM at the same times, as expected from a shared daily rhythm and conditions, not because one animal's REM triggered another's." | "Social REM synchrony". |
+
 **Synthesis, at the strongest wording the statuses allow** (each part keeps its status):
 - **Established.** In the field, sleep follows rules that carry history. REM becomes more likely the more NREM has
   built up since the last REM. Brief awakenings do not erase that build-up. The night limits how often REM starts,

@@ -76,15 +76,34 @@ def spectro(path: Path, x: np.ndarray, rate: float, fmax: float, title: str) -> 
     nper = 4096 if rate > 100000 else 512
     f, tt, S = spectrogram(x - x.mean(), fs=rate, nperseg=nper, noverlap=nper // 2)
     keep = f <= fmax
-    fig, ax = plt.subplots(figsize=(9, 2.6))
+    fig = plt.figure(figsize=(9, 2.6))
+    ax = fig.add_axes(AX)                           # fixed geometry: the page's moving bar maps time to x with AX
     ax.pcolormesh(tt - PRE, f[keep] / 1000, 10 * np.log10(S[keep] + 1e-12), shading="auto", cmap="magma")
+    ax.set_xlim(-PRE, POST)
     ax.axvline(0, color="cyan", lw=1.2)
     ax.set_ylabel("kHz")
     ax.set_xlabel("s from the movement onset (cyan)")
     ax.set_title(title, fontsize=8)
-    fig.tight_layout()
     fig.savefig(path, dpi=90)
     plt.close(fig)
+
+
+AX = (0.07, 0.2, 0.91, 0.68)                        # left, bottom, width, height of every spectrogram's axes
+JS_SYNC = """
+const AXL = %AXL%, AXW = %AXW%, PRE = %PRE%, POST = %POST%;
+function setBars(card, x) {
+  const f = Math.min(Math.max((x + PRE) / (PRE + POST), 0), 1);
+  card.querySelectorAll('.bar').forEach(b => { b.style.left = ((AXL + f * AXW) * 100) + '%'; });
+}
+document.querySelectorAll('.sync').forEach(el => {
+  const card = el.closest('.card'), t0 = parseFloat(el.dataset.t0), rate = parseFloat(el.dataset.rate);
+  let raf = null;
+  const tick = () => { setBars(card, t0 + el.currentTime * rate); if (!el.paused && !el.ended) raf = requestAnimationFrame(tick); };
+  el.addEventListener('play', () => { cancelAnimationFrame(raf); tick(); });
+  el.addEventListener('seeked', tick);
+  el.addEventListener('timeupdate', () => { if (el.paused) tick(); });
+});
+"""
 
 
 def main() -> None:
@@ -152,14 +171,26 @@ def main() -> None:
             notes.append("outdoor CH01: no covering file")
         meta.append({**info, **media, "notes": "; ".join(notes)})
         print(r.id, r.kind, "media:", sorted(media), notes, flush=True)
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(3) as ex:                    # 2x2 house video per card (both houses, inside + outside)
+        for m, stt in zip(meta, ex.map(lambda m: mosaic(out, m, raw), meta)):
+            if (out / "media" / f"{m['id']}_mosaic.mp4").exists():
+                m["mosaic_mp4"] = f"media/{m['id']}_mosaic.mp4"
+            print(m["id"], "video", stt[:120], flush=True)
     (out / "events.json").write_text(json.dumps(meta, indent=1, default=str), encoding="utf-8")
     opts = ["outside sound (weather / machine / people / animal outside)", "housemate noise or movement",
             "this rat's own noise", "nothing audible", "can't tell"]
     for m in meta:
-        aud = "".join(f'<div class="a"><b>{lab}</b><br><audio controls preload="none" src="{m[k]}"></audio></div>'
-                      for k, lab in (("own_wav", "own-house mic (audible)"), ("own_slow_wav", f"own mic, last {SLOW_S} s x{SLOW_X} slower (ultrasound)"),
-                                     ("outdoor_wav", "outdoor CH01")) if k in m)
-        img = "".join(f'<img src="{m[k]}">' for k in ("own_png", "other_png", "outdoor_png") if k in m)
+        vid = (f'<video class="sync" data-t0="{-PRE}" data-rate="1" controls preload="none" width="960" src="{m["mosaic_mp4"]}"></video>'
+               '<div><small>Both houses, inside and outside (the focal rat\'s house in yellow); sound = the focal rat\'s house mic; '
+               'countdown to the movement onset, cyan flash at 0. The green bar on the spectrograms follows whatever is playing.</small></div>'
+               if "mosaic_mp4" in m else "<div><small>no house video</small></div>")
+        aud = "".join(f'<div class="a"><b>{lab}</b><br><audio class="sync" data-t0="{t0}" data-rate="{rate}" controls preload="none" src="{m[k]}"></audio></div>'
+                      for k, lab, t0, rate in (("own_wav", "own-house mic (audible)", -PRE, 1),
+                                               ("own_slow_wav", f"own mic, last {SLOW_S} s x{SLOW_X} slower (ultrasound)", -SLOW_S, 1 / SLOW_X),
+                                               ("outdoor_wav", "outdoor CH01", -PRE, 1)) if k in m)
+        img = "".join(f'<div class="sw"><img src="{m[k]}"><div class="bar"></div></div>' for k in ("own_png", "other_png", "outdoor_png") if k in m)
+        aud = vid + aud
         radios = "".join(f'<label><input type="radio" name="v_{m["id"]}" value="{html.escape(o)}"> {html.escape(o)}</label><br>' for o in opts)
         cards.append(f'''<div class="card" id="{m["id"]}"><h3>{m["id"]} &nbsp; <small>{m["t_onset"]} · {m["animal"]} · {m["house"]} · own mic {m["own_mic"]}
  · timing error bound {m.get("own_timing_err_s", "?")} s</small></h3>{aud}<div>{img}</div>
@@ -169,7 +200,8 @@ def main() -> None:
 <button onclick="reveal('{m["id"]}')">save + reveal</button><span class="rev" id="rev_{m["id"]}"></span></p></div>''')
     page = f'''<!doctype html><html><head><meta charset="utf-8"><title>Mic listening review</title><style>
 body{{font-family:sans-serif;margin:16px;max-width:1100px}} .card{{border:1px solid #999;padding:8px;margin:12px 0}} img{{max-width:100%;display:block}}
-.a{{display:inline-block;margin-right:16px}} .rev{{color:#a33;margin-left:12px}}</style></head><body>
+.a{{display:inline-block;margin-right:16px}} .rev{{color:#a33;margin-left:12px}}
+.sw{{position:relative;display:block}} .bar{{position:absolute;top:0;bottom:0;width:3px;background:#3f3;left:{AX[0] * 100}%;pointer-events:none}}</style></head><body>
 <h2>In-house microphone listening review (blind) — cohort 2026c</h2>
 <p>{len(meta)} cards: wakes from NREM ({(ev.kind == "event").sum()}) and controls ({(ev.kind == "control").sum()}, the rat asleep), shuffled.
 Listen to the own-house mic (and the slowed clip for ultrasonic calls), look at the spectrograms (own house, other house, outdoor),
@@ -194,10 +226,80 @@ function exp(){{const s=load();const rows=[["id","verdict_blind","verdict_final"
  const b=new Blob([c],{{type:t}});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download=n;l.click();}}}}
 (function(){{const s=load();for(const id in s){{const v=s[id];const r=document.querySelector('input[name="v_'+id+'"][value="'+(v.verdict||"").replace(/"/g,'\\\\"')+'"]');if(r)r.checked=true;
  const c=document.querySelector('input[name="usv_'+id+'"]');if(c)c.checked=!!v.usv;const t=document.querySelector('textarea[name="n_'+id+'"]');if(t)t.value=v.note||"";}}}})();
-</script></body></html>'''
+</script><script>{JS_SYNC.replace("%AXL%", str(AX[0])).replace("%AXW%", str(AX[2])).replace("%PRE%", str(PRE)).replace("%POST%", str(POST))}</script></body></html>'''
     (out / "index.html").write_text(page, encoding="utf-8")
     print("written", out / "index.html")
 
 
+HOUSE_CAMS = [("CH08", "house_1 inside (CH08)"), ("CH07", "house_2 inside (CH07)"),
+              ("CH05", "house_1 outside (CH05)"), ("CH06", "house_2 outside (CH06)")]   # CLAUDE.md camera map
+FONT = "C\\:/Windows/Fonts/arial.ttf"
+
+
+def mosaic(run: Path, m: dict, raw: Path) -> str:
+    """2x2 video of both houses (inside CH08 / CH07, outside CH05 / CH06) over [t - 20, t + 10] s, 10 fps, the own-house
+    mic as the sound, an onset countdown and a cyan frame flash at the movement onset. Returns a status string."""
+    t = pd.Timestamp(m["t_onset"])
+    dst = run / "media" / f"{m['id']}_mosaic.mp4"
+    if dst.exists():
+        return "exists"
+    cmd, filt = [FFMPEG, "-v", "error", "-y"], []
+    for k, (cam, label) in enumerate(HOUSE_CAMS):
+        f = find_file(raw, cam, t, "mp4")
+        focal = " - FOCAL RAT HOUSE" if label.startswith(m["house"]) else ""
+        if f is None:
+            cmd += ["-f", "lavfi", "-t", str(PRE + POST), "-i", "color=c=black:s=640x480:r=10"]
+            label += " - no file"
+        else:
+            _, s, _ = parse_name(f)
+            cmd += ["-ss", f"{(t - s).total_seconds() - PRE:.3f}", "-t", str(PRE + POST), "-i", str(f)]
+        filt.append(f"[{k}:v]fps=10,scale=640:480,setsar=1,drawtext=fontfile={FONT}:text='{label}{focal}':x=8:y=8:fontsize=20:"
+                    f"fontcolor={'yellow' if focal else 'white'}:box=1:boxcolor=black@0.6[v{k}]")
+    wav = run / "media" / f"{m['id']}_own.wav"
+    has_audio = wav.exists()
+    if has_audio:
+        cmd += ["-i", str(wav)]
+    filt.append("[v0][v1][v2][v3]xstack=inputs=4:layout=0_0|w0_0|0_h0|w0_h0[mm]")
+    filt.append(f"[mm]drawtext=fontfile={FONT}:text='%{{eif\\:t-{PRE}\\:d}} s from the movement onset':x=(w-tw)/2:y=h-44:fontsize=28:"
+                f"fontcolor=white:box=1:boxcolor=black@0.6,drawbox=x=0:y=0:w=iw:h=ih:color=cyan@0.9:t=14:enable='between(t,{PRE},{PRE + 1})'[v]")
+    cmd += ["-filter_complex", ";".join(filt), "-map", "[v]"]
+    if has_audio:
+        cmd += ["-map", "4:a", "-c:a", "aac", "-b:a", "96k"]
+    cmd += ["-t", str(PRE + POST), "-c:v", "libx264", "-preset", "veryfast", "-crf", "30", "-pix_fmt", "yuv420p", str(dst)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return "ok" if r.returncode == 0 and dst.exists() else f"error: {r.stderr[-300:]}"
+
+
+def add_video(run: Path, raw: Path, only: list[str] | None, workers: int) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    meta = json.loads((run / "events.json").read_text(encoding="utf-8"))
+    todo = [m for m in meta if not only or m["id"] in only]
+    with ThreadPoolExecutor(workers) as ex:
+        for m, st in zip(todo, ex.map(lambda m: mosaic(run, m, raw), todo)):
+            print(m["id"], st, flush=True)
+    page = (run / "index.html").read_text(encoding="utf-8")
+    for m in meta:
+        v = run / "media" / f"{m['id']}_mosaic.mp4"
+        tag = (f'<video controls preload="none" width="960" src="media/{m["id"]}_mosaic.mp4"></video>'
+               f'<div><small>Both houses, inside and outside; sound = the focal rat\'s house mic; countdown to the movement onset '
+               f'(cyan flash).</small></div>')
+        anchor = f'<div class="card" id="{m["id"]}"><h3>'
+        if v.exists() and anchor in page and f'{m["id"]}_mosaic.mp4' not in page:
+            i = page.index(anchor)
+            j = page.index("</h3>", i) + len("</h3>")
+            page = page[:j] + tag + page[j:]
+    (run / "index.html").write_text(page, encoding="utf-8")
+    print("page updated", run / "index.html")
+
+
 if __name__ == "__main__":
-    main()
+    if "--add-video" in sys.argv:
+        apv = argparse.ArgumentParser()
+        apv.add_argument("--add-video", required=True, help="an existing mic_listen_review run folder")
+        apv.add_argument("--raw", default="F:/3rd_rat")
+        apv.add_argument("--only", nargs="*")
+        apv.add_argument("--workers", type=int, default=3)
+        av = apv.parse_args()
+        add_video(Path(av.add_video), Path(av.raw), av.only, av.workers)
+    else:
+        main()

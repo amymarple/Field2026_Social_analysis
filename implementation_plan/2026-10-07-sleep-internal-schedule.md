@@ -657,3 +657,34 @@ console's 09-02 / 03 uplink hole.
 - **T4.** The empirical REM hazard against the NREM since REM, per anomaly tertile (description).
 
 The ambient temperature is outdoors; the houses buffer it, and no in-house temperature exists.
+
+## 16. Amendment 7 — Phase 5: do the animals enter REM in sync? (2026-10-08; the user; written before results)
+
+**Question:** does a housemate's REM onset raise a sleeping animal's own REM-entry hazard, beyond its own clock and
+beyond simply sleeping together?
+
+**Data:**
+- One absolute 1-s timeline per animal (FINAL states, records, cut at 09-11 19:40). The session clocks differ by
+  ~1 s, which is negligible at 10 s.
+- WISER zone per second (house_1 / house_2 / field). Mates = the other implanted animals in the same house at that
+  second.
+
+**Per NREM step of animal B, at the step time:**
+- `n_mates` = co-located mates with a known state, and `mates_asleep` = their share asleep. These are the social
+  context and go into the BASE model.
+- `mate_on60` = a co-located mate entered REM (after ≥ 60 s of NREM) within the previous 60 s.
+- `mate_rem` = a co-located mate is in REM now.
+- The same two terms for animals in the OTHER house or in the field (`far_on60`, `far_rem`): the natural control.
+
+**Test (forward chaining, as Phase 2):**
+- base = M2t + `n_mates` + `mates_asleep`;
+- + `mate_on60` + `mate_rem`: the held-out gain, the full-fit REM-vs-stay coefficients, and per-animal signs;
+- separately, + `far_on60` + `far_rem`.
+
+**Descriptive:** P(REM in the next 10 s) with vs without a mate's REM onset in the last 60 s, within strata of B's own
+NREM since its last REM.
+
+**Reading:**
+- Coupling only with co-located mates → social / sensory coupling.
+- Coupling also with far animals → a shared outside driver.
+- Neither → no REM synchrony beyond co-sleeping.

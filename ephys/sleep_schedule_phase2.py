@@ -70,7 +70,7 @@ def feats2(df: pd.DataFrame) -> pd.DataFrame:
     return f
 
 
-EXTRA_COLS = ("dark", "w60", "frag60", "frag120", "z_sw_lag", "temp_anom", "temp_C")
+EXTRA_COLS = ("dark", "w60", "frag60", "frag120", "z_sw_lag", "temp_anom", "temp_C", "n_mates", "mates_asleep", "mate_on60", "mate_rem", "far_on60", "far_rem")
 
 
 SPLINES = ("l_elapsed", "l_nsince", "l_tsince", "l_nsince_t")

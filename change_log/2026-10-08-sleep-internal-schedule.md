@@ -160,3 +160,18 @@ supersedes the v1 / v2 cycle audits where they differ.
 - **Answers** are exported to `ephys/configs/mic_listen_review_2026c/`. Awaiting the user.
 - **Incomplete cards:** L38 (window across a file boundary) and L09 (no outdoor audio).
 
+## Phase 5 — REM synchrony between animals (2026-10-08; plan Amendment 7, written before results)
+
+`ephys/sleep_sync.py`, run by `phase5`.
+
+**Data:** an absolute 1-s timeline per animal, WISER house per second, and the "mate" terms
+(co-located; elsewhere as the control).
+
+**Results:**
+- **Held out:** housemate REM onset / REM adds nothing (+0.08 %, 0/6 animals; coefficients ≈ 0). The elsewhere-animal
+  control is the same.
+- **Raw:** REM co-occurs ~1.2× above chance, and the raw entry ratio is larger for animals elsewhere (1.25) than for
+  housemates (1.10). So it reflects shared timing, not coupling.
+
+**Claims #25 (Rejected, scoped) and #26 (Established, descriptive).**
+
