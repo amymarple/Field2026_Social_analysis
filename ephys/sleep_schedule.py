@@ -826,13 +826,14 @@ def selftest() -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0", "phase1", "phase2", "phase2b", "phase3", "phase3b", "phase4", "phase5", "phase5b", "phase5c"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "phase1", "phase2", "phase2b", "phase3", "phase3b", "phase4", "phase5", "phase5b", "phase5c", "phase6"])
     ap.add_argument("--parts", nargs="*", default=["c2", "b1", "b1b", "c1", "b2"], help="phase2 parts")
     ap.add_argument("--b3-states", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_pass2med",
                     help="phase2: states for the B3 threshold check (fixed per-animal thresholds)")
     ap.add_argument("--states", default=str(STATES))
     ap.add_argument("--review", default=str(REVIEW))
     ap.add_argument("--battery-log", default=None)
+    ap.add_argument("--emg-root", default=None, help="phase6: folder <SFxx>/<s>.EMGFromLFP50Hz.npz (ephys/emg_from_lfp.py)")
     ap.add_argument("--smoke", action="store_true", help="write every output into the run folder (synthetic test data)")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
@@ -866,6 +867,9 @@ def main() -> None:
     elif a.cmd == "phase5c":
         from sleep_sync import phase5c
         phase5c(a)
+    elif a.cmd == "phase6":
+        from sleep_events import phase6
+        phase6(a)
     else:
         ap.print_help()
 

@@ -789,3 +789,21 @@ all asleep participants stay asleep / some wake / all wake.
   Non-movers serve as the reference.
 - **Route:** validated locally on the sessions with a local LFP copy, then run on BioHPC over storage through the
   post-run hook (new part `sleep_events`).
+
+**Addendum, 2026-10-08.** Added after a first test run of the library, before the real run and before any LFP-EMG.
+That run counted ~22 % of the seeds as "group" with a 1-s window, and Phase 5c puts the excess at 0.1-1 s at only
+~2x, so much of that share is chance. Two additions follow:
+- followers are split at 0.1 s (tight / loose);
+- every event carries a time-shift chance level (the same follower test at -47 / -31 / +31 / +47 s), and rates are
+  reported as observed vs chance.
+
+**Route change, the same day:** the LFP-EMG runs on the analysis PC, reading the storage LFP read-only.
+- Why: BioHPC was overloaded (1 h of LFP: read 230 s and filter 87 s, vs 0.4 s each here).
+- Commits: the outputs are byte-identical to the validated local run (array MD5).
+- Storage: the results are uploaded to the workdir and copied through copy_to_storage.sh, part emg_from_lfp.
+
+**Addendum 2, 2026-10-08.** Also before the real run. The test run's partial EMG (SF07 / SF08 only) suggested that tight
+followers' EMG rises like first movers'. Because a jolt could put motion artefact into the LFP, two controls are fixed now:
+- the same comparison at matched movement size (terciles of the peak head VeDBA over 0..0.5 s);
+- the half-maximum / peak timing of the mean VeDBA vs mean EMG traces per role.
+"Active" is claimed only if both point the same way.
