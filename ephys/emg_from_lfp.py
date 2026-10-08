@@ -119,10 +119,27 @@ def window_stats(x: np.ndarray, centres: np.ndarray, half: int) -> tuple[np.ndar
     return corr, log_rms
 
 
-def fast_product(lfp_path: Path, chans: list[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def read_columns(lfp_path: Path, chans_1based: list[int], frames_per_read: int = 200000) -> np.ndarray:
+    """The requested columns of the whole .lfp, read sequentially in large blocks (int16, frames x columns). A column
+    index of a memmap reads the file page by page, which on the BioHPC NFS storage took > 14 min for one session."""
     n = os.path.getsize(lfp_path) // (NCH * 2)
-    mm = np.memmap(lfp_path, dtype=np.int16, mode="r", shape=(n, NCH))
-    c0 = np.asarray(chans) - 1
+    c0 = np.asarray(chans_1based, dtype=np.int64) - 1
+    out = np.empty((n, len(c0)), dtype=np.int16)
+    with open(lfp_path, "rb") as f:
+        a = 0
+        while a < n:
+            m = min(frames_per_read, n - a)
+            blk = np.fromfile(f, dtype=np.int16, count=m * NCH).reshape(m, NCH)
+            out[a:a + m] = blk[:, c0]
+            a += m
+    return out
+
+
+def fast_product(cols: np.ndarray, chans: list[int], all_chans: list[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """cols = read_columns(...) for `all_chans`; the fast product uses the subset `chans`."""
+    mm = cols
+    n = mm.shape[0]
+    c0 = np.asarray([all_chans.index(c) for c in chans])
     sos = band_sos()
     j_first = -(-HALF // STEP)                                  # first centre with a full window
     j_last = (n - 1 - HALF) // STEP
@@ -139,7 +156,6 @@ def fast_product(lfp_path: Path, chans: list[int]) -> tuple[np.ndarray, np.ndarr
         J.append(js)
         R.append(r)
         L.append(lr)
-    del mm
     return np.concatenate(J), np.concatenate(R).astype(np.float32), np.concatenate(L).astype(np.float32)
 
 
@@ -168,11 +184,25 @@ def one_session(job: dict) -> dict:
     sg = np.empty(len(groups), dtype=object)
     sg[:] = [np.asarray(g, dtype=np.float64) for g in groups]
     st["extracellular"]["spikeGroups"]["channels"] = sg
-    emg, mat = ss._compute_emg_from_lfp(basepath=od, basename=session, lfp_path=lfp, session_struct=st,
-                                        reject_channels_1based=np.asarray(sorted(reject)), overwrite=True)
-    t1 = time.time()
+    std_ch = [int(c) for c in ss._select_emg_channels(ss._extract_spike_groups_1based(st), reject, n_channels=NCH)]
     ch = fast_channels(groups, reject)
-    j, corr, lrms = fast_product(lfp, ch)
+    all_ch = sorted(set(std_ch) | set(ch))
+    cols = read_columns(lfp, all_ch)                    # one sequential read serves both products
+    t_read = time.time()
+
+    def from_memory(path, n_channels, channels_1based):  # = the pipeline's _load_binary_lfp_channels, from `cols`
+        c = np.unique(np.asarray(channels_1based, dtype=np.int64).reshape(-1))
+        return cols[:, [all_ch.index(int(x)) for x in c]], c, {int(x): i for i, x in enumerate(c.tolist())}
+    orig = ss._load_binary_lfp_channels
+    ss._load_binary_lfp_channels = from_memory
+    try:
+        emg, mat = ss._compute_emg_from_lfp(basepath=od, basename=session, lfp_path=lfp, session_struct=st,
+                                            reject_channels_1based=np.asarray(sorted(reject)), overwrite=True)
+    finally:
+        ss._load_binary_lfp_channels = orig
+    t1 = time.time()
+    j, corr, lrms = fast_product(cols, ch, all_ch)
+    del cols
     fit = load_fit(job.get("pc_time_root"), animal, session)
     tpc = pc_time_ms(j * 400, fit)
     tpc = np.full(len(j), np.nan) if tpc is None else tpc
@@ -185,7 +215,8 @@ def one_session(job: dict) -> dict:
             "n_lfp_samples": int(os.path.getsize(lfp) // (NCH * 2)),
             "standard": {"file": mat.name, "channels_1based": [int(c) for c in np.asarray(emg["channels"]).ravel()],
                          "sampling_frequency_hz": 2, "window_s": "+-0.5", "band_hz": "300-600 Butterworth-3 filtfilt (effective 300-450)",
-                         "implementation": "PreprocessPipeline state_scoring._compute_emg_from_lfp", "elapsed_s": round(t1 - t0, 1)},
+                         "implementation": "PreprocessPipeline state_scoring._compute_emg_from_lfp (LFP columns read once, sequentially)",
+                         "read_s": round(t_read - t0, 1), "elapsed_s": round(t1 - t_read, 1)},
             "fast": {"file": f"{session}.EMGFromLFP50Hz.npz", "channels_1based": ch, "bin_step_lfp_samples": STEP,
                      "bin_step_amp_samples": STEP * 16, "window_lfp_samples": 2 * HALF + 1, "window_ms": round((2 * HALF + 1) / FS * 1000, 1),
                      "band_hz": "300-600 Butterworth-3 sosfiltfilt per 60-s chunk with 1-s margins (effective 300-450)",
