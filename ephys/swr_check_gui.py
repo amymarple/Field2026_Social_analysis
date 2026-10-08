@@ -52,6 +52,7 @@ class Session:
         self.out = Path(a.out_root or out_root()) / "2026c" / "swr_check" / a.animal / a.session / tag
         self.out.mkdir(parents=True, exist_ok=True)
         self.states_path = Path(a.states_root) / a.animal / f"{a.session}.states.npz"
+        self.hide_flagged = bool(a.hide_flagged)
         self.lock = threading.Lock()
         self.prepare()
 
@@ -104,6 +105,46 @@ class Session:
             print(f"prepared in {time.time()-t0:.0f} s: {self.ts.size} candidates", flush=True)
         self.swDiff = np.memmap(self.out / "swDiff.f32", dtype=np.float32, mode="r")
         self.rp0 = np.memmap(self.out / "ripPower0.f32", dtype=np.float32, mode="r")
+        self.prepare_flags()
+
+    def prepare_flags(self):
+        """Per-candidate exclusion flags, the production rule of swr_auto.py: bit 1 REM second, 2 theta/delta (+-0.5 s,
+        ripple channel) above the session's NREM 95th percentile, 4 head-IMU movement above the sleep scorer's EMG
+        threshold, 8 cross-shank LFP-EMG (swr_emg) above the NREM 95th percentile."""
+        f = self.out / "flags.npz"
+        if f.exists():
+            d = np.load(f, allow_pickle=True)
+            self.flags, self.theta, self.lfpemg = d["flags"], d["theta"], d["lfpemg"]
+            self.thr = json.loads(str(d["thr"]))
+            return
+        import yaml
+        import swr_auto
+        import swr_emg
+        from swr_channel_scan import XML
+        t0 = time.time()
+        cfg = yaml.safe_load(open(Path(__file__).resolve().parent / "configs/swr_channels_2026c.yaml"))
+        try:
+            excl = set(swr_auto.channels_for(cfg, self.animal, self.session).get("exclude_cols", []))
+        except Exception:
+            excl = set()
+        emg_cols = swr_emg.emg_channels(Path(__file__).resolve().parent / "configs/xml" / XML[self.animal], skip=excl)
+        raw = sd.load_channels(str(self.lfp_path), self.nchan, [c + 1 for c in emg_cols] + [self.channels[0]])
+        E = swr_emg.LfpEmg(raw[:, :-1])
+        t2, e2 = E.trace()
+        idx = self.ts - 1
+        self.lfpemg = E.at(idx).astype(np.float32)
+        td = swr_emg.theta_delta_log(raw[:, -1])
+        self.theta = td[idx].astype(np.float32)
+        st_npz = self.states_path if self.states_path.exists() else None
+        thr_emg = swr_emg.nrem_threshold(t2, e2, st_npz)
+        thr_theta = swr_emg.nrem_pct_threshold(td, st_npz)
+        thr_imu = float(np.load(self.states_path)["thresholds"][1]) if st_npz else None
+        self.flags = ((self.state == 5) * 1 + (self.theta > thr_theta if thr_theta is not None else 0) * 2
+                      + (np.nan_to_num(self.emg, nan=-1) > thr_imu if thr_imu is not None else 0) * 4
+                      + (self.lfpemg > thr_emg if thr_emg is not None else 0) * 8).astype(np.uint8)
+        self.thr = dict(emg_lfp=thr_emg, theta_delta_log=thr_theta, imu_emg=thr_imu, emg_channels_0based=emg_cols)
+        np.savez_compressed(f, flags=self.flags, theta=self.theta, lfpemg=self.lfpemg, thr=json.dumps(self.thr))
+        print(f"flags in {time.time()-t0:.0f} s: thresholds {self.thr}", flush=True)
 
     def zcoords(self):
         X = np.column_stack([self.sw, self.rp]).astype(float)
@@ -116,9 +157,42 @@ class Session:
         parts = [np.array([n], np.uint32).tobytes()]
         for a in (self.sw, self.rp, Z[:, 0], Z[:, 1], self.ts / SR):
             parts.append(np.asarray(a, np.float32).tobytes())
-        for a in (self.bad, self.auto, self.state):
+        for a in (self.bad, self.auto, self.state, self.flags):
             parts.append(np.asarray(a, np.uint8).tobytes())
         return b"".join(parts)
+
+    REVIEW_PER_FLAG, REVIEW_CONTROLS = 10, 20
+
+    def review_sample(self) -> list:
+        """Blind sample for calibrating the flags: among the candidates the automatic rule selects, up to 10 per flag
+        (REM, theta, moving, LFP-EMG) + 20 unflagged controls, shuffled once and kept (review_sample.json)."""
+        f = self.out / "review_sample.json"
+        if f.exists():
+            return json.loads(f.read_text())
+        rng = np.random.default_rng(0)
+        pool = np.flatnonzero(self.auto)
+        pick, seen = [], set()
+        for bit, name in ((1, "rem"), (2, "theta"), (4, "moving"), (8, "emg_lfp")):
+            cand = [i for i in pool[(self.flags[pool] & bit) > 0] if i not in seen]
+            for i in rng.permutation(cand)[: self.REVIEW_PER_FLAG]:
+                pick.append(dict(i=int(i), group=name, flags=int(self.flags[i])))
+                seen.add(int(i))
+        ctrl = pool[self.flags[pool] == 0]
+        for i in rng.permutation(ctrl)[: self.REVIEW_CONTROLS]:
+            pick.append(dict(i=int(i), group="control", flags=0))
+        order = rng.permutation(len(pick))
+        sample = [pick[k] for k in order]
+        f.write_text(json.dumps(sample, indent=1))
+        return sample
+
+    def review_summary(self, verdicts: dict) -> dict:
+        sample = self.review_sample()
+        out = {}
+        for g in ("rem", "theta", "moving", "emg_lfp", "control"):
+            v = [verdicts.get(str(x["i"])) for x in sample if x["group"] == g]
+            v = [x for x in v if x in (0, 1)]
+            out[g] = dict(n_scored=len(v), ripple=int(sum(v)), ripple_frac=round(sum(v) / len(v), 3) if v else None)
+        return out
 
     def trace(self, i: int, half_s: float) -> dict:
         c = int(self.ts[i]) - 1
@@ -134,7 +208,8 @@ class Session:
                     lfp=[lfp[:, k].round(1).tolist() for k in range(lfp.shape[1])],
                     swDiff=np.asarray(self.swDiff[sl], float).round(1).tolist(),
                     ripPower=np.asarray(self.rp0[sl], float).round(2).tolist(), others=others,
-                    state=STATE_NAME.get(int(self.state[i]), "?"),
+                    state=STATE_NAME.get(int(self.state[i]), "?"), flags=int(self.flags[i]),
+                    theta=round(float(self.theta[i]), 3), lfpemg=round(float(self.lfpemg[i]), 3), thr=self.thr,
                     emg=None if np.isnan(self.emg[i]) else round(float(self.emg[i]), 3),
                     sw=float(self.sw[i]), rp=float(self.rp[i]), bad=bool(self.bad[i]))
 
@@ -189,14 +264,16 @@ button{font:inherit;padding:3px 8px}
 <div id="top"><b id="title"></b>
 <span>clicks <b id="nc">0</b> (1: <b id="n1">0</b>)</span><span>selected <b id="nsel">0</b></span>
 <label><input type="checkbox" id="zoom" checked> zoom 0.05-99.95 %</label>
+<label><input type="checkbox" id="hidef"> hide flagged (REM / theta / moving / LFP-EMG)</label>
 <button id="done">I'm done: reveal automatic labels</button><button id="ev">Compute events</button>
+<button id="rev">Review flagged sample</button>
 <span id="msg"></span></div>
 <div id="wrap"><canvas id="sc" width="640" height="560"></canvas><div><canvas id="tr" width="760" height="560"></canvas>
 <div id="info" style="padding:4px 0"></div>
 <div style="color:var(--mut)">keys: <span class="k">1</span> ripple <span class="k">0</span> not <span class="k">Enter</span> skip
 <span class="k">u</span> undo <span class="k">w</span> +-0.5 / +-2 s</div></div></div>
 <script>
-let N,SW,RP,ZX,ZY,T,BAD,AUTO,ST, scores=new Map(), order=[], cur=-1, hov=-1, half=0.5, reveal=false, est=null, view=null, grid=null;
+let N,SW,RP,ZX,ZY,T,BAD,AUTO,ST,FL, hideF=false, mode='scatter', RS=[], RV={}, rk=0, scores=new Map(), order=[], cur=-1, hov=-1, half=0.5, reveal=false, est=null, view=null, grid=null;
 const base=document.createElement('canvas'); base.width=640; base.height=560; const bg=base.getContext('2d'); const CELL=6;
 const sc=document.getElementById('sc'), g=sc.getContext('2d'), tr=document.getElementById('tr'), h=tr.getContext('2d');
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n);
@@ -204,16 +281,18 @@ async function init(){
   const meta=await (await fetch('/api/meta')).json(); document.getElementById('title').textContent=meta.title;
   const b=await (await fetch('/api/points.bin')).arrayBuffer(); N=new Uint32Array(b,0,1)[0]; let o=4;
   const f=()=>{const a=new Float32Array(b,o,N); o+=4*N; return a}; SW=f();RP=f();ZX=f();ZY=f();T=f();
-  const u=()=>{const a=new Uint8Array(b,o,N); o+=N; return a}; BAD=u();AUTO=u();ST=u();
+  const u=()=>{const a=new Uint8Array(b,o,N); o+=N; return a}; BAD=u();AUTO=u();ST=u();FL=u();
+  hideF=!!meta.hide_flagged; document.getElementById('hidef').checked=hideF;
   const prev=await (await fetch('/api/scores')).json(); for(const [k,v] of Object.entries(prev)){scores.set(+k,v);order.push(+k)}
   setView(); propagate(); drawBase(); draw();
 }
 function pct(a,q){const s=Array.from(a).filter((x,i)=>!BAD[i]).sort((x,y)=>x-y); return s[Math.floor(q*(s.length-1))]}
+const off=i=>BAD[i]||(hideF&&FL[i]);
 function mm(a){let lo=Infinity,hi=-Infinity; for(let i=0;i<a.length;i++){ if(BAD[i]) continue; if(a[i]<lo) lo=a[i]; if(a[i]>hi) hi=a[i]} return [lo,hi]}
 function setView(){const z=document.getElementById('zoom').checked;
   if(z){view={x0:pct(SW,.0005),x1:pct(SW,.9995),y0:pct(RP,.0005),y1:pct(RP,.9995)}}
   else{const [x0,x1]=mm(SW),[y0,y1]=mm(RP); view={x0,x1,y0,y1}}
-  grid=new Map(); for(let i=0;i<N;i++){ if(BAD[i]) continue; const k=Math.floor(PX(SW[i])/CELL)*10000+Math.floor(PY(RP[i])/CELL);
+  grid=new Map(); for(let i=0;i<N;i++){ if(off(i)) continue; const k=Math.floor(PX(SW[i])/CELL)*10000+Math.floor(PY(RP[i])/CELL);
     let a=grid.get(k); if(!a){a=[]; grid.set(k,a)} a.push(i)}}
 function nearest(mx,my){ const cx=Math.floor(mx/CELL), cy=Math.floor(my/CELL); let bd=1e30,bi=-1;
   for(let r=0;r<40;r++){ for(let x=cx-r;x<=cx+r;x++) for(let y=cy-r;y<=cy+r;y++){ if(Math.max(Math.abs(x-cx),Math.abs(y-cy))!==r) continue;
@@ -225,14 +304,14 @@ function mouse(e){ const r=sc.getBoundingClientRect();
 const PX=x=>50+(x-view.x0)/(view.x1-view.x0)*(sc.width-60), PY=y=>sc.height-30-(y-view.y0)/(view.y1-view.y0)*(sc.height-40);
 function propagate(){ // the helper: nearest click in z-space, estimate > 0.1 -> ripple
   est=new Float32Array(N).fill(NaN); const ks=[...scores.keys()]; if(!ks.length) return;
-  for(let i=0;i<N;i++){ if(BAD[i]) continue; let bd=1e30,bv=0;
+  for(let i=0;i<N;i++){ if(off(i)) continue; let bd=1e30,bv=0;
     for(const k of ks){const dx=ZX[i]-ZX[k],dy=ZY[i]-ZY[k],d=dx*dx+dy*dy; if(d<bd){bd=d;bv=scores.get(k)}} est[i]=bv}
 }
 let NSEL=0;
 function drawBase(){
   bg.fillStyle=css('--bg'); bg.fillRect(0,0,base.width,base.height); let nsel=0;
-  for(let i=0;i<N;i++){ if(BAD[i]) continue; let c;
-    if(reveal){ const u=est[i]>0.1, a=AUTO[i]; c=u&&a?'#2a2':u?'#d33':a?'#36f':'#9995'; }
+  for(let i=0;i<N;i++){ if(off(i)) continue; let c;
+    if(reveal){ const u=est[i]>0.1, a=AUTO[i]&&!(hideF&&FL[i]); c=u&&a?'#2a2':u?'#d33':a?'#36f':'#9995'; }
     else c=isNaN(est[i])?'#9995':(est[i]>0.1?'#2a2':'#9996');
     if(est[i]>0.1) nsel++;
     bg.fillStyle=c; bg.fillRect(PX(SW[i]),PY(RP[i]),1.4,1.4)}
@@ -266,11 +345,23 @@ async function showTrace(){ if(cur<0) return; const d=await (await fetch(`/api/t
     h.strokeStyle='#f80'; h.beginPath(); h.moveTo(X(0),y0+2); h.lineTo(X(0),y0+H-2); h.stroke();
     h.setLineDash([3,3]); h.strokeStyle='#8888'; d.others.forEach(t=>{h.beginPath(); h.moveTo(X(t),y0+2); h.lineTo(X(t),y0+H-2); h.stroke()}); h.setLineDash([])});
   const s=scores.has(cur)?` | scored ${scores.get(cur)}`:'';
-  document.getElementById('info').textContent=`candidate ${cur} at ${d.t_s.toFixed(3)} s (${(d.t_s/3600).toFixed(2)} h) | state ${d.state} | IMU movement ${d.emg} | swDiff ${d.sw.toFixed(0)} ripPower ${d.rp.toFixed(1)}${s} | window +-${half} s`;
+  const fl=['REM','theta','moving','LFP-EMG'].filter((n,k)=>d.flags&(1<<k)).join('+')||'none';
+  const tv=v=>v==null?'-':(+v).toFixed(2);
+  const fx=mode==='review'?'flags hidden (blind)':`flags ${fl} | theta/delta(log) ${d.theta} (thr ${tv(d.thr.theta_delta_log)}) | LFP-EMG ${d.lfpemg} (thr ${tv(d.thr.emg_lfp)}) | IMU ${d.emg} (thr ${tv(d.thr.imu_emg)})`;
+  const pre=mode==='review'?`REVIEW ${rk+1}/${RS.length} | `:'';
+  document.getElementById('info').textContent=`${pre}candidate ${cur} at ${d.t_s.toFixed(3)} s (${(d.t_s/3600).toFixed(2)} h) | state ${mode==='review'?'(hidden)':d.state} | ${fx} | swDiff ${d.sw.toFixed(0)} ripPower ${d.rp.toFixed(1)}${s} | window +-${half} s`;
 }
 async function save(){ await fetch('/api/save',{method:'POST',body:JSON.stringify(Object.fromEntries(scores))}); }
+async function reviewStep(){ while(rk<RS.length && RV[RS[rk].i]!==undefined) rk++;
+  if(rk>=RS.length){ const r=await (await fetch('/api/review_save',{method:'POST',body:JSON.stringify(RV)})).json();
+    mode='scatter'; document.getElementById('msg').textContent='review done - ripple fraction per group: '+Object.entries(r).map(([g,v])=>`${g} ${v.ripple}/${v.n_scored}`).join(', '); return }
+  cur=RS[rk].i; draw(); showTrace(); document.getElementById('msg').textContent=`review ${rk+1}/${RS.length}: 1 ripple, 0 not, s skip`; }
+document.getElementById('rev').onclick=async()=>{ RS=await (await fetch('/api/review_sample')).json();
+  RV=await (await fetch('/api/review_verdicts')).json(); rk=0; mode='review'; reviewStep(); };
 document.onkeydown=async e=>{
   if(e.key==='w'){half=half<1?2:0.5; showTrace(); return}
+  if(mode==='review'){ if(e.key==='1'||e.key==='0'||e.key==='s'){ RV[RS[rk].i]=e.key==='s'?-1:+e.key; rk++;
+      await fetch('/api/review_save',{method:'POST',body:JSON.stringify(RV)}); reviewStep() } return }
   if(e.key==='u'&&order.length){const k=order.pop(); scores.delete(k); propagate(); drawBase(); draw(); save(); return}
   if(cur<0) return;
   if(e.key==='1'||e.key==='0'){ if(!scores.has(cur)) order.push(cur); scores.set(cur,+e.key); propagate(); drawBase(); draw(); showTrace(); save();
@@ -278,6 +369,7 @@ document.onkeydown=async e=>{
   if(e.key==='Enter'){cur=-1; draw()}
 };
 document.getElementById('zoom').onchange=()=>{setView(); drawBase(); draw()};
+document.getElementById('hidef').onchange=()=>{hideF=document.getElementById('hidef').checked; setView(); propagate(); drawBase(); draw()};
 document.getElementById('done').onclick=()=>{reveal=!reveal; drawBase(); draw()};
 document.getElementById('ev').onclick=async()=>{ document.getElementById('msg').textContent='computing events ...';
   const r=await (await fetch('/api/events',{method:'POST',body:JSON.stringify(Object.fromEntries(scores))})).json();
@@ -304,9 +396,15 @@ def make_handler(S: Session):
                 return self.send(200, PAGE.encode(), "text/html; charset=utf-8")
             if u.path == "/api/meta":
                 t = f"{S.animal} {S.session}  channels {S.channels} (ripple, sharp wave, noise; 1-based)  {S.ts.size} candidates"
-                return self.send(200, json.dumps(dict(title=t)).encode(), "application/json")
+                return self.send(200, json.dumps(dict(title=t, hide_flagged=S.hide_flagged)).encode(), "application/json")
             if u.path == "/api/points.bin":
                 return self.send(200, S.points_blob(), "application/octet-stream")
+            if u.path == "/api/review_sample":
+                return self.send(200, json.dumps(S.review_sample()).encode(), "application/json")
+            if u.path == "/api/review_verdicts":
+                f = S.out / "review_flags.json"
+                d = json.loads(f.read_text())["verdicts"] if f.exists() else {}
+                return self.send(200, json.dumps(d).encode(), "application/json")
             if u.path == "/api/scores":
                 return self.send(200, json.dumps(S.load_scores()).encode(), "application/json")
             if u.path == "/api/trace":
@@ -321,6 +419,13 @@ def make_handler(S: Session):
                 with S.lock:
                     S.save_scores(body)
                 return self.send(200, b'{"ok":true}', "application/json")
+            if self.path == "/api/review_save":
+                with S.lock:
+                    summ = S.review_summary(body)
+                    (S.out / "review_flags.json").write_text(json.dumps(dict(
+                        animal=S.animal, session=S.session, saved_local=time.strftime("%Y%m%d_%H%M%S"),
+                        thresholds=S.thr, verdicts=body, summary=summ), indent=1))
+                return self.send(200, json.dumps(summ).encode(), "application/json")
             if self.path == "/api/events":
                 with S.lock:
                     S.save_scores(body)
@@ -341,6 +446,8 @@ def main():
     ap.add_argument("--out-root", default=None)
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--prepare-only", action="store_true")
+    ap.add_argument("--hide-flagged", action="store_true",
+                    help="start with flagged candidates (REM / theta / moving / LFP-EMG) hidden and not propagated")
     ap.add_argument("--no-browser", action="store_true")
     a = ap.parse_args()
     S = Session(a)

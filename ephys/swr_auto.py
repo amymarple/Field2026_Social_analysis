@@ -16,7 +16,12 @@ Per session (channels per animal x probe block from configs/swr_channels_<c>.yam
      the summary records `boundary_fit_on` (nrem | donor | all) and `boundary_from`.
   4. Events = DetectSWR's check-mode localisation + troughs (useSPW = false; rat parameters thresSD [0.25 0.5],
      maxDurSW 0.8, as in the lab's rat runs).
-  5. Per event, flags only (nothing is deleted):
+  5. Exclusion flags (user 2026-10-08; nothing is deleted, `excluded` = any of them):
+     x_rem (REM second), x_theta (theta/delta in +-0.5 s above the session's NREM 95th percentile), x_moving (head-IMU
+     movement above the sleep scorer's own EMG threshold), x_emg_lfp (cross-shank 300-450 Hz correlation = the
+     pipeline's EMGFromLFP, one site per shank, above the NREM 95th percentile; `swr_emg.py`). Sessions with < 10 min
+     NREM take the theta / EMG thresholds of their boundary donor.
+  6. Per event, flags only (nothing is deleted):
      - SwMax / RipMax (DetectSWR's local z = strength; strict/inclusive tiers are cut downstream);
      - sleep state and head-IMU movement (`emg` of the final 1-s states) at the peak second;
      - ripple-band envelope ratio (at the peak / session median) on every shank's own ripple site and on the noise
@@ -48,6 +53,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import swr_detect as sd  # noqa: E402
+import swr_emg  # noqa: E402
+from swr_channel_scan import XML  # noqa: E402
 
 SR = 1250.0
 COHORT = "2026c"
@@ -129,7 +136,9 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
     cols3 = [blk["ripple_col"], blk["sharpwave_col"], blk["noise_col"]]
     shank_cols = {int(k): int(v) for k, v in blk["shank_ripple"].items()}
     extra = sorted(set(shank_cols.values()) - set(cols3))
+    emg_cols = swr_emg.emg_channels(HERE / "configs/xml" / XML[animal], skip=set(blk.get("exclude_cols", [])))
     allcols = cols3 + extra
+    allcols += [c for c in emg_cols if c not in allcols]
     lfp = sd.load_channels(str(lfp_path), nchan, [c + 1 for c in allcols])
     lfp3 = lfp[:, :3]
     swDiff, rp0 = sd.features(lfp3, SR, p)
@@ -195,15 +204,44 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
         e = ripple_env(lfp[:, allcols.index(col)], p)
         ratios[name] = e[win].max(1) / np.median(e)
     n_sh = np.sum(np.column_stack([ratios[k] for k in ratios if k.startswith("shank")]) >= 2, axis=1)
+    # exclusion flags (user 2026-10-08: ripples cannot co-occur with theta; use sleep state, IMU and EMG). Thresholds:
+    # theta and LFP-EMG above the 95th percentile of the session's own NREM time (a donor session's if < 10 min NREM),
+    # IMU movement above the sleep scorer's own EMG threshold of the session
+    E = swr_emg.LfpEmg(lfp[:, [allcols.index(c) for c in emg_cols]])
+    t2, e2 = E.trace()
+    ev_emg = E.at(pk)
+    td = swr_emg.theta_delta_log(lfp3[:, 0])
+    ev_theta = td[pk]
+    thr_emg = swr_emg.nrem_threshold(t2, e2, st_path)
+    thr_theta = swr_emg.nrem_pct_threshold(td, st_path)
+    thr_src = "nrem"
+    if (thr_emg is None or thr_theta is None) and fit_on == "donor":
+        thr_emg = donor.get("thresholds", {}).get("emg_lfp") if thr_emg is None else thr_emg
+        thr_theta = donor.get("thresholds", {}).get("theta_delta_log") if thr_theta is None else thr_theta
+        thr_src = f"donor {donor_from}"
+    thr_imu = float(np.load(st_path)["thresholds"][1]) if st_path.exists() else None
+    x_rem = state == 5
+    x_theta = ev_theta > thr_theta if thr_theta is not None else np.zeros(pk.size, bool)
+    x_moving = emg > thr_imu if thr_imu is not None else np.zeros(pk.size, bool)
+    x_emg = ev_emg > thr_emg if thr_emg is not None else np.zeros(pk.size, bool)
+    excluded = x_rem | x_theta | x_moving | x_emg
     out_dir = Path(out) / animal / session
     out_dir.mkdir(parents=True, exist_ok=True)
     cols = dict(start_s=ev["start"], stop_s=ev["stop"], peak_s=ev["peak"], duration_ms=(ev["stop"] - ev["start"]) * 1000,
                 amplitude=ev["amplitude"], frequency_hz=ev["frequency"], SwMax_z=ev["SwMax"], RipMax_z=ev["RipMax"],
                 state=[STATE.get(int(s), str(s)) for s in state], imu_emg=emg, n_shanks_ripple=n_sh,
+                emg_lfp=ev_emg, theta_delta_log=ev_theta, x_rem=x_rem, x_theta=x_theta, x_moving=x_moving, x_emg_lfp=x_emg,
+                excluded=excluded,
                 **{f"env_ratio_{k}": v for k, v in ratios.items()})
     import pandas as pd
     df = pd.DataFrame(cols)
-    df.to_csv(out_dir / f"{session}.swr_events.csv", index=False, float_format="%.5g")
+    out_csv = df.copy()  # times to 0.1 ms (a global 5-significant-digit format loses the seconds), other floats 5 digits
+    for c in out_csv.columns:
+        if c.endswith("_s"):
+            out_csv[c] = out_csv[c].round(4)
+        elif out_csv[c].dtype.kind == "f":
+            out_csv[c] = out_csv[c].map(lambda x: float(format(x, ".5g")))
+    out_csv.to_csv(out_dir / f"{session}.swr_events.csv", index=False)
     np.savez_compressed(out_dir / f"{session}.swr_events.npz", **{k: np.asarray(v) for k, v in cols.items()},
                         candidate_index=ev["cand"])
     with open(out_dir / f"{session}.SWR.evt", "w") as f:  # Neuroscope: ms from the first sample (DetectSWR time - 1 sample)
@@ -227,6 +265,13 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
         median_RipMax_z=round(float(df.RipMax_z.median()), 3) if len(df) else None,
         median_noise_env_ratio=round(float(np.median(ratios["noise"])), 3) if len(df) else None,
         frac_events_all_shanks=round(float(np.mean(n_sh == len(shank_cols))), 3) if len(df) else None,
+        emg_channels_0based=emg_cols,
+        thresholds=dict(emg_lfp=thr_emg, theta_delta_log=thr_theta, imu_emg=thr_imu, source=thr_src),
+        n_excluded=int(excluded.sum()), excluded_by=dict(rem=int(x_rem.sum()), theta=int(x_theta.sum()),
+                                                         moving=int(x_moving.sum()), emg_lfp=int(x_emg.sum())),
+        kept_by_state={st_: int(np.sum((df.state == st_) & ~df.excluded)) for st_ in sorted(set(df.state))},
+        kept_rate_per_min={st_: round(int(np.sum((df.state == st_) & ~df.excluded)) / minutes[st_], 3)
+                           for st_ in minutes if minutes[st_] > 0},
         seconds=round(time.time() - t0, 1), lfp=str(lfp_path), states=str(st_path) if st_path.exists() else None)
     (out_dir / f"{session}.swr_summary.json").write_text(json.dumps(summary, indent=1, default=float))
     qc_figure(out_dir / f"{session}.swr_qc.png", session, animal, Z, ok, sel, df, st_path)

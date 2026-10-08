@@ -12,6 +12,7 @@
 #   shank_ripple   per shank, its own largest-ripple site (multi-shank consistency flag)
 #   valid_from     block start = the exact start of the first post-move session (regime-aware-ephys table); null = cohort start
 #   skip           true = no detection in this block
+#   exclude_cols   columns never used in this block (e.g. for the LFP-EMG): per-period failures from the record
 #   confirmed      true once the user has looked at it (profile figure / Neuroscope / GUI)
 SF07:   # the whole probe sits above the pyramidal layer in every block: positive sharp waves everywhere, ripple largest at the shank tips
   - {valid_from: null, ripple_col: 48, sharpwave_col: 55, noise_col: 22, shank_ripple: {1: 48, 2: 34, 3: 3, 4: 0},
@@ -33,7 +34,7 @@ SF08:
      source: "scan 3_20260911_091931.245: ripple 30 (shank 4) ratio 4.16; SW 34 (shank 2) -158 uV; noise 20 ratio 1.09 corr 0.06",
      flags: ["sharp wave on another shank"], confirmed: false}
 SF09:   # the channels the user scored in the GUI (2026-10-07); the scan's own proposal was ripple 28 (shank 1 tip, ratio 4.91) / SW 44 (shank 3, -591 uV) / noise 51
-  - {valid_from: null, ripple_col: 18, sharpwave_col: 59, noise_col: 51, shank_ripple: {1: 28, 2: 9, 3: 39, 4: 16, 5: 53},
+  - {valid_from: null, ripple_col: 18, sharpwave_col: 59, noise_col: 51, shank_ripple: {1: 28, 2: 9, 3: 39, 4: 16, 5: 53}, exclude_cols: [0, 48],
      source: "user-scored GUI session 6_20260908_072057.385 (auto vs user F1 0.87); scan: col 18 ratio 4.33 (16/31/18 tie, possibly bridged), SW 59 -360 uV (shank 4 carries the reversal), noise 51 ratio 1.15 corr -0.04; cols 0/48 avoided (bad from the 09-06 night)",
      flags: [], confirmed: true}
 SF10:   # the channels the user scored in the GUI (2026-10-07)
@@ -60,5 +61,6 @@ SF12:
   - {valid_from: "2026-09-09 18:47:50.985", skip: true,
      source: "no usable session in this block (the user marked the 09-09 night sessions noise; shank-1 degradation)", flags: ["no detection"], confirmed: false}
   - {valid_from: "2026-09-10 08:35:07.425", ripple_col: 32, sharpwave_col: 39, noise_col: 42, shank_ripple: {2: 32, 3: 1, 4: 19},
+     exclude_cols: [57, 52, 54, 50, 56, 61, 53, 48, 58, 63, 60, 59, 49, 55, 62, 51],
      source: "scan 8_20260910_083507.425 (shank 1 + cols 63/48 excluded): ripple 32 ratio 3.63; SW 39 +3 uV; noise 42 ratio 1.96 corr 0.30; contact failing from 14:53:45 (quality flag)",
      flags: ["no sharp-wave reversal (signal degrading)", "noise site not ripple-free", "SF12_contact_failing from 09-10 14:53:45"], confirmed: false}
