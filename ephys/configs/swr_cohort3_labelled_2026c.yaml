@@ -1,0 +1,17 @@
+# Cohort-3 (2026c) sessions the user scored in ephys/swr_check_gui.py (2026-10-07), for the in-domain SWR judge test
+# (`python ephys/swr_judge.py extract|context --config <this>`, `evaluate-c3`). LFP = local copies of storage
+# 3rd_rat/analysis/lfp (MD5 = storage lfp_md5.txt). Channels are DetectSWR's 1-based numbers (exported column + 1):
+# ripple / sharp wave / noise, chosen from the NREM laminar profiles + a 64-column ripple-content scan (noise = the top
+# cortical-side site with the least ripple: SF10 col 9 ratio 1.36 corr 0.00, SF09 col 51 ratio 1.14 corr -0.07).
+# Labels: the user's clicks, snapshot in ephys/configs/swr_review_2026c/ (bad = the CleanLFP port, fixed thresholds).
+root: D:/3rd_rat_spikes/analysis/lfp
+cache: D:/Field2026_analysis_out/2026c/swr_check/cache
+sessions:
+  - {name: SF10_6_20260906, animal: SF10, species: rat, dir: SF10, base: "6_20260906_080449.175", nchan: 64, channels: [8, 16, 10],
+     params: {thresSDswD: [0.25, 0.5], thresSDrip: [0.25, 0.5], maxDurSW: 0.8},
+     gui_scores: ephys/configs/swr_review_2026c/SF10_6_20260906_080449.175_ch8-16-10_clicks_2026-10-07.json,
+     states_npz: D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final/SF10/6_20260906_080449.175.states.npz}
+  - {name: SF09_6_20260908, animal: SF09, species: rat, dir: SF09, base: "6_20260908_072057.385", nchan: 64, channels: [19, 60, 52],
+     params: {thresSDswD: [0.25, 0.5], thresSDrip: [0.25, 0.5], maxDurSW: 0.8},
+     gui_scores: ephys/configs/swr_review_2026c/SF09_6_20260908_072057.385_ch19-60-52_clicks_2026-10-07.json,
+     states_npz: D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final/SF09/6_20260908_072057.385.states.npz}

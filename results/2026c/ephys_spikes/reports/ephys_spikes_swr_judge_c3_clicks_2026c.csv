@@ -1,0 +1,7 @@
+session,trained_on,n_train_clicks,n_clicks,click_accuracy,click_auc
+SF10_6_20260906,other_c3,190,114,0.675,0.705
+SF10_6_20260906,reference,706,114,0.614,0.671
+SF10_6_20260906,other_c3+reference,896,114,0.693,0.717
+SF09_6_20260908,other_c3,114,190,0.647,0.717
+SF09_6_20260908,reference,706,190,0.684,0.714
+SF09_6_20260908,other_c3+reference,820,190,0.695,0.736

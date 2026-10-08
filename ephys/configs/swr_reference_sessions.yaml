@@ -1,0 +1,51 @@
+# User-supplied reference sessions for automating SWR detection (implementation_plan/2026-10-07-swr-detection-automation.md).
+# Local read-only copies under `root` (copied from the ayadata drives W:/S:/U:/V: with SHA-256 manifests in `root`); the
+# drives are never touched by the analysis. channels = DetectSWR's 1-based [ripple, sharp wave(, noise)]; params override
+# swr_detect.Params (WinSize in ms; a stored DetectSWR WinSize of 50 is SAMPLES = 40 ms).
+# scoring: true = DetectSWR_manual_scoring.mat from the same check run as the final ripples (idx1 = 1-NN propagation of
+# the user's clicks, reproduced exactly by swr_detect.propagate_clicks; HMC1 day10 kept only the periodic save -> idx1
+# rebuilt from its clicks, the last clicks may be missing). Dorsal CA1 only (user, 2026-10-07).
+root: D:/Field2026_analysis_out/swr_reference
+mouse_params: &mouse {}
+rat_params: &rat {thresSDswD: [0.25, 0.5], thresSDrip: [0.25, 0.5], maxDurSW: 0.8}
+sessions:
+  # ---------------- manual check runs (candidate labels + final events)
+  - {name: HYC3_day2, animal: HYC3, species: mouse, dir: PPP/HYC3/day2, base: day2, nchan: 64, channels: [30, 33, 58],
+     params: {version: "2022-10"}, scoring: true}
+  - {name: PPP8_day8, animal: PPP8, species: mouse, dir: PPP/PPP8/day8, base: day8, nchan: 128, channels: [93, 88, 48], params: *mouse, scoring: true}
+  - {name: PPP8_day14, animal: PPP8, species: mouse, dir: PPP/PPP8/day14, base: day14, nchan: 128, channels: [66, 71, 48], params: *mouse, scoring: true}
+  - {name: PPP7_day7, animal: PPP7, species: mouse, dir: PPP/PPP7/day7, base: day7, nchan: 224, channels: [17, 27, 16], params: *mouse, scoring: true}
+  - {name: PPP7_day10, animal: PPP7, species: mouse, dir: PPP/PPP7/day10, base: day10, nchan: 224, channels: [17, 27, 16], params: *mouse, scoring: true}
+  - {name: PPP7_day12, animal: PPP7, species: mouse, dir: PPP/PPP7/day12, base: day12, nchan: 224, channels: [17, 27, 16], params: *mouse, scoring: true}
+  - {name: PPP7_day14, animal: PPP7, species: mouse, dir: PPP/PPP7/day14, base: day14, nchan: 192, channels: [17, 27, 16], params: *mouse, scoring: true}
+  - {name: PPP4_day11, animal: PPP4, species: mouse, dir: PPP/PPP4/day11, base: day11, nchan: 256, channels: [59, 123, 64], params: *mouse, scoring: true,
+     note: "a day11.ventralripples.events.mat with the same channels exists (07-Mar); the 18-Mar ripples match the scoring"}
+  - {name: PPP20_day4, animal: PPP20, species: mouse, dir: PPP/PPP20/day4, base: day4, nchan: 256, channels: [253, 241, 171], params: *mouse, scoring: true}
+  - {name: PPP20_day5, animal: PPP20, species: mouse, dir: PPP/PPP20/day5, base: day5, nchan: 256, channels: [253, 241, 171], params: *mouse, scoring: true}
+  - {name: PPP20_day8, animal: PPP20, species: mouse, dir: PPP/PPP20/day8, base: day8, nchan: 256, channels: [253, 241, 171], params: *mouse, scoring: true}
+  - {name: PPP21_day4, animal: PPP21, species: mouse, dir: PPP/PPP21/day4, base: day4, nchan: 256, channels: [255, 241, 171], params: *mouse, scoring: true}
+  - {name: PPP21_day5, animal: PPP21, species: mouse, dir: PPP/PPP21/day5, base: day5, nchan: 256, channels: [255, 241, 171], params: *mouse, scoring: true}
+  - {name: PPP21_day7, animal: PPP21, species: mouse, dir: PPP/PPP21/day7, base: day7, nchan: 256, channels: [255, 241, 16], params: *mouse, scoring: true}
+  - {name: PPP23_day7, animal: PPP23, species: mouse, dir: PPP/PPP23/day7, base: day7, nchan: 256, channels: [253, 242, 171], params: *mouse, scoring: true}
+  - {name: PPP23_day8, animal: PPP23, species: mouse, dir: PPP/PPP23/day8, base: day8, nchan: 256, channels: [20, 46, 16], params: *mouse, scoring: true}
+  - {name: HP17_day2, animal: HP17, species: rat, dir: hpc_ctx_project/HP17/hp17_day2_20250413, base: hp17_day2_20250413, nchan: 256,
+     channels: [164, 168, 1], params: *rat, scoring: true}
+  - {name: HMC1_day10, animal: HMC1, species: rat, dir: HMC/HMC1/day10, base: day10, nchan: 512, channels: [331, 315],
+     params: {thresSDswD: [0.25, 1.0], thresSDrip: [0.25, 1.0], version: "2022-10", useSPW: true}, scoring: partial,
+     note: "EXCLUDED from training and evaluation (Fable audit 2026-10-07): DetectSWR of 14-Apr-2022 = 2022-10 bound arithmetic
+       and no 'check -> useSPW = false'; partial scoring file (no idx1); replay of the clicks gives 29,787 events vs 11,461 in the
+       final file (spike filter + 5 added); 2-channel run (no noise channel); saved bad all-false (inline CleanLFP [6 Inf])"}
+  # ---------------- final events only (not manual check runs; event-level reference with caveats)
+  - {name: PPP7_day8_dorsal, animal: PPP7, species: mouse, dir: PPP/PPP7/day8, base: day8, nchan: 224, channels: [17, 27, 16],
+     params: *mouse, scoring: false, ripples: day8.dorsalripples1.events.mat, note: "scoring file is the ventral run"}
+  - {name: RM10_day5, animal: RM10, species: rat, dir: latentseq/RM10/rm10_day5_20250809, base: rm10_day5_20250809, nchan: 384,
+     channels: [133, 155, 1], params: *rat, scoring: false, note: "automatic DetectSWR + spiking filter 0.5 + 16 added"}
+  - {name: HP17_day36, animal: HP17, species: rat, dir: hpc_ctx_project/HP17/hp17_day36_20250520, base: hp17_day36_20250520, nchan: 256,
+     channels: [131, 136, 1], params: *rat, scoring: false, note: "spiking filter + flagged 3 / added 4"}
+  - {name: HP18_day17, animal: HP18, species: rat, dir: hpc_ctx_project/HP18/hp18_day17_20250421, base: hp18_day17_20250421, nchan: 256,
+     channels: [237, 232, 1], params: *rat, scoring: false, note: "automatic DetectSWR; added 26"}
+  - {name: HP18_day49, animal: HP18, species: rat, dir: hpc_ctx_project/HP18/hp18_day49_20250523, base: hp18_day49_20250523, nchan: 256,
+     channels: [212, 216, 1], params: *rat, scoring: false, note: "automatic DetectSWR; flagged 18 / added 47"}
+  - {name: HP18_day52, animal: HP18, species: rat, dir: hpc_ctx_project/HP18/hp18_day52_20250526, base: hp18_day52_20250526, nchan: 256,
+     channels: [220, 216, 1], params: {thresSDswD: [0.15, 0.25], thresSDrip: [0.25, 1.25], maxDurSW: 0.8}, scoring: false,
+     ripples_before_spiking: hp18_day52_20250526.oldripples.events.mat, note: "spiking filter + added 9"}

@@ -1,0 +1,10 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\swr_judge_20261007_2101",
+  "driver": "ephys/swr_judge.py",
+  "git_commit": "7fbd966",
+  "created_utc": "2026-10-08T02:15:31+00:00",
+  "k_clicks": 200,
+  "use_state": false,
+  "use_context": true,
+  "feature_version": 2
+}

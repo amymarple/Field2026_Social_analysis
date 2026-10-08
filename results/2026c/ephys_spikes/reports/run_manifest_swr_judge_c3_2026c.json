@@ -1,0 +1,8 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\swr_judge_c3_20261007_2156",
+  "driver": "ephys/swr_judge.py evaluate-c3",
+  "git_commit": "fbca55b+dirty",
+  "created_utc": "2026-10-08T02:06:29+00:00",
+  "use_context": true,
+  "feature_version": 2
+}

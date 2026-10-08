@@ -8,7 +8,7 @@
 #   PART=<copy_to_storage part> bash run_then_store.sh <command> [args ...]
 #   e.g. PART=audio_levels bash run_then_store.sh "$PY" mic_band_levels.py --root ... --out /workdir/hc997/ephys_2026c/audio_levels
 set -u
-: "${PART:?set PART to a part known to copy_to_storage.sh (lfp, sleep, audio_levels)}"
+: "${PART:?set PART to a part known to copy_to_storage.sh (lfp, sleep, audio_levels, swr)}"
 HERE=$(cd "$(dirname "$0")" && pwd)
 echo "[$(date +%F' '%T)] run: $*"
 "$@"

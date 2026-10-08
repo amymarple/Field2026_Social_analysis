@@ -1,0 +1,6 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\swr_auto_eval_20261007_1513",
+  "driver": "ephys/swr_auto_eval.py",
+  "git_commit": "e892164+dirty",
+  "created_utc": "2026-10-07T19:35:03+00:00"
+}
