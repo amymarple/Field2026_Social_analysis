@@ -17,6 +17,10 @@
 #   swr    $SRC/swr/                                  -> $DST/swr/                    automatic SWR events per session
 #                                                                                  (ephys/swr_auto.py: csv/npz/evt/summary/QC png)
 #          $LOGS/swr*.log                             -> $DST/swr/logs/
+#   emg_from_lfp  $SRC/emg_from_lfp/                -> $DST/emg_from_lfp/           LFP-EMG per session: the standard
+#                                                                                  <s>.EMGFromLFP.LFP.mat (2 Hz) + the fast
+#                                                                                  <s>.EMGFromLFP50Hz.npz (ephys/emg_from_lfp.py)
+#          $LOGS/emg_from_lfp*.log                    -> $DST/emg_from_lfp/logs/
 #
 # Verification per part (written to $DST/<part>/VERIFY.txt; PASS only if all hold):
 #   V1 the destination holds exactly the expected relative paths, with identical byte sizes;
@@ -60,9 +64,10 @@ units() {        # one line per copy unit: <source dir>|<destination dir relativ
            for d in "$SRC"/sleep_states_1s_*; do [ -d "$d" ] && echo "$d|states_1s_${d##*/sleep_states_1s_}|-"; done ;;   # e.g. _pass2, _pass2med, _nremgate
     audio_levels) echo "$SRC/audio_levels||-" ;;
     swr)   echo "$SRC/swr||-" ;;
+    emg_from_lfp) echo "$SRC/emg_from_lfp||-" ;;
   esac
 }
-log_glob() { case $1 in lfp) echo "make_lfp*.log" ;; sleep) echo "score_sleep*.log" ;; audio_levels) echo "audio_levels*.log" ;; swr) echo "swr*.log" ;; esac; }
+log_glob() { case $1 in lfp) echo "make_lfp*.log" ;; sleep) echo "score_sleep*.log" ;; audio_levels) echo "audio_levels*.log" ;; swr) echo "swr*.log" ;; emg_from_lfp) echo "emg_from_lfp*.log" ;; esac; }
 
 list_src() {     # expected destination-relative paths + sizes, sorted
   local part=$1 src rel ex

@@ -743,3 +743,49 @@ The LFP-EMG version is the cross-check if needed (heavier; our LFP is low-passed
 - A's score 10 s and 30 s later: asleep (a twitch or brief movement) vs wake (an awakening);
 - the same for B's coupled responses (B within 0–1 s after A) vs B's other events;
 - P(B wakes within 30 s | A's event, B asleep) vs the same 60 s before A's event.
+
+## 19. Amendment 10 — Phase 6: a library of sleep-perturbation events, and the LFP-EMG check (2026-10-08; the user + relayed review; before results)
+
+**The user:** a movement that does not wake the animal is a special window, in REM and in NREM. Keep such windows
+for later use, under two scenarios:
+- a disruption after which the animal wakes (outside noise, battery change);
+- a disruption after which it does not.
+
+**6a. Event library.** Built locally: `ephys/sleep_events.py` → `$OUT_ROOT/2026c/sleep_events_<ts>/`, plus a README.
+
+**Sources:**
+- **group movement:** ≥ 2 co-located sleeping animals start moving within 1 s of the first. Same 50-Hz IMU-as-EMG
+  onsets as Phase 5c.
+- **solo movement:** one animal moves and ≥ 1 co-located housemate sleeps; nobody else moves within 1 s.
+- **sound candidate:** a house-mic transient ≥ 20 dB (b0–b2, vs the 60–20 s median) while ≥ 1 animal sleeps in that
+  house, with no housemate movement onset in the 2 s before. Unvalidated until the listening check.
+- **handling:** usable battery-round gaps; the state before the stop and after the restart. The gap itself is
+  unobserved.
+
+**Per event:** id, source, house, t0 (field-PC), initiator, participants.
+
+**Per participant (every co-located animal):**
+- role: first mover / follower within 1 s / non-mover;
+- state at t0 and the state composition over −60…0 s;
+- outcome:
+  - the state at +10 / +30 / +60 s;
+  - the first wake within 60 s, its latency and duration;
+  - a 30-s class: after NREM, stays NREM / to REM / wake; after REM, stays REM / to NREM / wake;
+- completeness flags (score known −60…+60 s, IMU valid, zone known);
+- pointers:
+  - IMU: session, 50-Hz index;
+  - LFP: storage path, LFP sample = amplifier sample / 16;
+  - video: the CH05–CH08 files covering t0 and their offsets;
+  - house mic file and offset; CH01 file and offset.
+
+**Rates:** events per hour of co-sleep (≥ 2 animals asleep in the same house), by the initiator's state. Per event:
+all asleep participants stay asleep / some wake / all wake.
+
+**6b. LFP-EMG for every participant.**
+- **Signal:** 300–440 Hz band (our LFP is low-passed at 450 Hz) on 8 channels spread across the probe.
+- **EMG proxy:** the mean pairwise correlation (Buzsáki EMGFromLFP logic) and the band RMS, in 100-ms windows.
+- **ΔEMG** = the event window (−0.2…+0.5 s) minus the baseline (−2…−1 s).
+- **Question:** do followers show their own muscle burst like first movers (active), or not (passive jostle)?
+  Non-movers serve as the reference.
+- **Route:** validated locally on the sessions with a local LFP copy, then run on BioHPC over storage through the
+  post-run hook (new part `sleep_events`).
