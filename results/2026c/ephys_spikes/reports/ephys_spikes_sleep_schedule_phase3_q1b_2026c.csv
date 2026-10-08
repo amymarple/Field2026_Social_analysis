@@ -1,0 +1,2 @@
+comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+M2t_dark vs M2t,all NREM steps,126200,2588,-0.12508471835096327,-0.281962537973396,-0.020797632373881037,13,15,5,6,True

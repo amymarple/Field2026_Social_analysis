@@ -65,7 +65,12 @@ def feats2(df: pd.DataFrame) -> pd.DataFrame:
     f["l_nsince_t"] = np.log1p(df.n_since.astype(float) + df.elapsed.astype(float))
     f["l_gap"] = np.log1p(df.pg_gap_s.astype(float)) if "pg_gap_s" in df else 0.0
     f["morning"] = ((df.t_start.dt.hour >= 5) & (df.t_start.dt.hour < 11)).astype(float) if "t_start" in df else 0.0
+    for c in EXTRA_COLS:                                   # optional per-step columns (Phase 2b / 3); 0 when absent
+        f[c] = df[c].astype(float) if c in df else 0.0
     return f
+
+
+EXTRA_COLS = ("dark", "w60", "frag60", "frag120", "z_sw_lag")
 
 
 SPLINES = ("l_elapsed", "l_nsince", "l_tsince", "l_nsince_t")
@@ -106,6 +111,11 @@ def design2(f: pd.DataFrame, animals: pd.Series, terms: list[str], st: dict | No
             parts.append(z[["l_gap", "morning"]].to_numpy())
         elif t == "nlin":
             parts.append(z[["l_nsince"]].to_numpy())
+        elif t == "darkint":                             # history x dark phase (Phase 3 Q1b)
+            dk = f[["dark"]].to_numpy()
+            parts += [sp("l_nsince_t") * dk, z[["l_wsince"]].to_numpy() * dk, z[["l_rem_pre"]].to_numpy() * dk]
+        elif t.startswith("col:"):                       # any extra column, z-scored
+            parts.append(z[[t[4:]]].to_numpy())
         else:
             raise ValueError(t)
     parts.append(pd.get_dummies(pd.Categorical(animals, categories=levels), dtype=float).to_numpy()[:, 1:])

@@ -564,3 +564,48 @@ Driver `ephys/sleep_schedule.py phase2b` → `ephys/sleep_schedule_phase2b.py`; 
   across-gap compensation slopes split by morning vs evening rounds, on both scorings.
 - **Literature:** an Opus subagent audit on REM-permissive substates (requested by the user);
   report `scratchpad/lit_rem_permissive_substates.md`, to be copied into `docs/methods/` when it is done.
+
+## 13. Amendment 4 — PROPOSED Phase 3: use the 24/7 record (2026-10-07; the user)
+
+**The user's direction:**
+- The LFP-feature tests (spindles / sigma, ripples, heart rate from the accelerometer, temperature as a slow gate;
+  [literature](../docs/methods/sleep_rem_permissive_substates_literature_2026-10-07.md)) go on the candidate list.
+- First, dig into what the continuous 24-h record allows:
+  - night naps vs day sleep ("is nap REM the same as main-sleep REM?");
+  - how sleep reorganises over hours after an interruption (relayed review).
+
+**Counts (Phase-0 units, MA < 40 s):**
+- SLEEP episodes ≥ 20 min: 411 in the light phase (median 47 min) vs 144 in the dark phase (naps; median 34 min).
+- Wakes followed by sleep: 30–120 min = 17 light / 128 dark; ≥ 2 h = 18 light / 76 dark.
+
+**Q1. Night naps vs day sleep: is REM the same?** Units: SLEEP episodes (dark vs light; plus short naps of 5–20 min).
+Per rat: 6/6 signs, and an animal random effect.
+- (a) **Structure.** REM share of sleep, REM bouts per hour of NREM, REM bout duration, inter-REM interval, sequential
+  fraction. Latency from episode onset to the first REM as a survival curve; episodes without REM are kept.
+- (b) **Entry rules.** The empirical REM hazard against the NREM since the last REM, naps vs day. Held out: does a
+  dark × history interaction add prediction to the Phase-1/2 model?
+- (c) **REM itself.** z-theta, z-SW and z-EMG (head stillness) during REM, and the REM-onset tail, naps vs day.
+- (d) **24-h budget.** Is the night REM deviation (vs expectation) followed by an opposite deviation the next day?
+  About 10 days per rat, so this is descriptive.
+
+**Q2 (main). Recovery trajectories after interruptions.**
+- **Events.** Every natural wake ≥ 2 min followed by sleep; battery rounds as their own class.
+- **Follow-up.** Up to 6 h along the joined timeline, across midnight, censored at real gaps:
+  - cumulative NREM min, REM min, REM count;
+  - the fraction still without a first REM (Kaplan–Meier).
+- **Expected.** Each is shown as observed − expected (the C1 baseline: animal + time of day + day, fitted leave one
+  block out), giving excess curves.
+- **Compared** by wake length (2–7, 7–30, 30–120 min, ≥ 2 h) and day vs night, with the REM debt of the previous 3 h
+  as a second axis.
+- **Reading.**
+  - A pure delay = curves parallel to the expectation that later converge.
+  - A re-allocation = NREM first, then REM catches up.
+  - A lasting loss = curves that never return.
+- Episodes that never reach REM are kept: they are part of the result.
+
+**Q3. Arrangement.** Does fragmentation matter, beyond the totals? Fragmentation index = wake bouts ≥ 40 s per hour
+of the previous 1–2 h. One held-out comparison added to the Phase-2 model with the totals held, and the Q2
+trajectories split by fragmentation.
+
+**Control:** every trajectory and compensation result is repeated on the fixed-threshold scores, because per-session
+thresholds produced an artefact before.

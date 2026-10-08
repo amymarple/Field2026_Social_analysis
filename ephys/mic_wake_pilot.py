@@ -15,7 +15,10 @@ Definitions (pilot choices, not tuned on outcomes):
   transient      per mic and band b in {b0, b1, b2}: max over [m - 10, m - 1] of max_db(b) minus the median of max_db(b)
                  over [m - 60, m - 20]; "sound first" if >= 10 dB in any of b0-b2 on the focal house's mic.
   common         a sound-first event whose other-house mic also shows a >= 10 dB transient in the same window.
-  classes        housemate_first > sound_first_common > sound_first_own_only > none_observed (first match wins).
+  outdoor        the CH01 / CH02 camera audio (bands c0-c2, 50 Hz-8 kHz, decoded on the stream timestamps): the same
+                 transient rule, max over the two cameras.
+  classes        housemate_first > sound_first_outdoor (own house + outdoor) > sound_first_common (both houses) >
+                 sound_first_own_only > none_observed (first match wins).
   chance reference the same housemate and transient checks at r = m - 120 s (the focal animal is asleep then: every event
                  follows >= 60 s of NREM, most far longer), reported next to the event rates; a cue only means something
                  if it is more frequent before the movement onset than at r.
@@ -138,7 +141,7 @@ def main() -> None:
     from _common import git_commit, write_json
     from output_paths import run_dir
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--mic-root", default=str(OUT / "mic_band_levels"))
+    ap.add_argument("--mic-root", default=str(OUT / "audio_levels"))
     ap.add_argument("--assign", nargs="*", default=["MIC01=house_2", "MIC02=house_1"])
     a = ap.parse_args()
     out = run_dir("mic_wake_pilot", "2026c")
@@ -146,7 +149,7 @@ def main() -> None:
     rois = {r["name"]: r for r in json.load(open(ROOT / "wiser/configs/wiser_rois.json"))["rois"] if r["name"] in ("house_1", "house_2")}
 
     mic = {}
-    for m in ("MIC01", "MIC02"):
+    for m in ("MIC01", "MIC02", "CH01", "CH02"):
         fs = sorted(glob.glob(str(Path(a.mic_root) / m / "*.csv.gz")))
         d = pd.concat([pd.read_csv(f, parse_dates=["t_pc"]) for f in fs])
         mic[m] = d.drop_duplicates("t_pc").set_index("t_pc").sort_index()
@@ -171,7 +174,7 @@ def main() -> None:
                 sel = (z == h) & v.notna()
                 act[h] = act[h] + v.where(sel, 0.0).fillna(0)
                 n_h[h] = n_h[h] + sel.astype(int)
-        for m, md in mic.items():
+        for m, md in ((k, v) for k, v in mic.items() if k.startswith("MIC")):
             lv = md.reindex(day)
             for h in rois:
                 ok = n_h[h] > 0
@@ -217,12 +220,24 @@ def main() -> None:
                 for b in BANDS:
                     col = f"{b}_max_db"
                     r[f"{pfx}{tag}_{b}_jump_db"] = (pre[col].max() - base[col].median()) if len(base) >= 20 and len(pre) >= 5 else np.nan
+            outj = []
+            for cam in ("CH01", "CH02"):
+                if cam not in mic:
+                    continue
+                md = mic[cam]
+                base = md.loc[t_ref - pd.Timedelta(seconds=60):t_ref - pd.Timedelta(seconds=20)]
+                pre = md.loc[t_ref - pd.Timedelta(seconds=10):t_ref - pd.Timedelta(seconds=1)]
+                if len(base) >= 20 and len(pre) >= 5:
+                    outj += [pre[f"{c}_max_db"].max() - base[f"{c}_max_db"].median() for c in ("c0", "c1", "c2")]
+            r[f"{pfx}outdoor_jump_db"] = float(np.nanmax(outj)) if outj else np.nan
         recs.append(r)
     E = pd.DataFrame(recs)
     jo = E[[f"own_{b}_jump_db" for b in BANDS]].max(axis=1)
     jx = E[[f"other_{b}_jump_db" for b in BANDS]].max(axis=1)
+    jout = E.outdoor_jump_db
     cls = np.where(E.housemates_first != "", "housemate_first",
-                   np.where(jo >= TH_DB, np.where(jx >= TH_DB, "sound_first_common", "sound_first_own_only"),
+                   np.where(jo >= TH_DB, np.where(jout >= TH_DB, "sound_first_outdoor",
+                                                  np.where(jx >= TH_DB, "sound_first_common", "sound_first_own_only")),
                             np.where(jo.isna(), "no_mic_data", "none_observed")))
     E["candidate_class"] = cls
     E.to_csv(out / "d3_wake_events.csv", index=False)
@@ -240,6 +255,10 @@ def main() -> None:
          "n": int(m_ok.sum())},
         {"cue": "transient on both house mics", "before_movement_onset": ((jo >= TH_DB) & (jx >= TH_DB))[m_ok].mean(),
          "chance_reference_m_minus_120s": ((rjo >= TH_DB) & (rjx >= TH_DB))[r_ok].mean(), "n": int(m_ok.sum())},
+        {"cue": "own-house transient + outdoor (CH01/CH02) transient", "before_movement_onset": ((jo >= TH_DB) & (E.outdoor_jump_db >= TH_DB))[m_ok].mean(),
+         "chance_reference_m_minus_120s": ((rjo >= TH_DB) & (E.ref_outdoor_jump_db >= TH_DB))[r_ok].mean(), "n": int(m_ok.sum())},
+        {"cue": "outdoor transient alone (either camera)", "before_movement_onset": (E.outdoor_jump_db >= TH_DB).mean(),
+         "chance_reference_m_minus_120s": (E.ref_outdoor_jump_db >= TH_DB).mean(), "n": int(E.outdoor_jump_db.notna().sum())},
     ])
     rates.to_csv(out / "d3_cue_rates_vs_chance.csv", index=False)
     print(rates.round(3).to_string(index=False), flush=True)
@@ -250,7 +269,7 @@ def main() -> None:
     for j, b in enumerate(BANDS):
         for i, tag in enumerate(("own", "other")):
             ax = axes[i, j]
-            for c in ("housemate_first", "sound_first_common", "sound_first_own_only", "none_observed"):
+            for c in ("housemate_first", "sound_first_outdoor", "sound_first_common", "sound_first_own_only", "none_observed"):
                 sub = E[E.candidate_class == c]
                 if len(sub) < 5:
                     continue
