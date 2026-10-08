@@ -73,6 +73,13 @@ written before results):
 | 25 | A housemate's REM onset (or ongoing REM) raises an animal's own REM-entry hazard. | **Rejected** (scoped) | Held out, with the animal's own clock, time of day, and housemates present and asleep in the base: +0.08 % (worse), 2/15 folds, 0/6 animals; coefficients ≈ 0 (−0.002, +0.005). | "REM entry was not coupled to housemates' REM: once each rat's own sleep history and the time of day were known, a housemate entering REM did not make it more likely to enter REM." | "Rats never synchronise sleep" (shared timing exists, #26); claims beyond the 60-s window, WISER house membership (14-in buffer, not body contact) and ~1-s clock offsets. |
 | 26 | REM co-occurs across animals more than chance through shared timing. | **Established** (descriptive) | P(mate in REM given this rat in REM vs in NREM): median ≈ 1.2× across pairs. The raw REM-entry ratio after a REM onset is 1.10 for housemates but 1.25 for animals elsewhere, so it is not specific to housemates. | "Rats tended to be in REM at the same times, as expected from a shared daily rhythm and conditions, not because one animal's REM triggered another's." | "Social REM synchrony". |
 
+**Phase 5b, local fast coupling of movements during sleep** (2026-10-08; the user's video observation;
+[report](ephys_spikes_sleep_schedule_phase5b_2026c.md); test written before results):
+
+| # | claim | status | main_evidence | allowed_wording | forbidden_wording |
+|---|---|---|---|---|---|
+| 27 | Head-movement onsets of sleeping rats in the same house coincide within ~1–3 s, far above chance; animals in different places barely do. | **Candidate** (strong) | Same house: B onsets at lag 0 / ±1 / ±2 s = 13.8 / ~5 / ~2× the local baseline (REM twitches 15×), 30/30 ordered pairs. Elsewhere: 1.24× at lag 0. Cascade: a housemate moves within 5 s after 43 % (NREM) / 33 % (REM) of events vs ~11 % at 30–35 s. | "Movements of sleeping housemates were tightly coupled in time: when one rat moved, a housemate started moving within a few seconds about three times more often than chance; this coupling was local to the house." | "Twitches propagate from rat to rat" (order not resolved at 1 s; pooled ordered pairs are symmetric by construction); "rats wake each other" (state consequences not tested); active vs passive (mechanical jostling of the neighbour's head) not separated. |
+
 **Synthesis, at the strongest wording the statuses allow** (each part keeps its status):
 - **Established.** In the field, sleep follows rules that carry history. REM becomes more likely the more NREM has
   built up since the last REM. Brief awakenings do not erase that build-up. The night limits how often REM starts,

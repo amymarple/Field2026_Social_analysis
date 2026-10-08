@@ -177,3 +177,150 @@ def phase5(a) -> None:
     (rd / "ephys_spikes_sleep_schedule_phase5_2026c.md").write_text("\n".join(flat) + "\n", encoding="utf-8")
     write_json(rd / "run_manifest_sleep_schedule_phase5_2026c.json", {"run_dir": str(out), "git_commit": gc})
     print("written", rd / "ephys_spikes_sleep_schedule_phase5_2026c.md")
+
+
+def phase5b(a) -> None:
+    """Local, fast coupling of head-movement onsets during sleep between animals (plan Amendment 8, before results).
+    Event = IMU state >= 2 after >= 5 s of IMU state 1 (head-IMU seconds cache, field-PC clock), while the FINAL score is
+    NREM or REM; pairs both asleep, same house vs elsewhere; cross-correlogram -10..+10 s against the baseline at
+    |lag| 30-60 s; direction +1..+3 vs -1..-3 s; cascade = housemates with an event within +5 s vs +30..+60 s."""
+    from _common import git_commit, write_json
+    from mic_wake_pilot import load_zone
+    from output_paths import report_dir, run_dir
+    from sleep_quant import md_table
+    out = run_dir("sleep_schedule_phase5b" + ("_smoke" if a.smoke else ""), "2026c")
+    rd = out if a.smoke else report_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    rv = included_sessions(Path(a.review), Path(a.states))
+    recs = build_records(rv, Path(a.states))
+    t_min = min(rc["start"] for rc in recs).floor("s")
+    t_max = max(rc["end"] for rc in recs).ceil("s")
+    span = int((t_max - t_min).total_seconds()) + 1
+    rois = {r["name"]: r for r in json.load(open(ROOT / "wiser/configs/wiser_rois.json"))["rois"] if r["name"] in ("house_1", "house_2")}
+    dates = sorted({d.strftime("%Y%m%d") for d in pd.date_range(t_min.normalize(), t_max.normalize())})
+    OUT = Path("D:/Field2026_analysis_out/2026c")
+    S, Z, EV = {}, {}, {}
+    for an in sorted({rc["animal"] for rc in recs}):
+        s = np.zeros(span, np.int8)
+        for rc in recs:
+            if rc["animal"] == an:
+                o = int((rc["start"] - t_min).total_seconds())
+                s[o:o + len(rc["state"])] = rc["state"][:max(0, span - o)]
+        S[an] = s
+        z = load_zone(an, dates, rois)
+        zz = z.reindex(pd.date_range(t_min, t_max, freq="1s")[:span]) if len(z) else pd.Series(index=range(span), dtype=object)
+        Z[an] = np.select([zz.eq("house_1").to_numpy(), zz.eq("house_2").to_numpy(), zz.eq("field").to_numpy()], [1, 2, 3], 0).astype(np.int8)
+        fs = [OUT / f"imu_seconds_cache/{an}/{d}.csv.gz" for d in dates]
+        im = pd.concat([pd.read_csv(f, usecols=["sec", "ok", "state"]) for f in fs if f.exists()])
+        im["i"] = ((pd.to_datetime(im.sec, unit="s") - pd.Timedelta(hours=4)) - t_min).dt.total_seconds().astype(int)
+        im = im[(im.i >= 0) & (im.i < span)]
+        st = np.zeros(span, np.int8)
+        st[im.i.to_numpy()] = np.where(im.ok.astype(bool), im.state, 0)
+        still = st == 1
+        cs = np.r_[0, np.cumsum(still)]
+        idx = np.arange(span)
+        prev5 = (cs[idx] - cs[np.maximum(idx - 5, 0)]) == 5
+        ev = (st >= 2) & prev5 & np.isin(s, (N, R))
+        EV[an] = (ev, s)
+        print(an, "events", int(ev.sum()), "REM", int((ev & (s == R)).sum()), flush=True)
+    lags = np.arange(-60, 61)
+    rows, cc = [], {}
+    for A in EV:
+        evA, sA = EV[A]
+        iA = np.flatnonzero(evA)
+        iA = iA[(iA >= 60) & (iA < span - 60)]
+        for B in EV:
+            if A == B:
+                continue
+            evB, sB = EV[B]
+            asleepB = np.isin(sB[iA], (N, R))
+            same = (Z[A][iA] == Z[B][iA]) & np.isin(Z[A][iA], (1, 2))
+            far = (Z[A][iA] != Z[B][iA]) & (Z[A][iA] > 0) & (Z[B][iA] > 0)
+            for where, msk in (("same house", same & asleepB), ("elsewhere", far & asleepB)):
+                for typ, tm in (("all", np.ones(len(iA), bool)), ("REM (twitch)", sA[iA] == R), ("NREM", sA[iA] == N)):
+                    ii = iA[msk & tm]
+                    if len(ii) < 20:
+                        continue
+                    M = evB[ii[:, None] + lags[None, :]].sum(0).astype(float)
+                    cc[(A, B, where, typ)] = (M, len(ii))
+    for where in ("same house", "elsewhere"):
+        for typ in ("all", "REM (twitch)", "NREM"):
+            keys = [k for k in cc if k[2] == where and k[3] == typ]
+            if not keys:
+                continue
+            M = sum(cc[k][0] for k in keys)
+            n = sum(cc[k][1] for k in keys)
+            base = M[(np.abs(lags) >= 30) & (np.abs(lags) <= 60)].mean()
+            r = {"pairs": where, "A_event_type": typ, "A_events": n, "ordered_pairs": len(keys), "baseline_per_bin": base / n}
+            for L_ in (0, 1, 2, 3):
+                r[f"excess_lag+{L_}"] = M[lags == L_][0] / base
+                if L_:
+                    r[f"excess_lag-{L_}"] = M[lags == -L_][0] / base
+            r["direction_plus_over_minus_1to3"] = M[(lags >= 1) & (lags <= 3)].sum() / max(M[(lags >= -3) & (lags <= -1)].sum(), 1)
+            pp = []
+            for k in keys:
+                Mk, nk = cc[k]
+                bk = Mk[(np.abs(lags) >= 30) & (np.abs(lags) <= 60)].mean()
+                if bk > 0:
+                    pp.append(Mk[(lags >= 0) & (lags <= 3)].mean() / bk)
+            r["pairs_with_excess_0to3"] = int(np.sum(np.array(pp) > 1))
+            r["pairs_tested"] = len(pp)
+            rows.append(r)
+    T1 = pd.DataFrame(rows)
+    # cascade
+    crow = []
+    for A in EV:
+        evA, sA = EV[A]
+        iA = np.flatnonzero(evA)
+        iA = iA[(iA >= 60) & (iA < span - 61)]
+        mates = [B for B in EV if B != A]
+        for i in iA:
+            co = [B for B in mates if Z[B][i] == Z[A][i] and Z[A][i] in (1, 2) and S[B][i] in (N, R)]
+            if len(co) < 2:
+                continue
+            k5 = sum(EV[B][0][i:i + 6].any() for B in co)
+            kb = sum(EV[B][0][i + 30:i + 36].any() for B in co)
+            crow.append({"A": A, "type": "REM" if sA[i] == R else "NREM", "mates": len(co), "mates_moving_0to5s": k5, "mates_moving_30to35s": kb})
+    C = pd.DataFrame(crow)
+    T2 = C.groupby("type").agg(events=("A", "size"), mean_mates=("mates", "mean"), share_any_mate_0to5=("mates_moving_0to5s", lambda v: (v > 0).mean()),
+                               share_any_mate_30to35=("mates_moving_30to35s", lambda v: (v > 0).mean()),
+                               mean_mates_0to5=("mates_moving_0to5s", "mean"), mean_mates_30to35=("mates_moving_30to35s", "mean")).reset_index()
+    T2["ratio_any"] = T2.share_any_mate_0to5 / T2.share_any_mate_30to35
+    for name, T in (("t1", T1), ("t2", T2)):
+        T.to_csv(rd / f"ephys_spikes_sleep_schedule_phase5b_{name}_2026c.csv", index=False)
+        print(T.round(3).to_string(index=False), flush=True)
+    # figure: summed correlograms
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from output_paths import figure_dir
+    from sleep_quant import save_fig
+    fd = out if a.smoke else figure_dir("2026c", "ephys_spikes")
+    fig, axs = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
+    for ax, typ in zip(axs, ("all", "REM (twitch)", "NREM")):
+        for where in ("same house", "elsewhere"):
+            keys = [k for k in cc if k[2] == where and k[3] == typ]
+            if not keys:
+                continue
+            M = sum(cc[k][0] for k in keys)
+            base = M[(np.abs(lags) >= 30) & (np.abs(lags) <= 60)].mean()
+            sel = np.abs(lags) <= 15
+            ax.plot(lags[sel], M[sel] / base, "o-", ms=3, label=where)
+        ax.axhline(1, color="k", lw=0.6)
+        ax.axvline(0, color="k", lw=0.4)
+        ax.set_title(f"A's event: {typ}", fontsize=9)
+        ax.set_xlabel("lag of B's movement onset (s; + = B after A)")
+    axs[0].set_ylabel("B onsets / baseline (|lag| 30-60 s)")
+    axs[0].legend(fontsize=8)
+    fig.suptitle(f"Phase 5b: movement-onset coupling between sleeping animals (head IMU, 1 s)  {gc}", fontsize=9)
+    save_fig(fig, fd / "ephys_spikes_sleep_schedule_phase5b_correlogram_2026c.png")
+    L = ["# Internal sleep schedule — Phase 5b: local, fast coupling of movements during sleep (cohort 2026c)", "",
+         f"Plan Amendment 8 (written before results). Driver `ephys/sleep_schedule.py phase5b` → `ephys/sleep_sync.py` (commit {gc}); "
+         f"bulk `{out}`. **Technical ledger.**", "", "## Definitions", "", "```", (phase5b.__doc__ or "").strip(), "```", "",
+         "## Cross-correlogram summary (excess = B onsets at that lag / baseline)", "", md_table(T1.round(3)), "",
+         "![](../figures/ephys_spikes_sleep_schedule_phase5b_correlogram_2026c.png)", "",
+         "## Cascade: housemates moving within 5 s of an event vs 30-35 s later", "", md_table(T2.round(3)), ""]
+    flat = [ln for x in L for ln in (x if isinstance(x, list) else [x])]
+    (rd / "ephys_spikes_sleep_schedule_phase5b_2026c.md").write_text("\n".join(flat) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_sleep_schedule_phase5b_2026c.json", {"run_dir": str(out), "git_commit": gc})
+    print("written", rd / "ephys_spikes_sleep_schedule_phase5b_2026c.md")

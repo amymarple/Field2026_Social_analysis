@@ -175,3 +175,16 @@ supersedes the v1 / v2 cycle audits where they differ.
 
 **Claims #25 (Rejected, scoped) and #26 (Established, descriptive).**
 
+## Phase 5b — local, fast coupling of movements during sleep (2026-10-08; plan Amendment 8, written before results)
+
+`sleep_sync.py` `phase5b`.
+
+**Data:** head-movement onsets during sleep from the head-IMU seconds cache (field-PC clock).
+
+**Results:**
+- **Same-house pairs:** 13.8× at lag 0, ~5× at ±1 s; REM twitches 15×; 30/30 pairs.
+- **Elsewhere:** 1.24×.
+- **Cascades:** 3–3.6× above baseline.
+
+**Claim #27 (Candidate).** Open: who moves first (needs the 50-Hz IMU), and active vs passive coupling.
+

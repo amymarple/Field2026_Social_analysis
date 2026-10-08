@@ -688,3 +688,31 @@ NREM since its last REM.
 - Coupling only with co-located mates → social / sensory coupling.
 - Coupling also with far animals → a shared outside driver.
 - Neither → no REM synchrony beyond co-sleeping.
+
+## 17. Amendment 8 — Phase 5b: local, fast coupling of movements during sleep (2026-10-08; the user; written before results)
+
+**The user's observation (video):** groups of sleeping rats twitch their legs in sequence; one starts and it
+propagates. Phase 5 tested REM entry averaged over all house co-location within 60 s, which would miss fast, local
+coupling.
+
+**Events.** Per animal, a head-movement onset during sleep:
+- the head-IMU seconds cache (field-PC clock, 1 s) shows state ≥ 2 (active) after ≥ 5 s of state 1 (still);
+- the FINAL sleep score is NREM or REM at that second;
+- typed by the score: REM (≈ twitches) or NREM.
+
+**Pairs.** A and B both asleep at A's event; same house (WISER, as Phase 5) vs different places (the control).
+
+**Cross-correlogram.**
+- B's event onsets at lags −10 … +10 s around each A event (1-s bins);
+- baseline = B's mean rate per bin at |lag| 30–60 s (a local baseline, so time of day cancels);
+- excess = observed / baseline at lags 0, ±1–3 s;
+- direction = the count at +1…+3 vs −1…−3 s.
+
+**Cascade.** After an A event with ≥ 2 asleep housemates: the number of housemates with an event within +5 s, vs the
+same at +30…+60 s.
+
+**Reading:**
+- A short-lag excess only for same-house pairs → local coupling.
+- Asymmetric lags → propagation.
+- A zero-lag excess in all pairs → a shared trigger (e.g. a sound; to be cross-checked with the mics).
+- None → no fast coupling at the 1-s resolution of the IMU seconds cache.
