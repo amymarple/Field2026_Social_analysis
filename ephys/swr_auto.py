@@ -22,7 +22,11 @@ Per session (channels per animal x probe block from configs/swr_channels_<c>.yam
      the summary records `boundary_fit_on` (nrem | donor | all) and `boundary_from`.
   4. Events = DetectSWR's check-mode localisation + troughs (useSPW = false; rat parameters thresSD [0.25 0.5],
      maxDurSW 0.8, as in the lab's rat runs).
-  5. Exclusion flags (user 2026-10-08; nothing is deleted, `excluded` = any of them):
+  5. Flags (user 2026-10-08; nothing is deleted). `excluded` = the block's `exclude_flags`: by default rem + theta
+     everywhere (the user's clicks: theta-flagged 7/40 ripple), and also moving + emg_lfp where the probe has no
+     sharp-wave reversal (blind review of SF07 block-4 night: flagged 1/40 ripple, moving/EMG-only 0/11, unflagged
+     18/20); on normal blocks moving / emg_lfp stay flags only (the user's clicks: 49/87 and 53/95 ripple vs 388/662
+     unflagged). The four flags:
      x_rem (REM second), x_theta (theta/delta in +-0.5 s above the session's NREM 95th percentile), x_moving (head-IMU
      movement above the sleep scorer's own EMG threshold), x_emg_lfp (cross-shank 300-450 Hz correlation = the
      pipeline's EMGFromLFP, one site per shank, above the NREM 95th percentile; `swr_emg.py`). Sessions with < 10 min
@@ -251,7 +255,12 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
     x_theta = ev_theta > thr_theta if thr_theta is not None else np.zeros(pk.size, bool)
     x_moving = emg > thr_imu if thr_imu is not None else np.zeros(pk.size, bool)
     x_emg = ev_emg > thr_emg if thr_emg is not None else np.zeros(pk.size, bool)
-    excluded = x_rem | x_theta | x_moving | x_emg
+    default_excl = ["rem", "theta"] + (["moving", "emg_lfp"] if blk.get("boundary_features") == "ripple" else [])
+    excl_flags = list(blk.get("exclude_flags", default_excl))
+    xs = {"rem": x_rem, "theta": x_theta, "moving": x_moving, "emg_lfp": x_emg}
+    excluded = np.zeros(pk.size, bool)
+    for k_ in excl_flags:
+        excluded |= xs[k_]
     out_dir = Path(out) / animal / session
     out_dir.mkdir(parents=True, exist_ok=True)
     cols = dict(start_s=ev["start"], stop_s=ev["stop"], peak_s=ev["peak"], duration_ms=(ev["stop"] - ev["start"]) * 1000,
@@ -302,7 +311,7 @@ def run_session(animal: str, session: str, lfp_root: str, states_root: str, out:
         frac_events_all_shanks=round(float(np.mean(n_sh == len(shank_cols))), 3) if len(df) else None,
         emg_channels_0based=emg_cols,
         thresholds=dict(emg_lfp=thr_emg, theta_delta_log=thr_theta, imu_emg=thr_imu, source=thr_src),
-        n_excluded=int(excluded.sum()), excluded_by=dict(rem=int(x_rem.sum()), theta=int(x_theta.sum()),
+        exclude_flags=excl_flags, n_excluded=int(excluded.sum()), flagged_by=dict(rem=int(x_rem.sum()), theta=int(x_theta.sum()),
                                                          moving=int(x_moving.sum()), emg_lfp=int(x_emg.sum())),
         kept_by_state={st_: int(np.sum((df.state == st_) & ~df.excluded)) for st_ in sorted(set(df.state))},
         kept_rate_per_min={st_: round(int(np.sum((df.state == st_) & ~df.excluded)) / minutes[st_], 3)

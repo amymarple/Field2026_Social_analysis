@@ -15,26 +15,26 @@
 #   skip           true = no detection in this block
 #   boundary_features  ripple = classify on ripple power only (blocks with no sharp-wave reversal; default both)
 #   exclude_cols   columns never used in this block (e.g. for the LFP-EMG): per-period failures from the record
-#   confirmed      true once the user has looked at it (profile figure / Neuroscope / GUI)
+#   confirmed      true once the user has looked at it (profile figure / Neuroscope / GUI); all confirmed by the user 2026-10-08
 SF07:   # the whole probe sits above the pyramidal layer in every block: positive sharp waves everywhere, ripple largest at the shank tips
   - {boundary_features: ripple, valid_from: null, reference_session: "15_20260902_082418.755", ripple_col: 48, sharpwave_col: 55, noise_col: 22, shank_ripple: {1: 48, 2: 34, 3: 3, 4: 0},
      source: "scan 15_20260902_082418.755 (full session): ripple 48 ratio 3.97; SW 55 +25 uV; noise 22 ratio 1.85 corr 0.27",
-     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: false}
+     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: true}
   - {boundary_features: ripple, valid_from: "2026-09-04 14:00:54.476", reference_session: "14_20260904_201825.406", ripple_col: 63, sharpwave_col: 55, noise_col: 10, shank_ripple: {1: 63, 2: 34, 3: 15, 4: 30},
      source: "scan 14_20260904_201825.406: ripple 63 ratio 3.78; SW 55 +23 uV; noise 10 ratio 2.13 corr 0.27",
-     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: false}
+     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: true}
   - {boundary_features: ripple, valid_from: "2026-09-05 13:31:18.469", reference_session: "4_20260906_075426.615", ripple_col: 34, sharpwave_col: 44, noise_col: 25, shank_ripple: {1: 49, 2: 34, 3: 15, 4: 30},
      source: "scan 4_20260906_075426.615: ripple 34 ratio 4.18; SW 44 +32 uV; noise 25 ratio 2.18 corr 0.33",
-     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: false}
+     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: true}
   - {boundary_features: ripple, valid_from: "2026-09-06 13:29:42.035", reference_session: "5_20260908_071513.175", ripple_col: 15, sharpwave_col: 9, noise_col: 56, shank_ripple: {1: 48, 2: 34, 3: 15, 4: 19},
      source: "scan 5_20260908_071513.175: ripple 15 ratio 4.50; SW 9 +39 uV; noise 56 ratio 2.18 corr 0.34",
-     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: false}
+     flags: ["no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: true}
 SF08:
   - {valid_from: null, reference_session: "5_20260908_071754.325", ripple_col: 45, sharpwave_col: 34, noise_col: 20, shank_ripple: {1: 62, 2: 45, 3: 3, 4: 30},
-     source: "scan 5_20260908_071754.325: ripple 45 ratio 4.02; SW 34 -130 uV; noise 20 ratio 1.25 corr 0.06", flags: [], confirmed: false}
+     source: "scan 5_20260908_071754.325: ripple 45 ratio 4.02; SW 34 -130 uV; noise 20 ratio 1.25 corr 0.06", flags: [], confirmed: true}
   - {valid_from: "2026-09-09 18:50:36.554", reference_session: "3_20260911_091931.245", ripple_col: 30, sharpwave_col: 34, noise_col: 20, shank_ripple: {1: 62, 2: 45, 3: 17, 4: 30},
      source: "scan 3_20260911_091931.245: ripple 30 (shank 4) ratio 4.16; SW 34 (shank 2) -158 uV; noise 20 ratio 1.09 corr 0.06",
-     flags: ["sharp wave on another shank"], confirmed: false}
+     flags: ["sharp wave on another shank"], confirmed: true}
 SF09:   # the channels the user scored in the GUI (2026-10-07); the scan's own proposal was ripple 28 (shank 1 tip, ratio 4.91) / SW 44 (shank 3, -591 uV) / noise 51
   - {valid_from: null, reference_session: "6_20260908_072057.385", ripple_col: 18, sharpwave_col: 59, noise_col: 51, shank_ripple: {1: 28, 2: 9, 3: 39, 4: 16, 5: 53}, exclude_cols: [0, 48],
      source: "user-scored GUI session 6_20260908_072057.385 (auto vs user F1 0.87); scan: col 18 ratio 4.33 (16/31/18 tie, possibly bridged), SW 59 -360 uV (shank 4 carries the reversal), noise 51 ratio 1.15 corr -0.04; cols 0/48 avoided (bad from the 09-06 night)",
@@ -46,23 +46,23 @@ SF10:   # the channels the user scored in the GUI (2026-10-07)
 SF11:   # cortex above CA1 (record 09-06): negative control; positive sharp waves everywhere
   - {boundary_features: ripple, valid_from: null, reference_session: "3_20260903_080159.850", ripple_col: 34, sharpwave_col: 37, noise_col: 11, shank_ripple: {1: 62, 2: 34, 3: 3, 4: 30},
      source: "scan 3_20260903_080159.850: ripple 34 ratio 3.40; SW 37 +17 uV; noise 11 ratio 1.48 corr 0.24",
-     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)"], confirmed: false}
+     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)"], confirmed: true}
   - {boundary_features: ripple, valid_from: "2026-09-04 13:56:50.425", reference_session: "3_20260905_094205.930", ripple_col: 34, sharpwave_col: 39, noise_col: 20, shank_ripple: {1: 51, 2: 34, 3: 3, 4: 21},
      source: "scan 3_20260905_094205.930: ripple 34 ratio 3.41; SW 39 +14 uV; noise 20 ratio 1.52 corr 0.28",
-     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: false}
+     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: true}
   - {boundary_features: ripple, valid_from: "2026-09-05 15:11:33.499", reference_session: "5_20260906_080735.254", ripple_col: 51, sharpwave_col: 50, noise_col: 20, shank_ripple: {1: 51, 2: 47, 3: 1, 4: 30},
      source: "scan 5_20260906_080735.254: ripple 51 ratio 3.45; SW 50 +9 uV; noise 20 ratio 1.51 corr 0.28",
-     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: false}
+     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: true}
   - {boundary_features: ripple, valid_from: "2026-09-06 13:33:37.885", reference_session: "9_20260906_133337.885", ripple_col: 30, sharpwave_col: 20, noise_col: 11, shank_ripple: {1: 51, 2: 47, 3: 1, 4: 30},
      source: "scan 9_20260906_133337.885: ripple 30 ratio 3.37; SW 20 +11 uV; noise 11 ratio 1.55 corr 0.31",
-     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: false}
+     flags: ["cortex (negative control)", "no sharp-wave reversal (above the pyramidal layer)", "noise site not ripple-free"], confirmed: true}
 SF12:
   - {valid_from: null, reference_session: "7_20260906_080951.055", ripple_col: 19, sharpwave_col: 30, noise_col: 42, shank_ripple: {1: 49, 2: 47, 3: 1, 4: 19},
      source: "scan 7_20260906_080951.055: ripple 19 ratio 4.02; SW 30 -232 uV; noise 42 ratio 1.35 corr -0.03 (shank 1 degraded from the 09-07 night: its shank flag is unreliable after that)",
-     flags: [], confirmed: false}
+     flags: [], confirmed: true}
   - {valid_from: "2026-09-09 18:47:50.985", skip: true,
-     source: "no usable session in this block (the user marked the 09-09 night sessions noise; shank-1 degradation)", flags: ["no detection"], confirmed: false}
+     source: "no usable session in this block (the user marked the 09-09 night sessions noise; shank-1 degradation)", flags: ["no detection"], confirmed: true}
   - {boundary_features: ripple, valid_from: "2026-09-10 08:35:07.425", reference_session: "8_20260910_083507.425", ripple_col: 32, sharpwave_col: 39, noise_col: 42, shank_ripple: {2: 32, 3: 1, 4: 19},
      exclude_cols: [57, 52, 54, 50, 56, 61, 53, 48, 58, 63, 60, 59, 49, 55, 62, 51],
      source: "scan 8_20260910_083507.425 (shank 1 + cols 63/48 excluded): ripple 32 ratio 3.63; SW 39 +3 uV; noise 42 ratio 1.96 corr 0.30; contact failing from 14:53:45 (quality flag)",
-     flags: ["no sharp-wave reversal (signal degrading)", "noise site not ripple-free", "SF12_contact_failing from 09-10 14:53:45"], confirmed: false}
+     flags: ["no sharp-wave reversal (signal degrading)", "noise site not ripple-free", "SF12_contact_failing from 09-10 14:53:45"], confirmed: true}
