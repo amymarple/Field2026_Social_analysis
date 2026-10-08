@@ -1,6 +1,6 @@
 # Does sleep follow an internal schedule that survives interruptions? Memory, carry-over across wakes, and compensation in sleep history (cohort 2026c)
 
-**Status: PLAN, revision 2, approved by the user 2026-10-07 ("go for it"). Phase 0 DONE**
+**Status: DONE 2026-10-08 (Phases 0–3b; rev. 2 + Amendments 1–5; see §14 and the claim audit).** History: approved 2026-10-07 ("go for it"). Phase 0 DONE
 ([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_phase0_2026c.md)); **Phase 1 DONE**
 ([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_phase1_2026c.md); technical ledger, no claim
 audit yet); Phase 2 waits for the user. Audio levels: first run on storage (verified); the timestamp-fixed rerun pending.
@@ -609,3 +609,27 @@ trajectories split by fragmentation.
 
 **Control:** every trajectory and compensation result is repeated on the fixed-threshold scores, because per-session
 thresholds produced an artefact before.
+
+## 14. Amendment 5 (2026-10-08, AFTER the Phase 3 results; the user's review: "be bolder") — Phase 3b
+
+Two checks, run before the claim audit so the summary could be as strong as the data allow.
+Driver: `ephys/sleep_schedule.py phase3b`.
+
+1. **Same-events catch-up.** Natural wakes followed for ≥ 3 h (and ≥ 6 h), with the REM excess at 1 / 3 (/ 6) h
+   computed on the same events, plus the paired change; battery rounds likewise.
+   - Result: no wake-length effect at 1 h in this sample (−0.08, n.s.; fixed thresholds −0.02), and no 1 → 3 h change.
+   - "Delay then catch-up" is **withdrawn**. The Phase-3 first-hour effect was sample-dependent.
+   - Battery rounds: REM stays ~1–1.4 min below expectation at 1, 3 and 6 h under fixed thresholds.
+2. **24-h budget robustness.**
+   - Run on both scorings, in minutes and in rates, at ≥ 50 % and ≥ 80 % recorded, with animal fixed effects and
+     per-animal slopes, for REM and NREM.
+   - Result: the night → next-day trade-off is robust for NREM (fixed thresholds, within-rat −0.54 to −0.91,
+     p < 0.001). For REM it goes the same way but is weaker (within-rat CIs mostly include 0).
+   - So it is not a REM-specific budget.
+
+**Status: DONE 2026-10-08.**
+- [Claim audit](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md)
+- [Change log](../change_log/2026-10-08-sleep-internal-schedule.md)
+
+Candidates for the next round (the user's list): spindles / sigma, ripples, temperature as a slow gate, heart rate from
+the accelerometer, and the mic listening check.
