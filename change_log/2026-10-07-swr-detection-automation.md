@@ -226,3 +226,35 @@ relabelling ("let fate decide").
   - The ¼-turn advances on 09-04, 09-05 15:11 and 09-06 13:34 produced no measurable displacement (a loosening
     headcap).
   - So SF11's automatic events (~120–160/min in NREM) are not CA1 ripples. SF11's SWR output is a negative control.
+
+**SF11 split at the 09-02 evening round (user: "yep separate").**
+
+- **Ripple test per session** (scratch `ripple_days.py`; results `D:/Field2026_analysis_out/2026c/swr_ripple_days/`):
+  - Events on each shank's tip ripple site:
+    - $z_c = (e_c - \mu_{NREM})/\sigma_{NREM}$, where $e_c$ is the 130–200 Hz Butterworth-3 Hilbert envelope (8-ms
+      boxcar);
+    - an event is a run of $z_c > 4$ lasting ≥ 20 ms;
+    - it is rejected when the noise column's $z > 3$ at the peak.
+  - Rates per minute of each 1-s state in the 2-h most-NREM window.
+  - Ripple-band contrast = DetectSWR envelope at the NREM event peaks / at random times.
+  - **Text:** real CA1 ripples are NREM events with REM ≈ 0.
+  - Calibration (SF07, SF08, SF09, SF10, SF12 block 1): NREM 2–20/min, REM 0–0.2/min, NREM/REM ≥ 38, contrast 3.2–8.6.
+- **SF11 per session:**
+  - **08-31 19:13 → 09-02 17:04 (10 sessions, ≈ 13.9 h NREM; FM64 to 09-01 17:17):** contrast 4.1–8.9, NREM
+    13–18/min, REM ≈ 0.5/min, on all four shanks — clear ripples.
+  - **From 09-02 19:08:** contrast 2.0–3.4, 1–10/min, a step on all four shanks at once across the 09-02 evening round.
+  - The last night (09-06 19:52 → 09-07 06:10) has no sleep score and was not tested.
+- **Config:**
+  - Block 1a = start → 09-02 19:08:52.526: reference `12_20260902_083534.755` (248 min NREM), ripple 51 (shank 1 tip,
+    ratio 4.22), SW 57, noise 11 (ratio 1.26, corr −0.05), ripple-only (sharp wave a gradient −42 → +137 µV).
+  - Block 1b = 19:08 → 09-04 13:56 keeps the old block-1 channels and reference, with the low-contrast flag.
+  - `cohorts/2026c.yaml` gets the quality flag `SF11_ripples_lost` from 09-02 19:08:52.
+- **Local test of block 1a (storage LFP):**
+
+  | Sessions | Selected | NREM | REM | Kept NREM |
+  |---|---|---|---|---|
+  | Reference | 3.4 % | 39/min | 1.2/min | 36/min |
+  | 08-31 evening, 09-01 day, 09-01 night | 2.8–4.9 % | 54–65/min | 1.3–4.0/min | 52–58/min |
+  | 09-02 17:04 | 1.2 % (own fit 9.4 %) | 16/min | | |
+
+  - Amplitude ratio to the reference: 1.16–1.21 for 08-31 / 09-01; 0.80 for 09-02 17:04, where the decline begins.
