@@ -193,11 +193,12 @@ The user: "SF11 SF12 should have a reversal."
 
   | Block | Selected | NREM rate | Kept NREM |
   |---|---|---|---|
-  | SF11 block 1 (ripple-only) | 22.8 % | | |
+  | SF11 block 1 | 22.8–25.5 % | 134–166/min | 122–157/min |
+  | SF11 block 4 | 23.9–24.6 % | 129–156/min | 119–148/min |
   | SF11 blocks 2–3 | 26–29 % | 136–163/min | 123–154/min |
   | SF12 block 3 | 19–20 % | 138–160/min | 127–152/min |
 
-  - Before exclusion, SF11 blocks 2–3 run REM 93–129 and wake 98–115/min.
+  - Before exclusion, SF11 runs REM 93–129/min and wake 80–115/min on every block: no SF11 block separates under either rule.
   - Compare 4–8 % selected and kept NREM 44–79/min on SF07/SF09/SF10, and the user's own 44–68/min.
   - So two-cluster k-means cuts into the bulk of the cloud there. **SF11 and SF12 block 3 are held from production**
     until the user scores one reference session of each in the GUI.
