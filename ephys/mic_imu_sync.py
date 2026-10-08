@@ -2,6 +2,7 @@ r"""In-house microphones <-> head IMU: who made the sound, and the mic clock (pl
 implementation_plan/2026-10-08-mic-imu-sync.md; definitions there, repeated in the report).
 
     python ephys/mic_imu_sync.py pilot [--raw F:/3rd_rat] [--hours-per-mic 6]
+    python ephys/mic_imu_sync.py peaks [--raw F:/3rd_rat]      # Amendment 1: mic peaks -> IMU, before the morning round
     python ephys/mic_imu_sync.py --selftest
 
 Mic envelope: 20-ms frames of the WAV, exactly as ephys/mic_band_levels.py (Hann, mean removed, full-scale sine = 0 dB,
@@ -35,9 +36,10 @@ CUTOFF = pd.Timestamp("2026-09-11 19:40")
 
 
 # ------------------------------------------------------------------ signals
-def frame_envelope(p: Path) -> tuple[pd.Timestamp, np.ndarray, np.ndarray, dict]:
+def frame_envelope(p: Path, t_from: float | None = None, t_to: float | None = None) -> tuple[pd.Timestamp, np.ndarray, np.ndarray, dict]:
     """Per 20-ms frame: centre time (s after the file-name start, PC clock, by the file's timing model) and band power
-    in dB (frames x bands, NaN for all-zero frames). Same frames and timing model as mic_band_levels.band_levels."""
+    in dB (frames x bands, NaN for all-zero frames). Same frames and timing model as mic_band_levels.band_levels.
+    t_from / t_to (s after the file-name start) restrict the frames computed (only that part of the file is read)."""
     mic, start, end = parse_name(p)
     x, rate = load_samples(p)
     n = len(x)
@@ -53,18 +55,20 @@ def frame_envelope(p: Path) -> tuple[pd.Timestamp, np.ndarray, np.ndarray, dict]
     sel = [(f >= lo) & (f < hi) for f in [freqs] for _, lo, hi in BANDS]
     norm = 32768.0 ** 2 * L * float((win.astype(np.float64) ** 2).sum()) / 4
     nf = n // L
-    out = np.full((nf, len(BANDS)), np.nan, np.float32)
+    fa = 0 if t_from is None else int(np.clip(np.floor((t_from - t_first) * rate_eff / L), 0, nf))
+    fb = nf if t_to is None else int(np.clip(np.ceil((t_to - t_first) * rate_eff / L) + 1, 0, nf))
+    out = np.full((fb - fa, len(BANDS)), np.nan, np.float32)
     step = 3000
-    for f0 in range(0, nf, step):
-        f1 = min(nf, f0 + step)
+    for f0 in range(fa, fb, step):
+        f1 = min(fb, f0 + step)
         seg = np.asarray(x[f0 * L:f1 * L], dtype=np.float32).reshape(f1 - f0, L)
         nz = np.any(seg != 0, axis=1)
         seg -= seg.mean(axis=1, keepdims=True)
         P = np.abs(np.fft.rfft(seg * win, axis=1)) ** 2 / norm
         pb = np.stack([P[:, s].sum(axis=1) for s in sel], axis=1)
         with np.errstate(divide="ignore"):
-            out[f0:f1] = np.where(nz[:, None], 10 * np.log10(pb + 1e-20), np.nan)
-    centre = t_first + (np.arange(nf) + 0.5) * L / rate_eff
+            out[f0 - fa:f1 - fa] = np.where(nz[:, None], 10 * np.log10(pb + 1e-20), np.nan)
+    centre = t_first + (np.arange(fa, fb) + 0.5) * L / rate_eff
     return start, centre, out, {"file": p.name, "timing": timing, "rate_eff": rate_eff, "t_first_s": t_first, "span_s": span}
 
 
@@ -342,6 +346,230 @@ def pilot(a) -> None:
     print("written", rd / "ephys_spikes_mic_imu_sync_pilot_2026c.md")
 
 
+OFFSET_S = -0.02                 # pilot median: PC time of a mic event = mic time - 0.02 s
+PEAK_DB = 10.0
+
+
+def morning_windows() -> list[tuple[pd.Timestamp, pd.Timestamp, str]]:
+    """Plan Amendment 1: per date, [round_start - 60 min, round_start - 5 min] with round_start = the earliest logged /
+    inferred round stop between 05:00 and 10:00; else 07:00-08:00; minus logged acoustic field events."""
+    import yaml
+    from mic_wake_pilot import ROOT
+    g0 = json.load(open(ROOT / "results/2026c/ephys_spikes/reports/run_manifest_sleep_schedule_phase0_2026c.json"))["run_dir"]
+    g = pd.read_csv(Path(g0) / "gaps.csv", parse_dates=["gap_start", "gap_end"])
+    g = g[g.cause.isin(["round_logged", "round_inferred"])]
+    fe = [e for e in yaml.safe_load(open(ROOT / "cohorts/2026c.yaml", encoding="utf-8"))["field_events"] if e.get("kind") == "acoustic"]
+    out = []
+    for d in pd.date_range("2026-08-31", "2026-09-11"):
+        rs = g[(g.gap_start >= d + pd.Timedelta(hours=5)) & (g.gap_start < d + pd.Timedelta(hours=10))].gap_start.min()
+        if pd.isna(rs):
+            w0, w1, why = d + pd.Timedelta(hours=7), d + pd.Timedelta(hours=8), "07-08 (no morning round)"
+        else:
+            w0, w1, why = rs - pd.Timedelta(minutes=60), rs - pd.Timedelta(minutes=5), f"before the round at {rs:%H:%M}"
+        for e in fe:
+            es = pd.Timestamp(str(e["start"]))
+            ee = pd.Timestamp(str(e["end"])) if e.get("end") not in (None, "None") else es.normalize() + pd.Timedelta(days=1)   # unknown end: rest of that day
+            if es < w1 and ee > w0:
+                w1 = min(w1, es) if es > w0 else w1
+                if es <= w0:
+                    w0 = max(w0, ee)
+        if w1 - w0 >= pd.Timedelta(minutes=10) and w1 <= CUTOFF:
+            out.append((w0.floor("s"), w1.floor("s"), why))
+    return out
+
+
+def window_envelope(raw: Path, mic: str, w0: pd.Timestamp, n: int) -> tuple[np.ndarray, list[str]]:
+    """50-Hz band envelopes (n x bands, dB) of `mic` on the grid w0 + k/FS (mic timeline), from the hourly WAVs."""
+    w1 = w0 + pd.Timedelta(seconds=n / FS)
+    grid = np.full((n, len(BANDS)), np.nan, np.float32)
+    used = []
+    for day in sorted({w0.normalize(), w1.normalize(), (w0 - pd.Timedelta(hours=1)).normalize()}):
+        for f in sorted((raw / f"{day:%Y-%m-%d}" / mic).glob(f"{mic}_*.wav")):
+            if not NAME_RE.search(f.name):
+                continue
+            _, s, e = parse_name(f)
+            e = e if e is not None else s + pd.Timedelta(hours=1)
+            if s >= w1 or e <= w0:
+                continue
+            a, b = max(0.0, (w0 - s).total_seconds() - 1), (w1 - s).total_seconds() + 1
+            start, centre, env, info = frame_envelope(f, a, b)
+            rel = (start - w0).total_seconds() + centre
+            g = to_grid(w0, n, rel, env)
+            grid = np.where(np.isfinite(g), g, grid)
+            used.append(f"{day:%Y-%m-%d}/{mic}/{f.name}")
+    return grid, used
+
+
+def peak_onsets(m: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Frames >= PEAK_DB above the 2-s running median after >= 1 s below; returns indices and the peak size (dB, max
+    excess within 0.2 s)."""
+    base = pd.Series(m).rolling(2 * FS + 1, center=True, min_periods=FS).median().to_numpy()
+    exc = m - base
+    hi = np.nan_to_num(exc, nan=0) >= PEAK_DB
+    cs = np.r_[0, np.cumsum(hi)]
+    k = np.flatnonzero(hi)
+    k = k[k >= FS]
+    k = k[(cs[k] - cs[k - FS]) == 0]
+    size = np.array([np.nanmax(exc[i:i + 11]) for i in k]) if len(k) else np.array([])
+    return k, size
+
+
+def peaks(a) -> None:
+    """Plan Amendment 1: mic peaks -> in-house rats' IMU, in the quiet hour before the morning battery round."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "common"))
+    from _common import git_commit, write_json
+    from mic_wake_pilot import ROOT, load_zone
+    from output_paths import figure_dir, report_dir, run_dir
+    from sleep_cycles_v2 import build_records
+    from sleep_quant import md_table, save_fig
+    from sleep_schedule import N, R, REVIEW, STATES, W, included_sessions
+    out = run_dir("mic_imu_peaks", "2026c")
+    rd, fd = report_dir("2026c", "ephys_spikes"), figure_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    raw = Path(a.raw)
+    rng = np.random.default_rng(9)
+    rois = {r["name"]: r for r in json.load(open(ROOT / "wiser/configs/wiser_rois.json"))["rois"] if r["name"] in ("house_1", "house_2")}
+    zone = {an: load_zone(an, [d.strftime("%Y%m%d") for d in pd.date_range("2026-08-30", "2026-09-11")], rois) for an in ANIMALS}
+    th = json.load(open(sorted(OUT.glob("sleep_events_2026*/thresholds.json"))[-1]))["theta_vedba_ms2"]
+    recs = build_records(included_sessions(Path(REVIEW), Path(STATES)), Path(STATES))
+    t_min = min(rc["start"] for rc in recs).floor("s")
+    span = int((max(rc["end"] for rc in recs) - t_min).total_seconds()) + 2
+    S = {}
+    for an in ANIMALS:
+        s = np.zeros(span, np.int8)
+        for rc in recs:
+            if rc["animal"] == an:
+                o = int((rc["start"] - t_min).total_seconds())
+                s[o:o + len(rc["state"])] = rc["state"][:max(0, span - o)]
+        S[an] = s
+    W_ = morning_windows()
+    pd.DataFrame(W_, columns=["start", "end", "why"]).to_csv(out / "windows.csv", index=False)
+    sh = int(round(OFFSET_S * FS))
+    names = {W: "WAKE", N: "NREM", R: "REM", 0: "unknown"}
+    prow, rrow = [], []
+    tr_obs = {}
+    for w0, w1, why in W_:
+        n = int((w1 - w0).total_seconds() * FS)
+        secs = w0 + pd.to_timedelta(np.arange(n) // FS, unit="s")
+        imu = {an: imu_grid(an, w0, n) for an in ANIMALS}
+        ons = {an: onsets(10 ** imu[an].astype(np.float64) - 0.01, th[an]) if an in th else np.array([], int) for an in ANIMALS}
+        zz = {an: (zone[an].reindex(secs).to_numpy() if len(zone[an]) else np.full(n, None)) for an in ANIMALS}
+        for house, mic in HOUSE_MIC.items():
+            env, used = window_envelope(raw, mic, w0, n)
+            if np.isfinite(env[:, 2]).mean() < 0.5:
+                continue
+            for bi, band in enumerate([b[0] for b in BANDS]):
+                if band not in ("b1", "b2", "b3", "b4"):
+                    continue
+                pk, size = peak_onsets(env[:, bi].astype(np.float64))
+                keep = (pk + sh - 150 >= 0) & (pk + sh + 150 < n)
+                pk, size = pk[keep], size[keep]
+                far = np.ones(n, bool)
+                for k in pk:
+                    far[max(0, k - 2 * FS):k + 2 * FS] = False
+                cand = np.flatnonzero(far)
+                cand = cand[(cand + sh - 150 >= 0) & (cand + sh + 150 < n)]
+                nul = rng.choice(cand, size=min(len(cand), 5 * len(pk)), replace=False) if len(pk) and len(cand) else np.array([], int)
+                for which, ks, sz in (("observed", pk, size), ("null", nul, np.full(len(nul), np.nan))):
+                    for k, s_db in zip(ks, sz):
+                        ki = k + sh
+                        sec_abs = int((w0 - t_min).total_seconds()) + ki // FS
+                        movers, resp, valid = [], {}, 0
+                        for an in ANIMALS:
+                            if zz[an][min(ki, n - 1)] != house:
+                                continue
+                            v = imu[an]
+                            if np.isfinite(v[ki - 150:ki + 50]).mean() < 0.8:
+                                continue
+                            valid += 1
+                            st = int(S[an][sec_abs]) if 0 <= sec_abs < span else 0
+                            o = ons[an]
+                            hit = o[(o >= ki - 15) & (o <= ki + 25)]
+                            rsp = float(np.nanmax(v[ki - 15:ki + 26]) - np.nanmedian(v[ki - 150:ki - 49]))
+                            woke10 = bool(st in (N, R) and np.any(S[an][sec_abs + 1:sec_abs + 11] == W)) if 0 <= sec_abs < span - 11 else False
+                            rrow.append({"house": house, "band": band, "which": which, "t": w0 + pd.Timedelta(seconds=k / FS), "animal": an,
+                                         "state": names.get(st, "unknown"), "moved": bool(len(hit)), "lag_s": (hit[0] - ki) / FS if len(hit) else np.nan,
+                                         "resp": rsp, "woke10": woke10, "peak_db": s_db})
+                            resp[an] = rsp
+                            if len(hit):
+                                movers.append(an)
+                            if band == "b2":
+                                tr_obs.setdefault((which, names.get(st, "unknown")), []).append(v[ki - 150:ki + 151] - np.nanmedian(v[ki - 150:ki - 49]))
+                        if valid == 0:
+                            continue
+                        f_, off_ = "", np.nan
+                        for u in used:
+                            _, s0, e0 = parse_name(Path(u))
+                            tt = w0 + pd.Timedelta(seconds=k / FS)
+                            if s0 <= tt < (e0 if e0 is not None else s0 + pd.Timedelta(hours=1)):
+                                f_, off_ = u, (tt - s0).total_seconds()
+                        prow.append({"house": house, "mic": mic, "band": band, "which": which, "t": w0 + pd.Timedelta(seconds=k / FS),
+                                     "window": why, "peak_db": s_db, "rats_in_house": valid, "rats_moved": len(movers),
+                                     "class": "none" if not movers else ("one" if len(movers) == 1 else "several"),
+                                     "movers": ";".join(movers), "top_rat": max(resp, key=resp.get) if resp else "",
+                                     "top_resp": max(resp.values()) if resp else np.nan, "mic_file": f_, "mic_offset_s": off_})
+        print(w0, w1, why, "peaks so far", sum(1 for p in prow if p["which"] == "observed"), flush=True)
+    P, Rr = pd.DataFrame(prow), pd.DataFrame(rrow)
+    P.to_csv(out / "peaks.csv.gz", index=False)
+    Rr.to_csv(out / "peak_rats.csv.gz", index=False)
+    T1 = (P.groupby(["house", "band", "which"]).agg(peaks=("class", "size"), per_hour=("class", "size"),
+                                                     none=("class", lambda x: np.mean(x == "none")), one=("class", lambda x: np.mean(x == "one")),
+                                                     several=("class", lambda x: np.mean(x == "several")),
+                                                     rats_in_house=("rats_in_house", "mean")).reset_index())
+    hours = sum((w1 - w0).total_seconds() for w0, w1, _ in W_) / 3600
+    T1["per_hour"] = np.where(T1.which == "observed", T1.peaks / hours, np.nan)
+    Pb = P[(P.band == "b2")]
+    Pb = Pb.assign(tier=pd.cut(Pb.peak_db, [10, 15, 20, 30, 200], labels=["10-15 dB", "15-20 dB", "20-30 dB", ">30 dB"], right=False))
+    obs = Pb[Pb.which == "observed"].groupby(["house", "tier"], observed=True).agg(peaks=("class", "size"), any_moved=("class", lambda x: np.mean(x != "none"))).reset_index()
+    nul = Pb[Pb.which == "null"].groupby("house").agg(null_any_moved=("class", lambda x: np.mean(x != "none"))).reset_index()
+    T2 = obs.merge(nul, on="house")
+    Rb = Rr[Rr.band == "b2"]
+    T3 = (Rb.groupby(["which", "state"]).agg(rat_peaks=("moved", "size"), moved=("moved", "mean"), resp_median=("resp", "median"),
+                                              woke10=("woke10", "mean")).reset_index())
+    lag = Rb[(Rb.which == "observed") & Rb.moved].lag_s
+    T4 = pd.cut(lag, np.arange(-0.3, 0.51, 0.1)).value_counts().sort_index().rename("onsets").reset_index()
+    T4.columns = ["lag_bin_s", "onsets"]
+    top = P[(P.which == "observed") & (P.band == "b2")].sort_values("peak_db", ascending=False).head(30)
+    for nm, T in (("by_band", T1), ("by_size", T2), ("by_state", T3), ("lag", T4)):
+        T.to_csv(rd / f"ephys_spikes_mic_imu_peaks_{nm}_2026c.csv", index=False)
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    tax = np.arange(-150, 151) / FS
+    fig, ax = plt.subplots(figsize=(9, 3.5))
+    for (which, st), L_ in sorted(tr_obs.items()):
+        if len(L_) >= 20 and st in ("NREM", "REM", "WAKE"):
+            ax.plot(tax, np.nanmean(np.vstack(L_), 0), ls="-" if which == "observed" else ":", label=f"{st} {which} (n={len(L_)})")
+    ax.axvline(0, color="k", lw=0.4)
+    ax.set_xlabel("s from the mic peak (b2 4-20 kHz; PC time)")
+    ax.set_ylabel("log10 VeDBA - baseline")
+    ax.legend(fontsize=7)
+    ax.set_title(f"In-house rats' head movement around house-mic peaks, quiet hour before the morning round  {gc}", fontsize=8)
+    save_fig(fig, fd / "ephys_spikes_mic_imu_peaks_2026c.png")
+    L = ["# House-mic peaks → the in-house rats' head IMU, before the morning round (cohort 2026c)", "",
+         f"Plan `implementation_plan/2026-10-08-mic-imu-sync.md`, Amendment 1 (before results). Driver `ephys/mic_imu_sync.py peaks` "
+         f"(commit {gc}); bulk `{out}`. Descriptive; the sounds are not listened to. **Technical ledger.**", "",
+         "## Definitions", "", "```", (peaks.__doc__ or "").strip(), "Windows: " + (morning_windows.__doc__ or "").strip(),
+         "Peak: " + (peak_onsets.__doc__ or "").strip(),
+         "Per peak and in-house rat (WISER zone; IMU valid >= 80 % over -3..+1 s): moved = an IMU onset (Phase-6 rule) within "
+         "[-0.3, +0.5] s; resp = max log10 VeDBA over [-0.3, +0.5] s minus its median over [-3, -1] s; lag < 0 = the rat moved "
+         "before the sound; woke10 = an asleep rat scored WAKE within 10 s. PC time of a mic frame = mic time - 0.02 s. "
+         "Null = 5 random times per peak in the same windows, >= 2 s from any peak.", "```", "",
+         f"Windows: {len(W_)} ({hours:.1f} h); see `windows.csv` in the run folder.", "",
+         "## Peaks: share with none / one / several in-house rats moving (observed vs null)", "", md_table(T1.round(3)), "",
+         "## b2 peaks by size: share with any in-house rat moving vs the null", "", md_table(T2.round(3)), "",
+         "## Per rat and state (b2): moved, response, woke within 10 s", "", md_table(T3.round(3)), "",
+         "## Lag of the first IMU onset relative to the peak (b2, observed; < 0 = the rat moved first)", "", md_table(T4), "",
+         "![](../figures/ephys_spikes_mic_imu_peaks_2026c.png)", "",
+         "## The 30 largest b2 peaks (for listening; file under F:/3rd_rat or the storage copy, offset in s)", "",
+         md_table(top[["house", "t", "peak_db", "rats_in_house", "movers", "top_rat", "mic_file", "mic_offset_s"]].round(2)), ""]
+    flat = [ln for x in L for ln in (x if isinstance(x, list) else [x])]
+    (rd / "ephys_spikes_mic_imu_peaks_2026c.md").write_text("\n".join(flat) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_mic_imu_peaks_2026c.json", {"run_dir": str(out), "git_commit": gc})
+    print(T1.round(3).to_string(index=False), "\n", T2.round(3).to_string(index=False), "\n", T3.round(3).to_string(index=False), "\n", T4.to_string(index=False), flush=True)
+    print("written", rd / "ephys_spikes_mic_imu_peaks_2026c.md")
+
+
 def selftest() -> None:
     """Synthetic: an IMU burst train and a mic envelope with the same bursts 0.30 s earlier (mic ahead) + noise; the
     peak lag must be +0.30 s, a rolled IMU must not couple, and the onset rule must find the bursts."""
@@ -370,7 +598,7 @@ def selftest() -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["pilot"])
+    ap.add_argument("cmd", nargs="?", choices=["pilot", "peaks"])
     ap.add_argument("--raw", default="F:/3rd_rat")
     ap.add_argument("--hours-per-mic", type=int, default=6)
     ap.add_argument("--selftest", action="store_true")
@@ -379,6 +607,8 @@ def main() -> None:
         selftest()
     elif a.cmd == "pilot":
         pilot(a)
+    elif a.cmd == "peaks":
+        peaks(a)
     else:
         ap.print_help()
 

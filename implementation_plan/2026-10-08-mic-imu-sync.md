@@ -103,3 +103,39 @@ for every rat in MIC02 09-04 12:00 (a file offset).
   - the 50-Hz band-envelope cache.
 - **Attribution by local correlation** around each sound, the rat with the highest r, tested against shifted times.
   This replaces the onset rule.
+
+## Amendment 1 — mic peaks → IMU, in the quiet hour before the morning battery round (the user, 2026-10-08; before results)
+
+**The user:** "Detect mic peaks, simplest first: daytime, rats asleep in the house; for a house-mic peak, look at the
+IMU disturbance; 7–8 am, nobody around"; then "before the battery change". The morning round itself falls at 06:45–08:40
+on 9 of 11 days, so the window follows the round.
+
+**Windows.**
+- Per date (08-31 → 09-11): from round_start − 60 min to round_start − 5 min. round_start = the earliest logged /
+  inferred round stop between 05:00 and 10:00 (Phase-0 gap table).
+- Dates without such a round: 07:00–08:00.
+- Minus the logged acoustic field events (cohorts/2026c.yaml `field_events`).
+
+**Mic peaks.**
+- Per house mic (MIC02 = house_1, MIC01 = house_2), 50-Hz envelope as in the pilot.
+- A peak = a frame ≥ 10 dB above its 2-s running median after ≥ 1 s below; peak size = that excess (dB).
+- Primary band b2 (4–20 kHz); b1 (0.5–4 kHz) and b3 / b4 (20–100 kHz) are reported.
+- PC time = mic time − 0.02 s (the pilot's median offset).
+
+**Per peak and in-house rat** (WISER zone = that house; valid IMU):
+- the FINAL score at the peak;
+- `moved` = a Phase-6 IMU onset within [−0.3, +0.5] s;
+- `resp` = the maximum of log10 VeDBA over [−0.3, +0.5] s minus its median over [−3, −1] s;
+- the onset lag (negative = the rat moved before the sound).
+
+**Per peak:** the number of in-house rats moving (none / one / several), and the one with the largest resp.
+
+**Null.** The same at 5 random times per peak in the same windows, ≥ 2 s from any peak.
+
+**Reported:**
+- the shares none / one / several, observed vs null, by peak size;
+- the lag distribution;
+- the event-triggered mean VeDBA per rat and state;
+- whether asleep rats wake (scored WAKE) within 10 s more often after a peak than at null times.
+
+Descriptive; nothing is promoted from it without the user's listening check.
