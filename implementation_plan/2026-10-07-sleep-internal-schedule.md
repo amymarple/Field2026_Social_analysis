@@ -539,3 +539,28 @@ the REM rules, unless a headline depends on REM entries the rules changed.
 - The across-gap comparison is not affected this way: windows A and B lie in different sessions, and independent
   session errors cannot produce a positive slope.
 - No other part changed. The rerun reproduces the other Phase 2 numbers, as the fits are deterministic.
+
+## 12. Amendment 3 (2026-10-07, AFTER the Phase 2 results; the user's follow-up questions) — Phase 2b
+
+Driver `ephys/sleep_schedule.py phase2b` → `ephys/sleep_schedule_phase2b.py`; definitions are in its docstring.
+
+- **E1, effect size on an interpretable scale** (the user: "are such small gains biologically meaningful?").
+  - Measure: the share of held-out NREM bouts ending in REM, among those the model rates least vs most likely
+    (deciles of π). Reported without and with history.
+  - The %-log-loss per 10-s step is diluted by the near-certain "stay" steps; it is a reliability measure, not an
+    effect size.
+- **E2, NREM depth** (the user: "is a long wake followed by more NREM simply because NREM is deeper?").
+  - Depth = the scorer's SW metric, z-scored per session on NREM seconds.
+  - (a) After wakes ≥ 7 min: depth over the first 120 s of post-wake NREM. Is it ~ ln d? Does the ln d effect on the
+    NREM before the first REM survive with depth controlled?
+  - (b) REM hazard: lagged depth [t−150, t−30) s. It is lagged because the scorer defines NREM by SW (15-s smoothing),
+    so a contemporaneous SW is partly circular. Held-out comparison M2t vs M2t + depth, and the hazard curve per depth
+    tertile.
+- **E3, NREM tails** (the user: "compare the tail of natural NREM transitions with NREM cut by the battery change").
+  - z-SW, z-theta and z-EMG over the 180 s before: natural NREM → WAKE, natural NREM → REM, and the end of the last
+    session before each usable gap, split by cause and by how the cell ended.
+  - The state in the last second and the NREM share of the last 60 s.
+- **E4, circadian confound of compensation** (the user: "rounds happen morning and evening — test it"): the
+  across-gap compensation slopes split by morning vs evening rounds, on both scorings.
+- **Literature:** an Opus subagent audit on REM-permissive substates (requested by the user);
+  report `scratchpad/lit_rem_permissive_substates.md`, to be copied into `docs/methods/` when it is done.

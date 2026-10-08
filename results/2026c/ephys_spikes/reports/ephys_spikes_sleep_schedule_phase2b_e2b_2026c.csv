@@ -1,0 +1,2 @@
+comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+M2t_depth vs M2t,NREM steps with >= 20 s of NREM in the lag window,117798,2283,-0.21767932134477067,-0.3292604007585655,-0.10076276937357363,12,15,6,6,True

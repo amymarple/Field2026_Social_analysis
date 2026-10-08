@@ -276,8 +276,8 @@ def main() -> None:
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     jobs = [(str(f), str(out / parse_name(f)[0]), a.redo) for f in files]
-    for _, o in jobs:
-        Path(o).mkdir(parents=True, exist_ok=True)
+    for j in jobs:
+        Path(j[1]).mkdir(parents=True, exist_ok=True)
     rows = []
     if a.workers > 1:
         with ProcessPoolExecutor(a.workers) as ex:
