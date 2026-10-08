@@ -43,7 +43,7 @@ DST=${DST:-/fs/cbsuruizfs1/storage/hc997/SocialFieldRat2026/3rd_rat/analysis}
 JOBS=${JOBS:-8}
 PARTS=${PARTS:-"lfp sleep"}
 MARK=.copy_to_storage_in_progress
-COMMIT=$(cat "$HOME/src/Field2026_Social_analysis/.git_commit" 2>/dev/null || echo unknown)
+COMMIT=$(cat "$(cd "$(dirname "$0")" && pwd)/../../.git_commit" 2>/dev/null \n         || cat "$HOME/src/Field2026_Social_analysis/.git_commit" 2>/dev/null || echo unknown)   # the checkout this copy runs from
 WORK=$(mktemp -d "$LOGS/copy_to_storage_work_XXXX")
 say() { echo "[$(date +%F' '%T)] $*"; }
 
