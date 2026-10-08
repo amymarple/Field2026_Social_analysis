@@ -219,3 +219,10 @@ relabelling ("let fate decide").
 - **New flag:** "low ripple contrast … screen per session" on those blocks, also in the server README.
 - **Reading of `spw_ref` there:** a depth gradient that is negative at the top, not a layer reversal. `spw_ref` stays in
   the scan as the sharp-wave measure; the user's view of the LFP decides.
+- **SF11 field record** (Notion, field2026-sync `from-lab/2026-09-07_cohort3-sf11-implant-loss-lab-note.md`, registry
+  `probe_notes`):
+  - The lab's 09-06 16:30 assessment is "above CA1": deep cortex to callosum/alveus, about 300–600 µm above the
+    pyramidal layer, with 1–6 coherent SWR-like events/min and positive sharp waves.
+  - The ¼-turn advances on 09-04, 09-05 15:11 and 09-06 13:34 produced no measurable displacement (a loosening
+    headcap).
+  - So SF11's automatic events (~120–160/min in NREM) are not CA1 ripples. SF11's SWR output is a negative control.

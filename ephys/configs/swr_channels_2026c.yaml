@@ -53,6 +53,10 @@ SF11:   # ripple largest at the shank tips but tiny; no clear reversal in the LF
         # ripple site. Ripple-only + movement / LFP-EMG exclusion (confirmed 10-08). LOW CONTRAST on every block: k-means
         # selects 23-29 % of candidates, NREM 129-166 / REM 93-129 events/min before exclusion -> not SWR-specific; the user
         # chose not to relabel ("let fate decide") - screen sessions downstream (kmeans_selected_frac, rates per state)
+        # Field record: lab 09-06 16:30 = ABOVE CA1 (deep cortex L5/6 to callosum / alveus, ~300-600 um above the pyramidal
+        # layer; 1-6 coherent SWR-like events/min, positive sharp waves); operator: SF11 = cortical slow-wave dataset. The
+        # 1/4-turn advances (09-04 14:00, 09-05 15:11, 09-06 13:34, down) moved nothing measurable (loosening headcap; shank 2
+        # x4 LFP loss 09-05 18:08 -> 09-06 12:46). No impedance measured. -> SF11 SWR output = negative control, not CA1 SWRs
   - {boundary_features: ripple, valid_from: null, reference_session: "3_20260903_080159.850", ripple_col: 34, sharpwave_col: 37, noise_col: 11, shank_ripple: {1: 62, 2: 34, 3: 3, 4: 30},
      source: "scan 3_20260903_080159.850: ripple 34 ratio 3.40; SW 37 +17 uV; noise 11 ratio 1.48 corr 0.24",
      spw_ref: "ripple 34 +49 uV, SW 37 -67 uV (most negative on shank 2: 42 -71)", flags: ["no clear reversal (user, LFP)", "low ripple contrast: k-means selects 19-29 % of candidates (other animals 4-8 %), NREM rates ~2x - screen per session"], confirmed: true}
