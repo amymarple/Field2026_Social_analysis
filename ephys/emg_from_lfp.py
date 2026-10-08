@@ -302,7 +302,37 @@ def main() -> None:
                 (err / f"{j['animal']}_{j['session']}.txt").write_text(traceback.format_exc())
                 print(f"ERROR {j['animal']} {j['session']} -> {err}", flush=True)
     print(f"done: {len(jobs) - n_bad} ok, {n_bad} errors", flush=True)
+    write_readme(Path(a.out), root, a.pc_time_root, a.pipeline_root, gc)
     sys.exit(1 if n_bad else 0)
+
+
+def write_readme(out: Path, lfp_root: Path, pc_root: str | None, pp_root: str, gc: str) -> None:
+    import subprocess
+    ppc = subprocess.run(["git", "-C", pp_root, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip() or "unknown"
+    n = len(list(out.glob("SF*/*.EMGFromLFP.json")))
+    (out / "README.md").write_text(f"""# LFP-EMG, cohort 2026c (one folder per animal)
+
+Made by ephys/emg_from_lfp.py (repo commit {gc}; PreprocessPipeline commit {ppc}), {time.strftime('%Y-%m-%d %H:%M')}, from
+{lfp_root}/<SFxx>/<session>.lfp (1250 Hz, 450-Hz low-pass; storage analysis/lfp); field-PC time from {pc_root}.
+{n} sessions. The tool's docstring has the full definitions.
+
+- <session>.EMGFromLFP.LFP.mat: the lab's standard product (the format of day8.EMGFromLFP.LFP.mat of PPP7 on ayadata;
+  neurocode getEMGFromLFP = PreprocessPipeline state_scoring._compute_emg_from_lfp). Mean pairwise correlation of the
+  300-600 Hz band (effectively 300-450 Hz here), +-0.5-s windows at 2 Hz, one channel per shank (the first usable
+  channel of each spike group of the current XML, ephys/configs/probes_2026c.yaml). Timestamps are seconds from the
+  session start.
+- <session>.EMGFromLFP50Hz.npz: the fast version for event work. Same band, 50.4-ms windows every 20 ms, two channels
+  per shank. j = bin index (amplifier sample 400 j = make_imu's 50-Hz sample j), t_pc_ms = field-PC ms since the
+  session-start day's midnight (pc_time_fit.json formula), corr, log_rms (log10 RMS of the band, ADC units), channels.
+- <session>.EMGFromLFP.json: channels of both products, parameters, timing.
+
+Caveats:
+- SF07 carries a large common-mode signal on all channels (probes_2026c.yaml), so its correlation baseline is high.
+  Use changes, not absolute levels.
+- SF12's contacts fail from 2026-09-10 14:53:45 (cohorts/2026c.yaml quality_flags).
+- The scorer's earlier lfpemg pilot files used all 64 channels: the pipeline flattens a Python list of equal-length spike
+  groups. These files use one channel per shank.
+""", encoding="utf-8")
 
 
 if __name__ == "__main__":

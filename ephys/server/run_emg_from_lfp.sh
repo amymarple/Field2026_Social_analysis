@@ -23,29 +23,7 @@ COMMIT=$(cat ../.git_commit 2>/dev/null || echo unknown)
 PPC=$(git -C "$PP" rev-parse --short HEAD 2>/dev/null || echo unknown)
 echo "start $(date -Is)  repo $COMMIT  pipeline $PPC  workers $WORKERS  out $OUT"
 "$PY" emg_from_lfp.py --selftest || exit 1
-cat > "$OUT/README.md" <<EOR
-# LFP-EMG, cohort 2026c (one folder per animal)
-
-Made by ephys/emg_from_lfp.py (repo commit $COMMIT) via ephys/server/run_emg_from_lfp.sh, $(date -Is), from
-$ST/lfp/<SFxx>/<session>.lfp (1250 Hz, 450-Hz low-pass).
-
-- <session>.EMGFromLFP.LFP.mat: the lab's standard product (as day8.EMGFromLFP.LFP.mat of PPP7 on ayadata; neurocode
-  getEMGFromLFP = PreprocessPipeline state_scoring._compute_emg_from_lfp, pipeline commit $PPC). Mean pairwise
-  correlation of the 300-600 Hz band (effectively 300-450 Hz here), +-0.5-s windows at 2 Hz, one channel per shank
-  (the first usable channel of each spike group of the current XML, ephys/configs/probes_2026c.yaml). Timestamps are
-  seconds from the session start.
-- <session>.EMGFromLFP50Hz.npz: the fast version for event work. Same band, 50.4-ms windows every 20 ms, two channels
-  per shank. j = bin index (amplifier sample 400 j = make_imu's 50-Hz sample j), t_pc_ms = field-PC ms since the
-  session-start day's midnight (pc_time_fit.json formula), corr, log_rms (log10 RMS of the band, ADC units), channels.
-- <session>.EMGFromLFP.json: channels of both products, parameters, timing.
-
-Caveats:
-- SF07 carries a large common-mode signal on all channels (probes_2026c.yaml), so its correlation baseline is high.
-  Use changes, not absolute levels.
-- SF12's contacts fail from 2026-09-10 14:53:45 (cohorts/2026c.yaml quality_flags).
-- The scorer's earlier lfpemg pilot files used all 64 channels: the pipeline flattens a list of equal-length spike
-  groups. These files use one channel per shank.
-EOR
+# README.md is written by emg_from_lfp.py itself (the same text for a local or a server run)
 PART=emg_from_lfp bash server/run_then_store.sh "$PY" emg_from_lfp.py --lfp-root "$ST/lfp" --out "$OUT" \
     --pc-time-root "$ST/pc_time" --pipeline-root "$PP" --workers "$WORKERS" ${REDO:+--redo}
 echo "end $(date -Is)  sessions: $(ls "$OUT"/SF*/*.EMGFromLFP.json 2>/dev/null | wc -l)  errors: $(ls "$OUT"/_errors 2>/dev/null | wc -l)"
