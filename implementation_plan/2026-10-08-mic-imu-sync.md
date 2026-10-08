@@ -72,3 +72,34 @@ storage as a new part (`mic_imu_sync`). If it fails, I report why (signal, band,
 - Video (waits for tracking; the user).
 - Labelling sounds as external.
 - The camera audio (CH01 / CH02 have stream timestamps and are a separate check).
+
+## Pilot result (2026-10-08, report `results/2026c/ephys_spikes/reports/ephys_spikes_mic_imu_sync_pilot_2026c.md`)
+
+**Criteria (fixed before results):**
+- (a) PASS: 95.7 % of in-house pairs coupled (44 / 46).
+- (b) PASS: 2.7 % of pairs elsewhere coupled. This also confirms MIC02 = house_1.
+- (c) FAIL by the rule: 9 / 12 mic-hours agree within 40 ms. In each of the 3 failures one rat deviates while the
+  others agree:
+  - SF07 −0.18 s vs the house's −0.02 s (09-03 03:00). Its session `4_20260903_001558.656` has a "one-end-only"
+    PC-time fit.
+  - SF10 −0.08 s (09-04 05:00). That hour lies in its session's extrapolated 7-h tail.
+  - SF11 −0.08 s (09-06 14:00). OK-native fit, 15 ms residual.
+  
+  So the failures look like logger-clock errors, which the mic exposes as a clock common to the house; they are not
+  mic errors.
+
+**Mic offset under the file-name timing model:** −0.02 s in 10 of 12 hours (both mics), −0.04 s in one, and +0.18 s
+for every rat in MIC02 09-04 12:00 (a file offset).
+
+**Not resolved:**
+- **Drift within an hour.** The 10-min windows are too noisy: single windows jump by up to 1.8 s.
+- **Attribution of single transients by onset coincidence.** House_2 transients have an in-house onset within 0.2 s in
+  10–23 % vs 6–10 % at shifted times. House_1 is at chance.
+
+**Proposed next (needs the user's go):**
+- **Full run** over every mic file, without the 10-min windows and with 10 null shifts:
+  - an offset per file = the median over the coupled in-house rats;
+  - a per-rat deviation from that median = a logger-clock QC flag;
+  - the 50-Hz band-envelope cache.
+- **Attribution by local correlation** around each sound, the rat with the highest r, tested against shifted times.
+  This replaces the onset rule.
