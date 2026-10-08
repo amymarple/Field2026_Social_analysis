@@ -43,7 +43,7 @@ DST=${DST:-/fs/cbsuruizfs1/storage/hc997/SocialFieldRat2026/3rd_rat/analysis}
 JOBS=${JOBS:-8}
 PARTS=${PARTS:-"lfp sleep"}
 MARK=.copy_to_storage_in_progress
-COMMIT=$(cat "$(cd "$(dirname "$0")" && pwd)/../../.git_commit" 2>/dev/null \n         || cat "$HOME/src/Field2026_Social_analysis/.git_commit" 2>/dev/null || echo unknown)   # the checkout this copy runs from
+COMMIT=$(cat "$(cd "$(dirname "$0")" && pwd)/../../.git_commit" 2>/dev/null || cat "$HOME/src/Field2026_Social_analysis/.git_commit" 2>/dev/null || echo unknown)   # the checkout this copy runs from
 WORK=$(mktemp -d "$LOGS/copy_to_storage_work_XXXX")
 say() { echo "[$(date +%F' '%T)] $*"; }
 
@@ -128,7 +128,9 @@ for part in $PARTS; do
   t1=$(date +%s); say "$part: copy done in $((t1 - t0)) s"
 
   # ---- V1: paths + sizes
-  ( cd "$D" && find . -type f ! -name "$MARK" ! -name MD5SUMS ! -name VERIFY.txt ! -name VERIFY_previous.txt ! -name README.md -printf '%P\t%s\n' ) \
+  # A README written on storage by hand (lfp, sleep) is not checked; one that came with the source is (emg_from_lfp, 2026-10-08).
+  rx=(! -name README.md); grep -q "^README.md"$'\t' "$WORK/$part.expected" && rx=()
+  ( cd "$D" && find . -type f ! -name "$MARK" ! -name MD5SUMS ! -name VERIFY.txt ! -name VERIFY_previous.txt "${rx[@]}" -printf '%P\t%s\n' ) \
     | LC_ALL=C sort > "$WORK/$part.found"
   if diff -q "$WORK/$part.expected" "$WORK/$part.found" > /dev/null; then v1=PASS; else v1=FAIL; fi
   diff "$WORK/$part.expected" "$WORK/$part.found" | head -20 > "$WORK/$part.v1diff"
