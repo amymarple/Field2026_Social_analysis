@@ -292,8 +292,113 @@ def add_video(run: Path, raw: Path, only: list[str] | None, workers: int) -> Non
     print("page updated", run / "index.html")
 
 
+IMU_ROOT = Path("D:/3rd_rat_spikes/analysis/imu")
+
+
+def imu_window(an: str, t: pd.Timestamp) -> np.ndarray | None:
+    """VeDBA (m/s^2) of `an` at 50 Hz over [t - PRE, t + POST] on the field-PC clock (NaN where invalid), from the make_imu
+    session that covers t; None if no session covers it."""
+    for jf in sorted((IMU_ROOT / an).glob("*.imu.json")):
+        j = json.loads(jf.read_text())
+        s0 = pd.Timestamp(j["start_local"])
+        if not (s0 <= t - pd.Timedelta(seconds=PRE) and t + pd.Timedelta(seconds=POST) <= s0 + pd.Timedelta(seconds=j["duration_s"])):
+            continue
+        with np.load(jf.with_name(jf.name.replace(".imu.json", ".imu.npz"))) as z:
+            if "t_pc_ms" not in z.files:
+                return None
+            tp, v = z["t_pc_ms"], z["vedba_ms2"].astype(np.float64)
+            bad = z["unreliable"] | z["frozen"] | z["invalid"]
+        rel = (s0.normalize() + pd.to_timedelta(tp, unit="ms") - t).total_seconds().to_numpy()
+        grid = np.arange(-PRE, POST + 1e-9, 0.02)
+        k = np.clip(np.searchsorted(rel, grid), 1, len(rel) - 1)
+        k = np.where(np.abs(rel[k - 1] - grid) < np.abs(rel[k] - grid), k - 1, k)
+        out = np.where(bad[k] | (np.abs(rel[k] - grid) > 0.03), np.nan, v[k])
+        return out
+    return None
+
+
+def imu_png(path: Path, m: dict, traces: list[tuple[str, str, np.ndarray | None]]) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    n = len(traces)
+    hgt = 0.6 + 0.42 * n
+    fig = plt.figure(figsize=(9, hgt))
+    ax = fig.add_axes((AX[0], 0.45 / hgt, AX[2], 1 - 0.75 / hgt))    # same horizontal geometry as the spectrograms
+    grid = np.arange(-PRE, POST + 1e-9, 0.02)
+    for i, (an, where, v) in enumerate(traces):
+        y0 = n - 1 - i
+        if v is not None:
+            y = np.clip((np.log10(v + 0.01) + 2) / 4, 0, 1) * 0.9          # log10 VeDBA -2..+2 -> 0..0.9 of the row
+            ax.plot(grid, y0 + y, lw=0.7, color="crimson" if an == m["animal"] else "k")
+        ax.text(-PRE - 0.3, y0 + 0.35, f"{an} {where}", ha="right", va="center", fontsize=7,
+                color="crimson" if an == m["animal"] else "k")
+    ax.axvline(0, color="cyan", lw=1.2)
+    ax.set_xlim(-PRE, POST)
+    ax.set_ylim(0, n)
+    ax.set_yticks([])
+    ax.set_xlabel("s from the movement onset (cyan); head VeDBA per rat, log scale (0.01-100 m/s^2 per row)", fontsize=7)
+    ax.set_title(f"{m['id']}: head IMU of every rat (focal rat in red); field-PC clock via the logger time chain", fontsize=8)
+    fig.savefig(path, dpi=90)
+    plt.close(fig)
+
+
+def add_imu(run: Path) -> None:
+    """Who moved? One IMU panel per card, inside a <details> block placed after the spectrograms (opened = shown;
+    the page stores whether it was opened before the first answer)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "common"))
+    from mic_wake_pilot import ANIMALS, ROOT, load_zone
+    meta = json.loads((run / "events.json").read_text(encoding="utf-8"))
+    rois = {r["name"]: r for r in json.load(open(ROOT / "wiser/configs/wiser_rois.json"))["rois"] if r["name"] in ("house_1", "house_2")}
+    days = sorted({pd.Timestamp(m["t_onset"]).strftime("%Y%m%d") for m in meta})
+    zone = {an: load_zone(an, days, rois) for an in ANIMALS}
+    page = (run / "index.html").read_text(encoding="utf-8")
+    for m in meta:
+        t = pd.Timestamp(m["t_onset"])
+        rows = []
+        for an in ANIMALS:
+            z = zone[an]
+            w = z.get(t.floor("s"), "unknown") if len(z) else "unknown"
+            v = imu_window(an, t)
+            if v is None and w == "unknown":
+                continue
+            rows.append((an, f"({w})" + ("" if v is not None else " no IMU"), v))
+        rows.sort(key=lambda r: (r[1] != f"({m['house']})", r[0] != m["animal"], r[0]))   # focal house first, focal rat on top
+        png = run / "media" / f"{m['id']}_imu.png"
+        imu_png(png, m, rows)
+        m["imu_png"] = f"media/{m['id']}_imu.png"
+        block = (f'<details class="imu" data-id="{m["id"]}"><summary><b>Head IMU of every rat — who moved?</b> '
+                 f'(opens the movement traces; the green bar follows playback)</summary>'
+                 f'<div class="sw"><img src="{m["imu_png"]}"><div class="bar"></div></div></details>')
+        anchor = f'<div class="card" id="{m["id"]}">'
+        if anchor in page and f'{m["id"]}_imu.png' not in page:
+            i = page.index(anchor)
+            j = page.index("<p><b>What happened", i)
+            page = page[:j] + block + page[j:]
+        print(m["id"], [(r[0], r[1]) for r in rows], flush=True)
+    js = """<script>
+document.querySelectorAll('details.imu').forEach(d => d.addEventListener('toggle', () => {
+  if (!d.open) return; const id = d.dataset.id; const s = load(); s[id] = s[id] || {};
+  if (s[id].imu_opened_before_answer === undefined) s[id].imu_opened_before_answer = !s[id].verdict_blind;
+  save(s); }));
+</script>"""
+    if "details.imu" not in page:
+        page = page.replace("</body></html>", js + "</body></html>")
+        page = page.replace('rows=[["id","verdict_blind","verdict_final","usv","note","saved_at"].join(",")]',
+                            'rows=[["id","verdict_blind","verdict_final","usv","note","saved_at","imu_opened_before_answer"].join(",")]')
+        page = page.replace('JSON.stringify(v.note||""),v.saved_at||""].join(",")',
+                            'JSON.stringify(v.note||""),v.saved_at||"",v.imu_opened_before_answer===undefined?"":(v.imu_opened_before_answer?1:0)].join(",")')
+    (run / "events.json").write_text(json.dumps(meta, indent=1, default=str), encoding="utf-8")
+    (run / "index.html").write_text(page, encoding="utf-8")
+    print("page updated", run / "index.html")
+
+
 if __name__ == "__main__":
-    if "--add-video" in sys.argv:
+    if "--add-imu" in sys.argv:
+        api = argparse.ArgumentParser()
+        api.add_argument("--add-imu", required=True, help="an existing mic_listen_review run folder")
+        add_imu(Path(api.parse_args().add_imu))
+    elif "--add-video" in sys.argv:
         apv = argparse.ArgumentParser()
         apv.add_argument("--add-video", required=True, help="an existing mic_listen_review run folder")
         apv.add_argument("--raw", default="F:/3rd_rat")
