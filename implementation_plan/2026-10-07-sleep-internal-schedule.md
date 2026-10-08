@@ -633,3 +633,27 @@ Driver: `ephys/sleep_schedule.py phase3b`.
 
 Candidates for the next round (the user's list): spindles / sigma, ripples, temperature as a slow gate, heart rate from
 the accelerometer, and the mic listening check.
+
+## 15. Amendment 6 — Phase 4: ambient temperature as a slow REM gate (2026-10-08; the user: "mic, then temperature")
+
+Written **before any temperature result**. Literature
+([substates audit](../docs/methods/sleep_rem_permissive_substates_literature_2026-10-07.md)): ambient temperature is the
+only slow REM gate with causal rodent evidence (cold suppresses REM in rats; warmth raises it in mice).
+
+**Prediction (directional):** warmer than usual for the hour → REM entry more likely, and REM share of sleep higher.
+
+**Data.** `sleep_quant.load_weather`: the on-site console at 5 min, 08-31 → 09-12, with NWS KITH only inside the
+console's 09-02 / 03 uplink hole.
+
+**Analyses:**
+- **Temperature anomaly** = temperature minus its 2-harmonic time-of-day fit over the cohort. Raw temperature is
+  collinear with phase, which every model already holds.
+- **T1.** Held out, forward chaining: M2t vs M2t + anomaly. Also reported: the full-fit REM-vs-stay and Wake-vs-stay
+  coefficients per SD, and per-animal signs.
+- **T2.** Hourly REM share of sleep, and sleep share of recorded time, regressed on the anomaly + phase + day + animal.
+  Binomial GLM, SEs clustered by day.
+- **T3.** The night–day trade-off (claim #13) with the night and day mean anomalies as covariates. Does the slope
+  survive? It is run on both scorings.
+- **T4.** The empirical REM hazard against the NREM since REM, per anomaly tertile (description).
+
+The ambient temperature is outdoors; the houses buffer it, and no in-house temperature exists.

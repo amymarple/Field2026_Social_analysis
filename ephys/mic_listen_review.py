@@ -1,0 +1,203 @@
+r"""Blind listening page for the in-house microphone pilot (plan implementation_plan/2026-10-07-sleep-internal-schedule.md
+section 4 D; the user validates, the agent never judges sounds or images).
+
+For every event of the pilot's listening sample (8 per candidate class) and 8 control moments (the same animals 120 s
+before a wake, i.e. asleep): a 30-s window [t - 20, t + 10] s around t = the animal's head-IMU movement onset (controls:
+t - 120 s), on the field-PC clock, with
+  - the own-house mic: an audible clip (resampled to 48 kHz), a time-expanded clip of [t - 3, t] played 8x slower
+    (ultrasonic rat calls at 22 / 50 kHz become 2.7 / 6 kHz), a spectrogram 0-100 kHz;
+  - the other house's mic: a spectrogram;
+  - the outdoor CH01 camera audio (stream timestamps): an audible clip and a spectrogram 0-8 kHz.
+The candidate class and the cue values are hidden until the user has answered; the answers are kept in the browser and
+exported as CSV / JSON (keep them in ephys/configs/mic_listen_review_2026c/).
+
+Mic timing: file start from the name, samples spread over the name span as in ephys/mic_band_levels.py (the extract log
+gives rate_eff / t_first per file); the per-file timing error bound is shown on each card.
+
+Usage: python ephys/mic_listen_review.py --pilot-run <mic_wake_pilot run> [--raw F:/3rd_rat] [--audio-log <extract_log_*.csv>]
+"""
+from __future__ import annotations
+
+import argparse
+import html
+import json
+import subprocess
+import sys
+import wave
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parent))
+from mic_band_levels import FFMPEG, NAME_RE, parse_name, wav_info  # noqa: E402
+
+PRE, POST, SLOW_S, SLOW_X = 20, 10, 3, 8
+
+
+def find_file(raw: Path, stream: str, t: pd.Timestamp, ext: str) -> Path | None:
+    for day in {t.normalize(), (t - pd.Timedelta(hours=1)).normalize()}:
+        for f in sorted((raw / f"{day:%Y-%m-%d}" / stream).glob(f"{stream}_*.{ext}")):
+            if not NAME_RE.search(f.name):
+                continue
+            _, s, e = parse_name(f)
+            if e is not None and s <= t - pd.Timedelta(seconds=PRE) and t + pd.Timedelta(seconds=POST) <= e:
+                return f
+    return None
+
+
+def mic_segment(f: Path, t: pd.Timestamp, log: pd.DataFrame):
+    mic, s, e = parse_name(f)
+    rate, n, off = wav_info(f)
+    row = log[log.file == f.name]
+    rate_eff = float(row.rate_eff.iloc[0]) if len(row) else n / (e - s).total_seconds()
+    t_first = float(row.t_first_s.iloc[0]) if len(row) and np.isfinite(row.t_first_s.iloc[0]) else 0.0
+    err = row.timing_err_s.iloc[0] if len(row) and "timing_err_s" in row else np.nan
+    x = np.memmap(f, dtype="<i2", mode="r", offset=off, shape=(n,))
+    i0 = int(round(((t - s).total_seconds() - PRE - t_first) * rate_eff))
+    i1 = i0 + int(round((PRE + POST) * rate_eff))
+    if i0 < 0 or i1 > n:
+        return None
+    return np.asarray(x[i0:i1], dtype=np.float32), rate, rate_eff, err
+
+
+def write_wav(path: Path, x: np.ndarray, rate: int) -> None:
+    pcm = np.clip(x / max(1e-9, np.max(np.abs(x))) * 0.9 * 32767, -32768, 32767).astype("<i2")
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1), w.setsampwidth(2), w.setframerate(int(rate))
+        w.writeframes(pcm.tobytes())
+
+
+def spectro(path: Path, x: np.ndarray, rate: float, fmax: float, title: str) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from scipy.signal import spectrogram
+    nper = 4096 if rate > 100000 else 512
+    f, tt, S = spectrogram(x - x.mean(), fs=rate, nperseg=nper, noverlap=nper // 2)
+    keep = f <= fmax
+    fig, ax = plt.subplots(figsize=(9, 2.6))
+    ax.pcolormesh(tt - PRE, f[keep] / 1000, 10 * np.log10(S[keep] + 1e-12), shading="auto", cmap="magma")
+    ax.axvline(0, color="cyan", lw=1.2)
+    ax.set_ylabel("kHz")
+    ax.set_xlabel("s from the movement onset (cyan)")
+    ax.set_title(title, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=90)
+    plt.close(fig)
+
+
+def main() -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "common"))
+    from output_paths import run_dir
+    from scipy.signal import resample_poly
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--pilot-run", required=True)
+    ap.add_argument("--raw", default="F:/3rd_rat")
+    ap.add_argument("--audio-log", default=None)
+    ap.add_argument("--n-controls", type=int, default=8)
+    a = ap.parse_args()
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "common"))
+    pr, raw = Path(a.pilot_run), Path(a.raw)
+    logs = sorted(Path("D:/Field2026_analysis_out/2026c/audio_levels").glob("extract_log_*.csv")) if a.audio_log is None else [Path(a.audio_log)]
+    log = pd.read_csv(logs[-1])
+    S = pd.read_csv(pr / "d3_listening_sample.csv", parse_dates=["move_onset"])
+    E = pd.read_csv(pr / "d3_wake_events.csv", parse_dates=["move_onset"])
+    rng = np.random.default_rng(11)
+    C = E.drop(S.index.intersection(E.index), errors="ignore").sample(a.n_controls, random_state=11).copy()
+    C["candidate_class"] = "control (asleep, 120 s before a wake)"
+    C["move_onset"] = C.move_onset - pd.Timedelta(seconds=120)
+    ev = pd.concat([S.assign(kind="event"), C.assign(kind="control")], ignore_index=True)
+    ev = ev.iloc[rng.permutation(len(ev))].reset_index(drop=True)
+    ev["id"] = [f"L{i + 1:02d}" for i in range(len(ev))]
+    out = run_dir("mic_listen_review", "2026c")
+    (out / "media").mkdir(exist_ok=True)
+    cards, meta = [], []
+    for r in ev.itertuples():
+        t = pd.Timestamp(r.move_onset)
+        other = "MIC02" if r.own_mic == "MIC01" else "MIC01"
+        info = {"id": r.id, "t_onset": str(t), "animal": r.animal, "house": r.house, "own_mic": r.own_mic,
+                "kind": r.kind, "candidate_class": r.candidate_class, "housemates_first": "" if pd.isna(r.housemates_first) else r.housemates_first,
+                **{k: (None if pd.isna(getattr(r, k)) else round(float(getattr(r, k)), 1)) for k in
+                   ("own_b0_jump_db", "own_b1_jump_db", "own_b2_jump_db", "other_b0_jump_db", "other_b1_jump_db", "other_b2_jump_db", "outdoor_jump_db")}}
+        media, notes = {}, []
+        for role, mic in (("own", r.own_mic), ("other", other)):
+            f = find_file(raw / "", mic, t, "wav")
+            seg = mic_segment(f, t, log) if f else None
+            if seg is None:
+                notes.append(f"{role} mic {mic}: no covering file")
+                continue
+            x, rate, rate_eff, err = seg
+            spectro(out / "media" / f"{r.id}_{role}.png", x, rate_eff, 100000, f"{r.id} {role}-house mic {mic} ({'house_2' if mic == 'MIC01' else 'house_1'}) 0-100 kHz")
+            media[f"{role}_png"] = f"media/{r.id}_{role}.png"
+            if role == "own":
+                write_wav(out / "media" / f"{r.id}_own.wav", resample_poly(x, 48000, int(rate)), 48000)
+                k0 = int((PRE - SLOW_S) * rate_eff)
+                write_wav(out / "media" / f"{r.id}_own_slow.wav", x[k0:int(PRE * rate_eff)], int(rate) // SLOW_X)
+                media["own_wav"], media["own_slow_wav"] = f"media/{r.id}_own.wav", f"media/{r.id}_own_slow.wav"
+                info["own_timing_err_s"] = None if pd.isna(err) else float(err)
+        fc = find_file(raw, "CH01", t, "mp4")
+        if fc is not None:
+            _, s, _ = parse_name(fc)
+            off = (t - s).total_seconds() - PRE
+            wav = out / "media" / f"{r.id}_outdoor.wav"
+            subprocess.run([FFMPEG, "-v", "error", "-y", "-ss", f"{off:.3f}", "-t", str(PRE + POST), "-i", str(fc), "-vn", "-map", "0:a:0",
+                            "-af", "aresample=async=1", "-ac", "1", "-ar", "16000", str(wav)], check=False)
+            if wav.exists() and wav.stat().st_size > 1000:
+                with wave.open(str(wav)) as w:
+                    y = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32)
+                spectro(out / "media" / f"{r.id}_outdoor.png", y, 16000, 8000, f"{r.id} outdoor CH01 camera audio 0-8 kHz")
+                media["outdoor_wav"], media["outdoor_png"] = f"media/{r.id}_outdoor.wav", f"media/{r.id}_outdoor.png"
+        else:
+            notes.append("outdoor CH01: no covering file")
+        meta.append({**info, **media, "notes": "; ".join(notes)})
+        print(r.id, r.kind, "media:", sorted(media), notes, flush=True)
+    (out / "events.json").write_text(json.dumps(meta, indent=1, default=str), encoding="utf-8")
+    opts = ["outside sound (weather / machine / people / animal outside)", "housemate noise or movement",
+            "this rat's own noise", "nothing audible", "can't tell"]
+    for m in meta:
+        aud = "".join(f'<div class="a"><b>{lab}</b><br><audio controls preload="none" src="{m[k]}"></audio></div>'
+                      for k, lab in (("own_wav", "own-house mic (audible)"), ("own_slow_wav", f"own mic, last {SLOW_S} s x{SLOW_X} slower (ultrasound)"),
+                                     ("outdoor_wav", "outdoor CH01")) if k in m)
+        img = "".join(f'<img src="{m[k]}">' for k in ("own_png", "other_png", "outdoor_png") if k in m)
+        radios = "".join(f'<label><input type="radio" name="v_{m["id"]}" value="{html.escape(o)}"> {html.escape(o)}</label><br>' for o in opts)
+        cards.append(f'''<div class="card" id="{m["id"]}"><h3>{m["id"]} &nbsp; <small>{m["t_onset"]} · {m["animal"]} · {m["house"]} · own mic {m["own_mic"]}
+ · timing error bound {m.get("own_timing_err_s", "?")} s</small></h3>{aud}<div>{img}</div>
+<p><b>What happened just before the movement onset (cyan line)?</b><br>{radios}
+<label><input type="checkbox" name="usv_{m["id"]}"> rat ultrasonic call before the onset</label><br>
+<textarea name="n_{m["id"]}" rows="2" cols="80" placeholder="note"></textarea><br>
+<button onclick="reveal('{m["id"]}')">save + reveal</button><span class="rev" id="rev_{m["id"]}"></span></p></div>''')
+    page = f'''<!doctype html><html><head><meta charset="utf-8"><title>Mic listening review</title><style>
+body{{font-family:sans-serif;margin:16px;max-width:1100px}} .card{{border:1px solid #999;padding:8px;margin:12px 0}} img{{max-width:100%;display:block}}
+.a{{display:inline-block;margin-right:16px}} .rev{{color:#a33;margin-left:12px}}</style></head><body>
+<h2>In-house microphone listening review (blind) — cohort 2026c</h2>
+<p>{len(meta)} cards: wakes from NREM ({(ev.kind == "event").sum()}) and controls ({(ev.kind == "control").sum()}, the rat asleep), shuffled.
+Listen to the own-house mic (and the slowed clip for ultrasonic calls), look at the spectrograms (own house, other house, outdoor),
+then answer. The pilot's class appears only after you save. Answers stay in this browser; use <b>Export</b> at the end and save the
+files to <code>ephys/configs/mic_listen_review_2026c/</code>.</p>
+{"".join(cards)}
+<p><button onclick="exp()">Export CSV + JSON</button></p>
+<script>
+const META = {json.dumps({m["id"]: {k: m[k] for k in m if k not in ("own_png", "other_png", "outdoor_png", "own_wav", "own_slow_wav", "outdoor_wav")} for m in meta}, default=str)};
+const KEY = "mic_listen_review_2026c";
+function load(){{try{{return JSON.parse(localStorage.getItem(KEY)||"{{}}")}}catch(e){{return {{}}}}}}
+function save(s){{try{{localStorage.setItem(KEY, JSON.stringify(s))}}catch(e){{}}}}
+function val(id){{const r=document.querySelector('input[name="v_'+id+'"]:checked');return {{verdict:r?r.value:"",usv:document.querySelector('input[name="usv_'+id+'"]').checked,
+ note:document.querySelector('textarea[name="n_'+id+'"]').value}}}}
+function reveal(id){{const s=load();const v=val(id);if(!v.verdict){{alert("choose an answer first");return}}
+ s[id]=Object.assign(s[id]||{{}},v,{{saved_at:new Date().toISOString()}});if(!s[id].verdict_blind){{s[id].verdict_blind=v.verdict}}save(s);
+ const m=META[id];document.getElementById("rev_"+id).textContent="pilot class: "+m.candidate_class+" | housemates first: "+(m.housemates_first||"-")+
+ " | own jumps b0/b1/b2: "+m.own_b0_jump_db+"/"+m.own_b1_jump_db+"/"+m.own_b2_jump_db+" dB | other b1: "+m.other_b1_jump_db+" | outdoor: "+m.outdoor_jump_db+" dB";}}
+function exp(){{const s=load();const rows=[["id","verdict_blind","verdict_final","usv","note","saved_at"].join(",")];
+ for(const id in META){{const v=s[id]||{{}};rows.push([id,JSON.stringify(v.verdict_blind||""),JSON.stringify(v.verdict||""),v.usv?1:0,JSON.stringify(v.note||""),v.saved_at||""].join(","))}}
+ for(const [n,c,t] of [["mic_listen_review_answers.csv",rows.join("\\n"),"text/csv"],["mic_listen_review_answers.json",JSON.stringify(s,null,1),"application/json"]]){{
+ const b=new Blob([c],{{type:t}});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download=n;l.click();}}}}
+(function(){{const s=load();for(const id in s){{const v=s[id];const r=document.querySelector('input[name="v_'+id+'"][value="'+(v.verdict||"").replace(/"/g,'\\\\"')+'"]');if(r)r.checked=true;
+ const c=document.querySelector('input[name="usv_'+id+'"]');if(c)c.checked=!!v.usv;const t=document.querySelector('textarea[name="n_'+id+'"]');if(t)t.value=v.note||"";}}}})();
+</script></body></html>'''
+    (out / "index.html").write_text(page, encoding="utf-8")
+    print("written", out / "index.html")
+
+
+if __name__ == "__main__":
+    main()

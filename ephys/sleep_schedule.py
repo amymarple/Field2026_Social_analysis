@@ -826,7 +826,7 @@ def selftest() -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0", "phase1", "phase2", "phase2b", "phase3", "phase3b"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "phase1", "phase2", "phase2b", "phase3", "phase3b", "phase4"])
     ap.add_argument("--parts", nargs="*", default=["c2", "b1", "b1b", "c1", "b2"], help="phase2 parts")
     ap.add_argument("--b3-states", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_pass2med",
                     help="phase2: states for the B3 threshold check (fixed per-animal thresholds)")
@@ -854,6 +854,9 @@ def main() -> None:
     elif a.cmd == "phase3b":
         from sleep_schedule_phase3 import phase3b
         phase3b(a)
+    elif a.cmd == "phase4":
+        from sleep_schedule_temp import phase4
+        phase4(a)
     else:
         ap.print_help()
 
