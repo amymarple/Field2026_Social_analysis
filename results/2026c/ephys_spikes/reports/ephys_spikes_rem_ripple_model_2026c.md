@@ -1,6 +1,6 @@
 # Ripples in the REM-entry model (cohort 2026c)
 
-Plan, pre-registered before any fit: [2026-10-09-rem-ripple-model.md](../../../../implementation_plan/2026-10-09-rem-ripple-model.md) (Amendment 1 = the model owner's reply; Amendment 2 = the artifact checks, written before they ran). Driver `ephys/rem_ripple_model.py`; run `D:\Field2026_analysis_out\2026c\rem_ripple_model_20261009_1314`, checks `D:\Field2026_analysis_out\2026c\rem_ripple_checks_20261009_1340`; git `fd9ca63+dirty`.
+Plan, pre-registered before any fit: [2026-10-09-rem-ripple-model.md](../../../../implementation_plan/2026-10-09-rem-ripple-model.md) (Amendment 1 = the model owner's reply; Amendment 2 = the artifact checks; Amendment 3 = after a read-only Fable audit; each written before it ran). Driver `ephys/rem_ripple_model.py`; run `D:\Field2026_analysis_out\2026c\rem_ripple_model_20261009_1314`, checks `D:\Field2026_analysis_out\2026c\rem_ripple_checks_20261009_1340`; git `fd9ca63+dirty`.
 
 ## Answer
 
@@ -8,9 +8,13 @@ Plan, pre-registered before any fit: [2026-10-09-rem-ripple-model.md](../../../.
 
 2. **Accumulated count (T2).** **The ripples accumulated since the last REM (T2) pass the numeric rule on both scorings** (T2 + ln(1+C) on B (ALL), T2 + ln(1+C) on B (KEPT), T2 + rate since REM rho (ALL), T2 ripple counter replaces P (ALL), T2 ripple counter replaces P (KEPT)). By the plan's rule this is description, because T1 failed at L = 60 s; Amendment 2 tests it for artifacts.
 
-3. **Artifact checks (Amendment 2).** **The ripple-counter gain does not survive the pre-registered artifact checks:** (i) failed (final -0.010 % [-0.043, +0.021]; pass2med +0.001 % [-0.030, +0.034]) — the gain is a precursor of the transition (it vanishes when the last minute is left out); (iii) failed (pass2med -0.063 % [-0.172, +0.021]) — beyond NREM depth the gain is not stable across the two scorings.
+3. **Artifact checks (Amendment 2).** **The ripple-counter gain does not survive the pre-registered artifact checks:** (i) failed (final -0.010 % [-0.043, +0.021]; pass2med +0.001 % [-0.030, +0.034]) — the gain is a precursor of the transition (it vanishes when the last minute is left out); (iii) failed (pass2med -0.063 % [-0.172, +0.021]) — beyond NREM depth the gain is not stable across the two scorings. *Two of these readings were revised after the audit: (i) is uninformative for steps in a bout's first minute, and (iii) ran without a same-subset baseline; see 4.*
 
-4. **Overall.** No NREM-ripple measure carries REM-scheduling information beyond the NREM counter, the clock and the wake history once the last minute before a step is left out. The ripple information about REM is local: ripples vanish in the final minute before REM entry. Post hoc, about 55-65 % of the counter's gain sits on the single 10-s step right before REM, and about 60 % in bouts that end in REM within their first minute, i.e. short NREM stretches with few ripples. So the macro-scale reciprocity (ripple-rich naps, REM-poor nights) is not a scheduling link at the scale of the REM cycle: it is accounted for by the drivers the model already has, plus a transition-local drop of ripples as the hippocampus enters REM.
+4. **After the Fable audit (Amendment 3).** The lag check of Amendment 2 cannot see the first minute of a bout, where 70-80 % of the counter's gain sits (post hoc). **Where the lag can see (steps >= 60 s into a NREM bout):** the unlagged rho gives final -0.115 % [-0.206, -0.037], 5/5; pass2med -0.105 % [-0.270, +0.012], 4/5 (does not hold); the lagged rho gives final -0.007 % [-0.043, +0.033], 3/5 (does not hold); pass2med +0.031 % [+0.001, +0.067], 0/5 (does not hold). **Steps >= 120 s into a bout:** unlagged final +0.025 % [-0.029, +0.101], 1/5 (does not hold); pass2med +0.030 % [-0.013, +0.073], 2/5 (does not hold). Pre-registered reading: the unlagged rho does not hold on both scorings even 60 s into a bout, and on neither from 120 s. **The counter's gain comes from the first one to two minutes of NREM bouts,** not from a pre-REM drop within longer bouts. **Depth with its own baseline (K4b; the subset drops the first NREM minute after a REM):** final: rho alone -0.155 % (does not hold), beyond depth -0.205 % (holds); pass2med: rho alone -0.127 % (holds), beyond depth -0.063 % (does not hold). The two scorings disagree, so the depth control is **inconclusive**.
+
+   **The short bouts (K8):** final: 40 % of REM entries come from NREM bouts <= 60 s, 42 % of them directly after REM, ripple rate 24 /min (short bouts ending in WAKE: 51 /min), 28 % with no ripple; pass2med: 41 % of REM entries come from NREM bouts <= 60 s, 43 % of them directly after REM, ripple rate 21 /min (short bouts ending in WAKE: 48 /min), 28 % with no ripple. In bouts > 5 min the rate before REM equals the rate before WAKE (final 74 vs 76 /min; pass2med 73 vs 75 /min). So the REM-predictive ripple signal is the ripple poverty of short NREM stretches that return to REM, often inside a REM episode. The scorer's NREM / REM call and the ripple detector read the same LFP, so this cannot be separated from how the scorer cuts REM episodes.
+
+5. **Overall.** Beyond the NREM counter, the clock and the wake history, the preceding NREM ripples carry no REM-timing information at the scale of the REM cycle: no held-out gain larger than about 0.05 % from a 10-min window rate at lags 0-120 s, and no gain from ripples older than the current bout. The ripple information about REM entry is the ripple poverty of short NREM bouts that end in REM (see 4). The macro-scale reciprocity (ripple-rich naps, REM-poor nights) is therefore accounted for by drivers the model already has. Limits: 5 test animals (SF11 only in training), one cohort; sleep-onset NREM after long wakes is not in S1; ripple counts are not replay content.
 
 ## The question
 
@@ -40,7 +44,7 @@ Steps, outcome and model: `ephys/sleep_model.py` Step B. A step = 10 s of NREM, 
   - **Text:** the ripples accumulated since the last REM, in 'expected NREM minutes', so $C$ and $P$ read in the same units.
   - Enters as $\ln(1+C)$ (spline in the history slot, replacing $P$; or linear on top of B).
 - **Rate since REM:** $\rho = \ln\frac{C+0.5}{P+0.5}$, the discounted relative ripple rate since the last REM.
-- **Depth:** $\text{depth}_L$ = mean raw spectral slope (imu_fixch, z within animal × block) over the window's NREM seconds.
+- **Depth:** $\text{depth}_L$ = mean raw spectral slope (imu_fixch, z within animal × block) over the window's NREM seconds (>= 60 s with a slope). $\bar d$ = the discount-weighted mean depth z since the last REM with P's bookkeeping, defined when >= 60 discounted NREM-s carry a slope (so it drops the steps right after a REM).
 - **Subsets:**
   - S1: the step and every NREM second of $[t-720, t)$ covered; $m$ ≥ 180 s in all three windows; all rates finite.
   - S2: S1 + every NREM second since the last REM covered.
@@ -53,8 +57,8 @@ Steps, outcome and model: `ephys/sleep_model.py` Step B. A step = 10 s of NREM, 
 
 - Alignment with the owner's cached held-out steps (final): 126231 / 126231 rows matched, y equal on 126231.
 - Alignment with the owner's cached held-out steps (pass2med): 126889 / 126889 rows matched, y equal on 126889.
-- Reproduction of Step B, B-full vs gate-only on all steps (final): -2.35 % [-3.15, -1.68], 6/6 animals, 122735 test steps / 2544 REM. Step B: −2.17 % (122,735 / 2,544), there with the counter's grid point chosen per fold (nested); here it is fixed at P_tw600_k0.
-- Reproduction of Step B, B-full vs gate-only on all steps (pass2med): -1.97 % [-2.22, -1.66], 6/6 animals, 123304 test steps / 2666 REM. Step B: −1.97 % (123,304 / 2,666), there with the counter's grid point chosen per fold (nested); here it is fixed at P_tw600_k0.
+- Reproduction of Step B, B-full vs gate-only on all steps (final): -2.35 % [-3.15, -1.68], 6/6 animals, 122735 test steps / 2544 REM. Step B: −2.17 % (122,735 / 2,544), there with the counter's grid point chosen per fold (nested: P_tw600_k60 in fold 1, P_tw300_k0 in folds 2-6, then P_tw600_k0); here it is fixed at the full-run optimum P_tw600_k0, mildly optimistic for B.
+- Reproduction of Step B, B-full vs gate-only on all steps (pass2med): -1.97 % [-2.22, -1.66], 6/6 animals, 123304 test steps / 2666 REM. Step B: −1.97 % (123,304 / 2,666), there with the counter's grid point chosen per fold (nested: P_tw600_k60 in fold 1, P_tw300_k0 in folds 2-6, then P_tw600_k0); here it is fixed at the full-run optimum P_tw600_k0, mildly optimistic for B.
 
 Steps per subset (REM entries in brackets):
 
@@ -238,6 +242,50 @@ K6 — direction (full-subset fit, log-odds vs staying in NREM per +1 SD). Negat
 | pass2med | lCa | per_animal | SF10 | -0.960 | -0.471 |
 | pass2med | lCa | per_animal | SF11 | -0.929 | -0.382 |
 | pass2med | lCa | per_animal | SF12 | -0.874 | -0.477 |
+
+## Amendment 3: the lag where it can see, depth with a baseline, the short bouts
+
+- **K7:** the same comparisons on steps at least 60 s (120 s) into their NREM bout, where the 60-s lag can see the last minute.
+- **K4b:** the depth control with its own baseline on the same subset.
+- **K8:** REM- and WAKE-ending bouts by length.
+
+| test | scoring | Δ % | 95 % CI | animals better | holds |
+|---|---|---:|---|---:|:---:|
+| K7 elapsed>=60: rho0 | final | -0.115 | [-0.206, -0.037] | 5/5 | yes |
+| K7 elapsed>=60: rho60 | final | -0.007 | [-0.043, +0.033] | 3/5 | no |
+| K7 elapsed>=120: rho0 | final | +0.025 | [-0.029, +0.101] | 1/5 | no |
+| K7 elapsed>=120: rho60 | final | +0.046 | [-0.077, +0.265] | 2/5 | no |
+| K4b depth subset: rho0 (baseline) | final | -0.155 | [-0.418, +0.030] | 4/5 | no |
+| K4b depth subset: dbar | final | +0.030 | [-0.142, +0.275] | 2/5 | no |
+| K4b depth subset: rho0 beyond dbar | final | -0.205 | [-0.504, -0.062] | 4/5 | yes |
+| K7 elapsed>=60: rho0 | pass2med | -0.105 | [-0.270, +0.012] | 4/5 | no |
+| K7 elapsed>=60: rho60 | pass2med | +0.031 | [+0.001, +0.067] | 0/5 | no |
+| K7 elapsed>=120: rho0 | pass2med | +0.030 | [-0.013, +0.073] | 2/5 | no |
+| K7 elapsed>=120: rho60 | pass2med | +0.090 | [-0.004, +0.233] | 0/5 | no |
+| K4b depth subset: rho0 (baseline) | pass2med | -0.127 | [-0.257, -0.032] | 4/5 | yes |
+| K4b depth subset: dbar | pass2med | -0.414 | [-0.565, -0.222] | 4/5 | yes |
+| K4b depth subset: rho0 beyond dbar | pass2med | -0.063 | [-0.172, +0.021] | 4/5 | no |
+
+K8, bouts ending in REM or WAKE (the last step of each bout in S2). Ripples = the bout's events before its last step:
+
+| scoring | ends in | bout length | n | share of that end | after REM | after WAKE | ripples, median | no ripple | rate /min, median | C median |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| final | REM | <= 60 s | 1260 | 40 % | 42 % | 57 % | 6 | 28 % | 24.0 | 0.12 |
+| final | REM | 60-120 s | 424 | 14 % | 10 % | 90 % | 81 | 0 % | 60.0 | 4.83 |
+| final | REM | 2-5 min | 649 | 21 % | 4 % | 96 % | 217 | 0 % | 69.4 | 7.41 |
+| final | REM | > 5 min | 805 | 26 % | 8 % | 91 % | 532 | 0 % | 74.3 | 9.46 |
+| final | WAKE | <= 60 s | 1836 | 39 % | 9 % | 91 % | 17 | 13 % | 51.0 | 1.15 |
+| final | WAKE | 60-120 s | 895 | 19 % | 5 % | 95 % | 90 | 0 % | 67.5 | 3.20 |
+| final | WAKE | 2-5 min | 1178 | 25 % | 5 % | 95 % | 216 | 0 % | 71.0 | 5.47 |
+| final | WAKE | > 5 min | 750 | 16 % | 6 % | 92 % | 507 | 0 % | 75.9 | 9.21 |
+| pass2med | REM | <= 60 s | 1386 | 41 % | 43 % | 57 % | 6 | 28 % | 21.0 | 0.10 |
+| pass2med | REM | 60-120 s | 451 | 13 % | 11 % | 89 % | 80 | 0 % | 59.2 | 4.45 |
+| pass2med | REM | 2-5 min | 654 | 19 % | 4 % | 96 % | 222 | 0 % | 69.2 | 7.52 |
+| pass2med | REM | > 5 min | 876 | 26 % | 8 % | 92 % | 527 | 0 % | 73.5 | 9.77 |
+| pass2med | WAKE | <= 60 s | 1912 | 40 % | 10 % | 89 % | 15 | 15 % | 48.0 | 1.09 |
+| pass2med | WAKE | 60-120 s | 954 | 20 % | 5 % | 95 % | 89 | 0 % | 67.0 | 3.24 |
+| pass2med | WAKE | 2-5 min | 1144 | 24 % | 5 % | 95 % | 215 | 0 % | 71.1 | 5.29 |
+| pass2med | WAKE | > 5 min | 747 | 16 % | 6 % | 93 % | 509 | 0 % | 75.3 | 9.28 |
 
 ## Post hoc: where the unlagged gain sits (not pre-registered)
 

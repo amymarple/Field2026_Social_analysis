@@ -1,7 +1,7 @@
-# Ripples in the REM-entry model: no scheduling information beyond the NREM counter; a transition-local drop (2026-10-09)
+# Ripples in the REM-entry model: no scheduling information beyond the NREM counter; ripple-poor short NREM bouts return to REM (2026-10-09)
 
-Plan (pre-registered; Amendment 1 = the model owner's reply, Amendment 2 = the artifact checks, both written before they
-ran): [implementation_plan/2026-10-09-rem-ripple-model.md](../implementation_plan/2026-10-09-rem-ripple-model.md).
+Plan (pre-registered; Amendment 1 = the model owner's reply, Amendment 2 = the artifact checks, Amendment 3 = after a
+read-only Fable audit; each written before it ran): [implementation_plan/2026-10-09-rem-ripple-model.md](../implementation_plan/2026-10-09-rem-ripple-model.md).
 
 The user asked to add the NREM ripple rate to the REM prediction (counting) model as a candidate predictor, not as a nap or
 REM criterion, and to test held-out gain with only pre-prediction information. The question behind it: is "ripple-rich,
@@ -14,6 +14,7 @@ session "daynight sleep explore".
   - `run`: T1 / T2 / T3 + the reproduction of Step B;
   - `checks`: Amendment 2, K1–K6;
   - `posthoc`: where the gain sits;
+  - `followup`: Amendment 3, K7 / K4b / K8;
   - `report`;
   - `--selftest`, 6 checks, among them: the ripple counter with unit events equals P_tw600_k0 exactly; the windows exclude
     the step; the causal normaliser.
@@ -64,7 +65,7 @@ session "daynight sleep explore".
 
 By the plan this was description, because T1 failed, so it went through Amendment 2.
 
-**Amendment 2, artifact checks of ρ (ALL).** Conditions (i) and (iii) fail:
+**Amendment 2, artifact checks of ρ (ALL).** Conditions (i) and (iii) fail as run; both readings are revised by Amendment 3 below:
 - **(i) Lagged 60 s:** the whole gain vanishes (FINAL −0.010 %, pass2med +0.001 %); at 120 s too.
 - **(ii) Circular shifts** of each record's ripple sequence: no gain (0–2/5 better). The gain is in the timing → pass.
 - **(iii) Beyond depth** (discounted mean NREM depth since the last REM): FINAL −0.21 % holds, pass2med −0.06 % [−0.17,
@@ -75,30 +76,61 @@ By the plan this was description, because T1 failed, so it went through Amendmen
 - **K6:** ρ is negative on REM in 6/6 animals (in-sample). At the 60-s lag it is about 0.
 
 **Post hoc (not pre-registered).**
-- 54 % (FINAL) / 64 % (pass2med) of the unlagged gain sits on the single 10-s step right before REM entry. There ρ is −0.085,
-  against about 0 elsewhere.
-- About 60 % of it is in bouts that end in REM within their first minute: short NREM stretches with few ripples.
+- 54 % (FINAL) / 64 % (pass2med) of the unlagged gain sits on the last 10-s step before REM entry.
+- 70–80 % of it sits on steps in the first minute of a NREM bout.
 
-## Reading
+**Fable audit (read-only).**
+- It found no leakage and no material bug.
+- Amendment 2's lag check is uninformative where the gain sits: for steps < 60 s into a bout, the lagged ρ carries no
+  within-bout information by construction.
+- Amendment 2's depth check ran on a subset that loses 35 % of the REM entries, with no same-subset baseline.
+- So Amendment 3 was written before running.
+
+**Amendment 3.**
+- **K7, steps ≥ 60 s into a bout:**
+  - unlagged ρ: FINAL −0.115 % (holds, 5/5); pass2med −0.105 % (CI spans 0, does not hold);
+  - lagged ρ: nothing on either.
+- **K7, steps ≥ 120 s into a bout:** nothing on either scoring.
+- **K4b, depth with its own baseline:**
+  - FINAL: ρ alone −0.155 % (does not hold), beyond depth −0.205 % (holds);
+  - pass2med: ρ alone −0.127 % (holds), beyond depth −0.063 % (does not hold).
+  - Inconclusive.
+- **K8, the short bouts:**
+  - 40 % (FINAL) / 41 % (pass2med) of REM entries come from NREM bouts ≤ 60 s;
+  - 42–43 % of them directly after REM;
+  - ripple rate 24 / 21 per min, against 51 / 48 in short bouts ending in WAKE;
+  - 28 % with no ripple;
+  - in bouts > 5 min the rate before REM equals the rate before WAKE (74 vs 76 / 73 vs 75 per min).
+
+## Reading (revised after the audit)
 
 **Coincidence or link?**
 - At the scale of the REM cycle, the preceding NREM ripples add no REM-entry information beyond the NREM counter, the
-  clock and the wake history.
+  clock and the wake history:
+  - no held-out gain larger than about 0.05 % from a 10-min window rate at lags 0–120 s;
+  - no gain from ripples older than the last minute.
 - The macro reciprocity (ripple-rich naps, REM-poor nights) is accounted for by drivers the model already has.
-- The only ripple information about REM is **local**: ripples vanish in the last minute before REM entry. That is the
-  transition under way (the pre-REM drop, 6/6), not a readiness signal.
+- The only REM-predictive ripple signal is the **ripple poverty of short NREM bouts that end in REM**, within their first
+  one to two minutes and often inside a REM episode.
+  - The scorer's REM / NREM call and the detector read the same LFP, so this cannot be separated from how the scorer cuts
+    REM episodes.
+  - It is **not** a pre-REM ripple drop within longer bouts.
+  - The earlier wording "transition-local drop in the last minute before REM" is withdrawn.
 
 **Status.**
-- No slow ripple → REM effect: tested and **not supported**.
-- The transition-local drop: a robust description (6/6 animals, both event versions, both scorings), not a mechanism.
+- No ripple → REM-scheduling effect: tested and **not supported**. Scoped and bounded as above.
+- Short REM-ending NREM bouts are ripple-poor: a description (both scorings), not a mechanism.
+- The depth control is inconclusive.
 
 **Limits.**
-- One cohort; five test animals (SF11's ripples end on 09-02).
+- One cohort; five test animals (SF11's ripples end on 09-02, so it is only in training).
+- Sleep-onset NREM after long wakes is not in S1.
 - Ripple counts are not replay content.
 
 ## Verification
 
 - `python ephys/rem_ripple_model.py --selftest` → PASS (6 checks).
+- Read-only Fable audit: no leakage, no material bug; its two corrections are addressed by Amendment 3.
 - Alignment and reproduction as above.
 - Every model of a comparison is fitted on the same subset.
 - Both scorings were run.

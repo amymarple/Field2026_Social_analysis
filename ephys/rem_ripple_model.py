@@ -277,6 +277,8 @@ def check_features(g: pd.DataFrame, rc: dict, A: dict, BT: dict, P: np.ndarray) 
             F[f"rhos{i + 1}"] = np.log((C + 0.5) / (P + 0.5))
         C = counter_at_steps(st, A["ea"], bs, t_off) / rates_for(blk, t0 + t_off, BT, "a", False)
         F["rhow"] = np.log((C + 0.5) / (P + 0.5))                          # K5: whole-block normaliser
+        ce = np.r_[0, np.cumsum(A["ea"])]
+        F["kbout"] = ce[t_off] - ce[bs]                                    # K8: the current bout's events before the step
         dz = depth_z(A, BT)                                                # K4: discounted mean depth since REM
         fin = np.isfinite(dz) & (st == N)
         Sd = counter_at_steps(st, np.where(fin, dz, 0.0), bs, t_off)
@@ -513,6 +515,67 @@ def checks(a):
     report(Path(man["run_dir"]), out)
 
 
+def followup(a):
+    """Amendment 3 (after the Fable audit, before running): K7 the lag test on steps >= 60 / 120 s into a bout, K4b the
+    depth control with a same-subset baseline, K8 a description of the REM- / WAKE-ending bouts by length."""
+    man = json.loads((report_dir(COHORT) / f"run_manifest_rem_ripple_model_{COHORT}.json").read_text())
+    out = Path(man["checks_dir"])
+    ctx = prepare(a)
+    comp, k8 = [], []
+
+    def sub(D, m):
+        return {k: (v[m] if isinstance(v, np.ndarray) and len(v) == len(m) else v) for k, v in D.items()}
+    for sc in a.scorings:
+        S = scoring_data(sc, ctx)
+        steps, F = S["steps"], S["F"]
+        byrid = {rc["record_id"]: rc for rc in S["recs"]}
+        P = np.expm1(steps[f"lP_{REF}"].to_numpy().astype(float))
+        K = pd.concat([check_features(g, byrid[rid], S["arrs"][rid], S["BT"], P[steps.index.get_indexer(g.index)])
+                       for rid, g in steps.groupby("record_id")]).reindex(steps.index)
+        m = F.S2.to_numpy() & np.isfinite(K.drop(columns="dbar").to_numpy()).all(1)
+        D = subset_arrays(steps, pd.concat([F, K], axis=1), m)
+        st = pd.concat([steps, K, F[["Ca"]]], axis=1)[m].reset_index(drop=True)
+        el = st.elapsed.to_numpy()
+
+        def fam(name, D_, specs, pairs):
+            t1 = time.time()
+            rows, Ft, FAt = run_family(D_, specs, pairs, a.workers)
+            for r in rows:
+                r.update(scoring=sc, family=name)
+            Ft.to_csv(out / f"folds_{name}_{sc}.csv", index=False)
+            FAt.to_csv(out / f"folds_animal_{name}_{sc}.csv", index=False)
+            print(f"[{sc}] {name}: {len(D_['y'])} steps, {int((D_['y'] == 1).sum())} REM, {time.time() - t1:.0f} s", flush=True)
+            for r in rows:
+                print(f"   {r['test']:<40} {r.get('delta_pct', np.nan):+.3f} % [{r.get('ci_lo_pct', np.nan):+.3f}, "
+                      f"{r.get('ci_hi_pct', np.nan):+.3f}] {r.get('animals_better')}/{r.get('animals')}  holds={r['holds_rule']}", flush=True)
+            comp.extend(rows)
+            pd.DataFrame(comp).to_csv(out / "comparisons_followup.csv", index=False)
+        sp = {"B": B, "B+rho0": {**B, "extra": ("rho0",)}, "B+rho60": {**B, "extra": ("rho60",)}}
+        for E in (60, 120):                                                # K7
+            fam(f"K7_{E}", sub(D, el >= E), sp, [(f"K7 elapsed>={E}: rho0", "B", "B+rho0"), (f"K7 elapsed>={E}: rho60", "B", "B+rho60")])
+        md = np.isfinite(D["dbar"])                                        # K4b
+        fam("K4b", sub(D, md), {"B": B, "B+rho0": sp["B+rho0"], "B+dbar": {**B, "extra": ("dbar",)},
+                                "B+dbar+rho0": {**B, "extra": ("dbar", "rho0")}},
+            [("K4b depth subset: rho0 (baseline)", "B", "B+rho0"), ("K4b depth subset: dbar", "B", "B+dbar"),
+             ("K4b depth subset: rho0 beyond dbar", "B+dbar", "B+dbar+rho0")])
+        # K8: bouts by length and end (the last step of each bout in the subset)
+        gb = st.groupby(["record_id", "bout_start"])
+        last = st[st.elapsed == gb.elapsed.transform("max")]
+        last = last[last.y.isin([1, 2])].copy()
+        last["end"] = last.y.map({1: "REM", 2: "WAKE"})
+        last["len"] = pd.cut(last.bout_len, [0, 60, 120, 300, 1e9], labels=["<= 60 s", "60-120 s", "2-5 min", "> 5 min"])
+        last["prev"] = np.select([last.prev_rem == 1, last.d_prev > 0], ["REM", "WAKE"], "unknown / start")
+        for (e, ln), g in last.groupby(["end", "len"], observed=True):
+            k8.append({"scoring": sc, "end": e, "bout_len": ln, "n": len(g), "share_of_end": len(g) / int((last.end == e).sum()),
+                       "after_REM": float((g.prev == "REM").mean()), "after_WAKE": float((g.prev == "WAKE").mean()),
+                       "bout_ripples_median": float(g.kbout.median()), "bout_zero_ripples": float((g.kbout == 0).mean()),
+                       "bout_rate_per_min_median": float((g.kbout / np.maximum(g.elapsed, 10) * 60).median()),
+                       "C_median": float(g.Ca.median())})
+        pd.DataFrame(k8).to_csv(out / "k8_bouts.csv", index=False)
+        print(pd.DataFrame(k8)[lambda d: d.scoring == sc].round(3).to_string(index=False), flush=True)
+    report(Path(man["run_dir"]), out)
+
+
 def posthoc(a):
     """POST HOC (after Amendment 2, not pre-registered): where in time the unlagged rho gain sits. Held-out per-step
     log-loss change of B + rho0 vs B, by how the bout ends and by the seconds from the step's end to the bout's end."""
@@ -675,7 +738,7 @@ def figure(Cm: pd.DataFrame, out: Path, Kc: pd.DataFrame | None = None) -> Path:
             if t not in g.index:
                 continue
             r = g.loc[t]
-            ax.errorbar(r.delta_pct, y[i], xerr=[[r.delta_pct - r.ci_lo_pct], [r.ci_hi_pct - r.delta_pct]], fmt="o" if r.holds_rule else "o",
+            ax.errorbar(r.delta_pct, y[i], xerr=[[r.delta_pct - r.ci_lo_pct], [r.ci_hi_pct - r.delta_pct]], fmt="o",
                         mfc=col if r.holds_rule else "white", color=col, ms=5, capsize=2, label=sc if i == 0 else None)
     ax.axvline(0, color="k", lw=0.8)
     ax.set_yticks(np.arange(len(tests)), tests, fontsize=8)
@@ -732,6 +795,53 @@ def checks_verdict(K: pd.DataFrame, S: pd.DataFrame) -> tuple[str, dict]:
     return txt, ok
 
 
+def followup_text(Fu: pd.DataFrame, K8: pd.DataFrame) -> tuple[str, str]:
+    """Amendment 3 reading from the follow-up tables: (lag + depth text, short-bout description)."""
+    def hold(test):
+        g = Fu[Fu.test == test]
+        return len(g) == 2 and bool(g.holds_rule.all())
+
+    def num(test):
+        g = Fu[Fu.test == test]
+        return "; ".join(f"{r.scoring} {r.delta_pct:+.3f} % [{r.ci_lo_pct:+.3f}, {r.ci_hi_pct:+.3f}], {r.animals_better}/{r.animals}"
+                         + ("" if r.holds_rule else " (does not hold)") for r in g.itertuples())
+    r0, r60 = hold("K7 elapsed>=60: rho0"), hold("K7 elapsed>=60: rho60")
+    r0_120 = hold("K7 elapsed>=120: rho0")
+    lag = ("**Where the lag can see (steps >= 60 s into a NREM bout):** the unlagged rho gives " + num("K7 elapsed>=60: rho0")
+           + "; the lagged rho gives " + num("K7 elapsed>=60: rho60") + ". **Steps >= 120 s into a bout:** unlagged "
+           + num("K7 elapsed>=120: rho0") + ". ")
+    if r0 and not r60:
+        lag += "Pre-registered reading: information in the last 60 s before the step, within longer bouts."
+    elif not r0 and not r0_120:
+        lag += ("Pre-registered reading: the unlagged rho does not hold on both scorings even 60 s into a bout, and on neither "
+                "from 120 s. **The counter's gain comes from the first one to two minutes of NREM bouts,** not from a pre-REM "
+                "drop within longer bouts.")
+    else:
+        lag += "Mixed: see the table."
+    g = Fu[Fu.test.str.startswith("K4b")].set_index(["scoring", "test"])
+    parts = []
+    for sc in sorted(Fu.scoring.unique()):
+        base = g.loc[(sc, "K4b depth subset: rho0 (baseline)")]
+        beyond = g.loc[(sc, "K4b depth subset: rho0 beyond dbar")]
+        parts.append(f"{sc}: rho alone {base.delta_pct:+.3f} % ({'holds' if base.holds_rule else 'does not hold'}), beyond depth "
+                     f"{beyond.delta_pct:+.3f} % ({'holds' if beyond.holds_rule else 'does not hold'})")
+    depth = ("**Depth with its own baseline (K4b; the subset drops the first NREM minute after a REM):** " + "; ".join(parts)
+             + ". The two scorings disagree, so the depth control is **inconclusive**.")
+    k = K8[(K8.end == "REM") & (K8.bout_len == "<= 60 s")]
+    w = K8[(K8.end == "WAKE") & (K8.bout_len == "<= 60 s")].set_index("scoring")
+    lng = K8[K8.bout_len == "> 5 min"].set_index(["scoring", "end"])
+    short = ("**The short bouts (K8):** " + "; ".join(
+        f"{r.scoring}: {100 * r.share_of_end:.0f} % of REM entries come from NREM bouts <= 60 s, {100 * r.after_REM:.0f} % of "
+        f"them directly after REM, ripple rate {r.bout_rate_per_min_median:.0f} /min (short bouts ending in WAKE: "
+        f"{w.loc[r.scoring, 'bout_rate_per_min_median']:.0f} /min), {100 * r.bout_zero_ripples:.0f} % with no ripple"
+        for r in k.itertuples()) + ". In bouts > 5 min the rate before REM equals the rate before WAKE ("
+        + "; ".join(f"{sc} {lng.loc[(sc, 'REM'), 'bout_rate_per_min_median']:.0f} vs {lng.loc[(sc, 'WAKE'), 'bout_rate_per_min_median']:.0f} /min"
+                    for sc in sorted(K8.scoring.unique())) + "). So the REM-predictive ripple signal is the ripple poverty "
+        "of short NREM stretches that return to REM, often inside a REM episode. The scorer's NREM / REM call and the ripple "
+        "detector read the same LFP, so this cannot be separated from how the scorer cuts REM episodes.") if len(k) else ""
+    return lag + " " + depth, short
+
+
 def report(out: Path, chk: Path | None = None) -> Path:
     out = Path(out)
     Cm = pd.read_csv(out / "comparisons.csv")
@@ -773,24 +883,31 @@ def report(out: Path, chk: Path | None = None) -> Path:
     k_txt, k_ok = checks_verdict(Kc, Ks) if chk else ("Amendment 2 checks not run yet.", {})
     fig = figure(Cm, out, Kc)
     ph = Path(chk) / "posthoc_gain_by_time.csv" if chk else None
+    fu = Path(chk) / "comparisons_followup.csv" if chk else None
+    Fu = pd.read_csv(fu) if fu is not None and fu.exists() else None
+    K8 = pd.read_csv(Path(chk) / "k8_bouts.csv") if Fu is not None else None
+    a3_txt, short_txt = followup_text(Fu, K8) if Fu is not None else ("", "")
     overall = ""
-    if chk and not k_ok.get("i", True):
-        overall = ("4. **Overall.** No NREM-ripple measure carries REM-scheduling information beyond the NREM counter, the clock "
-                   "and the wake history once the last minute before a step is left out. The ripple information about REM is "
-                   "local: ripples vanish in the final minute before REM entry. "
-                   + ("Post hoc, about 55-65 % of the counter's gain sits on the single 10-s step right before REM, and about "
-                      "60 % in bouts that end in REM within their first minute, i.e. short NREM stretches with few ripples. "
-                      if ph is not None and ph.exists() else "")
-                   + "So the macro-scale reciprocity (ripple-rich naps, REM-poor nights) is not a scheduling link at the scale of "
-                   "the REM cycle: it is accounted for by the drivers the model already has, plus a transition-local drop of "
-                   "ripples as the hippocampus enters REM.")
+    if Fu is not None:
+        overall = ("4. **After the Fable audit (Amendment 3).** The lag check of Amendment 2 cannot see the first minute of a "
+                   "bout, where 70-80 % of the counter's gain sits (post hoc). " + a3_txt + "\n\n   " + short_txt + "\n\n"
+                   "5. **Overall.** Beyond the NREM counter, the clock and the wake history, the preceding NREM ripples carry "
+                   "no REM-timing information at the scale of the REM cycle: no held-out gain larger than about 0.05 % from a "
+                   "10-min window rate at lags 0-120 s, and no gain from ripples older than the current bout. The ripple "
+                   "information about REM entry is the ripple poverty of short NREM bouts that end in REM (see 4). The macro-scale reciprocity "
+                   "(ripple-rich naps, REM-poor nights) is therefore accounted for by drivers the model already has. Limits: 5 "
+                   "test animals (SF11 only in training), one cohort; sleep-onset NREM after long wakes is not in S1; ripple "
+                   "counts are not replay content.")
     L = []
     L += [f"# Ripples in the REM-entry model (cohort {COHORT})", "",
           f"Plan, pre-registered before any fit: [2026-10-09-rem-ripple-model.md](../../../../implementation_plan/2026-10-09-rem-ripple-model.md) "
-          "(Amendment 1 = the model owner's reply; Amendment 2 = the artifact checks, written before they ran). Driver "
+          "(Amendment 1 = the model owner's reply; Amendment 2 = the artifact checks; Amendment 3 = after a read-only Fable "
+          "audit; each written before it ran). Driver "
           f"`ephys/rem_ripple_model.py`; run `{out}`" + (f", checks `{chk}`" if chk else "") + f"; git `{meta.get('git')}`.", "",
           "## Answer", "", "1. **Recent rate (T1).** " + verdict, "", "2. **Accumulated count (T2).** " + t2_txt, "",
-          "3. **Artifact checks (Amendment 2).** " + k_txt, ""] + ([overall, ""] if overall else [])
+          "3. **Artifact checks (Amendment 2).** " + k_txt + (" *Two of these readings were revised after the audit: (i) is "
+          "uninformative for steps in a bout's first minute, and (iii) ran without a same-subset baseline; see 4.*"
+          if Fu is not None else ""), ""] + ([overall, ""] if overall else [])
     L += ["## The question", "",
           "- Naps and the early main sleep are ripple-rich and REM-poor. Across sleep periods REM and ripple rate are "
           "reciprocal (ρ −0.54, 6/6). Ripples also drop in the last minute before REM (6/6).",
@@ -823,7 +940,9 @@ def report(out: Path, chk: Path | None = None) -> Path:
           "same units.",
           "  - Enters as $\\ln(1+C)$ (spline in the history slot, replacing $P$; or linear on top of B).",
           "- **Rate since REM:** $\\rho = \\ln\\frac{C+0.5}{P+0.5}$, the discounted relative ripple rate since the last REM.",
-          "- **Depth:** $\\text{depth}_L$ = mean raw spectral slope (imu_fixch, z within animal × block) over the window's NREM seconds.",
+          "- **Depth:** $\\text{depth}_L$ = mean raw spectral slope (imu_fixch, z within animal × block) over the window's NREM "
+          "seconds (>= 60 s with a slope). $\\bar d$ = the discount-weighted mean depth z since the last REM with P's "
+          "bookkeeping, defined when >= 60 discounted NREM-s carry a slope (so it drops the steps right after a REM).",
           "- **Subsets:**",
           "  - S1: the step and every NREM second of $[t-720, t)$ covered; $m$ ≥ 180 s in all three windows; all rates finite.",
           "  - S2: S1 + every NREM second since the last REM covered.",
@@ -842,7 +961,8 @@ def report(out: Path, chk: Path | None = None) -> Path:
         L.append(f"- Reproduction of Step B, B-full vs gate-only on all steps ({r.scoring}): {_f(r.delta_pct)} % "
                  f"[{_f(r.ci_lo_pct)}, {_f(r.ci_hi_pct)}], {r.animals_better}/{r.animals} animals, {r.n_steps} test steps / "
                  f"{r.n_rem} REM. Step B: " + ("−2.17 % (122,735 / 2,544)" if r.scoring == "final" else "−1.97 % (123,304 / 2,666)")
-                 + ", there with the counter's grid point chosen per fold (nested); here it is fixed at P_tw600_k0.")
+                 + ", there with the counter's grid point chosen per fold (nested: P_tw600_k60 in fold 1, P_tw300_k0 in "
+                 "folds 2-6, then P_tw600_k0); here it is fixed at the full-run optimum P_tw600_k0, mildly optimistic for B.")
     L.append("")
     pv = SC.pivot_table(index=["scoring", "animal"], columns="subset", values="steps", aggfunc="sum").reset_index()
     pr = SC.pivot_table(index=["scoring", "animal"], columns="subset", values="rem", aggfunc="sum").reset_index()
@@ -892,6 +1012,26 @@ def report(out: Path, chk: Path | None = None) -> Path:
               "| scoring | term | fit | animal | b REM | b WAKE |", "|---|---|---|---|---:|---:|"]
         for r in K6.itertuples():
             L.append(f"| {r.scoring} | {r.term} | {r.fit} | {r.animal} | {_f(r.b_rem, 3)} | {_f(r.b_wake, 3)} |")
+        L.append("")
+    if Fu is not None:
+        L += ["## Amendment 3: the lag where it can see, depth with a baseline, the short bouts", "",
+              "- **K7:** the same comparisons on steps at least 60 s (120 s) into their NREM bout, where the 60-s lag can see "
+              "the last minute.",
+              "- **K4b:** the depth control with its own baseline on the same subset.",
+              "- **K8:** REM- and WAKE-ending bouts by length.", "",
+              "| test | scoring | Δ % | 95 % CI | animals better | holds |", "|---|---|---:|---|---:|:---:|"]
+        for r in Fu.itertuples():
+            L.append(f"| {r.test} | {r.scoring} | {_f(r.delta_pct, 3)} | [{_f(r.ci_lo_pct, 3)}, {_f(r.ci_hi_pct, 3)}] | "
+                     f"{r.animals_better}/{r.animals} | {'yes' if r.holds_rule else 'no'} |")
+        L += ["", "K8, bouts ending in REM or WAKE (the last step of each bout in S2). Ripples = the bout's events before its "
+              "last step:", "",
+              "| scoring | ends in | bout length | n | share of that end | after REM | after WAKE | ripples, median | no ripple "
+              "| rate /min, median | C median |",
+              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for r in K8.itertuples():
+            L.append(f"| {r.scoring} | {r.end} | {r.bout_len} | {r.n} | {100 * r.share_of_end:.0f} % | {100 * r.after_REM:.0f} % | "
+                     f"{100 * r.after_WAKE:.0f} % | {r.bout_ripples_median:.0f} | {100 * r.bout_zero_ripples:.0f} % | "
+                     f"{r.bout_rate_per_min_median:.1f} | {r.C_median:.2f} |")
         L.append("")
     ph = Path(chk) / "posthoc_gain_by_time.csv" if chk else None
     if ph is not None and ph.exists():
@@ -990,7 +1130,7 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run", "checks", "posthoc", "report"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "checks", "posthoc", "followup", "report"])
     ap.add_argument("--scorings", nargs="+", default=["final", "pass2med"], choices=["final", "pass2med"])
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--smoke", action="store_true", help="FINAL only, B vs B+rra60 on 4 folds (timing / plumbing)")
@@ -1012,6 +1152,8 @@ def main():
         checks(a)
     elif a.cmd == "posthoc":
         posthoc(a)
+    elif a.cmd == "followup":
+        followup(a)
     elif a.cmd == "report":
         report(Path(a.run), Path(a.checks) if a.checks else None)
 
