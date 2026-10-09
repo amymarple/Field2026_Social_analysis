@@ -21,6 +21,14 @@ REM. The question: are they REM interruptions or intermediate sleep that the sco
   - The key is `review_key_SEALED.csv`, outside the page folder.
   - Answers go to `ephys/configs/short_bout_review_2026c/`.
 
+**Online version of Part B** (the user asked another person to read, 2026-10-09): a private artifact,
+https://claude.ai/artifact/YFG89wkHR29dyzjbSXMbtE.
+- It holds the same 110 panels, with no labels and no key.
+- Each reader's answers go to `db` document `reads/<their id>`: readable by the owner only, never by other readers.
+- Readers need Contributor access (Editor when invited from outside the organisation). Below that, the page keeps answers
+  in the reader's browser and offers a file to send back.
+- Read the answers back with `ArtifactData list reads`; the key stays in `review_key_SEALED.csv`.
+
 ## Definitions (headline)
 
 - **Sets** (records and coverage as in the REM ripple model):
