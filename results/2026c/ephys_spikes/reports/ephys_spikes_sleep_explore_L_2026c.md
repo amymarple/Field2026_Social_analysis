@@ -39,7 +39,7 @@ does not mispredict the first REM entry specifically.
 - **Check 2 — no first-entry gap (#61).**
   - REM entry before vs after the record's first REM after a round: FINAL 1.16 [0.98, 1.49] vs 1.04 [0.90, 1.24];
     pass2med 0.81 [0.69, 0.99] vs 0.88 [0.78, 0.99].
-  - Neither scorings shows a first-entry-specific shortfall. On pass2med both segments are ~15 % low, as after natural
+  - Neither scoring shows a first-entry-specific shortfall. On pass2med both segments are ~15 % low, as after natural
     long wakes (0.85 / 0.87).
   - The waking excess sits before the first REM: WAKE O/E 1.51 [1.29, 1.73] (FINAL) and 1.48 [1.29, 1.72] (pass2med)
     before, 0.91 / 0.98 after.
