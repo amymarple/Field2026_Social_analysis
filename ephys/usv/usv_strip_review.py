@@ -10,8 +10,9 @@ Per WAV window: consecutive strips of STRIP_S (30 s), 15-100 kHz.
   shows it at 1800 px, a click opens the full image.
 - Under each strip, a tick row with the whitened detector's tonal >= 30-ms candidates
   (ephys/usv/usv_whiten_detect.py; drawn outside the image so they do not cover shapes).
-- Per strip the user answers: USV contours (none / a few / many; 22-kHz band, 50-kHz band, both) and the detector ticks
-  (match / missed some / extra ticks). No audio. Export -> ephys/configs/usv_review_2026c/.
+- Per strip the user answers only presence: USV contours none / a few / many (+ optional 22-kHz / 50-kHz band). The
+  detector ticks are hidden by default (a button shows them), so the labels stay independent of the detector (the user,
+  2026-10-09: "what matters is yes or no; fine detection is the next step"). No audio. Export -> ephys/configs/usv_review_2026c/.
 
     python ephys/usv/usv_strip_review.py --wav <a.wav> [...] [--start-s 0 --dur-s 600] --cand-dir <usv_whiten_detect out>
 """
@@ -110,25 +111,24 @@ def main() -> None:
             q1 = " ".join(f'<label><input type="radio" name="u_{sid}" value="{v}"> {v}</label>'
                           for v in ("none", "a few", "many"))
             q2 = " ".join(f'<label><input type="checkbox" name="b_{sid}" value="{v}"> {v}</label>' for v in ("22-kHz band", "50-kHz band"))
-            q3 = " ".join(f'<label><input type="radio" name="d_{sid}" value="{v}"> {v}</label>'
-                          for v in ("ticks match", "missed some", "extra ticks", "both wrong"))
             cards.append(f'<div class="s" id="{sid}"><div class="h">{html.escape(mic)} {tstart:%m-%d %H:%M:%S} '
                          f'(+{a.start_s + ss:.0f} s in {html.escape(p.name)}) · {len(ticks)} detector ticks</div>'
                          f'<a href="media/{sid}.png" target="_blank"><img loading="lazy" src="media/{sid}.png"></a>'
-                         f'<div class="tr">{tk}</div><div class="q"><b>USV contours:</b> {q1} &nbsp; {q2} &nbsp; '
-                         f'<b>detector ticks:</b> {q3}</div></div>')
+                         f'<div class="tr">{tk}</div><div class="q"><b>USV present?</b> {q1} &nbsp; {q2}</div></div>')
         print(p.name, "strips so far", len(meta), flush=True)
     (out / "strips.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     page = f'''<!doctype html><html><head><meta charset="utf-8"><title>USV strip review</title><style>
 body{{font-family:sans-serif;margin:12px;max-width:1860px}} .s{{margin:10px 0 18px 0;border-bottom:1px solid #bbb;padding-bottom:6px}}
 .h{{font-size:13px;font-weight:bold;margin:2px 0}} img{{width:1800px;display:block}} .q{{font-size:13px;margin-top:3px}}
-.tr{{position:relative;width:1800px;height:8px;background:#eee}} .tk{{position:absolute;top:0;height:8px}}
+body:not(.ticks) .tr{{display:none}} .tr{{position:relative;width:1800px;height:8px;background:#eee}} .tk{{position:absolute;top:0;height:8px}}
 </style></head><body><h2>USV review by shape — 30-s spectrogram strips, 15-100 kHz (cohort 2026c)</h2>
 <p>{len(meta)} strips from {len(a.wav)} recording windows, in time order. Each frequency has its own background removed (the mics' steady
 electronic tones vanish); colour = 0-25 dB above that background; time compressed by the maximum, so short calls stay visible.
 Click a strip to open it full size. The thin row under each strip shows the automatic detector's candidates (red < 32 kHz, blue >= 32 kHz).
 Answer per strip; answers stay in this browser; <b>Export</b> at the end and put the files in <code>ephys/configs/usv_review_2026c/</code>.</p>
-{"".join(cards)}<p><button onclick="exp()">Export JSON + CSV</button></p>
+<p><b>Only question: are there USV contours in this strip (none / a few / many)?</b> The detector ticks are hidden so that your
+answers stay independent of the detector; <button onclick="document.body.classList.toggle('ticks')">show / hide detector ticks</button>
+(only after labelling, if curious).</p>{"".join(cards)}<p><button onclick="exp()">Export JSON + CSV</button></p>
 <script>
 const KEY="usv_strip_review_{out.name}";
 function st(){{const s={{}};document.querySelectorAll('.s').forEach(c=>{{const id=c.id;const u=c.querySelector('input[name="u_'+id+'"]:checked');
