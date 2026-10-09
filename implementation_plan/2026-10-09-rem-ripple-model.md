@@ -234,6 +234,46 @@ A failure says which explanation remains:
 Even if every condition holds, the claim stays a Candidate: one cohort, five test animals, an effect of a few tenths of a
 percent.
 
+## Amendment 3 — after the read-only Fable audit (written before any test below)
+
+**What the audit found.** No leakage and no material bug. Two readings of Amendment 2 do not hold as run:
+- **The lag test (i) is uninformative where the gain sits.** 70–80 % of the unlagged gain is on steps in the first minute
+  of a NREM bout. For elapsed < 60 s, ρ_60 equals ρ at the bout start by construction. So "the gain vanishes with the lag"
+  was largely guaranteed there, not found.
+- **40 % of the S2 REM entries come from NREM bouts ≤ 60 s.** These are ripple-poor: median C 0.12 vs 8.3; 26 % have zero
+  ripples. The gain may therefore be "short ripple-poor NREM stretches resume REM". That is plausibly a property of the
+  scorer's NREM labels within REM episodes: the scorer and the detector read the same LFP.
+- **The depth control (iii) was run on a subset that loses 35 % of the REM entries** (`dbar` needs ≥ 60 discounted NREM-s
+  since the last REM), with no same-subset baseline. So (iii) cannot be read as run.
+
+**New tests.** On S2, ALL events, both scorings.
+- **K7, the lag where it is meaningful:**
+  - restrict to steps with elapsed ≥ 60 s, and separately ≥ 120 s;
+  - on each: B vs B + ρ0, and B vs B + ρ60.
+- **K4b, the depth control with its own baseline.** On the K4 subset (`dbar` finite):
+  - B vs B + ρ0 (baseline);
+  - B vs B + d̄;
+  - B + d̄ vs B + d̄ + ρ0 (as K4).
+- **K8, description.** REM- and WAKE-ending bouts by bout length (≤ 60 s, 60–120 s, 2–5 min, > 5 min):
+  - n;
+  - share preceded directly by REM, and by WAKE;
+  - the current bout's ripples before the last step (median, share zero);
+  - median C.
+
+**Reading, fixed now.**
+- **K7.** If ρ0 holds on the elapsed ≥ 60 s steps and ρ60 does not, on both scorings, then information in the last 60 s
+  before a step is shown where the lag can see it. That is a transition-local ripple drop within longer bouts.
+  If ρ0 does not hold there either, the counter's gain comes from the first minute of NREM bouts. Its reading is then
+  "ripple-poor short NREM stretches, mostly after REM, return to REM", a bout-level property. It is not separable from
+  how the scorer cuts REM episodes, and it is not a pre-REM drop.
+- **K4b.** (iii) is read from B + d̄ + ρ0 vs B + d̄ on the same subset as its baseline B + ρ0 vs B. "Carried by depth"
+  needs the first to fail while the second holds.
+- **The null is bounded.** The T1 CIs exclude a gain larger than about 0.05 % from a linear 10-min window term at lags
+  0–120 s, with these limits:
+  - 5 test animals;
+  - SF11 only in training;
+  - sleep-onset NREM after long wakes is not tested (S1 needs ≥ 3 min of NREM in the past 12 min).
+
 ## Output
 
 - `ephys/rem_ripple_model.py` (`run`, `--selftest`);
