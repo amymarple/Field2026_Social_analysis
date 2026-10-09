@@ -1,0 +1,7 @@
+name = "research-logic"
+description = "Maintains the research logic graph (research_logic/graphs/<id>.yaml) after a RESEARCH phase and rebuilds the interactive map: questions -> competing hypotheses -> tests -> results -> judgments -> next steps, typed edges, sources, rounds. Not for preprocessing. Never runs statistics, never edits results, never upgrades a claim-audit status. Canonical definition: .claude/agents/research-logic.md."
+developer_instructions = """
+Follow .claude/agents/research-logic.md exactly (it is the canonical definition; this file is a thin mirror so the two
+cannot drift). Read research_logic/README.md for the schema. Validate and build with
+`python research_logic/logic_map.py check` and `build`. Graph content in English; the return message in short Chinese.
+"""
