@@ -556,3 +556,48 @@ no constraint independent of the outcome exists for it.
 | T1 pass, T2 fail | a consolidation phase exists but does not produce the recovery; a further process remains |
 | T1 fail | no second phase detectable in the waking; the later recovery is not a waking effect |
 | the residual stays outside on one scoring | as in part P: no unified REM target, #43 stays Candidate |
+
+## 12. Amendment 4 (2026-10-09; the user: "也对入睡到NREM awake的时间或许也重要。行1，2先做") — part L, where is the first-REM delay? Written before these results
+
+**Why.** #57: with the measured waking excess, the first REM after a round still comes later than simulated. Reviewer
+note (relayed by the user): the simulator starts every free stretch in NREM, with the count at 0 and no REM anchor
+(`sleep_sim.py`, record start and after every forced block), so a short wake (< 7 min) at the start of the post-round
+record becomes NREM in the simulation. The simulated latency may be short by the sleep-onset wait. Check 1 splits the
+latency; check 2 asks whether the model mispredicts the first REM entry or all REM entries. Physiology (NREM depth,
+theta before the first REM, transition fragments, a blind review of early REM) is next-stage (LFP) and only if the
+delay survives checks 1–2. Wording: #57 is a delay the current model does not explain, not evidence of a REM-suppression
+mechanism; #58 says this two-phase form adds no held-out gain, not that no calm phase exists.
+
+**Definitions** (rounds, records, scorings as parts S / P; per post-round record, s from its start $t_0$):
+- $t_N$ = start of the first NREM bout; $t_R$ = start of the first REM bout (censored at the record end).
+  Sensitivity for the observed split only: $t_N$ = the first NREM bout ≥ 60 s.
+- Split: $L = t_R - t_0 = \underbrace{(t_N - t_0)}_{W_0\ \text{onset wait}} + \underbrace{(t_R - t_N)}_{L_s\ \text{after onset}}$.
+  In $[t_N, \min(t_R, \text{end}))$: $N_1$ = NREM s, $W_1$ = WAKE s (awake after sleep onset, before the first REM),
+  $n_{W1}$ = WAKE bouts starting there, $U_1$ = unknown s. $L_N$ = NREM seconds from $t_N$ to the first REM (the NREM
+  clock; censored).
+- $T_{wake}$ = time from $t_N$ to the first WAKE bout after onset (any length; censored at the record end) — the user's
+  "入睡到 awake".
+- Summaries per kind (morning / evening): KM medians for $W_0$, $L_s$, $L_N$, $T_{wake}$; means over rounds for $W_1$,
+  $n_{W1}$. Observed vs 100 simulated replicates (2.5–97.5 % of the replicate statistic).
+- Models: part P's generative base (sleep_sim v2 fitted with every post-round 3 h masked), without and with part P's
+  cross-fitted one-phase arousal A.
+- **Conditional simulation:** every observed bout before $t_N$ is kept as a forced block; the simulation starts in NREM at
+  $t_N$ (as it does after any forced block); later long wakes and unknown runs forced as before. Only round records are
+  simulated.
+
+**Check 1 (both scorings):**
+- **L1, the onset wait** (description): observed $W_0$ vs the unconditional simulation.
+- **L2, decisive:** conditional simulation; the observed $L_s$ KM median inside the simulated 95 % range for morning AND
+  evening rounds → "the delay is sleep onset / initialisation" (#57 rewritten). Later than the range on both scorings →
+  "the delay is after sleep onset". Read for the base and for base + A.
+- **L3, where after onset** (description): $L_N$, $W_1$, $n_{W1}$, $T_{wake}$, observed vs conditional simulation.
+
+**Check 2 — the first REM entry vs the later ones** (S's forward-chained held-out steps, `heldout_steps_<scoring>`,
+perturbation-blind B-full `pb_rem` / `pb_wake`):
+- Post-round steps (0–3 h) split into "before the record's first REM" and "after it".
+- Natural long wakes (≥ 30 min, 0–3 h after the wake end, not post-round) split the same way at the first REM after the
+  wake: the reference.
+- O/E of NREM → REM and NREM → WAKE per cell; block-bootstrap CIs; animals.
+- Reading: post-round "before" REM O/E with CI < 1 and "after" not below 1, on both scorings → the gap is at the first
+  entry (the sleep-start phase). Both calibrated while the simulation still delays → re-check the simulator (short-wake
+  sampling, history updates).
