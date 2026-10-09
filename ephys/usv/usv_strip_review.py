@@ -110,7 +110,7 @@ def main() -> None:
                          f'background:{"#e33" if pk < 32 else "#36f"}" title="{pk:.0f} kHz"></div>' for x0, w_, pk in ticks)
             q1 = " ".join(f'<label><input type="radio" name="u_{sid}" value="{v}"> {v}</label>'
                           for v in ("none", "a few", "many"))
-            q2 = " ".join(f'<label><input type="checkbox" name="b_{sid}" value="{v}"> {v}</label>' for v in ("22-kHz band", "50-kHz band"))
+            q2 = " ".join(f'<label><input type="checkbox" name="b_{sid}" value="{v}"> {v}</label>' for v in ("22-kHz band", "50-kHz band", "long line (>5 s)"))   # long line = MIC01's wandering 18-21.5 kHz tone (user, 10-09)
             cards.append(f'<div class="s" id="{sid}"><div class="h">{html.escape(mic)} {tstart:%m-%d %H:%M:%S} '
                          f'(+{a.start_s + ss:.0f} s in {html.escape(p.name)}) · {len(ticks)} detector ticks</div>'
                          f'<a href="media/{sid}.png" target="_blank"><img loading="lazy" src="media/{sid}.png"></a>'
