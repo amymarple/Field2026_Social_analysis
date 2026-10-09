@@ -1,0 +1,24 @@
+{
+  "name": "short_rem_bouts",
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\short_rem_bouts_20261009_1534",
+  "git": "2b2eb1b+dirty",
+  "report": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_short_rem_bouts_2026c.md",
+  "reading": {
+    "final": {
+      "animals": 6,
+      "need": 5,
+      "rem_like": 6,
+      "nrem_like": 0,
+      "intermediate": 4,
+      "verdict": "REM-like"
+    },
+    "pass2med": {
+      "animals": 6,
+      "need": 5,
+      "rem_like": 6,
+      "nrem_like": 0,
+      "intermediate": 6,
+      "verdict": "REM-like"
+    }
+  }
+}
