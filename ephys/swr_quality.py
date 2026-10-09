@@ -162,7 +162,7 @@ def build(a):
     if len(val):
         for _, r in val[val.kept_f1 >= F1_VALID].iterrows():
             from swr_auto import channels_for
-            validated_blocks.add((r.animal, str(channels_for(cfg, r.animal, r.session).get("valid_from"))))
+            validated_blocks.add((r.animal, str(channels_for(cfg, r.animal, r.session).get("valid_from") or "start")))
     rows = []
     for f in sorted(Path(a.swr_root).glob("SF*/*/*.swr_summary.json")):
         d = json.loads(f.read_text())
@@ -213,7 +213,7 @@ def build(a):
         kept = d.get("kept_rate_per_min") or {}
         rec = dict(animal=an, session=s, start=f"{t0:%Y-%m-%d %H:%M:%S}", end=f"{t1:%Y-%m-%d %H:%M:%S}",
                    hours=round(float(d.get("hours") or 0), 3),
-                   block=block_label(cfg, an, blk.get("valid_from")), block_from=str(blk.get("valid_from")),
+                   block=block_label(cfg, an, blk.get("valid_from")), block_from=str(blk.get("valid_from") or "start"),
                    reference=blk.get("reference_session"), is_reference=bool(d.get("is_block_reference")),
                    boundary=d.get("boundary_features"), channels=json.dumps(d.get("channels_0based", {}).get("ripple")) + "/" +
                    json.dumps(d.get("channels_0based", {}).get("sharpwave")) + "/" + json.dumps(d.get("channels_0based", {}).get("noise"))
@@ -226,7 +226,7 @@ def build(a):
                    amp_ratio=d.get("amplitude_ratio_to_reference"),
                    use_until=f"{use_until[0]:%Y-%m-%d %H:%M:%S} ({use_until[1]})" if use_until else "",
                    low_contrast=any(str(x).startswith("low ripple contrast") for x in blk.get("flags", [])),
-                   block_validated=(an, str(blk.get("valid_from"))) in validated_blocks,
+                   block_validated=(an, str(blk.get("valid_from") or "start")) in validated_blocks,
                    no_states=not d.get("skipped") and not any((sm or {}).values()),
                    exclude_reasons=excl, info="; ".join(info), sleep_verdict=verdict, sleep_tags=tags)
         tier, why = tier_of(rec)
@@ -291,7 +291,7 @@ def write_md(a, df, val, out, cfg, cfg_note, order):
         use = g[g.tier.isin(["validated", "good", "check"])]
         tiers = ", ".join(f"{k} {int((g.tier == k).sum())}" for k in order if (g.tier == k).any())
         sel = g[g.tier != "exclude"].selected_frac.dropna()
-        w(f"| {an} | {g.block.iloc[0]} ({bf if bf != 'None' else 'start'}) | {g.channels.iloc[0]} | {g.boundary.iloc[0] or '-'} | "
+        w(f"| {an} | {g.block.iloc[0]} ({bf}) | {g.channels.iloc[0]} | {g.boundary.iloc[0] or '-'} | "
           f"`{g.reference.iloc[0]}` | {tiers} | {use.nrem_min.fillna(0).sum() / 60:.1f} | "
           f"{100 * sel.median():.1f} | {use.kept_rate_nrem.dropna().median() if len(use) else float('nan'):.1f} |")
     w("")
