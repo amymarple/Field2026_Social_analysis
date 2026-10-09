@@ -422,3 +422,27 @@ k is predicted by the fit on blocks < k; the first 6 blocks are never predicted.
 - **WISER / environment / social batch:** H4, H14, H15, H16, H17, H22, H25.
 - **Run elsewhere:** H12 in S1 and H18 in G2. H6, H13, H19, H21 and H24 were run in steps B–C.
 - Each hypothesis gets a claim number only if it holds (plan §5).
+
+### Addendum to S (2026-10-09, the user, before any S result): the battery rounds as a systematic perturbation
+
+The user: "这些电池刚好作为一个系统干扰项，真正的模型应该可以预测干扰." The rounds are a known, repeated perturbation, so a
+true model must predict the response to them, not only fit ordinary sleep. Two additions:
+
+**S2b — perturbation-blind prediction.**
+- The same forward-chained B-full, with every step in the 3 h after a usable round gap (cause round_logged /
+  round_inferred) REMOVED from training; the model has then never seen a post-round response.
+- It predicts the post-round steps of the test block: WAKE and REM O/E in the 0–1 h and 1–3 h windows.
+- Pass for "the model predicts the response to the perturbation": both O/E in [0.8, 1.25] with CIs including 1, on both
+  scorings. Reported next to S2 (the model that has seen post-round data).
+
+**S3 — the simulated perturbation response.**
+- The generative model (sleep_sim v2) fitted on the data WITHOUT the 3-h post-round windows; 100 replicates,
+  conditional on the observed long wakes and gaps.
+- For every round, from the first post-round second, observed vs simulated:
+  - REM minutes and NREM minutes in 1 h / 3 h / 6 h (censored at the record end);
+  - REM bouts in the same windows;
+  - the first-REM latency.
+- Summaries: the mean over rounds, for morning and evening rounds separately.
+- Pass for "the rules predict the response": the observed mean inside the simulated 95 % range at 1, 3 and 6 h for
+  REM and NREM minutes and for the first-REM latency, on both scorings.
+- The REM payback slope (D2) is already known NOT to be predicted. S3 shows whether the rest of the response is.
