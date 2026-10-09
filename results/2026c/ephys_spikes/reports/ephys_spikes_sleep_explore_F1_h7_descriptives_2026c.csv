@@ -1,0 +1,3 @@
+scores,complete_rem_bouts,post_round_dropped,median_dur_s_light,median_dur_s_dark,prior_wake_known_share,temp_known_share,entered_from_wake_share,in_house_share
+FINAL,4525,1070,52.0,58.0,0.9612156295224312,1.0,0.1548480463096961,0.9901591895803183
+pass2med,4824,1088,51.0,47.5,0.9585117773019272,1.0,0.1357066381156317,0.9890256959314775

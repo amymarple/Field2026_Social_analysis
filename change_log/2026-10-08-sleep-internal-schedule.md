@@ -399,7 +399,8 @@ predict"), all written before results.
   fix before the official run: S3 builds its inputs from the original records, not the masked ones.
 - `ephys/sleep_explore_g.py run` (G1–G4) and `ephys/sleep_explore_f2.py run` (H4, H14–H17, H22, H25) — Opus subagents;
   selftests rerun by the main session (54 s / 13 s, PASS).
-- `ephys/sleep_explore_f1.py` (H5, H7–H11, H20, H23, sequence only) — Opus subagent, pending.
+- `ephys/sleep_explore_f1.py run` (H5, H7–H11, H20, H23, sequence only) — Opus subagent; selftest rerun by the main
+  session (18 checks, 42 s, PASS); official run 26 min on 6 workers.
 
 **Definitions (headline).**
 - Post-round window: NREM steps 0–1 h and 1–3 h after the start of the record that follows a usable round gap.
@@ -420,6 +421,12 @@ predict"), all written before results.
 - **G (#43):** G1 uninformative (MDS 0.49 / 0.27 vs 0.34); G2 not met, power-limited (≤ 3 animals); G3 the round's
   own REM loss does not absorb the pass2med slope (on FINAL the gap's expected REM is repaid instead); G4 partly.
 - **F2:** H14, H16, H17, H22 do not hold; H4 and H15 inconclusive (one scoring); H25 description only.
+- **F1 (#48–#53):** the count at REM onset predicts the next REM bout's length (+24 % / +26 % per unit ln(1 + P), 6/6,
+  Established, #48); brief awakenings are most frequent right after a REM and fall as NREM accumulates (the opposite of
+  H11, Established, #51); REM taken since sunrise or the last long wake adds nothing (#52); intervals between REMs do
+  not shorten within an episode — the pooled slope is between episodes (#53); night REM ends in waking more often (#49)
+  and quick returns to REM are rarer at night (#50), both Candidate (pass2med weak; a shared scorer rule); H5
+  inconclusive, H23 does not hold. H8's continuity correction for a zero cell was added after the first scratch run.
 - **Reading:** the model predicts the amounts of sleep after a round, not its stability; a model of the perturbation
   needs an acute arousal term (~1 h) and the REM repayment.
 

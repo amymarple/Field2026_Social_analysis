@@ -1,0 +1,9 @@
+scores,subset,comparison,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+FINAL,+ REM minutes since sunrise (pass rule),B+rem_sr vs B,126231,2588,0.006864039133539101,-0.05249765228445475,0.0609183509543933,10,16,2,6,False
+FINAL,+ REM minutes since the last long wake (pass rule),B+rem_lw vs B,126231,2588,0.0056846716274286235,-0.08101619125913466,0.07909808746053618,8,16,2,6,False
+FINAL,"+ REM min since sunrise, recorded h since sunrise in both (sensitivity)",B+rec_sr+rem_sr vs B+rec_sr,126231,2588,0.0689941882407268,-0.02140902582117439,0.15869377687307942,6,16,0,6,False
+FINAL,"+ REM min since the last long wake, recorded h since it in both (sensitivity)",B+rec_lw+rem_lw vs B+rec_lw,126231,2588,0.05065597323276334,-0.09730107628369647,0.20774530178682568,11,16,3,6,False
+pass2med,+ REM minutes since sunrise (pass rule),B+rem_sr vs B,126889,2714,0.0021024435454602875,-0.02698556696245335,0.022959894108008274,9,16,2,6,False
+pass2med,+ REM minutes since the last long wake (pass rule),B+rem_lw vs B,126889,2714,0.01597498720506797,-0.028807512427280132,0.054035468909392155,6,16,3,6,False
+pass2med,"+ REM min since sunrise, recorded h since sunrise in both (sensitivity)",B+rec_sr+rem_sr vs B+rec_sr,126889,2714,0.012328850663564778,-0.018221825081002306,0.05021471218111861,7,16,2,6,False
+pass2med,"+ REM min since the last long wake, recorded h since it in both (sensitivity)",B+rec_lw+rem_lw vs B+rec_lw,126889,2714,0.014714517185646842,-0.08992582327755627,0.11427026757202677,9,16,2,6,False
