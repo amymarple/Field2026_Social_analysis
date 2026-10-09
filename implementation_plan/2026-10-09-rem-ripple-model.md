@@ -175,6 +175,65 @@ the subset is taken.
 
 **Second target** (the owner's suggestion, only if a ripple term holds): which movements wake (claim audit #45).
 
+## Amendment 2 — artifact checks of the T2 counter result (written after T1 / T2 on FINAL, before any check below)
+
+**What was seen.** On FINAL:
+- T1 (window rates) gives no gain at any lag: L = 60 s ALL −0.006 % [−0.036, +0.021], 3/5.
+- T2 (ripple counter since the last REM) passes the numeric rule:
+  - C replacing P: −0.33 %, 5/5;
+  - B + ln(1 + C): −0.30 %, 5/5;
+  - B + ρ: −0.33 %, 5/5;
+  - KEPT is larger: −0.41 / −0.48 %.
+
+**Status.** By this plan's rule T2 is description, since T1 failed at L = 60 s. Before anything is read, the checks below
+separate artifacts.
+- **Primary term:** ρ (ALL).
+- **Every check runs on both scorings, on S2.**
+
+**K1, where the gain sits.**
+- Held-out per-step probabilities of B and B + ρ, from the same forward chaining (own fold loop: `design` + the same
+  logit).
+- Δ is split into the binary REM log-loss (REM vs not) and the binary WAKE log-loss, with 95 % CIs over folds.
+- A gain that sits only in WAKE is not REM readiness.
+
+**K2, the pre-REM precursor.** Lagged counter.
+- Within the current bout, events count only up to t − L; earlier bouts count in full.
+- P is lagged the same way: P_L = P_start + max(0, elapsed − L) / 60.
+- ρ_L = ln((C_L + 0.5) / (P_L + 0.5)), for L = 60 s and 120 s.
+- If the gain vanishes at L = 60 s, it is the transition already under way, integrated.
+
+**K3, shifted-ripple controls.** Three circular shifts of each record's sequence of per-NREM-second event counts.
+- Shift offsets: 0.3 / 0.5 / 0.7 of that record's covered NREM seconds.
+- Normaliser: the same, from the true events.
+- What a shift keeps: each record's mean rate and its NREM structure.
+- What it breaks: the timing of ripples relative to the REM cycle and to the clock within the record.
+- The true ρ gain must exceed every shift's gain, and no shift may hold. If a shift gains as much, the information is the
+  record-level rate (which records are ripple-rich), not ripple timing in the cycle.
+
+**K4, depth.**
+- d̄ = the discount-weighted mean NREM depth z since the last REM (P's bookkeeping, NREM seconds weighted by their raw-slope
+  z; seconds without a slope are skipped).
+- Test: B + d̄ + ρ vs B + d̄.
+
+**K5, normaliser.** ρ with the whole-block normaliser (sensitivity).
+
+**K6, direction (description).** The sign of ρ and of ln(1 + C) per animal on REM and on WAKE (as T3).
+
+**Reading, pre-registered.** ρ is read as REM-readiness information carried by NREM ripples only if, on both scorings:
+- (i) the lagged ρ_60 holds;
+- (ii) the true gain exceeds every shift and no shift holds;
+- (iii) it holds beyond depth;
+- (iv) the binary REM log-loss improves (CI < 0).
+
+A failure says which explanation remains:
+- (i) fails: a precursor;
+- (ii) fails: record-level rate;
+- (iii) fails: depth;
+- (iv) fails: a waking signal.
+
+Even if every condition holds, the claim stays a Candidate: one cohort, five test animals, an effect of a few tenths of a
+percent.
+
 ## Output
 
 - `ephys/rem_ripple_model.py` (`run`, `--selftest`);
