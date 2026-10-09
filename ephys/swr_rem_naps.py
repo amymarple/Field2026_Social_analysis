@@ -8,6 +8,7 @@ Inputs (no re-extraction): the night_sleep_wiser run (per-second state / tau, st
 NREM events), the raw spectral slope of imu_fixch (depth, storage read-only), the final 1-s states.
 
   python ephys/swr_rem_naps.py run
+  python ephys/swr_rem_naps.py macro   (Amendment 4: REM vs SWR at the macro scale - sleep periods, days)
   python ephys/swr_rem_naps.py --selftest
 """
 from __future__ import annotations
@@ -114,7 +115,7 @@ def bio_date(t: pd.Series) -> pd.Series:
     return (t - pd.to_timedelta((t.dt.hour < 12).astype(int), unit="D")).dt.strftime("%m-%d")
 
 
-def run(a):
+def load_inputs(a) -> dict:
     rd = report_dir(COHORT)
     man = json.loads((rd / f"run_manifest_night_sleep_wiser_{COHORT}.json").read_text())
     run_dir = Path(man["run_dir"])
@@ -148,6 +149,12 @@ def run(a):
         evc_parts.append(evs)
     NSc = pd.concat(cat_parts, ignore_index=True)
     EVc = pd.concat(evc_parts, ignore_index=True).dropna(subset=["ab"])
+    return dict(rd=rd, run_dir=run_dir, ev=ev, naps=naps, NS=NS, secs=secs, NSc=NSc, EVc=EVc)
+
+
+def run(a):
+    I = load_inputs(a)
+    rd, run_dir, ev, naps, NS, secs, NSc, EVc = (I[k] for k in ("rd", "run_dir", "ev", "naps", "NS", "secs", "NSc", "EVc"))
     N1 = nap_vs_main(NSc, EVc, naps)
     R1 = rem_share_by_hour(secs)
     R2 = rem_across_bins(NSc, EVc, secs)
@@ -502,6 +509,174 @@ def report(N1, R1, R2, R3, figs, rd):
     (rd / f"ephys_spikes_swr_rem_naps_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
 
 
+# ------------------------------------------------------------------ Amendment 4: macro-scale REM vs SWR
+def macro(a):
+    from scipy import stats
+    I = load_inputs(a)
+    rd, naps, secs, NSc, EVc = I["rd"], I["naps"], I["secs"], I["NSc"], I["EVc"]
+    # block rate = all kept NREM events / all eligible NREM minutes of the animal x block
+    brate = (EVc.groupby("ab").size() / (NSc.groupby("ab").size() / 60)).rename("brate")
+    rows, days = [], []
+    for an, S in secs.items():
+        S = S.copy()
+        S["unit"] = None
+        S.loc[S.tau_h.notna(), "unit"] = "main " + (np.floor(S.tau_h[S.tau_h.notna()]).astype(int)).astype(str).str.zfill(2)
+        night = (S.t.dt.hour >= 19) | (S.t.dt.hour < 7)
+        S.loc[S.tau_h.isna() & night & S.state.isin([N, R]), "unit"] = "other night sleep"
+        for r in naps[naps.animal == an].itertuples():
+            S.loc[(S.t >= r.start) & (S.t < r.end), "unit"] = "naps"
+        S["mso"] = (S.t - pd.to_timedelta(S.tau_h, unit="h")).dt.round("min")
+        ns = NSc[NSc.animal == an].copy()
+        evs = EVc[EVc.animal == an].copy()
+        lab = S[["t", "unit", "mso"]].assign(t=S.t.dt.floor("s"))
+        ns = pd.merge_asof(ns.drop(columns=[c for c in ("unit", "mso") if c in ns]).sort_values("t"), lab, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
+        evs = pd.merge_asof(evs.drop(columns=[c for c in ("unit", "mso") if c in evs]).sort_values("t"), lab, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
+        for u, g in S.dropna(subset=["unit"]).groupby("unit"):
+            nr, rm = int((g.state == N).sum()), int((g.state == R).sum())
+            gn = ns[ns.unit == u]
+            ge = evs[evs.unit == u]
+            if nr < 600 or len(gn) < 600:
+                continue
+            exp = float((gn.groupby("ab").size() / 60 * brate.reindex(gn.groupby("ab").size().index)).sum())
+            rows.append(dict(animal=an, unit=u, rem_per_nrem=rm / nr, rem_share=rm / (nr + rm), nrem_min=nr / 60,
+                             elig_min=len(gn) / 60, n=len(ge), rel_rate=len(ge) / exp if exp > 0 else np.nan, Dz=float(gn.Dz.mean())))
+        # M3: per main sleep (one per day)
+        mm = S[S.tau_h.notna()]
+        for mso, g in mm.groupby("mso"):
+            nr, rm = int((g.state == N).sum()), int((g.state == R).sum())
+            gn = ns[(ns.mso == mso)]
+            ge = evs[(evs.mso == mso)]
+            if nr < 3600 or len(gn) < 1800:
+                continue
+            exp = float((gn.groupby("ab").size() / 60 * brate.reindex(gn.groupby("ab").size().index)).sum())
+            days.append(dict(animal=an, mso=mso, rem_share=rm / (nr + rm), rem_per_nrem=rm / nr, rel_rate=len(ge) / exp if exp > 0 else np.nan,
+                             Dz=float(gn.Dz.mean()), nrem_h=nr / 3600))
+    U, D = pd.DataFrame(rows), pd.DataFrame(days)
+    order = ["naps", "other night sleep"] + [f"main {k:02d}" for k in range(14)]
+    M1 = U.groupby("unit").agg(animals=("animal", "nunique"), rem_per_nrem=("rem_per_nrem", "mean"),
+                               rem_sem=("rem_per_nrem", lambda v: v.std(ddof=1) / np.sqrt(len(v))), rel_rate=("rel_rate", "mean"),
+                               rate_sem=("rel_rate", lambda v: v.std(ddof=1) / np.sqrt(len(v))), Dz=("Dz", "mean")).reindex(order).dropna(how="all")
+
+    def partial_rho(g):
+        import statsmodels.api as sm
+        X = sm.add_constant(g.Dz)
+        ra = sm.OLS(g.rem_per_nrem, X).fit().resid
+        rb = sm.OLS(g.rel_rate, X).fit().resid
+        return stats.spearmanr(ra, rb)[0]
+
+    M2 = []
+    for an, g in U.groupby("animal"):
+        if len(g) >= 5:
+            M2.append(dict(animal=an, units=len(g), rho=stats.spearmanr(g.rem_per_nrem, g.rel_rate)[0], rho_partial_depth=partial_rho(g)))
+    M2 = pd.DataFrame(M2)
+    M3 = []
+    for an, g in D.groupby("animal"):
+        if len(g) >= 4:
+            M3.append(dict(animal=an, days=len(g), rho=stats.spearmanr(g.rem_share, g.rel_rate)[0], rho_partial_depth=partial_rho(g)))
+    M3 = pd.DataFrame(M3)
+
+    def amean(v):
+        v = pd.Series(v).dropna()
+        t_ = stats.ttest_1samp(v, 0) if len(v) >= 3 else None
+        return float(v.mean()), (float(t_.pvalue) if t_ else np.nan), int((v < 0).sum()), len(v)
+
+    U.to_csv(rd / f"ephys_spikes_swr_rem_macro_units_{COHORT}.csv", index=False)
+    D.to_csv(rd / f"ephys_spikes_swr_rem_macro_days_{COHORT}.csv", index=False)
+    fig = macro_figure(M1, U, D)
+    L = []
+    w = L.append
+    w(f"# REM vs sharp-wave ripples at the macro scale ({COHORT})")
+    w("")
+    w(f"Generated by `ephys/swr_rem_naps.py macro` (repo `{git_commit()}`); plan Amendment 4 of "
+      "[`implementation_plan/2026-10-09-night-sleep-wiser.md`](../../../../implementation_plan/2026-10-09-night-sleep-wiser.md) "
+      "(written before computing). The user: competition at the macro scale = REM is scarce in the night naps and abundant in "
+      "the day sleep, ripples the opposite.")
+    w("")
+    w("## Answer")
+    w("")
+    nap = M1.loc["naps"] if "naps" in M1.index else None
+    w(f"- **M1 allocation:** naps REM per NREM {nap.rem_per_nrem:.3f} with ripple rate {nap.rel_rate:.2f} x the block mean; the main "
+      f"sleep goes from REM {M1.loc['main 00'].rem_per_nrem:.3f} / ripples {M1.loc['main 00'].rel_rate:.2f} in its first hour to "
+      f"REM {M1.iloc[-1].rem_per_nrem:.3f} / ripples {M1.iloc[-1].rel_rate:.2f} in its last ({M1.index[-1]}).")
+    m, p_, neg, n_ = amean(M2.rho)
+    mp, pp, negp, _ = amean(M2.rho_partial_depth)
+    w(f"- **M2 across sleep periods (naps, other night sleep, main-sleep hours):** Spearman rho(REM per NREM, ripple rate) mean "
+      f"{m:+.2f} (p {p_:.3f}), negative in {neg} / {n_} animals; with depth partialled out {mp:+.2f} (p {pp:.3f}), negative in "
+      f"{negp} / {n_}. Per animal: " + "; ".join(f"{r.animal} {r.rho:+.2f} ({r.rho_partial_depth:+.2f})" for r in M2.itertuples()) + ".")
+    if len(M3):
+        m3, p3, neg3, n3 = amean(M3.rho)
+        m3p, p3p, neg3p, _ = amean(M3.rho_partial_depth)
+        w(f"- **M3 across days (one main sleep per day):** rho(REM share, ripple rate) mean {m3:+.2f} (p {p3:.3f}), negative in "
+          f"{neg3} / {n3}; depth partialled {m3p:+.2f} (p {p3p:.3f}). Per animal: " + "; ".join(
+              f"{r.animal} {r.rho:+.2f} ({r.days} days)" for r in M3.itertuples()) + ".")
+    w("- Reading rule (plan): macro reciprocity when M2 rho < 0 in >= 4 animals; the depth partial tells whether depth (sleep "
+      "pressure) carries it; M3 tells whether it also holds from day to day, outside the clock.")
+    w("")
+    w(f"![macro REM vs SWR](../figures/{fig.name})")
+    w("")
+    w("## Allocation by sleep period (M1; mean over animals)")
+    w("")
+    w("| Period | Animals | REM per NREM | SEM | Ripple rate (x block mean) | SEM | Depth (z) |")
+    w("|---|---|---|---|---|---|---|")
+    for u, r in M1.iterrows():
+        w(f"| {u} | {int(r.animals)} | {r.rem_per_nrem:.3f} | {_f(r.rem_sem, 3)} | {r.rel_rate:.2f} | {_f(r.rate_sem, 2)} | {r.Dz:+.2f} |")
+    w("")
+    w("## Definitions")
+    w("")
+    w("- **Units** per animal: its strict naps (pooled), its other night sleep (19:00-07:00, before the main sleep onset, not a "
+      "strict nap), and its main sleep in 1-h bins of time since onset (`main 00` = the first hour); >= 10 NREM min and >= 10 "
+      "ripple-eligible NREM min.")
+    w("- **REM per NREM** = REM s / NREM s of the 1-s states in the unit; **REM share** = REM / (NREM + REM).")
+    w("- **Relative ripple rate** = kept NREM events in the unit / the events expected at the animal x block's overall NREM rate "
+      "for the unit's eligible NREM minutes (1 = the block mean).")
+    w("- **M2** per animal Spearman rho over its units, and the partial version (both variables residualised on the unit's mean "
+      "depth z); animal-level mean, one-sample t. **M3** the same over the animal's main sleeps (one per day; >= 1 h NREM).")
+    (rd / f"ephys_spikes_swr_rem_macro_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+    print("\n".join(L[L.index("## Answer"):L.index("## Allocation by sleep period (M1; mean over animals)")]))
+
+
+def macro_figure(M1: pd.DataFrame, U: pd.DataFrame, D: pd.DataFrame) -> Path:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.8), gridspec_kw={"width_ratios": [1.6, 1, 1]})
+    ax = axes[0]
+    x = np.arange(len(M1))
+    ax.errorbar(x, M1.rem_per_nrem, yerr=M1.rem_sem, fmt="-^", color="#d62728", capsize=2)
+    ax.set_ylabel("REM per NREM (s / s)", fontsize=9, color="#d62728")
+    a2 = ax.twinx()
+    a2.errorbar(x, M1.rel_rate, yerr=M1.rate_sem, fmt="-s", color="#2b7a2b", capsize=2)
+    a2.axhline(1, color="0.6", lw=0.6)
+    a2.set_ylabel("ripple rate (x block mean)", fontsize=9, color="#2b7a2b")
+    ax.set_xticks(x)
+    ax.set_xticklabels([u.replace("main ", "main h") for u in M1.index], rotation=60, fontsize=7)
+    ax.set_title("A  REM and ripples by sleep period (mean +- SEM over animals)", fontsize=9, loc="left")
+    ax = axes[1]
+    for an, g in U.groupby("animal"):
+        ax.scatter(g.rem_per_nrem, g.rel_rate, s=14, label=an)
+        if len(g) >= 3:
+            k = np.polyfit(g.rem_per_nrem, g.rel_rate, 1)
+            xs = np.linspace(g.rem_per_nrem.min(), g.rem_per_nrem.max(), 5)
+            ax.plot(xs, np.polyval(k, xs), lw=0.8)
+    ax.set_xlabel("REM per NREM in the period", fontsize=9)
+    ax.set_ylabel("ripple rate (x block mean)", fontsize=9)
+    ax.set_title("B  Across sleep periods, per animal", fontsize=9, loc="left")
+    ax.legend(fontsize=7, frameon=False)
+    ax = axes[2]
+    for an, g in D.groupby("animal"):
+        ax.scatter(100 * g.rem_share, g.rel_rate, s=18, label=an)
+    ax.set_xlabel("REM share of the day's main sleep (%)", fontsize=9)
+    ax.set_ylabel("ripple rate (x block mean)", fontsize=9)
+    ax.set_title("C  Across days (one main sleep per day)", fontsize=9, loc="left")
+    for a_ in axes:
+        a_.tick_params(labelsize=8)
+    fig.tight_layout()
+    out = figure_dir(COHORT) / f"ephys_spikes_swr_rem_macro_{COHORT}.png"
+    fig.savefig(out, dpi=125)
+    plt.close(fig)
+    return out
+
+
 def selftest():
     s = np.array([W] * 100 + [N] * 400 + [R] * 60 + [N] * 100 + [W] * 40 + [N] * 350 + [W] * 50, np.int8)
     tr = transitions(s, min_nrem=300)
@@ -513,7 +688,7 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "macro"])
     ap.add_argument("--states-root", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final")
     ap.add_argument("--sleep-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/sleep/imu_fixch")
     ap.add_argument("--swr-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/swr")
@@ -526,6 +701,8 @@ def main():
         selftest()
     if a.cmd == "run":
         run(a)
+    if a.cmd == "macro":
+        macro(a)
 
 
 if __name__ == "__main__":

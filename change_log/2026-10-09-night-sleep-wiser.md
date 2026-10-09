@@ -135,3 +135,29 @@ pre-REM drop, because theta rises before REM.
   waking, in every animal, also with the flags ignored.
 - Across bins, the REM-share relationship is significant pooled but not consistent across animals.
 - The 24-h mirror of REM and ripple rate is partly the clock (R2 shrinks from −5.8 to −2.2 with depth + hour).
+
+## Update: REM vs SWR at the macro scale (plan Amendment 4, written before computing)
+
+The user clarified that "competition" means the macro scale: REM is scarce in the night naps and abundant in the day
+sleep, and ripples do the opposite.
+
+`swr_rem_naps.py macro`. Report: `…swr_rem_macro_2026c.md`; figure `…swr_rem_macro_2026c.png`; units / days CSVs.
+
+**M1, by sleep period.** REM goes up and ripples go down as sleep goes on:
+
+| Period | REM per NREM | Ripple rate (× block mean) |
+|---|---|---|
+| Strict naps | 0.055 | 1.23 |
+| Main sleep, first hour | 0.083 | 1.11 |
+| Main sleep, 13th hour | 0.211 | 0.87 |
+
+**M2, across sleep periods within animal** (naps, other night sleep, main-sleep hours):
+- Spearman ρ(REM per NREM, ripple rate) mean **−0.54** (p 0.005), negative in **6/6**.
+- With depth partialled out: **−0.37** (p 0.018), still 6/6.
+- **Macro reciprocity is established by the plan's rule.** Depth (sleep pressure) carries part of it: SF09 −0.44 →
+  −0.09, SF11 −0.90 → −0.30.
+
+**M3, across days** (one main sleep per day): ρ −0.26 (p 0.20), negative in 3/5 (SF10 −0.68, SF12 −0.64; SF07 / SF08
+≈ 0).
+- **No consistent day-to-day trade-off.** The reciprocity is a within-day allocation over the sleep period, not "a day
+  with more REM has fewer ripples".

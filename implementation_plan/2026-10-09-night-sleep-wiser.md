@@ -194,3 +194,35 @@ Drawn in figure C with depth and ripple rate.
 
 **Output.** `ephys/swr_rem_naps.py` (`run`, `--selftest`); report `…swr_rem_naps_2026c.md`; the circadian figure with
 REM / NREM in panel C.
+
+## Amendment 4 (2026-10-09, written before computing): REM vs SWR at the macro scale
+
+**The user's clarification.** "Competition" means the macro scale: REM is low in the night naps and high in the day sleep,
+while ripples do the opposite.
+
+**Units: the sleep periods.**
+- Each animal's strict naps, pooled.
+- Its main sleep in 1-h bins of time since onset τ (0–1 … 12–13 h).
+- Its other pre-onset night sleep.
+
+**Per unit.**
+- **REM per NREM** = REM s / NREM s (1-s states of the included records).
+- **Relative ripple rate** = (kept events / eligible NREM min in the unit) / the animal × block's overall NREM rate,
+  combined over blocks with weights = NREM minutes.
+- **Depth** = mean z.
+
+**M1, the allocation profile.** Naps → main-sleep hours: REM per NREM and relative ripple rate, mean ± SEM over animals.
+
+**M2, unit-level reciprocity.**
+- Per animal: Spearman ρ between REM per NREM and relative ripple rate across its units (units with ≥ 10 NREM min).
+- Animal-level: mean ρ and the sign count.
+- The same as a partial correlation with depth.
+
+**M3, day to day.**
+- Per animal and main sleep (one per day): the REM share of the whole main sleep vs its relative ripple rate.
+- Spearman across days within animal; animal-level mean ρ.
+
+**Reading.**
+- Macro reciprocity is shown when M2's ρ < 0 in ≥ 4 animals.
+- M2 vs its depth partial tells whether depth (sleep pressure) carries it.
+- M3 tells whether it also holds across days, i.e. outside the clock.
