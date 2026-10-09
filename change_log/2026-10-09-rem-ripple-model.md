@@ -100,7 +100,7 @@ By the plan this was description, because T1 failed, so it went through Amendmen
   - 42–43 % of them directly after REM;
   - ripple rate 24 / 21 per min, against 51 / 48 in short bouts ending in WAKE;
   - 28 % with no ripple;
-  - in bouts > 5 min the rate before REM equals the rate before WAKE (74 vs 76 / 73 vs 75 per min).
+  - in bouts > 5 min the whole-bout rate before REM equals the whole-bout rate before WAKE (74 vs 76 / 73 vs 75 per min).
 
 ## Reading (revised after the audit)
 
@@ -114,7 +114,9 @@ By the plan this was description, because T1 failed, so it went through Amendmen
   one to two minutes and often inside a REM episode.
   - The scorer's REM / NREM call and the detector read the same LFP, so this cannot be separated from how the scorer cuts
     REM episodes.
-  - It is **not** a pre-REM ripple drop within longer bouts.
+  - It does not come from steps ≥ 120 s into a bout (K7). A last-minute dip within long bouts (naps R3: the last-minute
+    rate relative to the run's own earlier rate, a within-run description) was **not tested as a predictor**; the
+    review (Fable, round r7 of the logic map) found R3 and K8 measure different quantities.
   - The earlier wording "transition-local drop in the last minute before REM" is withdrawn.
 
 **Status.**

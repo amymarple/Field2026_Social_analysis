@@ -814,8 +814,9 @@ def followup_text(Fu: pd.DataFrame, K8: pd.DataFrame) -> tuple[str, str]:
         lag += "Pre-registered reading: information in the last 60 s before the step, within longer bouts."
     elif not r0 and not r0_120:
         lag += ("Pre-registered reading: the unlagged rho does not hold on both scorings even 60 s into a bout, and on neither "
-                "from 120 s. **The counter's gain comes from the first one to two minutes of NREM bouts,** not from a pre-REM "
-                "drop within longer bouts.")
+                "from 120 s. **The counter's gain comes from the first one to two minutes of NREM bouts,** not from steps >= 120 s "
+                "into a bout (K7); a last-minute dip within long bouts (naps R3, a within-run description) was not tested as a "
+                "predictor.")
     else:
         lag += "Mixed: see the table."
     g = Fu[Fu.test.str.startswith("K4b")].set_index(["scoring", "test"])
@@ -834,7 +835,7 @@ def followup_text(Fu: pd.DataFrame, K8: pd.DataFrame) -> tuple[str, str]:
         f"{r.scoring}: {100 * r.share_of_end:.0f} % of REM entries come from NREM bouts <= 60 s, {100 * r.after_REM:.0f} % of "
         f"them directly after REM, ripple rate {r.bout_rate_per_min_median:.0f} /min (short bouts ending in WAKE: "
         f"{w.loc[r.scoring, 'bout_rate_per_min_median']:.0f} /min), {100 * r.bout_zero_ripples:.0f} % with no ripple"
-        for r in k.itertuples()) + ". In bouts > 5 min the rate before REM equals the rate before WAKE ("
+        for r in k.itertuples()) + ". In bouts > 5 min the whole-bout rate before REM equals the whole-bout rate before WAKE ("
         + "; ".join(f"{sc} {lng.loc[(sc, 'REM'), 'bout_rate_per_min_median']:.0f} vs {lng.loc[(sc, 'WAKE'), 'bout_rate_per_min_median']:.0f} /min"
                     for sc in sorted(K8.scoring.unique())) + "). So the REM-predictive ripple signal is the ripple poverty "
         "of short NREM stretches that return to REM, often inside a REM episode. The scorer's NREM / REM call and the ripple "
@@ -910,7 +911,8 @@ def report(out: Path, chk: Path | None = None) -> Path:
           if Fu is not None else ""), ""] + ([overall, ""] if overall else [])
     L += ["## The question", "",
           "- Naps and the early main sleep are ripple-rich and REM-poor. Across sleep periods REM and ripple rate are "
-          "reciprocal (ρ −0.54, 6/6). Ripples also drop in the last minute before REM (6/6).",
+          "reciprocal (ρ −0.54, 6/6). In NREM runs >= 5 min the last-minute ripple rate, relative to the run's own earlier "
+          "rate, is lower before REM than before waking (naps R3, 6/6; a description within the run, not a predictor).",
           "- Is that a link, or two outputs of the same drivers?",
           "- The test: does the ripple rate of the preceding NREM improve **held-out** prediction of the next REM entry?",
           "  - The reference model is the sleep model's best: Step B's B-full, i.e. the NREM counter P_tw600_k0 + clock + "
@@ -1052,7 +1054,10 @@ def report(out: Path, chk: Path | None = None) -> Path:
           "- Ripple counts are not memory processing: replay content can fall while ripples rise (sleep deprivation; Giri et al. "
           "2024, https://pubmed.ncbi.nlm.nih.gov/38867049/).",
           "- **L = 0 vs L = 60 s:**",
-          "  - A gain only at L = 0 is the transition already under way, since ripples drop in the last minute before REM.",
+          "  - A gain only at L = 0 may be the transition already under way: the last minute before REM is intermediate "
+          "sleep, and naps R3 reports a lower relative last-minute rate. It is not read as readiness.",
+          "  - Whether a last-minute term carries held-out information within long bouts was not tested here: T1 is a "
+          "10-min window and K7's rho is cumulative since the last REM.",
           "  - Only L = 60 s speaks to slower REM readiness.",
           "- **ALL vs KEPT:** the kept events drop theta- and REM-flagged events, which shares information with the scorer's REM "
           "call. So the ALL version decides.",

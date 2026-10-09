@@ -3,7 +3,8 @@ Amendment 3, written before computing):
   N1  does the strict naps' higher ripple rate survive controlling NREM depth? (unit model + depth-matched quintiles)
   R1  REM share per NREM by clock hour, drawn into the circadian figure (panel C) with depth and ripple rate
   R2  across 30-min bins within animal x block: ripple rate ~ REM share + depth + hour harmonics
-  R3  ripple rate in the last 120 s of NREM before REM vs before WAKE, relative to the run's own -300..-120 s baseline
+  R3  ripple rate in the last 60 s of NREM runs >= 300 s before REM vs before WAKE, relative to the run's own -300..-120 s
+      baseline (pooled per animal x outcome)
 Inputs (no re-extraction): the night_sleep_wiser run (per-second state / tau, strict naps), the swr_temperature run (kept
 NREM events), the raw spectral slope of imu_fixch (depth, storage read-only), the final 1-s states.
 
