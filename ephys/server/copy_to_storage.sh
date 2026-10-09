@@ -21,6 +21,10 @@
 #                                                                                  <s>.EMGFromLFP.LFP.mat (2 Hz) + the fast
 #                                                                                  <s>.EMGFromLFP50Hz.npz (ephys/emg_from_lfp.py)
 #          $LOGS/emg_from_lfp*.log                    -> $DST/emg_from_lfp/logs/
+#   delta  $SRC/delta/                                -> $DST/delta/                  delta waves (DOWN states) per session
+#                                                                                  (ephys/delta_auto.py: deltaWaves.events.mat,
+#                                                                                  csv, DEL.evt, summary, mua_nrem.npz)
+#          $LOGS/delta*.log                           -> $DST/delta/logs/
 #
 # Verification per part (written to $DST/<part>/VERIFY.txt; PASS only if all hold):
 #   V1 the destination holds exactly the expected relative paths, with identical byte sizes;
@@ -65,9 +69,10 @@ units() {        # one line per copy unit: <source dir>|<destination dir relativ
     audio_levels) echo "$SRC/audio_levels||-" ;;
     swr)   echo "$SRC/swr||-" ;;
     emg_from_lfp) echo "$SRC/emg_from_lfp||-" ;;
+    delta) echo "$SRC/delta||-" ;;
   esac
 }
-log_glob() { case $1 in lfp) echo "make_lfp*.log" ;; sleep) echo "score_sleep*.log" ;; audio_levels) echo "audio_levels*.log" ;; swr) echo "swr*.log" ;; emg_from_lfp) echo "emg_from_lfp*.log" ;; esac; }
+log_glob() { case $1 in lfp) echo "make_lfp*.log" ;; sleep) echo "score_sleep*.log" ;; audio_levels) echo "audio_levels*.log" ;; swr) echo "swr*.log" ;; emg_from_lfp) echo "emg_from_lfp*.log" ;; delta) echo "delta*.log" ;; esac; }
 
 list_src() {     # expected destination-relative paths + sizes, sorted
   local part=$1 src rel ex
