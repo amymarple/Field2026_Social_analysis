@@ -515,3 +515,42 @@ behaviour after natural wakes, and keeps pass2med's 1–3-h post-round REM-entry
 model that predicts more REM entry there fails).
 
 **Note after the run (2026-10-09).** Step E has 14 checks per scoring; "27/28" in P3 was read per scoring as ≥ 13/14 (the earlier "27/28 on each scoring" meant 27 of 28 in total). P1b's symmetric base never saw a bout after a wake ≥ 30 min, so a_nat is an extrapolation; P1b is reported but not read.
+
+## 11. Amendment 3 (2026-10-09; the user: "上") — part T, a two-phase arousal; written before these results
+
+**Why.** In part P, a single decaying arousal restores the first-hour waking (#56), but the rats then recover more sleep
+than the simulation (FINAL morning NREM 3 h, REM 3 h and 6 h, pass2med evening NREM 6 h above), and S2 shows fewer
+wakes than expected 1–3 h after a round (O/E 0.83–0.88, CIs touching 1). Question: is there a second, consolidation
+phase (waking below baseline later), and does it — fitted on waking alone — produce the later sleep recovery, including
+FINAL's extra REM at 3 h, through the existing count rules? Allowed to fail. The first-REM delay (#57) is not a target:
+no constraint independent of the outcome exists for it.
+
+**Definitions** (as part P unless stated; driver `ephys/sleep_perturb.py runT`):
+- Two-phase term on the NREM → WAKE logit only:
+  $\eta_{WAKE} \mathrel{+}= a\,e^{-s/\tau_1} + b\,(s/\tau_2)\,e^{1 - s/\tau_2}$; the second term is 0 at $s = 0$ and peaks at
+  $s = \tau_2$ with value $b$ (expected $b < 0$). $\tau_1 \in \{10, 20, 40, 80\}$ min, $\tau_2 \in \{60, 90, 120, 180\}$ min;
+  $(a, b)$ by 2-D Newton on the binary WAKE likelihood with the base logit as offset; the grid pair with the highest
+  likelihood.
+- Window: the 6 h after the post-round record start (steps with $s < 6$ h). Both bases leave out these 6 h (step-level
+  B-full and the generative sleep_sim fit), so neither has seen a post-round step up to 6 h.
+- Comparator: part P's one-phase term refitted on the same window and bases.
+- Cross-fit over rounds by date parity, as in part P.
+
+**Tests (both scorings):**
+- **T1, a second phase exists (held out).** Cross-fitted two-phase vs one-phase on the post-round steps 0–6 h: Δ log-loss
+  CI < 0 (block bootstrap) and ≥ 5/6 rats better; and $b < 0$ in both halves.
+- **T2, the later recovery follows from consolidation (allowed to fail; REM rules untouched).** In the cross-fitted
+  simulation with the two-phase term (100 replicates), the observed mean REM and NREM minutes at 1, 3 and 6 h after
+  morning and evening rounds (12 measures) are all inside the simulated 95 % range. Latencies reported, not part of the
+  rule.
+- **T3, no harm.** Step E's checks with the two-phase term: ≥ 13/14 per scoring and not fewer than without.
+- **Residual.** FINAL's morning REM at 3 h and pass2med's day-demeaned morning debt slope at 3 h with the two-phase term.
+
+**Reading:**
+
+| result | reading |
+|---|---|
+| T1 + T2 pass | the response is a two-phase arousal; the later sleep recovery (and FINAL's extra REM at 3 h if it comes inside) follows from consolidation through the count rules |
+| T1 pass, T2 fail | a consolidation phase exists but does not produce the recovery; a further process remains |
+| T1 fail | no second phase detectable in the waking; the later recovery is not a waking effect |
+| the residual stays outside on one scoring | as in part P: no unified REM target, #43 stays Candidate |
