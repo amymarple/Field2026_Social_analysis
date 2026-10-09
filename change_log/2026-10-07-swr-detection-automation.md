@@ -273,3 +273,36 @@ relabelling ("let fate decide").
   - **`info`:** post-advance settle window, FM64 sessions, females present, SF12 shank 1, sleep review 'bad'.
   - Output: `results/2026c/ephys_spikes/reports/ephys_spikes_swr_quality_2026c.{md,csv}`, the guide other analyses
     read first.
+
+**Production venue, 2026-10-08 evening.**
+
+- The BioHPC node is congested by other users: load ≈ 880, 79 % kernel time, two users at ≈ 320 / 185 cores. A session
+  there takes 2.2–3.8 h, against ≈ 2 min on the analysis PC.
+- Block references run one after another before the pool, so SF11 (5 references) and SF08 (2 references) would have
+  taken a day.
+- They were stopped on the server and run on the analysis PC instead (`swr_auto.py --all`, 10 workers):
+  - same commit / operative config;
+  - the LFP read from storage;
+  - the same final 1-s states.
+- The six validation sessions show server == local event for event, so the venue does not change the output.
+- SF07 / SF09 / SF10 / SF12 continue on the server.
+- When all are done, the local SF08 / SF11 folders are uploaded to the workdir and one verified `copy_to_storage.sh
+  PARTS=swr UPDATE=1` stores everything.
+
+**Production complete (2026-10-08 22:01).**
+
+- **Scope:** 181 sessions ≥ 10 min, all six animals, on storage `3rd_rat/analysis/swr/`. VERIFY: **RESULT PASS** (922
+  files, 1.1 GB).
+- **Validation on the stored files** vs the user's GUI scoring, kept events: SF10 0.906 / 0.829, SF09 0.850, SF07 0.814 /
+  0.853 / 0.879. Server == local event for event on all six, plus SF08 `3_20260911_091931.245`.
+- **Quality tiers:** validated 84, good 50, check 28, low_contrast
+  15, exclude 4.
+  - The guide is `results/2026c/ephys_spikes/reports/ephys_spikes_swr_quality_2026c.md` (also on storage).
+  - The pointer is `run_manifest_swr_2026c.json`.
+- **What the drift checks caught:**
+  - SF08 block 1 before 09-04 selects 10.4–12.6 %, up to 132 NREM events/min, against its late reference (09-08).
+  - SF12 block 1 from 09-08 07:26 selects ~0 %: the ripple amplitude is lost (degradation; user: 09-09 logger issues).
+  - SF09's two nights at amplitude 0.62.
+  - Four sessions without sleep states (SF07 ×3, SF12 ×1).
+- **Local run:** 6 of SF08's long nights first failed out of memory with 10 workers (logged in `_errors_attempt1`); they
+  were rerun with 3 workers.

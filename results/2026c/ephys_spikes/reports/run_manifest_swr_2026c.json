@@ -1,0 +1,23 @@
+{
+  "name": "swr_auto production, cohort 2026c",
+  "storage": "Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/swr/",
+  "server_path": "/fs/cbsuruizfs1/storage/hc997/SocialFieldRat2026/3rd_rat/analysis/swr/",
+  "verify": "RESULT PASS (2026-10-08 22:01, 922 files, 1.1 GB; paths + sizes + MD5 vs O_DIRECT read-back)",
+  "computed": {
+    "SF07/SF09/SF10": "BioHPC, commit d522f78",
+    "SF12": "BioHPC, commit 2913aad",
+    "SF08/SF11": "analysis PC DESKTOP-HUA1FJN, commit 0332a4a (BioHPC congested)"
+  },
+  "channel_config": "ephys/configs/swr_channels_2026c.yaml (operative fields as deployed in c0e376b; SF11 block 1 split at 09-02 19:08:52.526)",
+  "sessions": 181,
+  "tiers": {
+    "validated": 84,
+    "good": 50,
+    "check": 28,
+    "low_contrast": 15,
+    "exclude": 4
+  },
+  "quality": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_quality_2026c.md",
+  "validation": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_validation_2026c.csv",
+  "made_by": "ephys/swr_auto.py via ephys/server/run_swr.sh (+ local --all for SF08/SF11); quality by ephys/swr_quality.py"
+}

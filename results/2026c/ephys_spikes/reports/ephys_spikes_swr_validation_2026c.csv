@@ -1,0 +1,7 @@
+animal,session,note,hide_flagged,all_n_user,all_n_auto,all_matched,all_precision,all_recall,all_f1,kept_n_user,kept_n_auto,kept_matched,kept_precision,kept_recall,kept_f1,local_n,server_n,server_equals_local,server_vs_local_f1
+SF10,6_20260906_080449.175,day; 114 clicks (2026-10-07),False,39767,38371,36029,0.939,0.906,0.922,39767,36973,34781,0.941,0.875,0.906,38371,38371,True,1.0
+SF09,6_20260908_072057.385,day; 190 clicks (2026-10-07),False,34474,34435,29896,0.868,0.867,0.868,34474,33070,28722,0.869,0.833,0.85,34435,34435,True,1.0
+SF10,11_20260911_192207.153,"wake-heavy night, first with the five females; 202 clicks",False,19865,27728,19658,0.709,0.99,0.826,19865,24976,18593,0.744,0.936,0.829,27728,27728,True,1.0
+SF07,15_20260902_082418.755,block 1 day; 116 clicks; GUI channels 1-based 49/56/23 = cols 48/55/22,True,9838,15173,9594,0.632,0.975,0.767,9838,13726,9590,0.699,0.975,0.814,15173,15173,True,1.0
+SF07,5_20260908_071513.175,block 4 day; 94 clicks,True,26226,27776,20373,0.733,0.777,0.755,26226,21491,20358,0.947,0.776,0.853,27776,27776,True,1.0
+SF07,2_20260909_183802.795,block 4 night; 73 clicks + the blind review of 60 flagged / unflagged events (review_flags),True,5321,25030,4596,0.184,0.864,0.303,5321,4841,4465,0.922,0.839,0.879,25030,25030,True,1.0

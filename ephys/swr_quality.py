@@ -290,7 +290,7 @@ def write_md(a, df, val, out, cfg, cfg_note, order):
     for (an, bf), g in df.groupby(["animal", "block_from"], sort=False):
         use = g[g.tier.isin(["validated", "good", "check"])]
         tiers = ", ".join(f"{k} {int((g.tier == k).sum())}" for k in order if (g.tier == k).any())
-        sel = g.selected_frac.dropna()
+        sel = g[g.tier != "exclude"].selected_frac.dropna()
         w(f"| {an} | {g.block.iloc[0]} ({bf if bf != 'None' else 'start'}) | {g.channels.iloc[0]} | {g.boundary.iloc[0] or '-'} | "
           f"`{g.reference.iloc[0]}` | {tiers} | {use.nrem_min.fillna(0).sum() / 60:.1f} | "
           f"{100 * sel.median():.1f} | {use.kept_rate_nrem.dropna().median() if len(use) else float('nan'):.1f} |")
@@ -376,6 +376,12 @@ def write_md(a, df, val, out, cfg, cfg_note, order):
       "LFP-EMG excluded. Blocks with a reversal (SF08, SF09, SF10, SF12 block 1) use both features.")
     w("- Only SF07 (blocks 1, 4), SF09 and SF10 are validated against the user; SF08, SF07 blocks 2-3, SF11 block 1a and SF12 "
       "block 1 are `good` by the drift checks only.")
+    w("- **SF08 block 1** detects many events (median kept NREM ~100/min; 12 of its sessions before 09-04 select 10.4-12.6 %, "
+      "`check`): its reference (09-08) is late in the block and the early days may over-select. Not validated against the user; "
+      "treat SF08 block-1 rates with caution.")
+    w("- **SF12 block 1 from 09-08** (sessions 5_20260908_072624, 8_20260908_194824, 2_20260909_091353): ~0 % selected, the "
+      "ripple amplitude is gone (shank-1 / connector degradation from 09-07 evening; the user: 09-09 = logger problem), `check` "
+      "with zero events - this is lost signal, not an absence of ripples.")
     w("- Strength tiers (strict / inclusive) are not cut here: use `SwMax_z` / `RipMax_z` per event.")
     w("- SF11's last night (09-06 19:52 -> 09-07 06:10) has no sleep states (not scored): no state flags there.")
     out.write_text("\n".join(L) + "\n", encoding="utf-8")
