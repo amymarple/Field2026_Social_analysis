@@ -18,6 +18,7 @@ leave-one-animal-out; hour profile; verdict = Established / Candidate / No (see 
   python ephys/swr_temperature.py rate       (Amendment 2: day / night ripple RATE per period, from the saved bins)
   python ephys/swr_temperature.py extremes   (rate at the hottest vs the coldest time of each day)
   python ephys/swr_temperature.py figure     (NREM ripple rate per day and within a day, with temperature)
+  python ephys/swr_temperature.py trend      (day and night rate across days, mean +- SEM; within-block trend)
   python ephys/swr_temperature.py --selftest
 """
 from __future__ import annotations
@@ -1063,6 +1064,89 @@ def rate_day_hour_figure(a):
     print(tab.round(1).to_string())
 
 
+# ------------------------------------------------------------------ across days: day and night rate, mean +- SEM (user 10-09)
+def rate_trend(a):
+    """Per biological date D: the day period (sunrise -> sunset of D) and the night period that follows (sunset D -> sunrise
+    D+1); per animal x block the period rate R = sum n / sum N (>= 30 NREM min). Lines = mean +- SEM over the animals present:
+    absolute, and normalised (R / the animal x block mean of that phase, in %). Trend = WLS slope of R (and of the relative
+    amplitude A) on days within animal x block, SEs clustered by date; animal-level = mean of per-animal slopes, t(n-1)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from scipy import stats
+    from _common import figure_dir
+    rd = report_dir(COHORT)
+    man = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
+    b = pd.read_csv(Path(man["run_dir"]) / "bins_30min.csv.gz", parse_dates=["b0"])
+    hp = pd.read_csv(rd / f"ephys_spikes_swr_temperature_hour_profile_{COHORT}.csv")
+    per = periods(b, hp)
+    per["D"] = pd.to_datetime("2026-" + per.bio)
+    per["dayn"] = (per.D - DAY0) / pd.Timedelta(days=1)
+    per["Rn"] = 100 * per.R / per.groupby(["ab", "phase"]).R.transform("mean")
+    per["An"] = 100 * per.A / per.groupby(["ab", "phase"]).A.transform("mean")
+    rows = []
+    # one value per animal per period (an animal with two blocks in one period, e.g. SF07 on the 09-06 advance day: its
+    # blocks pooled, NREM-minute weighted), then mean +- SEM over animals
+    pa_ = per.groupby(["D", "phase", "animal"]).apply(lambda g: pd.Series({
+        "R": g.n.sum() / g.nrem_min.sum(), "Rn": np.average(g.Rn, weights=g.nrem_min), "An": np.average(g.An, weights=g.nrem_min),
+        "T": np.average(g["T"], weights=g.nrem_min)})).reset_index()
+    for (D, ph), g in pa_.groupby(["D", "phase"]):
+        rows.append(dict(date=D.strftime("%m-%d"), D=D, phase=ph, animals=g.animal.nunique(), R_mean=g.R.mean(),
+                         R_sem=g.R.std(ddof=1) / np.sqrt(len(g)) if len(g) > 1 else np.nan, Rn_mean=g.Rn.mean(),
+                         Rn_sem=g.Rn.std(ddof=1) / np.sqrt(len(g)) if len(g) > 1 else np.nan, An_mean=g.An.mean(),
+                         T_mean=g["T"].mean(), who=" ".join(sorted(g.animal))))
+    L_ = pd.DataFrame(rows)
+    tests = []
+    for ph in ("day", "night"):
+        d = per[per.phase == ph].assign(date=per.bio)
+        for y, lab in (("R", "rate (/NREM min per day)"), ("Rn", "normalised rate (% per day)"), ("An", "relative amplitude (% per day)")):
+            f = fit_period(d, y, "dayn", trend=False)
+            sl = []
+            for an, g in d.groupby("animal"):
+                if g.date.nunique() >= 3:
+                    sl.append(fit_period(g, y, "dayn", trend=False).get("slope", np.nan))
+            sl = pd.Series(sl).dropna()
+            al = dict(al=sl.mean(), al_lo=sl.mean() - stats.t.ppf(0.975, len(sl) - 1) * sl.std(ddof=1) / np.sqrt(len(sl)),
+                      al_hi=sl.mean() + stats.t.ppf(0.975, len(sl) - 1) * sl.std(ddof=1) / np.sqrt(len(sl))) if len(sl) >= 3 else {}
+            tests.append(dict(phase=ph, outcome=lab, **{k: f.get(k) for k in ("slope", "lo", "hi", "p", "n", "dates")}, **al,
+                              positive=int((sl > 0).sum()), animals=len(sl)))
+    T_ = pd.DataFrame(tests)
+    L_.drop(columns=["D"]).to_csv(rd / f"ephys_spikes_swr_rate_trend_lines_{COHORT}.csv", index=False)
+    T_.to_csv(rd / f"ephys_spikes_swr_rate_trend_tests_{COHORT}.csv", index=False)
+    col = {"day": "#d98c00", "night": "#2b4f8a"}
+    fig, axes = plt.subplots(3, 1, figsize=(11, 9.5), sharex=True, gridspec_kw={"height_ratios": [1.2, 1.2, 0.6]})
+    for ph in ("day", "night"):
+        g = L_[L_.phase == ph].sort_values("D")
+        x = g.D + (pd.Timedelta(hours=13) if ph == "day" else pd.Timedelta(hours=25))
+        lab = "day (sunrise-sunset)" if ph == "day" else "night (sunset-next sunrise)"
+        axes[0].errorbar(x, g.R_mean, yerr=g.R_sem, fmt="-o", color=col[ph], ms=5, capsize=3, label=lab)
+        axes[1].errorbar(x, g.Rn_mean, yerr=g.Rn_sem, fmt="-o", color=col[ph], ms=5, capsize=3, label=lab)
+        axes[2].plot(x, g.animals, "o-", color=col[ph], ms=4)
+    axes[0].set_ylabel("NREM ripple rate\n(events / NREM min)", fontsize=9)
+    axes[0].set_title("A  Absolute rate, mean +- SEM over the animals present that period (composition changes; each probe block "
+                      "has its own detection boundary)", fontsize=9, loc="left")
+    axes[1].axhline(100, color="0.5", lw=0.6)
+    axes[1].set_ylabel("% of the animal x block\nmean of that phase", fontsize=9)
+    axes[1].set_title("B  Normalised rate, mean +- SEM (each animal x block's day or night periods scaled to their own mean)",
+                      fontsize=9, loc="left")
+    axes[2].set_ylabel("animals", fontsize=9)
+    axes[2].set_title("C  Animals contributing (>= 30 NREM min in the period)", fontsize=9, loc="left")
+    axes[0].legend(fontsize=8, frameon=False)
+    import matplotlib.dates as mdates
+    axes[2].xaxis.set_major_locator(mdates.DayLocator())
+    axes[2].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
+    for ax in axes:
+        ax.tick_params(labelsize=8)
+    fig.suptitle(f"Day and night NREM ripple rate across days, cohort {COHORT} (tier validated / good, to 09-11 19:40)", fontsize=10)
+    fig.tight_layout()
+    out = figure_dir(COHORT) / f"ephys_spikes_swr_rate_trend_day_night_{COHORT}.png"
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+    print(f"wrote {out}")
+    print(L_[["date", "phase", "animals", "R_mean", "R_sem", "Rn_mean", "Rn_sem", "An_mean", "who"]].round(1).to_string(index=False))
+    print(T_.round(3).to_string(index=False))
+
+
 # ------------------------------------------------------------------ selftest
 def selftest():
     rng = np.random.default_rng(1)
@@ -1109,7 +1193,7 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run", "rate", "extremes", "figure"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "rate", "extremes", "figure", "trend"])
     ap.add_argument("--swr-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/swr")
     ap.add_argument("--states-root", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final")
     ap.add_argument("--quality", default=str(report_dir(COHORT) / f"ephys_spikes_swr_quality_{COHORT}.csv"))
@@ -1128,6 +1212,8 @@ def main():
         extremes(a)
     if a.cmd == "figure":
         rate_day_hour_figure(a)
+    if a.cmd == "trend":
+        rate_trend(a)
 
 
 if __name__ == "__main__":

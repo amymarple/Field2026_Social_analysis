@@ -160,3 +160,31 @@ around midnight). Kept NREM events / NREM minutes, ≥ 10 NREM min, paired per a
   - 79.0 vs 63.8 /NREM min, about 11.5 °C colder.
 - This is also late rest phase vs the end of the active phase, so it is not separable from time of day / sleep
   pressure.
+
+## Update 2026-10-09 (3): rate figures; day and night rate across days (the user's questions)
+
+**`swr_temperature.py figure`** → `figures/ephys_spikes_swr_rate_day_and_hour_2026c.png`. It shows NREM ripple rate per
+NREM time:
+- per day: each animal's day and night periods;
+- within a day: per animal, and the shared block-demeaned profile ± SEM;
+- with outdoor temperature.
+
+The shared profile runs from +16 … +20 /NREM min at 23–02 h to −9 at 16–17 h, the mirror of the temperature.
+
+**`swr_temperature.py trend`** → `figures/ephys_spikes_swr_rate_trend_day_night_2026c.png` +
+`…swr_rate_trend_{lines,tests}_2026c.csv`. Day and night rate per biological date, mean ± SEM over animals (one value
+per animal per period), absolute and normalised to each animal × block × phase mean. The trend is a WLS slope on days
+within animal × block, SEs clustered by date.
+
+| Phase | Trend (/NREM min per day) | Normalised (% per day) | Animal-level mean (/NREM min per day) | Relative amplitude (% per day) |
+|---|---|---|---|---|
+| Day | +0.79 [−0.35, 1.92] (4/5 animals up) | +1.3 % [−0.4, 3.0] | — | +0.1 % |
+| Night | +3.3 [1.4, 5.2], p 0.003 (4/5 up) | +3.8 % [1.4, 6.2] | +0.5 [−7.6, 8.6] | −0.04 % |
+
+- **Day:** about flat, not significant.
+- **Night:** rises over the cohort.
+  - The animal-level mean is +0.5 per day, so the animals are heterogeneous.
+  - Amplitude does not drift, so a detection threshold effect is unlikely.
+  - Late nights rest on fewer animals: 3 on 09-06 and 09-08, 1–2 on 09-09 and 09-10.
+  - The nights also cooled over the cohort (19–20 °C early, 10–17 °C later), so the night rise and the night
+    temperature slope are the same contrast seen twice and cannot be separated.
