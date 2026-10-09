@@ -1,0 +1,9 @@
+scores,part,pass,numbers
+final,T1,False,"two- vs one-phase Delta +0.005 % [-0.076, +0.088], 3/6; b by half -0.31 / -0.18"
+final,T2,False,"inside of 12: two-phase 9, one-phase 9, blind 7; outside (two-phase): morning nrem_min_3h obs 117.1 vs 113.3-116.9, evening nrem_min_1h obs 11.4 vs 11.6-12.9, evening nrem_min_6h obs 53.8 vs 49.9-53.0"
+final,T3,False,"two-phase 11/14, blind 11/14"
+final,residual,,"morning REM payback slope (day-demeaned), B = 1 h: obs +0.04 vs -0.23..+0.29 (inside); morning REM payback slope (day-demeaned), B = 3 h: obs -0.06 vs -0.54..+0.75 (inside); S3 morning REM min in 3 h: obs +22.46 vs +19.81..+23.20 (inside)"
+pass2med,T1,False,"two- vs one-phase Delta +0.009 % [-0.029, +0.048], 2/6; b by half +0.05 / -0.05"
+pass2med,T2,False,"inside of 12: two-phase 11, one-phase 11, blind 8; outside (two-phase): evening nrem_min_6h obs 57.8 vs 53.6-56.3"
+pass2med,T3,True,"two-phase 14/14, blind 14/14"
+pass2med,residual,,"morning REM payback slope (day-demeaned), B = 1 h: obs +0.34 vs -0.23..+0.27 (above); morning REM payback slope (day-demeaned), B = 3 h: obs +0.96 vs -0.55..+0.60 (above); S3 morning REM min in 3 h: obs +22.21 vs +20.84..+23.59 (inside)"

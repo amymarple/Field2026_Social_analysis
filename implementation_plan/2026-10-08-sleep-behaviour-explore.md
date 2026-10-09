@@ -26,6 +26,8 @@
   claims #48–#53, notes on #6b, #14, #34. **Amendment 1 complete.**
 - **Amendment 2 (§10), part P DONE 2026-10-09:** [P report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_P_2026c.md)
   (start with its Reading); claims #56–#57, #47 corrected; part Q not triggered (residuals on different quantities).
+- **Amendment 3 (§11), part T DONE 2026-10-09:** [T report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_T_2026c.md);
+  T1 / T2 fail on both scorings (#58); FINAL's REM residual base-dependent, pass2med's debt slope robust (#43).
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;

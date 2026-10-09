@@ -460,3 +460,19 @@ by date parity.
   of 28 in total. Fixed in all three places; the research-logic map repeats the old wording and is fixed at its next
   update.
 
+## Sleep-behaviour explore, Amendment 3 — part T, a two-phase arousal (2026-10-09; the user: "上")
+
+Plan §11, committed (c4f84e1) before results. `ephys/sleep_perturb.py runT` (selftest 23 s: planted two-phase term
+recovered, null second phase, simulator check); run 19 min. `sleep_sim.simulate_records` takes (a, τ1, b, τ2); the
+output without it is unchanged (same sha256 fingerprint).
+
+**Definition (headline).** $\eta_{WAKE} \mathrel{+}= a\,e^{-s/\tau_1} + b\,(s/\tau_2)\,e^{1-s/\tau_2}$ (second term 0
+at the round, peak $b$ at $\tau_2$), fitted on waking only over the 6 h after the round; bases blind to those 6 h.
+
+**Results** (#58; #43, #56, #57 updated):
+- **T1 fails (both):** no held-out gain over the one-phase term (+0.005 % / +0.009 %); FINAL in-sample b = −0.27, pass2med ≈ 0.
+- **T2 fails (both):** the same REM / NREM measures inside as the one-phase term (9 / 11 of 12); what remains outside is NREM.
+- **T3:** FINAL 11/14 with and without the term — the 6-h-blind base over-predicts night REM by ~20 %; pass2med 14/14.
+- **REM residual:** FINAL's extra REM at 3 h comes inside with the 6-h-blind base (base-dependent); pass2med's debt
+  slope stays above with every variant and base (the only robust REM residual).
+

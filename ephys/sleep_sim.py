@@ -226,7 +226,7 @@ def _sim_core():
     @njit
     def simulate(seed, L, sod0, tday0, a_idx, f_start, f_end, f_type, dark,
                  nfel, nfP, nharm, nlin, nan_, nb, rfel, rharm, rlin, ran, rb, wdur, wnext, woff, tau_w, kappa, nfT, use_t,
-                 ar_a, ar_tau):
+                 ar_a, ar_tau, ar_b, ar_tau2):
         np.random.seed(seed)
         out = np.zeros(L, np.int8)
         nf = f_start.shape[0]
@@ -300,6 +300,8 @@ def _sim_core():
                         eta[c] = v
                     if ar_a != 0.0:                        # perturbation arousal (sleep_perturb): NREM -> WAKE only
                         eta[2] += ar_a * np.exp(-ts / ar_tau)
+                    if ar_b != 0.0:                        # its delayed second phase (part T), 0 at s = 0, peak b at tau2
+                        eta[2] += ar_b * (ts / ar_tau2) * np.exp(1.0 - ts / ar_tau2)
                     mx = max(eta[0], max(eta[1], eta[2]))
                     p0 = np.exp(eta[0] - mx)
                     p1 = np.exp(eta[1] - mx)
@@ -445,17 +447,19 @@ def build_model(recs: list[dict]) -> dict:
 
 def simulate_records(recs: list[dict], M: dict, rep: int, tau_w: float = TAU_W, kappa: float = KAPPA,
                      arousal: dict | None = None) -> list[dict]:
-    """arousal: optional {record_id: (a, tau_s)} - adds a * exp(-s / tau_s) to the NREM -> WAKE logit, s = seconds since the
-    record start (ephys/sleep_perturb.py); records not in it, or arousal None, are simulated exactly as before."""
+    """arousal: optional {record_id: (a, tau_s)} or {record_id: (a, tau_s, b, tau2_s)} - adds a * exp(-s / tau_s)
+    [+ b * (s / tau2_s) * exp(1 - s / tau2_s)] to the NREM -> WAKE logit, s = seconds since the record start
+    (ephys/sleep_perturb.py); records not in it, or arousal None, are simulated exactly as before."""
     sim = simulator()
     arousal = arousal or {}
     TN, TR = M["TN"], M["TR"]
     out = []
     for i, (rc, I) in enumerate(zip(recs, M["inputs"])):
-        ar_a, ar_tau = arousal.get(rc["record_id"], (0.0, 1.0))
+        ar = tuple(arousal.get(rc["record_id"], (0.0, 1.0))) + (0.0, 1.0)
+        ar_a, ar_tau, ar_b, ar_tau2 = ar[:4]
         st = sim(1_000_003 * rep + 7919 * i + 17, I["L"], I["sod0"], I["tday0"], I["a"], I["fs"], I["fe"], I["ft"], I["dark"],
                  TN["fel"], TN["fP"], TN["harm"], TN["lin"], TN["an"], TN["b"], TR["fel"], TR["harm"], TR["lin"], TR["an"], TR["b"],
-                 M["wdur"], M["wnext"], M["woff"], float(tau_w), float(kappa), TN["fT"], 1.0 if H19 else 0.0, float(ar_a), float(ar_tau))
+                 M["wdur"], M["wnext"], M["woff"], float(tau_w), float(kappa), TN["fT"], 1.0 if H19 else 0.0, float(ar_a), float(ar_tau), float(ar_b), float(ar_tau2))
         out.append({**{k: v for k, v in rc.items() if k != "state"}, "state": st})
     return out
 
