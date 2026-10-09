@@ -11,6 +11,7 @@ Definitions: SLEEP units (no wake > 120 s, >= 20 min); long wake = wake runs mer
 [sunset D, sunrise D+1 + 2 h]; naps = night sleep before MSO; tau = time since MSO until the next long wake.
 
   python ephys/night_sleep_wiser.py run [--long-wake-min 30]
+  python ephys/night_sleep_wiser.py naps   (strict naps: before the MSO, exploration before and after; from the run's tables)
   python ephys/night_sleep_wiser.py --selftest
 """
 from __future__ import annotations
@@ -572,6 +573,271 @@ def _f(x, nd=2):
     return "" if x is None or (isinstance(x, float) and not np.isfinite(x)) else f"{x:.{nd}f}"
 
 
+# ------------------------------------------------------------------ strict naps (plan Amendment 1, the user's definition)
+NAP_BRK_S, NAP_MIN_S, NAP_MIN_NREM_S = 120, 300, 180
+FLANK_S, FLANK_WAKE, FLANK_FIELD_S, FLANK_COVER = 1800, 0.5, 300, 0.8
+
+
+def sleep_stretches(state: np.ndarray, brk: int = NAP_BRK_S, min_s: int = NAP_MIN_S, min_nrem: int = NAP_MIN_NREM_S) -> list:
+    """Sleep epochs (NREM / REM) merged across wake gaps < brk s (unknown ends a stretch); (a, b) = first / last sleep
+    epoch (b exclusive), kept if b - a >= min_s and it holds >= min_nrem NREM seconds."""
+    out, a0, last = [], None, None
+    for v, a, b in runs(np.where((state == N) | (state == R), 2, np.where(state == W, 1, 0))):
+        if v == 2:
+            a0 = a if a0 is None else a0
+            last = b
+        elif v == 1 and a0 is not None and (b - a) < brk:
+            continue
+        else:
+            if a0 is not None:
+                out.append((a0, last))
+            a0, last = None, None
+    if a0 is not None:
+        out.append((a0, last))
+    return [(a, b) for a, b in out if (b - a) >= min_s and int((state[a:b] == N).sum()) >= min_nrem]
+
+
+def flank_ok(S: pd.DataFrame, t0: pd.Timestamp, t1: pd.Timestamp) -> tuple[bool, dict]:
+    """The flank [t0, t1): covered >= 80 %, >= 50 % WAKE, >= 5 min in the field (known zone)."""
+    g = S[(S.t >= t0) & (S.t < t1)]
+    g = g[g.state > 0]
+    cover = len(g) / FLANK_S
+    wake = float((g.state == W).mean()) if len(g) else np.nan
+    field = int((g.zone == 3).sum())
+    ok = cover >= FLANK_COVER and wake >= FLANK_WAKE and field >= FLANK_FIELD_S
+    return ok, dict(cover=cover, wake=wake, field_min=field / 60)
+
+
+def naps(a):
+    import swr_temperature as stp
+    rd = report_dir(COHORT)
+    man = json.loads((rd / f"run_manifest_night_sleep_wiser_{COHORT}.json").read_text())
+    run_dir = Path(man["run_dir"])
+    NT = pd.read_csv(rd / f"ephys_spikes_night_sleep_wiser_nights_{COHORT}.csv", parse_dates=["mso", "sunset", "sunrise"])
+    LW = pd.read_csv(run_dir / "long_wakes.csv", parse_dates=["start", "end"])
+    nap_rows, comp_rows, nights_rows = [], [], []
+    tabs = {}
+    for f in sorted(run_dir.glob("seconds_*.parquet")) or sorted(run_dir.glob("seconds_*.csv.gz")):
+        an = f.name.split("_")[1].split(".")[0]
+        S = pd.read_parquet(f) if f.suffix == ".parquet" else pd.read_csv(f, parse_dates=["t"])
+        S = S.sort_values("t").reset_index(drop=True)
+        S["cat"] = np.where(S.state.isin([N, R]) & S.tau_h.notna(), "main", np.where(S.state.isin([N, R]), "other", "-"))
+        lw = LW[LW.animal == an].sort_values("start")
+        stretches = []
+        for rec, g in S.groupby("rec", sort=False):
+            st = g.state.to_numpy()
+            tt = g.t.to_numpy()
+            for a_, b_ in sleep_stretches(st):
+                stretches.append((pd.Timestamp(tt[a_]), pd.Timestamp(tt[b_ - 1]) + pd.Timedelta(seconds=1), g.index[a_], g.index[b_ - 1]))
+        for r in NT[NT.animal == an].itertuples():
+            D = pd.Timestamp("2026-" + r.night)
+            has_mso = pd.notna(r.mso)
+            end = r.mso if has_mso else r.sunrise + pd.Timedelta(hours=2)
+            cand = lw[(lw.start >= D + pd.Timedelta(hours=15)) & (lw.start < end)]
+            if not len(cand):
+                nights_rows.append(dict(animal=an, night=r.night, active_start=pd.NaT, active_end=end, mso_defined=has_mso, naps=np.nan))
+                continue
+            beg = cand.start.iloc[0]
+            n_naps = 0
+            for s0, s1, i0, i1 in stretches:
+                if s0 < beg or s1 > end:
+                    continue
+                okb, fb = flank_ok(S, s0 - pd.Timedelta(seconds=FLANK_S), s0)
+                oka, fa = flank_ok(S, s1, s1 + pd.Timedelta(seconds=FLANK_S))
+                g = S.loc[i0:i1]
+                kz = g.zone[g.zone > 0]
+                strict = okb and oka
+                if strict:
+                    S.loc[i0:i1, "cat"] = np.where(S.loc[i0:i1, "state"].isin([N, R]), "nap", "-")
+                    n_naps += 1
+                nap_rows.append(dict(animal=an, night=r.night, start=s0, end=s1, dur_min=(s1 - s0).total_seconds() / 60,
+                                     nrem_min=float((g.state == N).sum() / 60), rem_min=float((g.state == R).sum() / 60),
+                                     house_share=float((kz < 3).mean()) if len(kz) else np.nan, strict=strict,
+                                     before_wake=fb["wake"], before_field_min=fb["field_min"], before_cover=fb["cover"],
+                                     after_wake=fa["wake"], after_field_min=fa["field_min"], after_cover=fa["cover"],
+                                     mso_defined=has_mso))
+            nights_rows.append(dict(animal=an, night=r.night, active_start=beg, active_end=end, mso_defined=has_mso, naps=n_naps,
+                                    active_h=(end - beg).total_seconds() / 3600))
+        tabs[an] = S
+        h = S.t.dt.hour
+        rec_ = S[S.state > 0]
+        for hh, g in rec_.groupby(rec_.t.dt.hour):
+            n = len(g)
+            comp_rows.append(dict(animal=an, hour=hh, p_nrem_main=float(((g.state == N) & (g.cat == "main")).sum() / n),
+                                  p_nrem_nap=float(((g.state == N) & (g.cat == "nap")).sum() / n),
+                                  p_nrem_other=float(((g.state == N) & (g.cat == "other")).sum() / n)))
+        print(f"{an}: {sum(1 for x in nap_rows if x['animal'] == an and x['strict'])} strict naps", flush=True)
+    NP_ = pd.DataFrame(nap_rows)
+    NN = pd.DataFrame(nights_rows)
+    C = pd.DataFrame(comp_rows)
+    # nap onset frequency per clock hour: strict-nap onsets / analysed nights, per animal, then mean +- SEM
+    strict = NP_[NP_.strict].copy()
+    strict["h"] = strict.start.dt.hour
+    fr = []
+    for an, g in NN[NN.naps.notna()].groupby("animal"):
+        nn = len(g)
+        cnt = strict[strict.animal == an].groupby("h").size().reindex(range(24), fill_value=0)
+        fr.append(pd.DataFrame({"animal": an, "hour": range(24), "naps_per_night": cnt.to_numpy() / nn, "nights": nn}))
+    FR = pd.concat(fr, ignore_index=True)
+    FRm = FR.groupby("hour").naps_per_night.agg(["mean", lambda v: v.std(ddof=1) / np.sqrt(len(v))]).rename(columns={"<lambda_0>": "sem"})
+    Cm = C.groupby("hour")[["p_nrem_main", "p_nrem_nap", "p_nrem_other"]].mean()
+    # ripple rate in strict naps vs other pre-MSO sleep vs the first 2 h of the main sleep (ripple-eligible NREM only)
+    man_t = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
+    ev = pd.read_csv(Path(man_t["run_dir"]) / "nrem_events.csv.gz", parse_dates=["t"], usecols=["t", "animal"])
+    q = stp.sessions(Path(a.quality), Path(a.review), ["validated", "good"])
+    win = stp.settle_windows(Path(a.cohort_yaml))
+    elig = []
+    for row in q.itertuples():
+        sf = Path(a.states_root) / row.animal / f"{row.session}.states.npz"
+        if not sf.exists():
+            continue
+        with np.load(sf) as s_:
+            sec = s_["ts"][s_["state"] == N].astype(int)
+        t = pd.Series(row.start_t + pd.to_timedelta(sec, unit="s"))
+        elig.append(pd.DataFrame({"animal": row.animal, "t": t[stp.keep_mask(t, row, stp.FEMALES, win)].values}))
+    EL = pd.concat(elig, ignore_index=True).sort_values("t")
+    rr = []
+    for an, S in tabs.items():
+        cat = S[["t", "cat", "tau_h"]].sort_values("t")
+        e = pd.merge_asof(EL[EL.animal == an], cat, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
+        v = pd.merge_asof(ev[ev.animal == an].sort_values("t"), cat, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
+        row = {"animal": an}
+        for nm, me, mv in (("strict_nap", e.cat == "nap", v.cat == "nap"), ("other_night_sleep", e.cat == "other", v.cat == "other"),
+                           ("main_first_2h", (e.cat == "main") & (e.tau_h < 2), (v.cat == "main") & (v.tau_h < 2)),
+                           ("main_all", e.cat == "main", v.cat == "main")):
+            nmin = float(me.sum() / 60)
+            row[f"{nm}_nrem_min"] = nmin
+            row[f"{nm}_rate"] = float(mv.sum() / nmin) if nmin >= 10 else np.nan
+        rr.append(row)
+    RR = pd.DataFrame(rr)
+    NP_.to_csv(rd / f"ephys_spikes_night_naps_{COHORT}.csv", index=False)
+    NN.to_csv(rd / f"ephys_spikes_night_naps_per_night_{COHORT}.csv", index=False)
+    FR.to_csv(rd / f"ephys_spikes_night_naps_frequency_{COHORT}.csv", index=False)
+    C.to_csv(rd / f"ephys_spikes_night_naps_nrem_composition_{COHORT}.csv", index=False)
+    RR.to_csv(rd / f"ephys_spikes_night_naps_ripple_rate_{COHORT}.csv", index=False)
+    fig = naps_figure(Cm, FRm, NT, rd)
+    naps_report(NP_, NN, FRm, Cm, RR, fig, rd)
+
+
+def naps_figure(Cm: pd.DataFrame, FRm: pd.DataFrame, NT: pd.DataFrame, rd: Path) -> Path:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    hp = pd.read_csv(rd / f"ephys_spikes_swr_depth_hour_profile_{COHORT}.csv")
+    sr_h = np.mean([s.hour + s.minute / 60 for s in NT.sunrise])
+    ss_h = np.mean([s.hour + s.minute / 60 for s in NT.sunset])
+    msoh = NT.mso.dropna()
+    msoh = msoh.dt.hour + msoh.dt.minute / 60
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True, gridspec_kw={"height_ratios": [1.2, 0.8, 1.3]})
+    x = Cm.index + 0.5
+    ax = axes[0]
+    ax.bar(x, Cm.p_nrem_main, width=0.85, color="#3a6fb0", label="NREM in the main sleep (from its onset)")
+    ax.bar(x, Cm.p_nrem_nap, width=0.85, bottom=Cm.p_nrem_main, color="#f28e2b", label="NREM in strict naps")
+    ax.bar(x, Cm.p_nrem_other, width=0.85, bottom=Cm.p_nrem_main + Cm.p_nrem_nap, color="#bdbdbd", label="other NREM")
+    ax.set_ylabel("share of recorded time", fontsize=9)
+    ax.set_title("A  Circadian NREM: share of each clock hour in NREM, by kind (mean over animals); ticks = main sleep onsets",
+                 fontsize=9, loc="left")
+    ax.plot(msoh, np.full(len(msoh), 0.93), "|", color="k", ms=10)
+    ax.legend(fontsize=8, frameon=False, loc="upper center", ncol=3)
+    ax.set_ylim(0, 1)
+    ax = axes[1]
+    ax.bar(FRm.index + 0.5, FRm["mean"], yerr=FRm["sem"], width=0.85, color="#f28e2b", capsize=2)
+    ax.set_ylabel("strict-nap onsets\nper night per hour", fontsize=9)
+    ax.set_title("B  Nap frequency: strict-nap onsets per animal-night in each clock hour (mean +- SEM over animals)", fontsize=9, loc="left")
+    ax = axes[2]
+    ax.bar(FRm.index + 0.5, FRm["mean"] / max(FRm["mean"].max(), 1e-9) * 1.0, width=0.85, color="#f28e2b", alpha=0.25,
+           label="nap frequency (scaled, as B)")
+    ax.set_yticks([])
+    a1 = ax.twinx()
+    a1.errorbar(hp.h + 0.5, hp.Dz, yerr=hp.Dz_sem, fmt="-o", color="#6a3d9a", ms=4, capsize=2)
+    a1.set_ylabel("NREM depth (z)", fontsize=9, color="#6a3d9a")
+    a2 = ax.twinx()
+    a2.spines["right"].set_position(("axes", 1.07))
+    a2.errorbar(hp.h + 0.5, hp.r_dm, yerr=hp.r_sem, fmt="-s", color="#2b7a2b", ms=4, capsize=2)
+    a2.set_ylabel("NREM ripple rate - block mean (/NREM min)", fontsize=9, color="#2b7a2b")
+    ax.set_title("C  Circadian NREM depth (purple) and ripple rate (green), with the nap frequency (orange, background)",
+                 fontsize=9, loc="left")
+    for a_ in axes:
+        a_.axvspan(0, sr_h, color="0.9", lw=0, zorder=0)
+        a_.axvspan(ss_h, 24, color="0.9", lw=0, zorder=0)
+        a_.set_xlim(0, 24)
+        a_.set_xticks(range(0, 25, 2))
+        a_.tick_params(labelsize=8)
+    axes[2].set_xlabel("clock hour (EDT); grey = night (sunset -> sunrise)", fontsize=9)
+    fig.suptitle(f"Naps in the circadian NREM pattern, cohort {COHORT} (strict nap: before the main sleep onset, >= 5 min of sleep, "
+                 "exploration in the field in the 30 min before and after)", fontsize=10)
+    fig.tight_layout()
+    out = figure_dir(COHORT) / f"ephys_spikes_night_naps_circadian_{COHORT}.png"
+    fig.savefig(out, dpi=125)
+    plt.close(fig)
+    return out
+
+
+def naps_report(NP_, NN, FRm, Cm, RR, fig, rd):
+    s = NP_[NP_.strict]
+    nn = NN[NN.naps.notna()]
+    L = []
+    w = L.append
+    w(f"# Naps at night: frequency, timing and ripples ({COHORT})")
+    w("")
+    w(f"Generated by `ephys/night_sleep_wiser.py naps` (repo `{git_commit()}`) from the per-second tables of the night-sleep run; "
+      "definition = plan Amendment 1 of [`implementation_plan/2026-10-09-night-sleep-wiser.md`](../../../../implementation_plan/2026-10-09-night-sleep-wiser.md) "
+      "(the user's: before the main sleep starts, plenty of activity / exploring before and after).")
+    w("")
+    w("## Answer")
+    w("")
+    w(f"- **{len(s)} strict naps** in {len(nn)} analysed animal-nights (active phase defined): median "
+      f"{nn.naps.median():.0f} per night (IQR {nn.naps.quantile(0.25):.0f} - {nn.naps.quantile(0.75):.0f}); per animal "
+      + ", ".join(f"{an} {g.naps.mean():.1f}" for an, g in nn.groupby("animal")) + " per night.")
+    w(f"- Duration median {s.dur_min.median():.0f} min (IQR {s.dur_min.quantile(0.25):.0f} - {s.dur_min.quantile(0.75):.0f}), NREM "
+      f"median {s.nrem_min.median():.0f} min; in a house for a median {100 * s.house_share.median():.0f} % of their seconds.")
+    w(f"- Of {len(NP_)} pre-onset night sleep stretches (>= 5 min), {len(s)} ({100 * len(s) / max(len(NP_), 1):.0f} %) meet the "
+      f"exploration criterion on both sides.")
+    pk = FRm["mean"].idxmax()
+    w(f"- **Timing:** most frequent at hour {pk:02d} ({FRm.loc[pk, 'mean']:.2f} onsets per night); per-hour frequencies in the "
+      "table below.")
+    v = RR.dropna(subset=["strict_nap_rate", "main_first_2h_rate"])
+    w(f"- **Ripple rate:** strict naps vs the first 2 h of the main sleep: " + "; ".join(
+        f"{r.animal} {r.strict_nap_rate:.0f} vs {r.main_first_2h_rate:.0f}" for r in v.itertuples())
+      + f" /NREM min; naps higher in {int((v.strict_nap_rate > v.main_first_2h_rate).sum())} / {len(v)}.")
+    w("")
+    w(f"![naps in the circadian NREM pattern](../figures/{fig.name})")
+    w("")
+    w("## Per clock hour")
+    w("")
+    w("| Hour | Strict-nap onsets per night (mean) | SEM | NREM in main sleep | NREM in strict naps | Other NREM |")
+    w("|---|---|---|---|---|---|")
+    for hh in range(24):
+        fm = FRm.loc[hh] if hh in FRm.index else None
+        cm = Cm.loc[hh] if hh in Cm.index else None
+        w(f"| {hh:02d} | {fm['mean']:.2f} | {fm['sem']:.2f} | {cm.p_nrem_main:.2f} | {cm.p_nrem_nap:.2f} | {cm.p_nrem_other:.2f} |"
+          if fm is not None and cm is not None else f"| {hh:02d} | | | | | |")
+    w("")
+    w("## Ripple rate by kind of sleep (ripple-eligible NREM: tiers validated / good, the temperature analysis' exclusions)")
+    w("")
+    w("| Animal | Strict naps (rate, NREM min) | Other night sleep | Main sleep, first 2 h | Main sleep, all |")
+    w("|---|---|---|---|---|")
+    for r in RR.itertuples():
+        w(f"| {r.animal} | {_f(r.strict_nap_rate, 1)} ({r.strict_nap_nrem_min:.0f}) | {_f(r.other_night_sleep_rate, 1)} "
+          f"({r.other_night_sleep_nrem_min:.0f}) | {_f(r.main_first_2h_rate, 1)} ({r.main_first_2h_nrem_min:.0f}) | "
+          f"{_f(r.main_all_rate, 1)} ({r.main_all_nrem_min:.0f}) |")
+    w("")
+    w("## Definitions")
+    w("")
+    w(f"- **Sleep stretch**: sleep epochs (NREM / REM) merged across wake gaps < {NAP_BRK_S} s, an unknown epoch ends it; >= "
+      f"{NAP_MIN_S // 60} min from first to last sleep epoch and >= {NAP_MIN_NREM_S // 60} min NREM.")
+    w("- **Active phase of night D**: from the start of the first long wake (>= 30 min) beginning after 15:00 of D to the night's "
+      "main sleep onset (MSO; if none, sunrise D+1 + 2 h).")
+    w(f"- **Strict nap**: a sleep stretch inside the active phase whose 30-min flanks before and after are each covered >= "
+      f"{100 * FLANK_COVER:.0f} % by the record, >= {100 * FLANK_WAKE:.0f} % WAKE and >= {FLANK_FIELD_S // 60} min in the field "
+      "(WISER zone, known seconds). Text: sleep taken between bouts of active exploration, before the main sleep.")
+    w("- **Nap frequency**: strict-nap onsets in a clock hour / the animal's analysed nights; mean +- SEM over animals.")
+    w("- **NREM composition**: per clock hour, the share of recorded seconds that are NREM inside the main sleep (from the MSO to the "
+      "next long wake), inside strict naps, or elsewhere.")
+    w("- **Ripple rate**: kept NREM SWR events / ripple-eligible NREM minutes inside each kind of sleep (>= 10 min).")
+    (rd / f"ephys_spikes_night_naps_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+
+
 def selftest():
     s = np.array([W] * 2000 + [N] * 60 + [W] * 1000 + [N] * 3000 + [R] * 200 + [W] * 50 + [N] * 4000, np.int8)
     lw = long_wakes(s, 1800)
@@ -581,14 +847,18 @@ def selftest():
     ok2 = res == ("ok", 3060)
     print(f"{'PASS' if ok1 else 'FAIL'} long wake bridges a 60-s sleep: {lw}")
     print(f"{'PASS' if ok2 else 'FAIL'} MSO at the first sleep after the last long wake: {res}")
-    ok = ok1 and ok2
+    st2 = np.array([W] * 600 + [N] * 400 + [W] * 60 + [N] * 300 + [W] * 900 + [N] * 100 + [W] * 600, np.int8)
+    ss_ = sleep_stretches(st2)
+    ok3 = ss_ == [(600, 1360)]
+    print(f"{'PASS' if ok3 else 'FAIL'} sleep stretch bridges a 60-s wake, drops a 100-s fragment: {ss_}")
+    ok = ok1 and ok2 and ok3
     print("SELFTEST " + ("PASS" if ok else "FAIL"))
     sys.exit(0 if ok else 1)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "naps"])
     ap.add_argument("--long-wake-min", type=float, default=30.0)
     ap.add_argument("--states-root", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final")
     ap.add_argument("--sleep-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/sleep/imu_fixch")
@@ -601,6 +871,8 @@ def main():
         selftest()
     if a.cmd == "run":
         run(a)
+    if a.cmd == "naps":
+        naps(a)
 
 
 if __name__ == "__main__":

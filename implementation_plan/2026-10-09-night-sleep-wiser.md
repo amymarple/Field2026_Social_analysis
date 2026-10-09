@@ -91,3 +91,28 @@ night NREM with the high ripple rate (00–04 h) is the start of the main sleep,
   - report `results/2026c/ephys_spikes/reports/ephys_spikes_night_sleep_wiser_2026c.md` + CSVs + figures (one raster per
     animal, one summary);
   - run folder `$OUT_ROOT/2026c/night_sleep_wiser_<ts>/` (per-second animal tables cached).
+
+## Amendment 1 (2026-10-09, the user's nap definition; written before computing)
+
+The user: a nap must come before the main sleep starts, and must have plenty of activity before and after it (going out
+to explore).
+
+**Strict nap.** A sleep stretch inside the night's active phase that is flanked by exploration on both sides.
+- **Sleep stretch:** sleep epochs (NREM / REM) merged across wake gaps < 120 s; an unknown epoch ends it. It needs
+  ≥ 5 min from first to last sleep epoch, with ≥ 3 min NREM.
+- **Active phase of night D:** from the start of the first long wake (≥ 30 min) beginning after 15:00 of D (the end of
+  the day's main sleep) to the night's MSO.
+  - If D has no MSO, the active phase ends at sunrise D+1 + 2 h. Such naps are flagged.
+- **Flanks:** the 30 min before the stretch's first sleep epoch and the 30 min after its last. Each flank must meet
+  both conditions:
+  - ≥ 50 % of its seconds WAKE;
+  - ≥ 5 min in the field (WISER zone field, known seconds only).
+  - A flank not covered by the record is unverifiable, and the stretch is then not counted as a strict nap.
+
+**Other night sleep.** Pre-MSO night sleep stretches that are not strict naps, kept as their own category.
+
+**Outputs.**
+- **Circadian NREM figure:** per clock hour, P(NREM) split into main sleep (τ defined) / strict naps / other.
+- **Nap onset frequency:** strict-nap onsets per animal-night per clock hour, mean ± SEM over animals. It is marked
+  on the circadian NREM depth / ripple-rate panel.
+- **Per night:** the number of naps, their durations, and their zone (house / field).
