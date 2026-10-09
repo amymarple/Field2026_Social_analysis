@@ -90,7 +90,7 @@ def run_session(animal: str, session: str, a) -> dict:
                           " + verify_events (raw MUA, ratio <= 0.5)", git=dd._git())
     if not nrem.size:  # no final sleep states for this session (not scored / refused) or no NREM: skipped, not an error
         summary.update(n_events=0, skipped="no final sleep states" if not st_path.exists() else "no NREM")
-        (out / f"{session}.delta_summary.json").write_text(json.dumps(summary, indent=1))
+        (out / f"{session}.delta_summary.json").write_text(json.dumps(summary, indent=1), newline="\n")
         return summary
     x = dd.sd.load_channels(str(lfp_path), nch, [col + 1])[:, 0]
     D, D0, info = dd.detect(x, fs, nrem=nrem, emg=None, threshold=3.0)
@@ -139,8 +139,8 @@ def run_session(animal: str, session: str, a) -> dict:
     rows = [f"{d[0]:.4f},{d[1]:.4f},{d[2]:.4f},{d[3]:.3f},{d[4]:.3f},{d[5]:.3f},{am:.3f},{(d[2] - d[0]) * 1000:.0f},"
             f"{int(v)},{int(t)},{ra:.4f},{pv:.3g},{int(kp)},{int(kb)},{int(af)}"
             for d, am, v, t, ra, pv, kp, kb, af in zip(D, amp, ver, r["testable"], r["ratio"], r["p"], r["k_peak"], r["k_pre"], after)]
-    (out / f"{session}.delta_events.csv").write_text(hdr + "\n" + "\n".join(rows) + ("\n" if rows else ""))
-    with open(out / f"{session}.DEL.evt", "w") as fh:
+    (out / f"{session}.delta_events.csv").write_text(hdr + "\n" + "\n".join(rows) + ("\n" if rows else ""), newline="\n")
+    with open(out / f"{session}.DEL.evt", "w", newline="\n") as fh:  # LF everywhere: byte-identical across machines
         for d, v in zip(D, ver):
             tag = "delta" if v else "delta?"
             for t, lab in zip(d[:3], ("start", "peak", "stop")):
@@ -157,7 +157,7 @@ def run_session(animal: str, session: str, a) -> dict:
                                site_ratio=vinfo.get("site_ratio"), site_rate_hz=vinfo.get("site_rate_hz"),
                                frac_verified=vinfo.get("frac_verified")),
                    detect_info=info, seconds=round(time.time() - t0, 1))
-    (out / f"{session}.delta_summary.json").write_text(json.dumps(summary, indent=1, default=float))
+    (out / f"{session}.delta_summary.json").write_text(json.dumps(summary, indent=1, default=float), newline="\n")
     return summary
 
 
