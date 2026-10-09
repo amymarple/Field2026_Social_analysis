@@ -339,3 +339,19 @@ code first):
 
 **Runtime.** Step B took ~3.5 h on 6 workers. The PC was shared: another session's local SWR run used ~100 GB, so the
 first 14-worker attempt died with a MemoryError and was rerun.
+
+## Sleep-behaviour explore, Step C — day vs night (2026-10-09)
+
+**Code and review.** `ephys/sleep_explore_c.py stepC [--parts c1 c2 c3 c4] [--scorings FINAL pass2med]`.
+- Written and run by an Opus subagent, reviewed by the main session: selftest rerun, 13/13 PASS; key tables checked.
+- Uses Step B's counter `P_tw600_k0`, with pause / hard-reset sensitivities; the 3 h after battery rounds are excluded.
+- Report: [ephys_spikes_sleep_explore_C_2026c.md](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_C_2026c.md).
+
+**Verdicts** (pre-registered rules; C1 (b) and C3 (b) added because Step B put the night effect into the smooth clock):
+
+| part | verdict | numbers |
+|---|---|---|
+| C1 | **PASS** | Night OR on REM entry with P and ln d in the model: 0.36 (FINAL) / 0.30 (pass2med), 6/6 rats both. Smooth-clock version: ratio 0.37 / 0.34. → #14b Established. |
+| C2 | **FAIL** (no light step) | Step at the light transition: +0.16 % / +0.02 %, n.s. Dusk worse with a step; dawn only on pass2med −0.16 % (5/6). → #35 Candidate (strong). |
+| C3 | **PASS** (weak test) | 97 % of NREM steps are already house-with-mates. Housemates' sleep predicts own REM entry and waking: held out −0.70 % / −0.95 %, 6/6 both. → #37, #38. |
+| C4 | **FAIL** | Weather + time outside do not explain the drift: within-animal R² 0.34–0.47; night day-term p 0.015 / 0.003. → #39. |

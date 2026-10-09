@@ -1,0 +1,25 @@
+scores,train,steps_subset,comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+FINAL,transition steps only,both transitions,step vs clock,+ light step vs 2-harmonic clock (pass rule),22469,318,0.15769815041917076,-0.10578858343472025,0.4172677047538758,6,14,2,6,False
+FINAL,transition steps only,both transitions,lnd vs clock,+ ln(1+d) vs 2-harmonic clock,22469,318,0.01783094831416335,-0.1549302501438751,0.23707650486724935,10,14,4,6,False
+FINAL,transition steps only,both transitions,step_lnd vs lnd,+ light step on top of clock + ln(1+d),22469,318,0.16077947373740914,-0.11532167576563054,0.428396905861167,7,14,2,6,False
+FINAL,transition steps only,dawn (+-2 h of sunrise),step vs clock,+ light step vs 2-harmonic clock (pass rule),15611,165,0.126660282967789,-0.28155803244298466,0.5050201652864776,5,8,4,6,False
+FINAL,transition steps only,dawn (+-2 h of sunrise),lnd vs clock,+ ln(1+d) vs 2-harmonic clock,15611,165,-0.05361703865905084,-0.22689312234883754,0.19144352183630253,6,8,3,6,False
+FINAL,transition steps only,dawn (+-2 h of sunrise),step_lnd vs lnd,+ light step on top of clock + ln(1+d),15611,165,0.10592724703536051,-0.3162183854703787,0.49086876126340806,6,8,4,6,False
+FINAL,transition steps only,dusk (+-2 h of sunset),step vs clock,+ light step vs 2-harmonic clock (pass rule),6523,153,0.22196619990373895,0.05091667925091825,0.4207570475149322,1,6,1,6,False
+FINAL,transition steps only,dusk (+-2 h of sunset),lnd vs clock,+ ln(1+d) vs 2-harmonic clock,6523,153,0.14256395564461305,-0.1541294396514643,0.41661020544976063,4,6,3,6,False
+FINAL,transition steps only,dusk (+-2 h of sunset),step_lnd vs lnd,+ light step on top of clock + ln(1+d),6523,153,0.26729588690461614,0.05538729856042146,0.4585676366183219,1,6,1,6,False
+FINAL,all NREM steps (sensitivity),both transitions,step vs clock,+ light step vs 2-harmonic clock (pass rule),22469,318,0.07657980456969087,-0.3715542069404541,0.4903872604587995,8,14,3,6,False
+FINAL,all NREM steps (sensitivity),both transitions,lnd vs clock,+ ln(1+d) vs 2-harmonic clock,22469,318,-0.018303971435709516,-0.1762568677737682,0.1484160948184003,6,14,3,6,False
+FINAL,all NREM steps (sensitivity),both transitions,step_lnd vs lnd,+ light step on top of clock + ln(1+d),22469,318,0.053743838046990414,-0.40709435882090866,0.48684356619869196,7,14,3,6,False
+pass2med,transition steps only,both transitions,step vs clock,+ light step vs 2-harmonic clock (pass rule),22591,399,0.02319508562783044,-0.1332960103884659,0.2616481287596426,8,14,3,6,False
+pass2med,transition steps only,both transitions,lnd vs clock,+ ln(1+d) vs 2-harmonic clock,22591,399,0.019265420894838795,-0.0879520638489503,0.17475089147499412,8,14,3,6,False
+pass2med,transition steps only,both transitions,step_lnd vs lnd,+ light step on top of clock + ln(1+d),22591,399,0.013285923845816795,-0.1532349335858776,0.2606193592922913,8,14,3,6,False
+pass2med,transition steps only,dawn (+-2 h of sunrise),step vs clock,+ light step vs 2-harmonic clock (pass rule),15996,233,-0.1612577154782536,-0.295111519650222,-0.013352050941009682,7,8,5,6,True
+pass2med,transition steps only,dawn (+-2 h of sunrise),lnd vs clock,+ ln(1+d) vs 2-harmonic clock,15996,233,0.025471718535380095,-0.11725342415225005,0.2889860091463611,4,8,3,6,False
+pass2med,transition steps only,dawn (+-2 h of sunrise),step_lnd vs lnd,+ light step on top of clock + ln(1+d),15996,233,-0.18227070664617998,-0.32843269572315326,-0.02344057304408367,7,8,5,6,True
+pass2med,transition steps only,dusk (+-2 h of sunset),step vs clock,+ light step vs 2-harmonic clock (pass rule),6391,166,0.31845860411432536,0.10974058685178073,0.6082892200046752,1,7,0,6,False
+pass2med,transition steps only,dusk (+-2 h of sunset),lnd vs clock,+ ln(1+d) vs 2-harmonic clock,6391,166,0.014396839704949982,-0.14605772189502464,0.13548066097170794,4,7,3,6,False
+pass2med,transition steps only,dusk (+-2 h of sunset),step_lnd vs lnd,+ light step on top of clock + ln(1+d),6391,166,0.32591922860577827,0.11430289392041812,0.6201101951424152,1,7,0,6,False
+pass2med,all NREM steps (sensitivity),both transitions,step vs clock,+ light step vs 2-harmonic clock (pass rule),22591,399,-0.02307589978729244,-0.35034572197156616,0.38970780323257126,8,14,3,6,False
+pass2med,all NREM steps (sensitivity),both transitions,lnd vs clock,+ ln(1+d) vs 2-harmonic clock,22591,399,0.030802638520276603,-0.060189273804864635,0.15888828502145114,6,14,2,6,False
+pass2med,all NREM steps (sensitivity),both transitions,step_lnd vs lnd,+ light step on top of clock + ln(1+d),22591,399,-0.042936520435822856,-0.39202063028469286,0.39186363836415594,8,14,3,6,False

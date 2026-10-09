@@ -1,0 +1,5 @@
+scores,comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+FINAL,loc vs Bfull,+ location (field / unknown vs house) on B-full,90854,1867,-0.02099616368958063,-0.05034913642101148,-0.0020527648566392464,12,15,6,6,True
+FINAL,group vs loc,"+ group terms (n_coloc, n_coloc x dark, mates_asleep) on B-full + location",90854,1867,-0.699261930651022,-0.9638067218669386,-0.4700035465501719,14,15,6,6,True
+pass2med,loc vs Bfull,+ location (field / unknown vs house) on B-full,91186,1979,-0.0018893571610600981,-0.028993004809006993,0.029660965724963347,8,15,4,6,False
+pass2med,group vs loc,"+ group terms (n_coloc, n_coloc x dark, mates_asleep) on B-full + location",91186,1979,-0.9539620792216204,-1.2864691692693473,-0.6456306953046066,15,15,6,6,True

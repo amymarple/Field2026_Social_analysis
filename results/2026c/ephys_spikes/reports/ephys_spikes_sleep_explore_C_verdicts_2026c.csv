@@ -1,0 +1,6 @@
+part,question,verdict,FINAL,pass2med
+C1 (a),night = a gain independent of the prior wake (plan's literal model),PASS,dark -1.028 (OR 0.36); rats < 0 6/6,dark -1.199 (OR 0.30); rats < 0 6/6
+C1 (b) (added),"night/day ratio at matched P and d, 2-harmonic clock model",PASS,ratio 0.37; rats < 1 6/6,ratio 0.34; rats < 1 6/6
+C2,a light step beyond the 2-harmonic clock at the transitions (light-driven),FAIL,"Δ +0.158 % [-0.106, +0.417], 2/6","Δ +0.023 % [-0.133, +0.262], 3/6"
+C3,the night effect is not a location / company effect (abs. change ≤ 0.1),PASS,(b) change -0.018; (a) change -0.028,(b) change -0.031; (a) change -0.017
+C4,the 12-day drift is environmental (weather + activity),FAIL (adaptation / unexplained),"day R²w 0.45, day p 0.128; night R²w 0.34, day p 0.015","day R²w 0.39, day p 0.058; night R²w 0.47, day p 0.003"

@@ -7,7 +7,11 @@
   - [Step B report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_B_2026c.md) + post-hoc
     [diagnosis](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_B_diag_2026c.md);
   - claims #6a, #32–#36 in the claim audit;
-- Step C running (the user: "干完做C").
+- **Step C DONE 2026-10-09** (the user: "干完做C"):
+  - [Step C report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_C_2026c.md);
+  - claims #14b (now Established), #35, #37–#39.
+- Next: steps D (the origin of the morning payback) and E (the generative model), and the cheap F hypotheses, after
+  the user's go.
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;

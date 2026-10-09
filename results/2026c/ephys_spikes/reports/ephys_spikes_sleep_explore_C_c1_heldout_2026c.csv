@@ -1,0 +1,5 @@
+scores,comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+FINAL,Bfull_dxl vs Bfull,B-full + dark x ln(1+d) vs B-full,90854,1867,-0.01899885027378673,-0.05383194096564786,0.011212154875851294,10,15,3,6,False
+FINAL,Bfull_dxl vs a,(b) clock model vs (a) literal model (no 2-harmonic clock),90854,1867,-0.043402425175162754,-0.2660066882265422,0.2601573132904351,12,15,4,6,False
+pass2med,Bfull_dxl vs Bfull,B-full + dark x ln(1+d) vs B-full,91186,1979,0.009401773991815892,-0.01436899967050582,0.032542308789041505,5,15,2,6,False
+pass2med,Bfull_dxl vs a,(b) clock model vs (a) literal model (no 2-harmonic clock),91186,1979,-0.2806583611030914,-0.5174499492294183,-0.11317945616225966,14,15,5,6,True

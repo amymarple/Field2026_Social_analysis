@@ -1,0 +1,9 @@
+scores,quantity,all_steps,all_ci,house_with_mates,house_with_mates_ci,change,n_all,n_house_with_mates
+FINAL,(b) ln night/day ratio of p(REM per step),-1.001598925825019,"[-1.197, -0.763]",-1.0198954684006711,"[-1.252, -0.783]",-0.018296542575652053,135020,130940
+FINAL,"(a) dark coefficient, REM vs stay",-1.02812659158113,"[-1.231, -0.826]",-1.0563363074183267,"[-1.271, -0.842]",-0.02820971583719678,135020,130940
+FINAL,"sensitivity: (b) ln ratio, house with mates, all known mates asleep",-1.001598925825019,"[-1.197, -0.763]",-0.9241921845839461,"[-1.207, -0.634]",0.07740674124107294,135020,73591
+FINAL,"sensitivity: (a) dark coefficient, house with mates, all known mates asleep",-1.02812659158113,"[-1.231, -0.826]",-0.9378703363729408,"[-1.168, -0.708]",0.09025625520818914,135020,73591
+pass2med,(b) ln night/day ratio of p(REM per step),-1.0880900124836765,"[-1.299, -0.876]",-1.1193146771219775,"[-1.365, -0.917]",-0.03122466463830098,139856,135214
+pass2med,"(a) dark coefficient, REM vs stay",-1.1993037536334656,"[-1.369, -1.029]",-1.2164338989439187,"[-1.396, -1.037]",-0.017130145310453093,139856,135214
+pass2med,"sensitivity: (b) ln ratio, house with mates, all known mates asleep",-1.0880900124836765,"[-1.299, -0.876]",-0.9826142534761733,"[-1.194, -0.755]",0.10547575900750328,139856,79338
+pass2med,"sensitivity: (a) dark coefficient, house with mates, all known mates asleep",-1.1993037536334656,"[-1.369, -1.029]",-1.0661564425410972,"[-1.300, -0.832]",0.13314731109236844,139856,79338

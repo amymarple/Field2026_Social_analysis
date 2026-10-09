@@ -1,0 +1,92 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_C_20261009_0121",
+  "git_commit": "aa6d086+dirty",
+  "parts": [
+    "c1",
+    "c2",
+    "c3",
+    "c4"
+  ],
+  "scorings": [
+    "FINAL",
+    "pass2med"
+  ],
+  "p_key": "P_tw600_k0",
+  "sensitivity_keys": {
+    "pause": "P_twinf_k0",
+    "hard reset >= 7 min": "R7_k0"
+  },
+  "inputs": {
+    "states_FINAL": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+    "states_pass2med": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_pass2med",
+    "review": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_review_2026c.csv",
+    "chosen_B": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_explore_B_chosen_2026c.csv",
+    "gaps": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase0_20261007_1818\\gaps.csv",
+    "wiser_default_tracks": "D:\\Field2026_analysis_out\\2026c\\wiser_default_tracks"
+  },
+  "csvs": [
+    "ephys_spikes_sleep_explore_C_c1_coef_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c1_ratio_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c1_per_animal_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c1_heldout_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c2_heldout_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c2_hazard_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c3_composition_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c3_group_coef_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c3_restriction_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c3_extra_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c3_per_animal_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c3_heldout_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c4_animal_days_2026c.csv",
+    "ephys_spikes_sleep_explore_C_c4_models_2026c.csv",
+    "ephys_spikes_sleep_explore_C_verdicts_2026c.csv"
+  ],
+  "runtime_s": {
+    "zones": 0.1,
+    "prep_FINAL": 6.7,
+    "prep_pass2med": 7.0,
+    "c1": 354.3,
+    "c2": 91.1,
+    "c3": 362.4,
+    "c4": 1.7,
+    "total": 824.1
+  },
+  "verdicts": [
+    {
+      "part": "C1 (a)",
+      "question": "night = a gain independent of the prior wake (plan's literal model)",
+      "verdict": "PASS",
+      "FINAL": "dark -1.028 (OR 0.36); rats < 0 6/6",
+      "pass2med": "dark -1.199 (OR 0.30); rats < 0 6/6"
+    },
+    {
+      "part": "C1 (b) (added)",
+      "question": "night/day ratio at matched P and d, 2-harmonic clock model",
+      "verdict": "PASS",
+      "FINAL": "ratio 0.37; rats < 1 6/6",
+      "pass2med": "ratio 0.34; rats < 1 6/6"
+    },
+    {
+      "part": "C2",
+      "question": "a light step beyond the 2-harmonic clock at the transitions (light-driven)",
+      "verdict": "FAIL",
+      "FINAL": "\u0394 +0.158 % [-0.106, +0.417], 2/6",
+      "pass2med": "\u0394 +0.023 % [-0.133, +0.262], 3/6"
+    },
+    {
+      "part": "C3",
+      "question": "the night effect is not a location / company effect (abs. change \u2264 0.1)",
+      "verdict": "PASS",
+      "FINAL": "(b) change -0.018; (a) change -0.028",
+      "pass2med": "(b) change -0.031; (a) change -0.017"
+    },
+    {
+      "part": "C4",
+      "question": "the 12-day drift is environmental (weather + activity)",
+      "verdict": "FAIL (adaptation / unexplained)",
+      "FINAL": "day R\u00b2w 0.45, day p 0.128; night R\u00b2w 0.34, day p 0.015",
+      "pass2med": "day R\u00b2w 0.39, day p 0.058; night R\u00b2w 0.47, day p 0.003"
+    }
+  ],
+  "plan": "implementation_plan/2026-10-08-sleep-behaviour-explore.md"
+}

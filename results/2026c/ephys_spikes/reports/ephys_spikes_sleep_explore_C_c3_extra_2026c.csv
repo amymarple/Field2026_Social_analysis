@@ -1,0 +1,5 @@
+scores,quantity,value
+FINAL,"(b) ln ratio, all-step model, standardised over house-with-mates steps",-1.0003134956354065
+FINAL,"(b) ln ratio, all steps, model + location + group terms",-0.915513241040962
+pass2med,"(b) ln ratio, all-step model, standardised over house-with-mates steps",-1.0858435492350842
+pass2med,"(b) ln ratio, all steps, model + location + group terms",-1.0315608144944022
