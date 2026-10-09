@@ -513,8 +513,12 @@ def plot_scan(rows, groups, skip, prop, title, png1, png2):
     fig, ax = plt.subplots(2, ng, figsize=(3.4 * ng, 8), squeeze=False, gridspec_kw=dict(height_ratios=[3, 1]))
     for gi, g in enumerate(groups):
         c = prop.get(gi + 1)
+        live_g = [x for x in g if x not in skip]
+        if not live_g:  # a dead shank (e.g. SF10 shank 1)
+            ax[0, gi].set_title(f"shank {gi + 1}: no live site", fontsize=8)
+            continue
         if c is None:
-            c = max([x for x in g if x not in skip], key=lambda x: by[x]["n_events"])
+            c = max(live_g, key=lambda x: by[x]["n_events"])
         r = by[c]
         live = [x for x in g if x not in skip]
         L = r["lam"][live]
@@ -545,7 +549,7 @@ def scan(lfp: str, states: str, xml: str, out: Path, label: str, workers: int = 
     meta = json.loads(Path(lfp + ".json").read_text())
     nch, fs = int(meta["n_channels"]), float(meta["fs_out"])
     groups, skip = slo.read_groups(Path(xml))
-    nrem = load_nrem(states)
+    nrem = nrem_from_states(states)
     tmp = out / f"_tmp_{label}"
     tmp.mkdir(exist_ok=True)
     n_nrem = nrem_extract(lfp, nch, fs, nrem, tmp)

@@ -133,6 +133,50 @@ common-average reference is in `v1_noCAR/`.
 - Kept events are longer and larger in every session.
 - Examples: SF11 09-06, 307 vs 228 ms and 4.7 vs 3.8 z; SF07 09-08, 295 vs 261 ms and 4.7 vs 4.4 z.
 
+## 2026-10-09: production for SF07 and SF11, and the other animals checked
+
+The user accepted ("i think it looks good do as you suggest"): SF11 col 11, SF07 col 55, verified = ratio ≤ 0.5. All
+events are kept with flags.
+
+**`ephys/delta_auto.py`** (configuration `ephys/configs/delta_channels_2026c.yaml`).
+- NREM comes from the final 1-s states. Their runs equal SleepState.ints.NREMstate exactly, and they carry the SF07
+  pass2med exception.
+- Detection is lab-exact. Raw MUA is extracted (cached), followed by the per-event check.
+- Session context (`use_until`, `info`, sleep verdict) comes from the SWR quality table.
+- Outputs: `deltaWaves.events.mat` (lab struct + verified / testable / mua_ratio / after_use_until), csv, `.DEL.evt`,
+  summary, `mua_nrem.npz`.
+- FM64 sessions have no MUA check (their raw needs de-glitching): `testable = 0`.
+
+**BioHPC.**
+- `ephys/server/run_delta.sh` runs SF07 and SF11 in parallel and ends through `run_then_store.sh`, with the new part
+  `delta` → storage `3rd_rat/analysis/delta/`.
+- Code is deployed by `git archive` per commit.
+
+**Server vs local reproducibility.**
+- The first server test (SF11 `5_20260906`, scipy 1.16.3) gave 4945 events against 4941 locally. Inputs were identical
+  (MD5), but about 2 % of the peaks were shifted by one sample.
+- Cause: FindDeltaWaves' cheby2 low-passes are ill-conditioned in b/a form (poles within 4e-4 of 1). The coefficients
+  differed in the last bits between the machines, and a pole moved from 0.99960 to 0.99965.
+- Fix (commit 3d016fc): the three low-passes are frozen as exact doubles (b, a, and the filtfilt state) from this PC's
+  scipy 1.16.2. Locally the output is bit-identical to before, so the lab replays are unchanged. The server output is
+  now identical to local (csv / evt content equal, MD5).
+
+**Do the other animals have cortical top sites?** One local session each, with the 64-channel scan and NREM MUA; per-site
+firing at the delta peaks of the strongest-dip site (`<lab>_cortex_check.json`).
+
+| Animal (session) | Finding | Ratio | Rate |
+|---|---|---|---|
+| SF08 (`6_20260910`, after the 09-09 advance) | Top of shanks 3 (cols 11, 8, 6) and 4 (col 20) are cortical | 0.06–0.12 | 2–17 Hz |
+| SF09 (`10_20260902`) | Cols 21 and 51 are cortical | 0.15 / 0.17 | ~24 Hz |
+| SF10 (`9_20260902`) | Tops of shanks 2 (9, 10) and 4 (27, 25) are cortical but carry few units | ~0.3 | 1.4–4.9 Hz |
+| SF12 (`11_20260902`) | Like SF07: no units at the top; only the deep (hippocampal) sites are modulated | 0.45–0.6 | — |
+
+- In all four animals the deep sites stay at 0.8–1.2.
+- SF09: cols 21 and 51 are two of the three "silent far-above" columns (21 / 51 / 55) that the spike-band grouping
+  could not place. Their DOWN states support the datasheet reconstruction B, which puts them at the top of the middle
+  shank, in cortex.
+- SF10 shank 1 is dead (no live site; the scan plot now handles that).
+
 ## Open (for the user)
 
 - SF11: choose the delta channel. Shank-3 top sites (col 11 or 8) are consistent across all three blocks; shank 4
