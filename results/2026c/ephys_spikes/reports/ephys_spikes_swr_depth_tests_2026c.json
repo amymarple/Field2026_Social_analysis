@@ -1,0 +1,40 @@
+{
+  "S1": {
+    "animal_mean": -1.3054426554652963,
+    "lo": -1.4801218915704653,
+    "hi": -1.1307634193601273,
+    "p": 7.0475460536941765e-06,
+    "animals": 6,
+    "day_deeper_animals": 0
+  },
+  "S3": {
+    "beta_Dz": 6.7454888032171425,
+    "beta_lo": 4.807736191453585,
+    "beta_hi": 8.6832414149807,
+    "beta_pos_animals": 6,
+    "animals": 6,
+    "hour_amp_without": 26.092515799699818,
+    "hour_amp_with": 19.51488410999869,
+    "hour_peak_without": 1.0,
+    "hour_peak_with": 0.5,
+    "hour_share_explained": 0.25208882655066944,
+    "night_without": 16.76126825878344,
+    "night_without_lo": 12.164991825019253,
+    "night_without_hi": 21.357544692547624,
+    "night_with": 10.781474493613679,
+    "night_with_lo": 6.566051921193228,
+    "night_with_hi": 14.99689706603413,
+    "trend_without": 3.2536275253117912,
+    "trend_without_lo": 1.774972154599694,
+    "trend_without_hi": 4.7322828960238885,
+    "trend_with": 3.3095421514599095,
+    "trend_with_lo": 1.7992399059700515,
+    "trend_with_hi": 4.819844396949767,
+    "depth_trend_night": -0.014328094595310072,
+    "depth_trend_night_lo": -0.05759326807684603,
+    "depth_trend_night_hi": 0.02893707888622589,
+    "depth_trend_day": 0.05317636534358264,
+    "depth_trend_day_lo": 0.006317572554146139,
+    "depth_trend_day_hi": 0.10003515813301914
+  }
+}

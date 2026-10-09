@@ -161,3 +161,42 @@ The user's outcome is the NREM ripple rate, by day and by night. The cleanest fo
   - Validated blocks only.
   - The same for the relative amplitude, as a check that detection drift does not create the rate slope.
 - **Verdict:** the Amendment 1 rule (pooled CI, animal-level CI, ≥ 4 animals same sign, validated blocks).
+
+## Part 2 (2026-10-09, written BEFORE computing): NREM depth (the scorer's spectral slope) and the ripple rate
+
+**The user's request:** use the sleep score's SWS slope as sleep depth. Compare day vs night depth; plot it by time of
+day; test whether depth explains the ripple rate.
+- The user expects day sleep to be deeper.
+- The user asks why the day ripple rate falls across the day while the night rate is high.
+
+**Depth measure.**
+- $s_t$ = the raw slow-wave metric of the sleep scorer, i.e. the negative IRASA spectral slope (4–90 Hz) per second,
+  from `<session>.SleepScoreRaw.npz` of variant `imu_fixch`.
+  - That variant uses fixed per-animal channels (`configs/sleep_channels_2026c.yaml`).
+  - The values are captured before the scorer's per-session min-max rescaling, so they are comparable across sessions of
+    an animal.
+  - Source: storage `3rd_rat/analysis/sleep/imu_fixch/`, read-only.
+  - Higher = steeper spectrum = deeper NREM.
+- Per 30-min bin: $D_k$ = mean $s_t$ over the bin's NREM seconds, using the final 1-s states and the same exclusions and
+  sessions as the ripple bins.
+- Pooling across animals: $\tilde D_k$ = z-score of $D_k$ within animal × block. The probe and channel geometry differ
+  between blocks.
+
+**Tests.**
+- **S1, day vs night depth.**
+  - Per animal × biological date: the day-period mean of $\tilde D$ minus the night-period mean.
+  - Report: the mean over animals of the per-animal means, $t(n-1)$ CI, and the sign count.
+  - Prediction: none fixed. The user expects day deeper; a sleep-pressure account predicts the deepest NREM at the start
+    of the rest phase and in night naps after long waking.
+- **S2, circadian profiles.** By clock hour, block-demeaned ripple rate and $\tilde D$, mean ± SEM over animals, with
+  outdoor temperature.
+- **S3, does depth explain the rate?**
+  - Within block: $r_k = \alpha_{a,b} + \beta \tilde D_k$, WLS with weights $N_k$, SEs clustered by date, plus
+    per-animal slopes.
+  - The time-of-day profile: compare $r_k = \alpha_{a,b}$ + hour harmonics (k = 1, 2), with and without $\tilde D_k$.
+    Report the peak-to-trough amplitude of the fitted hour profile and the share explained, $1 - A_{with}/A_{without}$.
+  - The night − day difference: the coefficient of night in $r_k = \alpha_{a,b} + \beta_N\,\mathrm{night}_k$, with and
+    without $\tilde D_k$.
+  - The night trend across days: the slope of $r$ on day within block for night bins, with and without $\tilde D_k$.
+- **Reading.** "Depth explains" a contrast when adding $\tilde D$ reduces it by more than half, its own CI then
+  includes 0, and $\beta$ is positive in at least 4 animals. Otherwise depth is at most a partial account.

@@ -188,3 +188,34 @@ within animal × block, SEs clustered by date.
   - Late nights rest on fewer animals: 3 on 09-06 and 09-08, 1–2 on 09-09 and 09-10.
   - The nights also cooled over the cohort (19–20 °C early, 10–17 °C later), so the night rise and the night
     temperature slope are the same contrast seen twice and cannot be separated.
+
+## Update 2026-10-09 (4): NREM depth (the scorer's spectral slope) and the ripple rate (plan Part 2, written before computing)
+
+New `ephys/swr_depth.py` (`run`, `--selftest`). Report: `results/2026c/ephys_spikes/reports/ephys_spikes_swr_depth_2026c.md`;
+figure `figures/ephys_spikes_swr_depth_2026c.png`.
+
+**Depth measure.**
+- The sleep scorer's raw slow-wave metric: the negative IRASA spectral slope, 4–90 Hz, per second.
+- From the fixed-channel scores `imu_fixch` (`SleepScoreRaw.npz`, before the per-session rescaling; storage, read-only).
+- Per bin: averaged over NREM seconds in the same 30-min bins as the ripple analysis, then z-scored within animal ×
+  block.
+
+**S1, day vs night.** NREM is deeper at **night**, against the user's expectation:
+- day − night = −1.31 SD [−1.48, −1.13];
+- 0 of 6 animals and 0 of 35 animal-dates have the day deeper.
+
+**S2, time of day.** Depth is highest around 00–04 h (+1.0 … +1.6 SD) and falls monotonically through the rest phase,
+from +1.2 at 07 h to −1.5 … −1.7 at 18–19 h. This is the classic decline of slow-wave activity as sleep pressure is
+discharged. The ripple rate follows the same course.
+
+**S3, does depth explain the rate?**
+- Ripple rate rises with depth: +6.7 /NREM min per SD [4.8, 8.7]; positive in 6/6 animals (CI excluding 0 in 4).
+- **Depth explains only part of it**, by the plan's rule (> 1/2 removed AND the CI then includes 0):
+
+  | Contrast | Without depth | With depth | Share removed |
+  |---|---|---|---|
+  | Time-of-day profile, peak-to-trough | 26.1 /NREM min | 19.5 | 25 % |
+  | Night − day | +16.8 [12.2, 21.4] | +10.8 [6.6, 15.0] | 36 % |
+  | Night rise across days | +3.25 /day | +3.31 | none |
+
+- Night depth does not change across days (−0.014 SD/day), so the night rise across days is not deeper NREM.
