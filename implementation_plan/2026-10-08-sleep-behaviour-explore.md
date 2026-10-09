@@ -16,7 +16,13 @@
     [D2 + E (ii) / (vi)](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_D2E_2026c.md),
     [E held-out](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_E_heldout_2026c.md);
   - claims #40–#43.
-- Next: the step F hypotheses, after the user's go.
+- **Amendment 1 (§9), parts S, G and F2 DONE 2026-10-09** (the user: "模型可以预测睡眠的稳定性么… F可以干了 #43可以干";
+  the S2b / S3 addendum: "真正的模型应该可以预测干扰"):
+  - [S report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_S_2026c.md) (start with its Reading),
+    [G report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_G_2026c.md),
+    [F2 report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md) (WISER / environment / social);
+  - claims #44–#47, #43 updated (stays Candidate); Step F2 listed without numbers (none held on both scorings).
+- F1 (sequence-only hypotheses H5, H7–H11, H20, H23): running.
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;

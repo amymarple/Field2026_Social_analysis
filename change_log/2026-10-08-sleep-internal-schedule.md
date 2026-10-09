@@ -386,3 +386,40 @@ too little REM. 12–15 % of REM bouts follow a wake of ≤ 10 s, so v2 samples 
   - The plan's rule for a slow REM deficit is not met → #43 (Candidate): repayment so far only after handled
     interruptions.
 - **Post-hoc variant** with wall-clock time since REM: 27/28; it improves the latencies after long night wakes.
+
+## Sleep-behaviour explore, Amendment 1 — S, G, F (2026-10-09; the user: "模型可以预测睡眠的稳定性么… F可以干了 #43可以干")
+
+Plan §9 (S, G, F) and its addendum (S2b / S3: "the battery rounds are a systematic perturbation the true model should
+predict"), all written before results.
+
+**Code.**
+- `ephys/sleep_stability.py predict | analyse` — main session. `predict` writes the held-out per-step predictions
+  (B-full, gate = no count, blind = B-full trained without the 3 h after round gaps) to
+  `$OUT_ROOT/2026c/sleep_heldout_steps/heldout_steps_{final,pass2med}.csv.gz` (reused by G); `analyse` = S1–S3. One
+  fix before the official run: S3 builds its inputs from the original records, not the masked ones.
+- `ephys/sleep_explore_g.py run` (G1–G4) and `ephys/sleep_explore_f2.py run` (H4, H14–H17, H22, H25) — Opus subagents;
+  selftests rerun by the main session (54 s / 13 s, PASS).
+- `ephys/sleep_explore_f1.py` (H5, H7–H11, H20, H23, sequence only) — Opus subagent, pending.
+
+**Definitions (headline).**
+- Post-round window: NREM steps 0–1 h and 1–3 h after the start of the record that follows a usable round gap.
+- $\text{O/E} = \sum_s [y_s = k] / \sum_s \hat p_{k,s}$ over the window's held-out steps, $k$ = WAKE or REM; CI = block
+  bootstrap (2000). Text: observed transitions per transition the count model expected; 1 = predicted, > 1 = more.
+- S1 AUC: the model's $\hat p_{WAKE}$ at the step containing a first mover's movement, for waking within 60 s.
+- S3: sleep_sim v2 refitted with the 3 h after every round masked, 100 replicates conditional on the observed long
+  wakes and gaps; observed post-round means vs the simulated 2.5–97.5 % range.
+
+**Results** (claims #44–#47; #43 updated, stays Candidate):
+- **S2 / S2b (#44, Established):** first hour after a round, waking 1.33 / 1.31× the model (blind 1.41 / 1.45), 6/6
+  rats; hours 1–3 0.87 / 0.88 (CIs touch 1); after natural long wakes ≈ 1.
+- **S1 (#45 Established, #46 Candidate):** the count does not discriminate which movements wake (AUC 0.595 = the model
+  without the count); first movers wake 20–23 % more than predicted (scorer's EMG = head IMU: partly definitional).
+- **S3 (#47, Established):** the blind model reproduces 9/14 post-round measures on each scoring; the first REM comes
+  later in wall time than simulated (both scorings, morning and evening) — through the extra waking (REM entry per
+  NREM step is at the model's rate).
+- **G (#43):** G1 uninformative (MDS 0.49 / 0.27 vs 0.34); G2 not met, power-limited (≤ 3 animals); G3 the round's
+  own REM loss does not absorb the pass2med slope (on FINAL the gap's expected REM is repaid instead); G4 partly.
+- **F2:** H14, H16, H17, H22 do not hold; H4 and H15 inconclusive (one scoring); H25 description only.
+- **Reading:** the model predicts the amounts of sleep after a round, not its stability; a model of the perturbation
+  needs an acute arousal term (~1 h) and the REM repayment.
+

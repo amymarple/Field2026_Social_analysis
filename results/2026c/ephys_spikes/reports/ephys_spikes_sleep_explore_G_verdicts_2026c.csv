@@ -1,0 +1,55 @@
+part,scores,row,rule,detail,role
+G1,FINAL,primary (D1): debt_rem + debt_nrem + onset_h,UNINFORMATIVE (G1 stays open),"MDS analytic 0.498, simulated 0.334 (not both <= 0.34); D1 slope -0.213, p 0.0583 (not positive)",reported
+G1,FINAL,covariate-free: debt_rem,UNINFORMATIVE (G1 stays open),"MDS analytic 0.453, simulated 0.391 (not both <= 0.34); D1 slope -0.045, p 0.7769 (not positive)",reported
+G1,FINAL,"primary (D1), B = 3 h",INCONCLUSIVE,9 windows (< 10); no MDS,reported
+G1,pass2med,primary (D1): debt_rem + debt_nrem + onset_h,UNINFORMATIVE (G1 stays open),"MDS analytic 0.487, simulated 0.269 (not both <= 0.34); D1 slope -0.022, p 0.8233 (not positive)",verdict
+G1,pass2med,covariate-free: debt_rem,UNINFORMATIVE (G1 stays open),"MDS analytic 0.471, simulated 0.319 (not both <= 0.34); D1 slope +0.147, p 0.2262 (not positive)",reported
+G1,pass2med,"primary (D1), B = 3 h",INCONCLUSIVE,9 windows (< 10); no MDS,reported
+G2,FINAL,"primary, 0-1 h, expected E",NOT MET,"difference +0.835 [+0.355, +1.283] (CI not < 0), animals negative 0/3 (< 5)",verdict
+G2,FINAL,"primary, 1-3 h, expected E",NOT MET,"difference +0.009 [-0.119, +0.155] (CI not < 0), animals negative 0/1 (< 5)",verdict
+G2,FINAL,"primary, 0-1 h, expected E_pb",NOT MET,"difference +0.831 [+0.339, +1.315] (CI not < 0), animals negative 0/3 (< 5)",reported
+G2,FINAL,"primary, 1-3 h, expected E_pb",NOT MET,"difference -0.010 [-0.120, +0.135] (CI not < 0), animals negative 0/1 (< 5)",reported
+G2,FINAL,"primary, 0-1 h, expected E_gate",NOT MET,"difference +0.822 [+0.435, +1.256] (CI not < 0), animals negative 0/3 (< 5)",reported
+G2,FINAL,"primary, 1-3 h, expected E_gate",NOT MET,"difference -0.171 [-0.277, -0.035] (CI < 0), animals negative 1/1 (< 5)",reported
+G2,FINAL,"kind by wake end, 0-1 h, expected E",NOT MET,"difference +0.493 [-0.579, +1.191] (CI not < 0), animals negative 2/4 (< 5)",reported
+G2,FINAL,"kind by wake end, 1-3 h, expected E",NOT MET,"difference +0.196 [-0.406, +0.389] (CI not < 0), animals negative 2/4 (< 5)",reported
+G2,FINAL,"round wake incl. pre-gap wake, 0-1 h, expected E",NOT MET,"difference +0.812 [+0.358, +1.312] (CI not < 0), animals negative 0/3 (< 5)",reported
+G2,FINAL,"round wake incl. pre-gap wake, 1-3 h, expected E",NOT MET,"difference -0.036 [-0.182, +0.159] (CI not < 0), animals negative 0/1 (< 5)",reported
+G2,FINAL,"post hoc: bin only (any clock time), 0-1 h, expected E",NOT MET,"difference +0.272 [-0.203, +0.721] (CI not < 0), animals negative 2/6 (< 5)",reported
+G2,FINAL,"post hoc: bin only (any clock time), 1-3 h, expected E",NOT MET,"difference +0.117 [-0.718, +0.515] (CI not < 0), animals negative 2/6 (< 5)",reported
+G2,FINAL,"aligned at the first NREM, 0-1 h, expected E",NOT MET,"difference +0.830 [+0.370, +1.292] (CI not < 0), animals negative 0/3 (< 5)",reported
+G2,FINAL,"aligned at the first NREM, 1-3 h, expected E",NOT MET,"difference +0.007 [-0.119, +0.154] (CI not < 0), animals negative 0/1 (< 5)",reported
+G2,pass2med,"primary, 0-1 h, expected E",NOT MET,"difference +0.369 [-0.187, +0.754] (CI not < 0), animals negative 1/3 (< 5)",verdict
+G2,pass2med,"primary, 1-3 h, expected E",NOT MET,"difference +0.074 [-0.017, +0.194] (CI not < 0), animals negative 0/1 (< 5)",verdict
+G2,pass2med,"primary, 0-1 h, expected E_pb",NOT MET,"difference +0.285 [-0.378, +0.753] (CI not < 0), animals negative 1/3 (< 5)",reported
+G2,pass2med,"primary, 1-3 h, expected E_pb",NOT MET,"difference +0.064 [-0.018, +0.165] (CI not < 0), animals negative 0/1 (< 5)",reported
+G2,pass2med,"primary, 0-1 h, expected E_gate",NOT MET,"difference +0.301 [-0.051, +0.570] (CI not < 0), animals negative 0/3 (< 5)",reported
+G2,pass2med,"primary, 1-3 h, expected E_gate",NOT MET,"difference +0.027 [-0.065, +0.129] (CI not < 0), animals negative 1/1 (< 5)",reported
+G2,pass2med,"kind by wake end, 0-1 h, expected E",NOT MET,"difference +0.190 [-0.335, +0.785] (CI not < 0), animals negative 2/5 (< 5)",reported
+G2,pass2med,"kind by wake end, 1-3 h, expected E",NOT MET,"difference -0.089 [-0.353, +0.095] (CI not < 0), animals negative 3/5 (< 5)",reported
+G2,pass2med,"round wake incl. pre-gap wake, 0-1 h, expected E",NOT MET,"difference +0.362 [-0.166, +0.767] (CI not < 0), animals negative 1/3 (< 5)",reported
+G2,pass2med,"round wake incl. pre-gap wake, 1-3 h, expected E",NOT MET,"difference +0.058 [-0.038, +0.185] (CI not < 0), animals negative 0/1 (< 5)",reported
+G2,pass2med,"post hoc: bin only (any clock time), 0-1 h, expected E",NOT MET,"difference -0.023 [-0.603, +0.307] (CI not < 0), animals negative 4/6 (< 5)",reported
+G2,pass2med,"post hoc: bin only (any clock time), 1-3 h, expected E",NOT MET,"difference -0.075 [-0.582, +0.164] (CI not < 0), animals negative 3/6 (< 5)",reported
+G2,pass2med,"aligned at the first NREM, 0-1 h, expected E",NOT MET,"difference +0.368 [-0.164, +0.747] (CI not < 0), animals negative 1/3 (< 5)",reported
+G2,pass2med,"aligned at the first NREM, 1-3 h, expected E",NOT MET,"difference +0.072 [-0.024, +0.189] (CI not < 0), animals negative 0/1 (< 5)",reported
+G3,FINAL,"morning, B = 1 h, day-demeaned",NOT MET,"gap-debt slope +0.148 [+0.042, +0.254] (CI > 0); pre-round debt slope +0.040 -> +0.037 (fall 8 %, < 30 %)",reported
+G3,FINAL,"morning, B = 3 h, day-demeaned",NOT MET,"gap-debt slope +0.411 [+0.014, +0.808] (CI > 0); pre-round debt slope -0.062 -> -0.071 (fall -14 %, < 30 %)",reported
+G3,FINAL,"evening, B = 1 h, day-demeaned",NOT MET,"gap-debt slope +0.393 [+0.361, +0.424] (CI > 0); pre-round debt slope +0.029 -> +0.028 (fall 4 %, < 30 %)",reported
+G3,FINAL,"evening, B = 3 h, day-demeaned",NOT MET,"gap-debt slope +0.123 [+0.068, +0.179] (CI > 0); pre-round debt slope +0.039 -> +0.038 (fall 1 %, < 30 %)",reported
+G3,pass2med,"morning, B = 1 h, day-demeaned",NOT MET,"gap-debt slope +0.043 [-0.021, +0.108] (CI includes 0 or < 0); pre-round debt slope +0.335 -> +0.324 (fall 3 %, < 30 %)",verdict
+G3,pass2med,"morning, B = 3 h, day-demeaned",NOT MET,"gap-debt slope +0.067 [-0.161, +0.294] (CI includes 0 or < 0); pre-round debt slope +0.961 -> +0.943 (fall 2 %, < 30 %)",verdict
+G3,pass2med,"evening, B = 1 h, day-demeaned",NOT MET,"gap-debt slope +0.275 [+0.222, +0.327] (CI > 0); pre-round debt slope +0.041 -> +0.036 (fall 13 %, < 30 %)",reported
+G3,pass2med,"evening, B = 3 h, day-demeaned",NOT MET,"gap-debt slope +0.031 [-0.044, +0.107] (CI includes 0 or < 0); pre-round debt slope +0.063 -> +0.063 (fall 1 %, < 30 %)",reported
+G4,FINAL,"gain_heldout, B = 1 h, day-demeaned",NOT MET,"interaction +0.015 [-0.056, +0.087] per unit (CI not > 0), n 37",reported
+G4,FINAL,"gain_heldout, B = 3 h, day-demeaned",NOT MET,"interaction -0.057 [-0.220, +0.107] per unit (CI not > 0), n 37",reported
+G4,FINAL,"gain_base, B = 1 h, day-demeaned",NOT MET,"interaction -0.108 [-0.208, -0.007] per unit (CI not > 0), n 49",reported
+G4,FINAL,"gain_base, B = 3 h, day-demeaned",NOT MET,"interaction -0.344 [-0.648, -0.039] per unit (CI not > 0), n 49",reported
+G4,FINAL,"onset_rel_sunrise_h, B = 1 h, day-demeaned",NOT MET,"interaction -0.103 [-0.257, +0.052] per unit (CI not > 0), n 49",reported
+G4,FINAL,"onset_rel_sunrise_h, B = 3 h, day-demeaned",NOT MET,"interaction -0.935 [-1.120, -0.749] per unit (CI not > 0), n 49",reported
+G4,pass2med,"gain_heldout, B = 1 h, day-demeaned",MET,"interaction +0.058 [+0.008, +0.108] per unit (CI > 0), n 37",verdict
+G4,pass2med,"gain_heldout, B = 3 h, day-demeaned",NOT MET,"interaction -0.074 [-0.168, +0.020] per unit (CI not > 0), n 37",verdict
+G4,pass2med,"gain_base, B = 1 h, day-demeaned",NOT MET,"interaction +0.011 [-0.051, +0.073] per unit (CI not > 0), n 49",reported
+G4,pass2med,"gain_base, B = 3 h, day-demeaned",NOT MET,"interaction +0.166 [-0.031, +0.363] per unit (CI not > 0), n 49",reported
+G4,pass2med,"onset_rel_sunrise_h, B = 1 h, day-demeaned",NOT MET,"interaction +0.037 [-0.127, +0.202] per unit (CI not > 0), n 49",reported
+G4,pass2med,"onset_rel_sunrise_h, B = 3 h, day-demeaned",MET,"interaction +0.700 [+0.322, +1.077] per unit (CI > 0), n 49",reported

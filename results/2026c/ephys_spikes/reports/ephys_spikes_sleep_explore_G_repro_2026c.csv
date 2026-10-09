@@ -1,0 +1,9 @@
+scores,check,value,ci,n_windows
+FINAL,"#43 morning payback, B = 1 h (day-demeaned)",0.04008164073502846,"[-0.141, +0.221]",49
+FINAL,"#43 morning payback, B = 3 h (day-demeaned)",-0.06215794198795038,"[-0.819, +0.694]",49
+FINAL,"D1 dawn-wake model refit (primary (D1): debt_rem + debt_nrem + onset_h, B = 1 h): slope / cluster SE vs D1's",-0.2133582638816759,D1 -0.2134; SE 0.1127 vs 0.1127,38
+FINAL,"D1 dawn-wake model refit (covariate-free: debt_rem, B = 1 h): slope / cluster SE vs D1's",-0.04524639096592597,D1 -0.0452; SE 0.1597 vs 0.1597,39
+pass2med,"#43 morning payback, B = 1 h (day-demeaned)",0.33546491960540376,"[+0.175, +0.496]",49
+pass2med,"#43 morning payback, B = 3 h (day-demeaned)",0.9606618505759978,"[+0.470, +1.451]",49
+pass2med,"D1 dawn-wake model refit (primary (D1): debt_rem + debt_nrem + onset_h, B = 1 h): slope / cluster SE vs D1's",-0.0217634621756945,D1 -0.0218; SE 0.0975 vs 0.0975,41
+pass2med,"D1 dawn-wake model refit (covariate-free: debt_rem, B = 1 h): slope / cluster SE vs D1's",0.14690316112388416,D1 +0.1469; SE 0.1214 vs 0.1214,41

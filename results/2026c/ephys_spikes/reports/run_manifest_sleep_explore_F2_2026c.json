@@ -1,0 +1,122 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_F2_20261009_1225",
+  "git_commit": "ff345b3+dirty",
+  "parts": [
+    "h4",
+    "h14",
+    "h15",
+    "h16",
+    "h17",
+    "h22",
+    "h25"
+  ],
+  "scorings": [
+    "FINAL",
+    "pass2med"
+  ],
+  "p_key": "P_tw600_k0",
+  "inputs": {
+    "states_FINAL": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+    "states_pass2med": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_pass2med",
+    "review": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_review_2026c.csv",
+    "zone_cache": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_C_20261009_0121\\zone_per_second.npz",
+    "pos_cache": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_F2_20261009_1225\\pos_per_second.npz",
+    "gaps": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase0_20261007_1818\\gaps.csv",
+    "wiser_default_tracks": "D:\\Field2026_analysis_out\\2026c\\wiser_default_tracks"
+  },
+  "csvs": [
+    "ephys_spikes_sleep_explore_F2_h4_models_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h4_per_animal_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h14_terms_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h14_per_animal_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h14_heldout_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h15_terms_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h15_per_animal_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h15_heldout_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h16_ratio_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h16_per_partner_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h17_cox_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h22_terms_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h22_per_animal_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h22_heldout_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h22_nights_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h25_windows_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_h25_summary_2026c.csv",
+    "ephys_spikes_sleep_explore_F2_verdicts_2026c.csv"
+  ],
+  "figures": [
+    "ephys_spikes_sleep_explore_F2_h4_2026c.png",
+    "ephys_spikes_sleep_explore_F2_h14_2026c.png",
+    "ephys_spikes_sleep_explore_F2_h15_2026c.png",
+    "ephys_spikes_sleep_explore_F2_h16_2026c.png",
+    "ephys_spikes_sleep_explore_F2_h17_2026c.png",
+    "ephys_spikes_sleep_explore_F2_h22_2026c.png",
+    "ephys_spikes_sleep_explore_F2_h25_2026c.png"
+  ],
+  "runtime_s": {
+    "inputs": 17.4,
+    "prep_final": 11.6,
+    "prep_pass2med": 11.2,
+    "h4": 9.3,
+    "h14": 94.1,
+    "h15": 144.5,
+    "h16": 3.2,
+    "h17": 9.1,
+    "h22": 44.5,
+    "h25": 26.9,
+    "total": 372.5
+  },
+  "verdicts": [
+    {
+      "H": "H4",
+      "hypothesis": "NREM after a wake follows the wake's activity (WISER distance / time in the field during the wake), not only its length",
+      "verdict": "INCONCLUSIVE",
+      "FINAL": "met",
+      "pass2med": "not met"
+    },
+    {
+      "H": "H14",
+      "hypothesis": "Warmth raises REM share through maintenance, not entry",
+      "verdict": "DOES NOT HOLD",
+      "FINAL": "not met",
+      "pass2med": "not met"
+    },
+    {
+      "H": "H15",
+      "hypothesis": "Group size changes sleep maintenance, not REM entry",
+      "verdict": "INCONCLUSIVE",
+      "FINAL": "not met",
+      "pass2med": "met"
+    },
+    {
+      "H": "H16",
+      "hypothesis": "A housemate leaving the house ends the partner's sleep",
+      "verdict": "DOES NOT HOLD",
+      "FINAL": "not met",
+      "pass2med": "not met"
+    },
+    {
+      "H": "H17",
+      "hypothesis": "Sleeping at a new site after a long wake delays REM",
+      "verdict": "DOES NOT HOLD",
+      "FINAL": "not met",
+      "pass2med": "not met"
+    },
+    {
+      "H": "H22",
+      "hypothesis": "Rain disturbs sleep",
+      "verdict": "DOES NOT HOLD",
+      "FINAL": "not met",
+      "pass2med": "not met"
+    },
+    {
+      "H": "H25",
+      "hypothesis": "The five females (from 09-11 19:40) change the gate or the arousability",
+      "verdict": "DESCRIPTION ONLY",
+      "FINAL": "described",
+      "pass2med": "described"
+    }
+  ],
+  "plan": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
+  "report": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_explore_F2_2026c.md"
+}

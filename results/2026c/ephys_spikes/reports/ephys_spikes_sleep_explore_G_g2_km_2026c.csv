@@ -1,0 +1,13 @@
+scores,group,cell,n,rem_reached,km_median_nrem_min,median_d_min
+FINAL,natural,evening | 30-120 min,7,1,,78.9
+FINAL,natural,evening | >= 2 h,2,0,,131.73333333333332
+FINAL,natural,morning | 30-120 min,2,2,17.7,50.5
+FINAL,round,evening | 30-120 min,33,11,11.766666666666667,52.07816666666667
+FINAL,round,evening | >= 2 h,11,5,26.066666666666666,226.51735000000002
+FINAL,round,morning | 30-120 min,48,21,10.5,63.62035
+pass2med,natural,evening | 30-120 min,9,3,6.533333333333333,65.16666666666667
+pass2med,natural,evening | >= 2 h,1,0,,128.18333333333334
+pass2med,natural,morning | 30-120 min,3,3,23.583333333333332,33.65
+pass2med,round,evening | 30-120 min,35,11,8.916666666666666,52.07816666666667
+pass2med,round,evening | >= 2 h,9,4,26.75,194.45499999999998
+pass2med,round,morning | 30-120 min,48,22,11.033333333333333,63.443416666666664

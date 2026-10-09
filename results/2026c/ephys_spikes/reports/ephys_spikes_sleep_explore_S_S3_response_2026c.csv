@@ -1,0 +1,81 @@
+scores,variant,kind,metric,rounds,observed,sim_mean,sim_2.5%,sim_97.5%,inside
+final,blind (post-round 3 h masked in the fit),morning,rem_min_1h,50,4.465,4.650153333333333,4.036208333333334,5.390516666666667,True
+final,blind (post-round 3 h masked in the fit),morning,nrem_min_1h,50,33.03333333333333,33.834583333333335,32.80513333333334,34.62903333333333,True
+final,blind (post-round 3 h masked in the fit),morning,rem_bouts_1h,50,3.72,3.9637999999999995,3.499,4.441999999999999,True
+final,blind (post-round 3 h masked in the fit),morning,rem_min_3h,50,22.46333333333333,20.938936666666663,19.53395,22.32190833333333,False
+final,blind (post-round 3 h masked in the fit),morning,nrem_min_3h,50,117.09966666666668,115.65575666666668,113.805425,117.62775,True
+final,blind (post-round 3 h masked in the fit),morning,rem_bouts_3h,50,18.58,17.410800000000002,16.419,18.744,True
+final,blind (post-round 3 h masked in the fit),morning,rem_min_6h,44,49.14090909090908,47.115261363636364,44.63257575757576,49.520369318181814,True
+final,blind (post-round 3 h masked in the fit),morning,nrem_min_6h,44,234.8731060606061,234.15435606060603,231.0208238636364,236.9483712121212,True
+final,blind (post-round 3 h masked in the fit),morning,rem_bouts_6h,44,41.93181818181818,39.542272727272724,37.873295454545456,41.502272727272725,False
+final,blind (post-round 3 h masked in the fit),morning,first_REM_latency_KM_median_s,50,1847.0,1245.9,627.325,1808.1499999999999,False
+final,blind (post-round 3 h masked in the fit),evening,rem_min_1h,44,1.330681818181818,1.7544848484848483,1.2906818181818183,2.3220833333333317,True
+final,blind (post-round 3 h masked in the fit),evening,nrem_min_1h,44,11.445075757575758,12.689170454545454,11.861126893939394,13.311420454545454,False
+final,blind (post-round 3 h masked in the fit),evening,rem_bouts_1h,44,1.5,1.9734090909090907,1.5909090909090908,2.421022727272727,False
+final,blind (post-round 3 h masked in the fit),evening,rem_min_3h,44,1.7840909090909087,2.253912878787879,1.7264299242424241,2.862547348484847,True
+final,blind (post-round 3 h masked in the fit),evening,nrem_min_3h,44,20.76818181818182,21.817189393939387,20.932215909090907,22.583626893939392,False
+final,blind (post-round 3 h masked in the fit),evening,rem_bouts_3h,44,1.9090909090909092,2.5352272727272727,2.1125,2.989204545454545,False
+final,blind (post-round 3 h masked in the fit),evening,rem_min_6h,44,3.565151515151516,3.985348484848484,3.283589015151515,4.685359848484849,True
+final,blind (post-round 3 h masked in the fit),evening,nrem_min_6h,44,53.786742424242426,52.63224621212122,51.3361553030303,53.948219696969694,True
+final,blind (post-round 3 h masked in the fit),evening,rem_bouts_6h,44,3.5,4.206818181818182,3.6568181818181817,4.660227272727273,False
+final,blind (post-round 3 h masked in the fit),evening,first_REM_latency_KM_median_s,44,12673.0,8566.08,2200.275,11913.175,False
+final,fitted on all data,morning,rem_min_1h,50,4.465,4.335730000000001,3.5675000000000003,4.962825,True
+final,fitted on all data,morning,nrem_min_1h,50,33.03333333333333,34.08753333333333,33.18549166666667,35.088049999999996,False
+final,fitted on all data,morning,rem_bouts_1h,50,3.72,3.7708,3.2495,4.2924999999999995,True
+final,fitted on all data,morning,rem_min_3h,50,22.46333333333333,20.910303333333335,19.362616666666668,22.2041,False
+final,fitted on all data,morning,nrem_min_3h,50,117.09966666666668,116.6988533333333,114.85604166666667,118.27615833333333,True
+final,fitted on all data,morning,rem_bouts_3h,50,18.58,17.5788,16.4275,18.52,False
+final,fitted on all data,morning,rem_min_6h,44,49.14090909090908,47.6408446969697,45.429876893939394,49.71751893939394,True
+final,fitted on all data,morning,nrem_min_6h,44,234.8731060606061,235.25971212121212,232.09116477272727,238.15232954545456,True
+final,fitted on all data,morning,rem_bouts_6h,44,41.93181818181818,39.77909090909091,38.25965909090909,41.298863636363635,False
+final,fitted on all data,morning,first_REM_latency_KM_median_s,50,1847.0,1699.57,1236.025,2137.875,True
+final,fitted on all data,evening,rem_min_1h,44,1.330681818181818,1.6212954545454545,1.1061647727272728,2.1335606060606045,True
+final,fitted on all data,evening,nrem_min_1h,44,11.445075757575758,12.670329545454544,11.972982954545454,13.345965909090909,False
+final,fitted on all data,evening,rem_bouts_1h,44,1.5,1.8181818181818183,1.3517045454545453,2.3181818181818183,True
+final,fitted on all data,evening,rem_min_3h,44,1.7840909090909087,2.0851553030303034,1.518683712121212,2.619214015151515,True
+final,fitted on all data,evening,nrem_min_3h,44,20.76818181818182,21.712946969696972,20.676723484848488,22.538077651515152,True
+final,fitted on all data,evening,rem_bouts_3h,44,1.9090909090909092,2.3490909090909087,1.8409090909090908,2.8874999999999997,True
+final,fitted on all data,evening,rem_min_6h,44,3.565151515151516,3.666973484848485,2.9797537878787876,4.262594696969697,True
+final,fitted on all data,evening,nrem_min_6h,44,53.786742424242426,53.293791666666664,51.97372159090909,54.867045454545455,True
+final,fitted on all data,evening,rem_bouts_6h,44,3.5,3.896136363636364,3.272727272727273,4.422159090909091,True
+final,fitted on all data,evening,first_REM_latency_KM_median_s,44,12673.0,10457.68,4113.225,13502.174999999997,True
+pass2med,blind (post-round 3 h masked in the fit),morning,rem_min_1h,50,4.372,5.257393333333333,4.471666666666667,5.909833333333333,False
+pass2med,blind (post-round 3 h masked in the fit),morning,nrem_min_1h,50,33.03333333333333,33.97016,33.10890833333333,35.045474999999996,False
+pass2med,blind (post-round 3 h masked in the fit),morning,rem_bouts_1h,50,3.66,4.623,4.12,5.1514999999999995,False
+pass2med,blind (post-round 3 h masked in the fit),morning,rem_min_3h,50,22.208333333333336,22.60850333333333,21.014658333333333,23.9252,True
+pass2med,blind (post-round 3 h masked in the fit),morning,nrem_min_3h,50,117.56833333333333,117.03203666666668,115.2851,118.84013333333333,True
+pass2med,blind (post-round 3 h masked in the fit),morning,rem_bouts_3h,50,18.68,19.3342,18.236,20.351499999999998,True
+pass2med,blind (post-round 3 h masked in the fit),morning,rem_min_6h,44,49.325,49.29688257575757,47.29242424242425,51.65553977272727,True
+pass2med,blind (post-round 3 h masked in the fit),morning,nrem_min_6h,44,235.1159090909091,235.2545871212121,232.62960227272728,238.0676893939394,True
+pass2med,blind (post-round 3 h masked in the fit),morning,rem_bouts_6h,44,41.61363636363637,41.7234090909091,40.027840909090905,43.54659090909091,True
+pass2med,blind (post-round 3 h masked in the fit),morning,first_REM_latency_KM_median_s,50,1844.0,763.06,413.775,1409.625,False
+pass2med,blind (post-round 3 h masked in the fit),evening,rem_min_1h,44,1.5837121212121212,2.0831439393939393,1.625880681818182,2.610643939393939,False
+pass2med,blind (post-round 3 h masked in the fit),evening,nrem_min_1h,44,12.200757575757576,12.886814393939394,12.193579545454545,13.52526515151515,True
+pass2med,blind (post-round 3 h masked in the fit),evening,rem_bouts_1h,44,1.7272727272727273,2.3459090909090907,1.8517045454545453,2.773863636363636,False
+pass2med,blind (post-round 3 h masked in the fit),evening,rem_min_3h,44,2.1231060606060606,2.632462121212121,2.1035984848484848,3.2901515151515146,True
+pass2med,blind (post-round 3 h masked in the fit),evening,nrem_min_3h,44,22.05757575757576,22.506416666666663,21.61901515151515,23.224554924242426,True
+pass2med,blind (post-round 3 h masked in the fit),evening,rem_bouts_3h,44,2.2045454545454546,3.0118181818181813,2.477272727272727,3.4664772727272726,False
+pass2med,blind (post-round 3 h masked in the fit),evening,rem_min_6h,44,4.008712121212121,4.283863636363637,3.6209090909090906,5.024526515151515,True
+pass2med,blind (post-round 3 h masked in the fit),evening,nrem_min_6h,44,57.79659090909092,56.512935606060616,54.92946969696969,57.857405303030305,True
+pass2med,blind (post-round 3 h masked in the fit),evening,rem_bouts_6h,44,4.159090909090909,4.877954545454545,4.271590909090909,5.5227272727272725,False
+pass2med,blind (post-round 3 h masked in the fit),evening,first_REM_latency_KM_median_s,44,12358.0,4307.6,680.2,9675.775,False
+pass2med,fitted on all data,morning,rem_min_1h,50,4.372,4.802646666666666,4.0959666666666665,5.520541666666665,True
+pass2med,fitted on all data,morning,nrem_min_1h,50,33.03333333333333,34.20272333333334,33.264833333333335,35.18729166666667,False
+pass2med,fitted on all data,morning,rem_bouts_1h,50,3.66,4.2794,3.739,4.894499999999999,False
+pass2med,fitted on all data,morning,rem_min_3h,50,22.208333333333336,21.971699999999995,20.1891,23.480566666666665,True
+pass2med,fitted on all data,morning,nrem_min_3h,50,117.56833333333333,117.48270999999998,115.59295833333334,119.50840833333334,True
+pass2med,fitted on all data,morning,rem_bouts_3h,50,18.68,18.762600000000003,17.578,19.722,True
+pass2med,fitted on all data,morning,rem_min_6h,44,49.325,48.58875378787878,45.96774621212121,51.06854166666666,True
+pass2med,fitted on all data,morning,nrem_min_6h,44,235.1159090909091,236.1450871212121,233.84489583333334,239.33092803030303,True
+pass2med,fitted on all data,morning,rem_bouts_6h,44,41.61363636363637,41.01477272727273,39.48352272727273,42.55738636363637,True
+pass2med,fitted on all data,morning,first_REM_latency_KM_median_s,50,1844.0,1271.92,592.375,1790.8499999999997,False
+pass2med,fitted on all data,evening,rem_min_1h,44,1.5837121212121212,1.8896856060606058,1.488560606060606,2.476893939393938,True
+pass2med,fitted on all data,evening,nrem_min_1h,44,12.200757575757576,12.889708333333333,12.152982954545454,13.552064393939393,True
+pass2med,fitted on all data,evening,rem_bouts_1h,44,1.7272727272727273,2.105454545454545,1.7142045454545456,2.489204545454545,True
+pass2med,fitted on all data,evening,rem_min_3h,44,2.1231060606060606,2.420719696969697,1.9939772727272727,2.968768939393939,True
+pass2med,fitted on all data,evening,nrem_min_3h,44,22.05757575757576,22.4800946969697,21.469498106060605,23.30247159090909,True
+pass2med,fitted on all data,evening,rem_bouts_3h,44,2.2045454545454546,2.7404545454545457,2.340909090909091,3.196022727272726,False
+pass2med,fitted on all data,evening,rem_min_6h,44,4.008712121212121,4.123071969696969,3.518200757575758,4.885624999999998,True
+pass2med,fitted on all data,evening,nrem_min_6h,44,57.79659090909092,56.86333333333334,55.494157196969695,58.17198863636364,True
+pass2med,fitted on all data,evening,rem_bouts_6h,44,4.159090909090909,4.633181818181819,4.101704545454545,5.346590909090907,True
+pass2med,fitted on all data,evening,first_REM_latency_KM_median_s,44,12358.0,7381.86,1875.5,10653.0,False

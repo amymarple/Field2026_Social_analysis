@@ -1,0 +1,78 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_G_20261009_1233",
+  "git_commit": "ff345b3+dirty",
+  "plan": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
+  "parts": [
+    "g1",
+    "g2",
+    "g3",
+    "g4"
+  ],
+  "scorings": [
+    "FINAL",
+    "pass2med"
+  ],
+  "inputs": {
+    "states_FINAL": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+    "states_pass2med": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_pass2med",
+    "review": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_review_2026c.csv",
+    "gaps": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase0_20261007_1818\\gaps.csv",
+    "heldout_steps": {
+      "FINAL": "D:\\Field2026_analysis_out\\2026c\\sleep_heldout_steps\\heldout_steps_final.csv.gz",
+      "pass2med": "D:\\Field2026_analysis_out\\2026c\\sleep_heldout_steps\\heldout_steps_pass2med.csv.gz"
+    }
+  },
+  "verdicts": {
+    "G1": "UNINFORMATIVE (G1 stays open)",
+    "G2": "NOT MET \u2014 power-limited: at most 3 animals have matched natural wakes with held-out predictions in a window, so the rats condition (>= 5) could not be met",
+    "G3": "NOT MET",
+    "G4": "PARTLY (1 h MET, 3 h NOT MET)"
+  },
+  "reading": "#43 stays Candidate (power) \u2014 no row of the reading table applies",
+  "runtime_s": 24.8,
+  "runtime_per_part": [
+    {
+      "scores": "FINAL",
+      "part": "g1",
+      "seconds": 1.6
+    },
+    {
+      "scores": "FINAL",
+      "part": "g3",
+      "seconds": 1.6
+    },
+    {
+      "scores": "FINAL",
+      "part": "g4",
+      "seconds": 0.5
+    },
+    {
+      "scores": "FINAL",
+      "part": "g2",
+      "seconds": 3.3
+    },
+    {
+      "scores": "pass2med",
+      "part": "g1",
+      "seconds": 1.5
+    },
+    {
+      "scores": "pass2med",
+      "part": "g3",
+      "seconds": 1.6
+    },
+    {
+      "scores": "pass2med",
+      "part": "g4",
+      "seconds": 0.5
+    },
+    {
+      "scores": "pass2med",
+      "part": "g2",
+      "seconds": 4.4
+    }
+  ],
+  "n_sim": 2000,
+  "n_boot": 2000,
+  "seed": 20261009
+}
