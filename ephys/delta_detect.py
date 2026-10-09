@@ -58,9 +58,45 @@ def filtfilt_mat(b, a, x):
     return signal.filtfilt(b, a, x, padtype="odd", padlen=3 * (max(len(a), len(b)) - 1))
 
 
+# The cheby2 low-passes FindDeltaWaves uses, FROZEN as exact doubles (b, a, filtfilt initial state), computed on the
+# analysis PC with scipy 1.16.2 - the coefficients that reproduce the lab files. In b/a form these filters are
+# ill-conditioned (poles within 4e-4 of 1): scipy 1.16.3 on BioHPC gave coefficients differing in the last bits, a pole
+# moved 0.99960 -> 0.99965 and ~2 % of the delta peaks shifted by one sample (2026-10-09). MATLAB has the same fragility.
+FROZEN_LOWPASS = {
+    (5, 0.5): (['0x1.49bbcac80f990p-11', '-0x1.ee989f2dddfafp-10', '0x1.49bab9ca30967p-10', '0x1.49bab9ca30969p-10', '-0x1.ee989f2dddfaep-10', '0x1.49bbcac80f98fp-11'],
+                ['0x1.0000000000000p+0', '-0x1.3f7a4e886f472p+2', '0x1.3ef4e137f106ap+3', '-0x1.3e6fb7e07e8c1p+3', '0x1.3dead2543559cp+2', '-0x1.fbd6b3d557e39p-1'],
+                ['0x1.ff1ab064f9493p-1', '-0x1.fe38d1c5da027p+1', '0x1.7e01be50e7359p+2', '-0x1.fc7733e361da6p+1', '0x1.fb9773b9dcee7p-1']),
+    (5, 9.0): (['0x1.5adfc6c1dc5fbp-7', '-0x1.03724255d5941p-5', '0x1.5975396d4987bp-6', '0x1.5975396d4987cp-6', '-0x1.03724255d5941p-5', '0x1.5adfc6c1dc5fap-7'],
+                ['0x1.0000000000000p+0', '-0x1.369d056f211fcp+2', '0x1.2d901c185d85bp+3', '-0x1.24d53cb408a6fp+3', '0x1.1c6898eec32ecp+2', '-0x1.ba0a88c0359aep-1'],
+                ['0x1.fa9480d809b21p-1', '-0x1.ea87218f374eep+1', '0x1.6483322075f97p+2', '-0x1.cd0178e47ac97p+1', '0x1.bf7607d01293fp-1']),
+    (8, 9.0): (['0x1.6a8b4d2aad36dp-4', '-0x1.679bb6689fb4ap-1', '0x1.38d46c75f6de8p+1', '-0x1.37bc7e334adf1p+2', '0x1.85372321a735dp+2', '-0x1.37bc7e334adf1p+2', '0x1.38d46c75f6de8p+1', '-0x1.679bb6689fb49p-1', '0x1.6a8b4d2aad36ep-4'],
+                ['0x1.0000000000000p+0', '-0x1.ee47cf63fee80p+2', '0x1.a19c1aeabb22ap+4', '-0x1.9350bc677178cp+5', '0x1.e6fb8751798eap+5', '-0x1.78659d7a28444p+5', '0x1.6bb97e99481b8p+4', '-0x1.91c485978e10ap+2', '0x1.84641b65ba2d6p-1'],
+                ['0x1.d2b355e474085p-1', '-0x1.87028352ca018p+2', '0x1.18c4cbf99e6c5p+4', '-0x1.bff5084db3efap+4', '0x1.acbd45d6b8dffp+4', '-0x1.ec4ba18b44843p+3', '0x1.39f1ff25e54ddp+2', '-0x1.57164bd47951fp-1']),
+}
+
+
+def _frozen(order: int, fc: float):
+    k = FROZEN_LOWPASS.get((int(order), float(fc)))
+    if k is None:
+        return None
+    return tuple(np.array([float.fromhex(v) for v in part]) for part in k)
+
+
+def filtfilt_frozen(b, a, zi, x):
+    """scipy.signal.filtfilt(method='pad', padtype='odd', padlen=3*(nfilt-1)) with a fixed initial state."""
+    n = 3 * (max(len(a), len(b)) - 1)
+    ext = signal._arraytools.odd_ext(np.asarray(x, float), n)
+    y, _ = signal.lfilter(b, a, ext, zi=zi * ext[0])
+    y, _ = signal.lfilter(b, a, y[::-1], zi=zi * y[-1])
+    return y[::-1][n:-n]
+
+
 def mat_filter(x: np.ndarray, passband, order: int = 5) -> np.ndarray:
-    """FMA Filter.m, cheby2 branch (ripple 20 dB, nyquist 625)."""
+    """FMA Filter.m, cheby2 branch (ripple 20 dB, nyquist 625); FindDeltaWaves' low-passes use the frozen coefficients."""
     if passband[0] == 0:
+        fr = _frozen(order, passband[1])
+        if fr is not None:
+            return filtfilt_frozen(*fr, x)
         b, a = signal.cheby2(order, 20, passband[1] / 625.0, btype="low", output="ba")
     else:
         b, a = signal.cheby2(order, 20, np.asarray(passband) / 625.0, btype="bandpass", output="ba")
