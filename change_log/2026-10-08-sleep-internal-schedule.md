@@ -371,7 +371,7 @@ first 14-worker attempt died with a MemoryError and was rerun.
 too little REM. 12–15 % of REM bouts follow a wake of ≤ 10 s, so v2 samples each short wake together with its next state.
 
 **Results** (claims #40–#43; #10 updated):
-- **E (generative):** 27/28 checks pass on each scoring (100 replicates, conditional on the observed long wakes and
+- **E (generative):** 27 of 28 checks pass, 13/14 FINAL and 14/14 pass2med (100 replicates, conditional on the observed long wakes and
   gaps).
   - Daily REM 1.683 vs 1.694 h, its day-to-day SD 0.343 vs 0.342 h; REM share day / night reproduced.
   - (ii) the carry-over curve and (vi) the night → day pattern are reproduced.
@@ -385,7 +385,7 @@ too little REM. 12–15 % of REM bouts follow a wake of ≤ 10 s, so v2 samples 
   - Natural dawn wakes without handling show no payback: −0.02, 41 windows, low power.
   - The plan's rule for a slow REM deficit is not met → #43 (Candidate): repayment so far only after handled
     interruptions.
-- **Post-hoc variant** with wall-clock time since REM: 27/28; it improves the latencies after long night wakes.
+- **Post-hoc variant** with wall-clock time since REM: 27 of 28; it improves the latencies after long night wakes.
 
 ## Sleep-behaviour explore, Amendment 1 — S, G, F (2026-10-09; the user: "模型可以预测睡眠的稳定性么… F可以干了 #43可以干")
 
@@ -429,4 +429,34 @@ predict"), all written before results.
   inconclusive, H23 does not hold. H8's continuity correction for a zero cell was added after the first scratch run.
 - **Reading:** the model predicts the amounts of sleep after a round, not its stability; a model of the perturbation
   needs an acute arousal term (~1 h) and the REM repayment.
+
+## Sleep-behaviour explore, Amendment 2 — part P, perturbation dynamics (2026-10-09; the user: "干吧")
+
+Plan §10, written and committed (2428cdc) before results, after the user's note: model the perturbation as
+dynamics fitted on other data and frozen, allowed to fail, before any REM-repayment rule.
+
+**Code.**
+- `ephys/sleep_perturb.py run | --selftest` — main session; selftest (12 s) plants and recovers (a, τ), checks the
+  cross-fit and the simulator. Run 7 min, 100 replicates, both scorings.
+- `ephys/sleep_sim.py`: `simulate_records(..., arousal={record_id: (a, tau_s)})` adds a·exp(−s/τ) to the NREM → WAKE
+  logit. Without it the output is byte-identical to before (sha256 of 3 × 12 simulated records unchanged).
+
+**Definition (headline).** $\eta_{WAKE} \mathrel{+}= a\,e^{-s/\tau_A}$, $s$ = s since the post-round record
+start; with the base model's $p_W$ as offset, $P(W) = \sigma(\operatorname{logit} p_W + a\,e^{-s/\tau_A})$, so only
+whether the rat woke informs $a$; $(a, \tau_A)$ = ML over $\tau_A \in \{10, 20, 40, 80\}$ min; rounds cross-fitted
+by date parity.
+
+**Results** (claims #56, #57; #43, #44, #47 updated; #40's check count corrected):
+- **Arousal (#56, Candidate strong):** a = 0.43–0.64, τ 20–40 min; the first-hour WAKE O/E goes from 1.26 / 1.34 to
+  1.04 / 1.05 in held-out rounds. Held-out log-loss −0.23 % on pass2med (holds); −0.11 % on FINAL (CI crosses 0).
+- **P1b** passes by the letter but cannot be read: the symmetric base extrapolates the preceding-wake term.
+- **P2 fails on both scorings (#57, Established):** with the arousal, the first REM is still later than simulated
+  (3 of 4 cells), and the sleep recovered after the first hour exceeds the simulation → the delay is REM-side. The
+  S reading "the delay comes from the extra waking" is withdrawn.
+- **P3 passes** (Step E's checks 13/14, 14/14, unchanged).
+- **REM residual:** FINAL's morning REM at 3 h and pass2med's debt slope at 3 h stay above, on different
+  quantities → no unified target, part Q not run, #43 stays Candidate.
+- **Correction:** Step E has 14 checks per scoring; "27/28 on each scoring" (E report, #40, this log) meant 27
+  of 28 in total. Fixed in all three places; the research-logic map repeats the old wording and is fixed at its next
+  update.
 

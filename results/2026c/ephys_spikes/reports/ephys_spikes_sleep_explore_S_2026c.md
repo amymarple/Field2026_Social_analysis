@@ -39,10 +39,10 @@ contain.
     1 h below (4.4 vs 4.5–5.9; 33.0 vs 33.1–35.0); pass2med evening REM in 1 h at the lower edge (1.58 vs 1.63–2.61).
     The first hour after a round has less sleep than simulated — the acute arousal of S2.
   - Fitted on all data (it saw the post-round hours), the FINAL latencies come inside; the pass2med ones do not.
-- **Reading of the later first REM.** It comes from the extra waking, not from a slower REM entry: per NREM step the
-  first-hour REM entry is at the model's rate (S2), and in NREM time the first REM after rounds is, if anything,
-  sooner than after matched natural long wakes (G2 Cox HR 2.8 [0.4, 18.7] FINAL, 2.8 [1.0, 7.8] pass2med; 3 animals
-  with matched natural wakes).
+- **Reading of the later first REM — WITHDRAWN 2026-10-09 by part P** ([report](ephys_spikes_sleep_explore_P_2026c.md),
+  #57). The reading was that the later first REM comes from the extra waking. Part P added the measured waking excess
+  (a decaying arousal fitted on waking only, cross-fitted) to the simulation: the first-hour waking was restored, but
+  the first REM stayed later than simulated in 3 of 4 kind × scoring cells. The delay is REM-side.
 - **What a model of the perturbation needs** (proposal, not tested):
   1. an acute arousal after handling: waking hazard × ~1.4 decaying within ~1 h, then slightly below baseline;
   2. a movement-arousal term: whether a movement wakes is not predicted by the count (S1);

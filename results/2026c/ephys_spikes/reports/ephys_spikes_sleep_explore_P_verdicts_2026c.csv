@@ -1,0 +1,11 @@
+scores,part,pass,numbers
+final,P1,False,"Delta -0.11 % [-0.39, +0.12], 6/6; 0-1 h WAKE O/E with A 1.04 [0.89, 1.25]"
+final,P1b,True,"a_round +0.37 (tau 20 min) - a_nat -1.20 = +1.57 [+1.28, +1.91]"
+final,P2,False,7/14 inside (blind without A: 9); latency morning obs 30.8 min vs 11.3-31.9; evening obs 211.2 min vs 34.3-203.4
+final,P3,True,"with A 13/14, without A 13/14"
+final,residual,,"morning REM payback slope (day-demeaned), B = 1 h: obs +0.04 vs -0.21..+0.28 (inside); morning REM payback mean_y (raw), B = 1 h: obs -2.32 vs -3.01..-1.58 (inside); morning REM payback slope (day-demeaned), B = 3 h: obs -0.06 vs -0.55..+0.60 (inside); morning REM payback mean_y (raw), B = 3 h: obs +0.29 vs -2.12..+0.31 (inside); S3 morning REM min in 3 h: obs +22.46 vs +19.29..+21.84 (above)"
+pass2med,P1,True,"Delta -0.23 % [-0.44, -0.06], 5/6; 0-1 h WAKE O/E with A 1.05 [0.96, 1.17]"
+pass2med,P1b,True,"a_round +0.19 (tau 40 min) - a_nat -1.81 = +2.00 [+1.75, +2.26]"
+pass2med,P2,False,11/14 inside (blind without A: 9); latency morning obs 30.7 min vs 8.5-25.3; evening obs 206.0 min vs 25.7-166.0
+pass2med,P3,True,"with A 14/14, without A 14/14"
+pass2med,residual,,"morning REM payback slope (day-demeaned), B = 1 h: obs +0.34 vs -0.23..+0.36 (inside); morning REM payback mean_y (raw), B = 1 h: obs -2.83 vs -3.16..-1.62 (inside); morning REM payback slope (day-demeaned), B = 3 h: obs +0.96 vs -0.47..+0.51 (above); morning REM payback mean_y (raw), B = 3 h: obs -0.80 vs -1.95..+0.24 (inside); S3 morning REM min in 3 h: obs +22.21 vs +20.59..+23.56 (inside)"

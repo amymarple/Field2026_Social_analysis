@@ -24,6 +24,8 @@
   - claims #44–#47, #43 updated (stays Candidate); Step F2 listed without numbers (none held on both scorings).
 - **F1 (sequence-only hypotheses H5, H7–H11, H20, H23) DONE 2026-10-09:** [F1 report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md);
   claims #48–#53, notes on #6b, #14, #34. **Amendment 1 complete.**
+- **Amendment 2 (§10), part P DONE 2026-10-09:** [P report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_P_2026c.md)
+  (start with its Reading); claims #56–#57, #47 corrected; part Q not triggered (residuals on different quantities).
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;
@@ -511,3 +513,5 @@ time since the last REM including the gap) and (ii) partial discharge during REM
 sleep, #33). Acceptance: the frozen model predicts the post-round REM time course, the gap-length effect and the
 behaviour after natural wakes, and keeps pass2med's 1–3-h post-round REM-entry O/E of 0.85 [0.78, 0.94] (a REM-need
 model that predicts more REM entry there fails).
+
+**Note after the run (2026-10-09).** Step E has 14 checks per scoring; "27/28" in P3 was read per scoring as ≥ 13/14 (the earlier "27/28 on each scoring" meant 27 of 28 in total). P1b's symmetric base never saw a bout after a wake ≥ 30 min, so a_nat is an extrapolation; P1b is reported but not read.

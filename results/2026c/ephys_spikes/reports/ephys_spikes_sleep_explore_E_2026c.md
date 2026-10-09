@@ -18,13 +18,13 @@ Conditional on the observed long wakes and gaps, these reproduce the sleep of th
 | (iii) REM share of sleep, day / night | 17.4 / 7.3 % vs 17.4 / 6.8 % |
 | (iii) REM bouts per NREM h | 11.8 / 4.4 vs 11.4 / 4.0 |
 | (iv) first-REM latencies by prior wake and phase | 5/6 cells within ±25 % (the failing cell: night after 7–30-min wakes, FINAL only, 14 episodes) |
-| total | **27 / 28 checks pass on each scoring** (`ephys_spikes_sleep_explore_E_checks_2026c.csv`) |
+| total | **27 of 28 checks pass: 13/14 FINAL, 14/14 pass2med** (`ephys_spikes_sleep_explore_E_checks_2026c.csv`; "on each scoring" was a wording error, corrected 2026-10-09) |
 
 - **v1 → v2 (a correction made after the first run, stated in the definitions).** The first simulator sent every short
   wake into NREM and produced ~13 % too little REM (daily REM −12 %, day REM rate −13 %). 12–15 % of REM bouts start
   right after a wake of ≤ 10 s (the scorer's brief arousal before REM). v2 samples each short wake together with the
   state that followed it. All numbers above are v2.
-- **Post-hoc variant + wall-clock time since REM** (`…_E_h19_checks_2026c.csv`). Also 27/28 checks pass. It brings
+- **Post-hoc variant + wall-clock time since REM** (`…_E_h19_checks_2026c.csv`). Also 27 of 28 checks pass (both scorings together). It brings
   the first-REM latencies after long night wakes closer: 30–120 min −11 % → −3 %, ≥ 2 h −19 % → −17 % (FINAL).
 - **(ii) the carry-over curve** ([D2E report](ephys_spikes_sleep_explore_D2E_2026c.md)). Simulated, the gain of
   pre-wake history keeps the observed sign in every wake bin where the observed CI excludes 0:
