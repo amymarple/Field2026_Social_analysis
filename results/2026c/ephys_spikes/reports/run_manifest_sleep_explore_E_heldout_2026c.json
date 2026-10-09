@@ -1,0 +1,32 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_E_heldout_20261009_0750",
+  "git_commit": "191d92c+dirty",
+  "scorings": [
+    "final",
+    "pass2med"
+  ],
+  "p_key": "P_tw600_k0",
+  "p_key_alt": "P_tw300_k0",
+  "grid_tau_r_h": [
+    1.0,
+    4.0,
+    16.0
+  ],
+  "grid_tau_d_h": [
+    0.5,
+    2.0,
+    6.0
+  ],
+  "s_modal": {
+    "final": "S_r1_d6",
+    "pass2med": "S_r16_d0.5"
+  },
+  "runtime_min": 32.71,
+  "workers": 8,
+  "smoke": false,
+  "report": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_explore_E_heldout_2026c.md",
+  "figures": [
+    "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\figures\\ephys_spikes_sleep_explore_E_heldout_momentum_2026c.png",
+    "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\figures\\ephys_spikes_sleep_explore_E_heldout_S_2026c.png"
+  ]
+}

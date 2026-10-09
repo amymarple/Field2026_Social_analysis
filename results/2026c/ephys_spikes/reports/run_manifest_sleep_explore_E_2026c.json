@@ -1,0 +1,9 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_E_20261009_0743",
+  "git_commit": "191d92c+dirty",
+  "reps": 100,
+  "scorings": [
+    "final",
+    "pass2med"
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_D1_20261009_0802",
+  "git_commit": "191d92c+dirty",
+  "plan": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
+  "scorings": [
+    "FINAL",
+    "pass2med"
+  ],
+  "inputs": {
+    "states_FINAL": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+    "states_pass2med": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_pass2med",
+    "review": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_review_2026c.csv",
+    "gaps": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase0_20261007_1818\\gaps.csv",
+    "A4_csv": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_explore_A_a4_payback_2026c.csv",
+    "A_run": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_A_20261008_2131",
+    "phase3b_run": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase3b_20261008_1153"
+  },
+  "verdict_D1_pass2med": "NOT MET",
+  "per_horizon": {
+    "1": "NOT MET",
+    "3": "INCONCLUSIVE"
+  },
+  "runtime_s": 95.1,
+  "runtime_per_call": [
+    {
+      "scores": "FINAL",
+      "function": "baseline_bins (phase x day)",
+      "mode": "-",
+      "calls": 3,
+      "median_s": 1.56
+    },
+    {
+      "scores": "FINAL",
+      "function": "payback_from_records",
+      "mode": "cold (bins + baselines inside)",
+      "calls": 3,
+      "median_s": 2.82
+    },
+    {
+      "scores": "FINAL",
+      "function": "payback_from_records",
+      "mode": "warm (bins= passed)",
+      "calls": 3,
+      "median_s": 1.24
+    },
+    {
+      "scores": "FINAL",
+      "function": "budget_from_records",
+      "mode": "cold (bins + baselines inside)",
+      "calls": 3,
+      "median_s": 1.49
+    },
+    {
+      "scores": "FINAL",
+      "function": "budget_from_records",
+      "mode": "warm (bins= passed)",
+      "calls": 3,
+      "median_s": 0.04
+    },
+    {
+      "scores": "FINAL",
+      "function": "dawn_payback_from_records",
+      "mode": "warm (bins= passed)",
+      "calls": 3,
+      "median_s": 1.08
+    },
+    {
+      "scores": "FINAL",
+      "function": "payback_from_records, engine='statsmodels'",
+      "mode": "cold (bins + baselines inside)",
+      "calls": 1,
+      "median_s": 5.27
+    },
+    {
+      "scores": "pass2med",
+      "function": "baseline_bins (phase x day)",
+      "mode": "-",
+      "calls": 3,
+      "median_s": 1.52
+    },
+    {
+      "scores": "pass2med",
+      "function": "payback_from_records",
+      "mode": "cold (bins + baselines inside)",
+      "calls": 3,
+      "median_s": 2.94
+    },
+    {
+      "scores": "pass2med",
+      "function": "payback_from_records",
+      "mode": "warm (bins= passed)",
+      "calls": 3,
+      "median_s": 1.31
+    },
+    {
+      "scores": "pass2med",
+      "function": "budget_from_records",
+      "mode": "cold (bins + baselines inside)",
+      "calls": 3,
+      "median_s": 1.57
+    },
+    {
+      "scores": "pass2med",
+      "function": "budget_from_records",
+      "mode": "warm (bins= passed)",
+      "calls": 3,
+      "median_s": 0.04
+    },
+    {
+      "scores": "pass2med",
+      "function": "dawn_payback_from_records",
+      "mode": "warm (bins= passed)",
+      "calls": 3,
+      "median_s": 1.13
+    },
+    {
+      "scores": "pass2med",
+      "function": "payback_from_records, engine='statsmodels'",
+      "mode": "cold (bins + baselines inside)",
+      "calls": 1,
+      "median_s": 5.39
+    }
+  ]
+}

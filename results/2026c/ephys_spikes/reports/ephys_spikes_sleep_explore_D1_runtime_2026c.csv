@@ -1,0 +1,15 @@
+scores,function,mode,calls,median_s
+FINAL,baseline_bins (phase x day),-,3,1.56
+FINAL,payback_from_records,cold (bins + baselines inside),3,2.82
+FINAL,payback_from_records,warm (bins= passed),3,1.24
+FINAL,budget_from_records,cold (bins + baselines inside),3,1.49
+FINAL,budget_from_records,warm (bins= passed),3,0.04
+FINAL,dawn_payback_from_records,warm (bins= passed),3,1.08
+FINAL,"payback_from_records, engine='statsmodels'",cold (bins + baselines inside),1,5.27
+pass2med,baseline_bins (phase x day),-,3,1.52
+pass2med,payback_from_records,cold (bins + baselines inside),3,2.94
+pass2med,payback_from_records,warm (bins= passed),3,1.31
+pass2med,budget_from_records,cold (bins + baselines inside),3,1.57
+pass2med,budget_from_records,warm (bins= passed),3,0.04
+pass2med,dawn_payback_from_records,warm (bins= passed),3,1.13
+pass2med,"payback_from_records, engine='statsmodels'",cold (bins + baselines inside),1,5.39

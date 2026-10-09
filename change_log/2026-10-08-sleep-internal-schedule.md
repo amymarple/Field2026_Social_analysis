@@ -355,3 +355,34 @@ first 14-worker attempt died with a MemoryError and was rerun.
 | C2 | **FAIL** (no light step) | Step at the light transition: +0.16 % / +0.02 %, n.s. Dusk worse with a step; dawn only on pass2med −0.16 % (5/6). → #35 Candidate (strong). |
 | C3 | **PASS** (weak test) | 97 % of NREM steps are already house-with-mates. Housemates' sleep predicts own REM entry and waking: held out −0.70 % / −0.95 %, 6/6 both. → #37, #38. |
 | C4 | **FAIL** | Weather + time outside do not explain the drift: within-animal R² 0.34–0.47; night day-term p 0.015 / 0.003. → #39. |
+
+## Sleep-behaviour explore, Steps D and E (2026-10-09; the user: "可以DE上吧")
+
+**Code.**
+- `ephys/sleep_sim.py stepE [--h19]` — the generative simulator. Built by the main session; numba; the fitted rules are
+  tabulated, and the selftest checks they reproduce the fitted probabilities to < 1e-6.
+- `ephys/sleep_explore_d.py stepD1` — Opus subagent. Also provides `payback_from_records` and `budget_from_records`,
+  which reproduce A4 and Phase 3b exactly.
+- `ephys/sleep_model_e.py heldout` — Opus subagent.
+- `ephys/sleep_sim_checks.py [--from-run]` — D2 and E (ii) / (vi), main session.
+- All selftests were rerun by the main session.
+
+**Simulator v1 → v2** (a correction made after the first run). v1 sent every short wake into NREM and produced ~13 %
+too little REM. 12–15 % of REM bouts follow a wake of ≤ 10 s, so v2 samples each short wake together with its next state.
+
+**Results** (claims #40–#43; #10 updated):
+- **E (generative):** 27/28 checks pass on each scoring (100 replicates, conditional on the observed long wakes and
+  gaps).
+  - Daily REM 1.683 vs 1.694 h, its day-to-day SD 0.343 vs 0.342 h; REM share day / night reproduced.
+  - (ii) the carry-over curve and (vi) the night → day pattern are reproduced.
+  - **The regularity of daily REM emerges without a budget, given the observed waking.**
+- **E (held out):**
+  - the counter beats a 2nd-order semi-Markov "momentum" model, −2.27 % / −1.81 %, 6/6;
+  - an NREM homeostat S adds nothing and is left out.
+- **D:**
+  - The morning-round REM payback (+0.34 / +0.96 per min of debt, pass2med) is NOT produced by the rules: simulated
+    +0.005 / +0.01.
+  - Natural dawn wakes without handling show no payback: −0.02, 41 windows, low power.
+  - The plan's rule for a slow REM deficit is not met → #43 (Candidate): repayment so far only after handled
+    interruptions.
+- **Post-hoc variant** with wall-clock time since REM: 27/28; it improves the latencies after long night wakes.

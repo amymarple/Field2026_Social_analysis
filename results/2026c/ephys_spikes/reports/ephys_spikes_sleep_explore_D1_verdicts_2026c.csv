@@ -1,0 +1,17 @@
+scores,windows,role,B_h,rule,detail,slope,ci_lo,ci_hi,p,n_windows,rats_qualifying,rats_positive
+FINAL,dawn wakes,"D1, reported",1,NOT MET,"slope -0.213 (<= 0.2), p 0.0583 (>= 0.05), rats positive 2/6 (not all)",-0.2133582638816765,-0.43422014615527105,0.007503618391918071,0.05830792938974037,38,6,2
+FINAL,dawn wakes,"D1, reported",3,INCONCLUSIVE,"9 windows, 2 rats with >= 3 windows (needs >= 10 and >= 4)",,,,,9,2,0
+FINAL,morning rounds,comparison (D1 rule applied to rounds),1,NOT MET,"slope +0.015 (<= 0.2), p 0.7994 (>= 0.05), rats positive 3/6 (not all)",0.014541005269543307,-0.09763165142967392,0.12671366196876052,0.7994405171827925,49,6,3
+FINAL,morning rounds,comparison (D1 rule applied to rounds),3,NOT MET,"slope -0.115 (<= 0.2), p 0.7099 (>= 0.05), rats positive 2/6 (not all)",-0.1151454003382746,-0.7217870848478608,0.49149628417131164,0.7098804153877716,49,6,2
+FINAL,"dawn wakes, A includes the wake (sensitivity)",sensitivity,1,NOT MET,"slope -0.104 (<= 0.2), p 0.5060 (>= 0.05), rats positive 0/6 (not all)",-0.10393406039915687,-0.41020683343928055,0.2023387126409668,0.5059761065980395,38,6,0
+FINAL,"dawn wakes, A includes the wake (sensitivity)",sensitivity,3,INCONCLUSIVE,"9 windows, 2 rats with >= 3 windows (needs >= 10 and >= 4)",,,,,9,2,0
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",sensitivity,1,NOT MET,"slope -0.460 (<= 0.2), p 0.0116 (< 0.05), rats positive 1/6 (not all)",-0.46017479522518645,-0.8175981004425952,-0.10275149000777778,0.011622236013954571,36,6,1
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",sensitivity,3,INCONCLUSIVE,"6 windows, 0 rats with >= 3 windows (needs >= 10 and >= 4)",,,,,6,0,0
+pass2med,dawn wakes,D1 verdict,1,NOT MET,"slope -0.022 (<= 0.2), p 0.8233 (>= 0.05), rats positive 4/6 (not all)",-0.021763462175693693,-0.21279976893174612,0.16927284458035874,0.8233134552504835,41,6,4
+pass2med,dawn wakes,D1 verdict,3,INCONCLUSIVE,"9 windows, 2 rats with >= 3 windows (needs >= 10 and >= 4)",,,,,9,2,2
+pass2med,morning rounds,comparison (D1 rule applied to rounds),1,NOT MET,"slope +0.294 (> 0.2), p 0.0003 (< 0.05), rats positive 5/6 (not all)",0.2943967226343692,0.13509754665556548,0.45369589861317294,0.00029215423889483136,49,6,5
+pass2med,morning rounds,comparison (D1 rule applied to rounds),3,NOT MET,"slope +0.862 (> 0.2), p 0.0050 (< 0.05), rats positive 5/6 (not all)",0.8615609265799383,0.25984887350577335,1.4632729796541033,0.005010267707207415,49,6,5
+pass2med,"dawn wakes, A includes the wake (sensitivity)",sensitivity,1,NOT MET,"slope -0.029 (<= 0.2), p 0.8606 (>= 0.05), rats positive 1/6 (not all)",-0.02907442586985212,-0.3536618151656521,0.2955129634259479,0.8606389868718779,41,6,1
+pass2med,"dawn wakes, A includes the wake (sensitivity)",sensitivity,3,INCONCLUSIVE,"9 windows, 2 rats with >= 3 windows (needs >= 10 and >= 4)",,,,,9,2,2
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",sensitivity,1,NOT MET,"slope -0.174 (<= 0.2), p 0.1677 (>= 0.05), rats positive 4/6 (not all)",-0.17449323770126512,-0.422362463350882,0.07337598794835176,0.1676600320279158,38,6,4
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",sensitivity,3,INCONCLUSIVE,"7 windows, 0 rats with >= 3 windows (needs >= 10 and >= 4)",,,,,7,0,0

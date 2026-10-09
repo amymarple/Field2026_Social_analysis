@@ -1,0 +1,161 @@
+quantity,model,x,y,scores,stat,observed,sim_mean,sim_2.5%,sim_97.5%,n_sim
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,slope,-0.1675590185714873,-0.15787172751862744,-0.2067975040874934,-0.10520315550388677,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,ci_lo,-0.5956769794860373,-0.4048422784190651,-0.5401649524644011,-0.2816852769854214,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,ci_hi,0.2605589423430626,0.08909882338181012,-0.0010797140806785425,0.20269034226976912,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,p,0.4430215705343555,0.21360193275472564,0.048349522537410185,0.4010719184776372,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,animals_negative,4.0,4.28,3.0,5.0,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,slope,-0.1239550127599921,-0.13016619653031022,-0.17467358447753423,-0.09432869684097481,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,ci_lo,-0.4544675645873798,-0.3778538157170768,-0.5189552574830673,-0.2880856494040969,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,ci_hi,0.2065575390673955,0.11752142265645628,0.04652211978309024,0.20362017162015525,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,p,0.4623014716130896,0.29931541910468284,0.14859279304533962,0.481683936623151,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,animals_negative,4.0,4.25,3.0,5.0,100
+NREM,drift: day deviation,day,day_NREM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,slope,0.0659505001503162,0.057253662834973996,0.03763043781511671,0.07913468406696723,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,ci_lo,-0.2456316253014032,-0.24173829139563024,-0.28715391234769155,-0.20319200343426982,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,ci_hi,0.3775326256020357,0.3562456170655783,0.30239989906570813,0.40853453583501675,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,p,0.6782499278861047,0.7077588638046182,0.6077580459431502,0.7950000040342633,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,animals_negative,1.0,1.34,1.0,2.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,slope,0.0178564207079575,0.020554139793666052,-0.0008330906803536725,0.041625306310735,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,ci_lo,-0.2158405001413821,-0.2537710748394786,-0.2931755935899988,-0.21180823279268404,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,ci_hi,0.2515533415572972,0.2948793544268108,0.2582977156139872,0.3305122964260539,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,p,0.8809556884894985,0.8818424697036038,0.7512049909789598,0.9922866515852626,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,animals_negative,2.0,2.09,1.0,3.0,100
+NREM,drift: night deviation,day,night_NREM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,slope,0.279003151181415,0.0013333087532383066,-0.17865971715122866,0.16462032727076792,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,ci_lo,-0.1399206048587178,-0.27187844742439915,-0.4931950953644819,-0.033477227983876374,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,ci_hi,0.6979269072215479,0.27454506493087577,0.043485812320592225,0.48108420788523276,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,p,0.1917785680651821,0.6248183973114023,0.08132259319564458,0.9916640405393019,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,animals_negative,2.0,2.72,1.0,4.0,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,slope,-0.0678692719084676,0.030197786808694175,-0.15843535219973154,0.22417521768521606,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,ci_lo,-0.3151991472003097,-0.23092146092634047,-0.4350326923704235,0.0006362594833284919,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,ci_hi,0.1794606033833743,0.2913170345437288,0.08449808396205971,0.5061959554034481,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,p,0.590694692749488,0.5491579841814069,0.02402132462724794,0.9614575007378177,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals_negative,3.0,2.66,1.0,4.5249999999999915,100
+NREM,within animal,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,slope,-0.1212111919931681,-0.13022424815969377,-0.3500781638552307,0.07705924243301085,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,ci_lo,-0.5332716201815284,-0.4222253421793486,-0.6776079596301461,-0.18521071313209986,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,ci_hi,0.290849236195192,0.16177684585996085,-0.06880187923694703,0.3550431072733734,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,p,0.5552853976786912,0.4183087523136521,0.013807626442258003,0.9780716364566314,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,animals_negative,5.0,3.97,2.0,6.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,slope,-0.1004953085487446,-0.0909395159307183,-0.28141682991132283,0.1098733088313019,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,ci_lo,-0.3124889690239832,-0.36882615790040907,-0.5643192269533215,-0.1340034285118527,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,ci_hi,0.111498351926494,0.18694712603897248,-0.024922615392076738,0.3847471823331334,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,p,0.3435392921746019,0.48097754757395994,0.03132626572823415,0.9266522631079102,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals_negative,4.0,3.77,2.0,6.0,100
+NREM,within animal + day FE,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,slope,0.3050893622500736,0.021418635609205924,-0.15984101373070592,0.18229353574972795,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,ci_lo,-0.0577774356183475,-0.20450710471612144,-0.4147143909506054,0.011219943902645434,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,ci_hi,0.6679561601184949,0.24734437593453337,0.03549412651350348,0.43084325257834216,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,p,0.099375475170936,0.5453605008635302,0.03400023487730427,0.9632654704308292,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,animals_negative,2.0,2.72,1.0,4.0,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,slope,-0.0622741057519317,0.03665700757515197,-0.152536243667319,0.23280444807994877,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,ci_lo,-0.3140712271029887,-0.21703187429474022,-0.4564939155512925,0.038954210475067405,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,ci_hi,0.1895230155991251,0.2903458894450441,0.09283806609814195,0.4796906444103465,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,p,0.6278639784553595,0.5415719089486015,0.007736964786555871,0.9643856905064123,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals_negative,3.0,2.66,1.0,4.5249999999999915,100
+NREM,within animal + linear day,night_NREM_rate_dev,day_NREM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,slope,-0.0232953796371643,-0.02421355929984035,-0.06076916508853507,0.013816501237444018,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,ci_lo,-0.1972886453894978,-0.1487080276805193,-0.24213199842090688,-0.06845750799169813,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,ci_hi,0.1506978861151691,0.10028090908083855,0.03828938573373115,0.19373694013995718,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,p,0.7930030058046528,0.6799704366030397,0.3154334497034642,0.9845816609386601,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,animals_negative,3.0,3.26,1.475,5.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,slope,-0.0393470861586921,-0.02536421182998607,-0.05779488320440152,0.004015248639743806,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,ci_lo,-0.192390277630877,-0.14467234935529782,-0.24251101951868348,-0.07580893350426526,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,ci_hi,0.1136961053134926,0.09394392569532557,0.0328657929244884,0.18034347804897324,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,p,0.6143297789988322,0.6626401959761747,0.2396921435672982,0.975619922761248,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,animals_negative,4.0,3.29,2.0,5.0,100
+REM,drift: day deviation,day,day_REM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,slope,0.0158800608230718,0.00721247826948938,-0.005643347697652132,0.019109784019511945,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,ci_lo,-0.0120374516939104,-0.029211665852161922,-0.055332844276380515,-0.009934897468856282,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,ci_hi,0.0437975733400541,0.04363662239114076,0.020684693925311328,0.07244010633040955,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,p,0.2649069001194204,0.663581126151112,0.26892280970465954,0.9746800076211868,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,animals_negative,1.0,2.31,1.0,4.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,slope,0.0154628694239055,0.0062761511115296655,-0.004393894497498955,0.017494069493202667,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,ci_lo,-0.0165934169893116,-0.02717142240323258,-0.04643011996469537,-0.008888027006023003,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,ci_hi,0.0475191558371228,0.03972372462629197,0.016231819029976557,0.06384055038227747,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,p,0.3444442906936311,0.6790822786005712,0.323674305902503,0.9930311946307194,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,animals_negative,1.0,2.34,1.0,4.0,100
+REM,drift: night deviation,day,night_REM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,slope,-1.1664128524443689,0.07426246245419764,-0.9230808180594858,1.240018633543309,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,ci_lo,-1.8030349072078165,-0.9289412304042791,-2.286147385711832,0.25928035136288,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,ci_hi,-0.5297907976809209,1.0774661553126743,-0.0468210450083904,2.4847706940617273,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,p,0.0003293771222427,0.4643718954501439,0.00040239271771694003,0.9867957596958797,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,animals_negative,5.0,2.84,1.0,5.0,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,slope,-0.5632210728835703,-0.14945261030178716,-1.1526412281168499,0.9400065111064047,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,ci_lo,-1.260448610137907,-1.1595947082996283,-2.413485984606631,0.01192697920156271,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,ci_hi,0.1340064643707667,0.860689487696054,-0.32104502985611316,2.069006772083428,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,p,0.1133620369952031,0.42252123805434055,0.005096787261147543,0.952330543581112,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals_negative,5.0,3.22,1.0,5.5249999999999915,100
+REM,within animal,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,slope,-0.3614613407230507,-0.03548437032280804,-1.3625290647348158,1.1467846800292028,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,ci_lo,-1.8177981366593043,-1.2468217291421475,-2.536608611858836,-0.07709582673113409,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,ci_hi,1.094875455213203,1.1758529884965316,-0.06036671755982259,2.4495194303255876,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,p,0.6184692283977575,0.48693049144374834,0.0278064666955178,0.9753285141998049,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,animals_negative,4.0,3.03,1.0,5.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,slope,-0.0340507936755409,-0.24978878906938942,-1.3754420164861676,0.8449748416701283,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,ci_lo,-0.9600338805424145,-1.4776083633495813,-2.6761003204200997,-0.37429422129225287,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,ci_hi,0.8919322931913326,0.9780307852108026,-0.1476068423451753,2.266063169101627,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,p,0.9410885653267584,0.45693338557924795,0.024905079213794225,0.9598429011625406,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals_negative,3.0,3.49,1.0,6.0,100
+REM,within animal + day FE,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,animals,6.0,6.0,6.0,6.0,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,slope,-1.156898656984253,0.09154646568810382,-0.9124327446236786,1.2533101257351065,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,ci_lo,-1.7358804413608264,-0.9211261089771231,-2.200844636899438,0.260347992416719,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,ci_hi,-0.5779168726076795,1.1042190403533312,-0.06469562272912774,2.5722171788780472,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,p,8.990975628707643e-05,0.4688203840698805,0.0008083792950296851,0.9727534687062537,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,animals_negative,5.0,2.84,1.0,5.0,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,final,animals_with_slope,6.0,6.0,6.0,6.0,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,n_animal_days,56.0,56.0,56.0,56.0,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals,6.0,6.0,6.0,6.0,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,slope,-0.4918577920673356,-0.13401717170668934,-1.1378387928614926,0.9657132554632397,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,ci_lo,-0.960778215897454,-1.149472183281854,-2.330248463573823,0.013183730027294158,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,ci_hi,-0.0229373682372172,0.8814378398684749,-0.29798467455347094,2.071148900597492,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,p,0.0397983124284724,0.42497072812431935,0.004313079592509,0.9762340282777595,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals_negative,5.0,3.22,1.0,5.5249999999999915,100
+REM,within animal + linear day,night_REM_rate_dev,day_REM_rate_dev,pass2med,animals_with_slope,6.0,6.0,6.0,6.0,100

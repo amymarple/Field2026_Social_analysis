@@ -10,8 +10,13 @@
 - **Step C DONE 2026-10-09** (the user: "干完做C"):
   - [Step C report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_C_2026c.md);
   - claims #14b (now Established), #35, #37–#39.
-- Next: steps D (the origin of the morning payback) and E (the generative model), and the cheap F hypotheses, after
-  the user's go.
+- **Steps D and E DONE 2026-10-09** (the user: "可以DE上吧"):
+  - [E report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_E_2026c.md) (start with its Reading);
+  - [D1](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_D1_2026c.md),
+    [D2 + E (ii) / (vi)](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_D2E_2026c.md),
+    [E held-out](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_E_heldout_2026c.md);
+  - claims #40–#43.
+- Next: the step F hypotheses, after the user's go.
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;
@@ -305,8 +310,17 @@ together; each gets a claim number only if it holds.
 
 ## 7. Outputs
 
-**Code:** `ephys/sleep_explore.py` (step A; step F later), `ephys/sleep_explore_c.py` (step C), `ephys/sleep_model.py`
-(steps B, D, E) and `ephys/sleep_model_diag.py` (the post-hoc split of step B), each with `--selftest` (synthetic
+**Code:**
+- `ephys/sleep_explore.py` — step A; step F later;
+- `ephys/sleep_explore_c.py` — step C;
+- `ephys/sleep_explore_d.py` — D1, plus `payback_from_records` / `budget_from_records`;
+- `ephys/sleep_model.py` — step B;
+- `ephys/sleep_model_diag.py` — the post-hoc split of step B;
+- `ephys/sleep_model_e.py` — E held-out: momentum, S;
+- `ephys/sleep_sim.py` — the E simulator and checks (i) / (iii) / (iv);
+- `ephys/sleep_sim_checks.py` — D2 and E (ii) / (vi).
+
+All of them, each with `--selftest` (synthetic
 sequences with known answers; the τ_w profile must recover the simulated τ_w). Standalone CLIs, as built (the
 planned dispatch from `sleep_schedule.py` was not added).
 

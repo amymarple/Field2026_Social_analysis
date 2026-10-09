@@ -1,0 +1,89 @@
+scores,part,label,comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,all,122735,2544,-2.2733492865538705,-3.051357612452825,-1.62611749278342,15,15,6,6,True
+final,1,B-full + momentum vs B-full,Bmom vs B,all,122735,2544,-0.13361233119158109,-0.257668692211987,-0.018890341092272223,10,15,5,6,True
+final,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,all,122735,2544,-0.08333586769205892,-0.21362028085948281,0.07467538398299112,9,15,5,6,False
+final,1-ref,B-full vs gate (reference),B vs gate,all,122735,2544,-2.3547906388923088,-3.152541480189637,-1.6838919284427356,15,15,6,6,True
+final,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,all,122735,2544,-2.250289684392895,-3.030696263666361,-1.5890716029333112,15,15,6,6,True
+final,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,all,122735,2544,-2.280628994574909,-3.0798548873724383,-1.6387262888221636,15,15,6,6,True
+final,2,B-full + S (nested grid) vs B-full,BS vs B,all,122735,2544,0.06197730116724605,-0.06770147380349266,0.23620897328673152,8,15,3,6,False
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,after_short,84610,2137,-2.0299994718782384,-2.198975858749372,-1.7942421340362424,15,15,6,6,True
+final,1,B-full + momentum vs B-full,Bmom vs B,after_short,84610,2137,-0.12595893810999576,-0.26220213909238804,-0.006839066329673733,7,15,5,6,True
+final,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_short,84610,2137,-0.17446966974863332,-0.31707232639794225,0.013789766679339099,11,15,5,6,False
+final,1-ref,B-full vs gate (reference),B vs gate,after_short,84610,2137,-2.2009274082523875,-2.394887511139157,-1.9324382086609149,14,15,6,6,True
+final,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_short,84610,2137,-2.0418918299224553,-2.209145450274611,-1.8018720327962126,15,15,6,6,True
+final,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_short,84610,2137,-2.0538241077338433,-2.225136513017512,-1.8315981408906687,14,15,6,6,True
+final,2,B-full + S (nested grid) vs B-full,BS vs B,after_short,84610,2137,0.010680013738401418,-0.06732410157582985,0.09000239182722336,8,15,3,6,False
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,after_medium,13628,233,-1.5252429719640435,-1.927747678816179,-1.0983214672822332,13,15,6,6,True
+final,1,B-full + momentum vs B-full,Bmom vs B,after_medium,13628,233,-0.2199836135314655,-0.40000743029267516,-0.08575663077469106,10,15,5,6,True
+final,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_medium,13628,233,-0.17379246538233634,-0.3961341404297227,-0.0034167320155031574,9,15,5,6,True
+final,1-ref,B-full vs gate (reference),B vs gate,after_medium,13628,233,-1.6963846799823328,-2.232663552342988,-1.2374209782226842,13,15,6,6,True
+final,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_medium,13628,233,-1.590674011631952,-1.9828107365434198,-1.1453587242569585,13,15,6,6,True
+final,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_medium,13628,233,-1.6381307682719815,-2.1201082390099155,-1.1437229760801044,13,15,6,6,True
+final,2,B-full + S (nested grid) vs B-full,BS vs B,after_medium,13628,233,0.08587321008724859,-0.06720865583872573,0.23887010336827286,5,15,2,6,False
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,after_long,24497,174,-3.6151667278435506,-8.118950075078786,-1.0364963744287863,14,14,6,6,True
+final,1,B-full + momentum vs B-full,Bmom vs B,after_long,24497,174,-0.10913666280716632,-0.31498030574632757,0.08576905960681017,8,14,4,6,False
+final,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_long,24497,174,0.3070944656365357,-0.05990591638501376,0.6746448959514333,6,14,3,6,False
+final,1-ref,B-full vs gate (reference),B vs gate,after_long,24497,174,-3.319174239151756,-7.642456166237768,-0.9595570776750133,14,14,6,6,True
+final,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_long,24497,174,-3.4107717940951865,-7.884539027819157,-0.825023184506968,13,14,6,6,True
+final,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_long,24497,174,-3.500430365343424,-7.966431766676567,-1.0115726284707387,14,14,6,6,True
+final,2,B-full + S (nested grid) vs B-full,BS vs B,after_long,24497,174,0.23853316367058666,-0.17181126554098744,0.8413197095726892,6,14,3,6,False
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,after_wake,38125,407,-2.8309023148095767,-5.442779706298669,-1.1185005390146658,14,15,6,6,True
+final,1,B-full + momentum vs B-full,Bmom vs B,after_wake,38125,407,-0.1512919997527395,-0.2935494064970022,-0.015221413859783624,9,15,4,6,False
+final,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_wake,38125,407,0.12609481096624134,-0.11956378727666897,0.34825913102312683,7,15,4,6,False
+final,1-ref,B-full vs gate (reference),B vs gate,after_wake,38125,407,-2.708377124765833,-5.2234639344629485,-1.113115570013522,14,15,6,6,True
+final,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_wake,38125,407,-2.7277622273527578,-5.345120557076762,-1.002841505872154,13,15,6,6,True
+final,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_wake,38125,407,-2.8005636545496,-5.421566096294488,-1.107815958825816,14,15,6,6,True
+final,2,B-full + S (nested grid) vs B-full,BS vs B,after_wake,38125,407,0.1804762506084741,-0.1004860422816198,0.5621275650371058,7,15,4,6,False
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,prev1_wake,113287,2002,-1.9584942406369705,-2.8129468086118434,-1.3159057756701293,15,15,6,6,True
+final,1,B-full + momentum vs B-full,Bmom vs B,prev1_wake,113287,2002,-0.06777487224909541,-0.18780000093610244,0.028157882798878243,8,15,4,6,False
+final,2,B-full + S (nested grid) vs B-full,BS vs B,prev1_wake,113287,2002,0.07608914284055553,-0.041375385660628435,0.22171049558695624,8,15,2,6,False
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,prev1_rem,8592,535,-5.338039348531863,-7.064892051847119,-4.187832733352719,13,14,6,6,True
+final,1,B-full + momentum vs B-full,Bmom vs B,prev1_rem,8592,535,-0.7204395573442004,-1.0687935429348008,-0.21467969262704437,10,14,5,6,True
+final,2,B-full + S (nested grid) vs B-full,BS vs B,prev1_rem,8592,535,-0.05303958167117747,-0.508399905742035,0.4907859665600797,9,14,4,6,False
+final,1,B-full (counter) vs M_mom (momentum),B vs mom,prev1_unknown_or_none,856,7,2.0449013020679487,0.361055796769935,3.9749383709768624,4,12,0,6,False
+final,1,B-full + momentum vs B-full,Bmom vs B,prev1_unknown_or_none,856,7,-0.5769085711184415,-1.2424203725139817,0.11685582287748346,6,12,5,6,False
+final,2,B-full + S (nested grid) vs B-full,BS vs B,prev1_unknown_or_none,856,7,-0.21657669800329707,-0.6291235885891653,0.15619867996269068,7,12,4,6,False
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,all,123304,2666,-1.8050926932564602,-2.0635390075975506,-1.5051103500120238,14,15,6,6,True
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,all,123304,2666,-0.03900902265556055,-0.13449268889191457,0.0702892919072224,10,15,3,6,False
+pass2med,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,all,123304,2666,-0.16387553035626862,-0.28715829243685476,-0.0056512940751735855,11,15,5,6,True
+pass2med,1-ref,B-full vs gate (reference),B vs gate,all,123304,2666,-1.966010118388233,-2.2237337187472828,-1.6574314351949726,15,15,6,6,True
+pass2med,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,all,123304,2666,-1.8080564044592038,-2.056934738568164,-1.5195407595214985,15,15,6,6,True
+pass2med,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,all,123304,2666,-1.8559637771578716,-2.111086140437716,-1.5665679199307647,15,15,6,6,True
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,all,123304,2666,0.011544514016580324,-0.09313808791457515,0.11302242318730053,9,15,3,6,False
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,after_short,89122,2256,-1.9008169991101254,-2.1818851324708928,-1.586549710544721,14,15,6,6,True
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,after_short,89122,2256,-0.04474100479235827,-0.15275942629422432,0.0863529770225366,9,15,4,6,False
+pass2med,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_short,89122,2256,-0.21619590174004225,-0.3758922042108154,-0.01120482012985923,10,15,5,6,True
+pass2med,1-ref,B-full vs gate (reference),B vs gate,after_short,89122,2256,-2.1129034123985138,-2.377951107405146,-1.8108841255803831,15,15,6,6,True
+pass2med,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_short,89122,2256,-1.8845169603881233,-2.1490740972879525,-1.5805713397538055,14,15,6,6,True
+pass2med,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_short,89122,2256,-1.9504394870705584,-2.212516594308078,-1.6608276034632146,14,15,6,6,True
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,after_short,89122,2256,0.06501779144917426,-0.031428277883393835,0.16307699187101152,6,15,0,6,False
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,after_medium,12211,220,-1.6019562509149998,-2.1669062767727727,-0.8732333432510128,9,14,6,6,True
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,after_medium,12211,220,0.0009186340575449018,-0.15578299194747075,0.10741212330430361,6,14,3,6,False
+pass2med,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_medium,12211,220,-0.16791982257203605,-0.4304396466657913,0.014625188623853515,10,14,3,6,False
+pass2med,1-ref,B-full vs gate (reference),B vs gate,after_medium,12211,220,-1.767186071392818,-2.3401978401585564,-1.1385431514519788,10,14,6,6,True
+pass2med,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_medium,12211,220,-1.5561637544613962,-2.1685580780670954,-0.8546065960535647,9,14,6,6,True
+pass2med,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_medium,12211,220,-1.7293946835888567,-2.2590921234518055,-1.032056650428742,9,14,6,6,True
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,after_medium,12211,220,0.1457817305401869,0.002214197009692366,0.3297827342050794,3,14,1,6,False
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,after_long,21971,190,-1.5179476824685625,-1.9709700453503056,-1.104198245896361,15,15,6,6,True
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,after_long,21971,190,-0.03821484303164138,-0.22161655100917924,0.10616760126758369,8,15,4,6,False
+pass2med,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_long,21971,190,0.061358457353241046,-0.09863775143441925,0.20363912689792427,7,15,2,6,False
+pass2med,1-ref,B-full vs gate (reference),B vs gate,after_long,21971,190,-1.4575206143967137,-1.8615037334677262,-1.1494376810621574,15,15,6,6,True
+pass2med,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_long,21971,190,-1.6314039752121234,-2.1151386744174827,-1.2425497124031524,15,15,6,6,True
+pass2med,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_long,21971,190,-1.5290298877338055,-1.9637463085556415,-1.134304648666986,15,15,6,6,True
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,after_long,21971,190,-0.2935675592712095,-0.46268532543708607,-0.09881902759695062,12,15,6,6,True
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,after_wake,34182,410,-1.5490545397976179,-2.016508788647335,-1.0464095893618757,14,15,6,6,True
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,after_wake,34182,410,-0.023732208752087362,-0.18003836677804347,0.08967040555390632,6,15,3,6,False
+pass2med,1-ref,M_mom vs gate (base + L1; does momentum add to the current state?),mom vs gate,after_wake,34182,410,-0.02366183096891776,-0.151120907512942,0.08405545214951546,8,15,3,6,False
+pass2med,1-ref,B-full vs gate (reference),B vs gate,after_wake,34182,410,-1.5723498360997128,-2.0058030097660504,-1.1554719526175037,15,15,6,6,True
+pass2med,1-sens,B-full (nested tau_w 5 / 10 min) vs M_mom,Bnest vs mom,after_wake,34182,410,-1.6035438788483576,-2.091440067625773,-1.121106604761202,15,15,6,6,True
+pass2med,1-sens,B-full vs M_mom_lit (one ln(1 + dur prev2)),B vs momlit,after_wake,34182,410,-1.6032766551357236,-2.0720118416894797,-1.107276109353688,14,15,6,6,True
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,after_wake,34182,410,-0.13097185966545732,-0.2893248915851495,0.02274959087019916,10,15,4,6,False
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,prev1_wake,115404,2147,-1.523370230551674,-1.7973230747852917,-1.2395273784305285,14,15,6,6,True
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,prev1_wake,115404,2147,0.008959751649810083,-0.08520040673476086,0.08658212958879162,8,15,2,6,False
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,prev1_wake,115404,2147,0.009108502141001604,-0.12456142818086229,0.13063339960128675,8,15,2,6,False
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,prev1_rem,7193,512,-5.039604938172023,-5.951443979356865,-4.215541997160044,14,14,6,6,True
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,prev1_rem,7193,512,-0.5072346143514561,-1.1425461039217502,0.18949112162113962,9,14,5,6,False
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,prev1_rem,7193,512,0.07226710633228903,-0.20365851720714495,0.4587167683679221,5,14,2,6,False
+pass2med,1,B-full (counter) vs M_mom (momentum),B vs mom,prev1_unknown_or_none,707,7,3.462819591668441,1.8970603971191462,5.707405162965203,1,13,0,6,False
+pass2med,1,B-full + momentum vs B-full,Bmom vs B,prev1_unknown_or_none,707,7,-0.7053903099819456,-1.3612071126484546,-0.1330895361358172,8,13,5,6,True
+pass2med,2,B-full + S (nested grid) vs B-full,BS vs B,prev1_unknown_or_none,707,7,-0.5003535459803151,-0.8150065536573046,-0.20334880053996,9,13,5,6,True

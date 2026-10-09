@@ -1,0 +1,13 @@
+scores,quantity,model,check_drift (logic audit),"this, common day",common day CI,"this, phase x day (default)",phase x day CI,phase x day p,n animal-nights
+FINAL,NREM,within animal,-0.33,-0.327,"[-0.71, +0.06]",0.279,"[-0.14, +0.70]",0.1918,56
+FINAL,NREM,within animal + linear day,0.28,0.276,"[-0.04, +0.59]",0.305,"[-0.06, +0.67]",0.0994,56
+FINAL,NREM,within animal + day FE,-0.17,-0.174,"[-0.57, +0.23]",-0.121,"[-0.53, +0.29]",0.5553,56
+FINAL,REM,within animal,-0.87,-0.865,"[-1.71, -0.02]",-1.166,"[-1.80, -0.53]",0.0003,56
+FINAL,REM,within animal + linear day,-0.85,-0.853,"[-1.57, -0.14]",-1.157,"[-1.74, -0.58]",0.0001,56
+FINAL,REM,within animal + day FE,-0.49,-0.493,"[-1.93, +0.94]",-0.361,"[-1.82, +1.09]",0.6185,56
+pass2med,NREM,within animal,-0.56,-0.562,"[-0.85, -0.28]",-0.068,"[-0.32, +0.18]",0.5907,56
+pass2med,NREM,within animal + linear day,-0.06,-0.061,"[-0.29, +0.16]",-0.062,"[-0.31, +0.19]",0.6279,56
+pass2med,NREM,within animal + day FE,-0.12,-0.115,"[-0.32, +0.09]",-0.1,"[-0.31, +0.11]",0.3435,56
+pass2med,REM,within animal,-0.41,-0.407,"[-1.34, +0.53]",-0.563,"[-1.26, +0.13]",0.1134,56
+pass2med,REM,within animal + linear day,-0.3,-0.298,"[-0.75, +0.15]",-0.492,"[-0.96, -0.02]",0.0398,56
+pass2med,REM,within animal + day FE,-0.2,-0.199,"[-1.10, +0.70]",-0.034,"[-0.96, +0.89]",0.9411,56

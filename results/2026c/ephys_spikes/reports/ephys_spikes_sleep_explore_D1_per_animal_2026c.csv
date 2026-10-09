@@ -1,0 +1,713 @@
+scores,windows,B_h,outcome,predictors,day_demeaned,animal,n_windows,simple_slope,partial_slope
+FINAL,dawn wakes,1,pay_rem,debt_rem,False,SF07,6,0.7627043871882242,0.762704387188224
+FINAL,dawn wakes,1,pay_rem,debt_rem,False,SF08,8,-0.0716568876160709,-0.07165688761607095
+FINAL,dawn wakes,1,pay_rem,debt_rem,False,SF09,7,-0.1600767314167099,-0.16007673141670992
+FINAL,dawn wakes,1,pay_rem,debt_rem,False,SF10,7,0.4116970237982987,0.4116970237982985
+FINAL,dawn wakes,1,pay_rem,debt_rem,False,SF11,3,-0.19782952190115538,
+FINAL,dawn wakes,1,pay_rem,debt_rem,False,SF12,8,-0.364340603467676,-0.36434060346767594
+FINAL,dawn wakes,1,pay_rem,debt_rem,True,SF07,6,0.21059298788096836,0.2105929878809684
+FINAL,dawn wakes,1,pay_rem,debt_rem,True,SF08,8,-0.33600820715205754,-0.33600820715205765
+FINAL,dawn wakes,1,pay_rem,debt_rem,True,SF09,7,0.05237480643800594,0.05237480643800574
+FINAL,dawn wakes,1,pay_rem,debt_rem,True,SF10,7,0.4561547916567694,0.4561547916567694
+FINAL,dawn wakes,1,pay_rem,debt_rem,True,SF11,3,-0.724977710218884,
+FINAL,dawn wakes,1,pay_rem,debt_rem,True,SF12,8,-0.37260224217742316,-0.3726022421774231
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF07,6,0.7627043871882242,0.6485922726529366
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF08,8,-0.0716568876160709,-0.04782178668073357
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF09,7,-0.1600767314167099,-0.36268791405744266
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF10,7,0.4116970237982987,0.4206536714327521
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF11,3,-0.19782952190115538,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF12,8,-0.364340603467676,-0.36136969503873145
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF07,6,0.21059298788096836,-0.1231751806814024
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF08,8,-0.33600820715205754,-0.3576944990449501
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF09,7,0.05237480643800594,0.049038224147912354
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF10,7,0.4561547916567694,0.49481370072969066
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF11,3,-0.724977710218884,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF12,8,-0.37260224217742316,-0.18244179898930113
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,6,0.7627043871882242,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,8,-0.0716568876160709,-0.41270164118262187
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,7,-0.1600767314167099,-1.0373704915396775
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,6,0.2430743320497999,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,3,-0.19782952190115538,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,8,-0.364340603467676,-0.6482721570969308
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,6,0.21059298788096836,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,8,-0.48009037301818486,-0.8080667244278555
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,7,-0.1769733753922736,-0.1863803837539157
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,6,0.15822373872784665,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,3,-0.724977710218884,
+FINAL,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,8,-0.2503600265706266,-0.06277493892837867
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,False,SF07,6,-0.34470108018903983,-0.34470108018903967
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,False,SF08,8,-0.06538084834662586,-0.0653808483466256
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,False,SF09,7,-0.010527027796355339,-0.010527027796355296
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,False,SF10,7,-0.24789719099690835,-0.24789719099690855
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,False,SF11,3,-0.00011501625084559729,
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,False,SF12,8,-0.10109112580243448,-0.10109112580243433
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,True,SF07,6,-0.39995486208637887,-0.39995486208637887
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,True,SF08,8,-0.260333060894885,-0.26033306089488506
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,True,SF09,7,0.05789494364139169,0.0578949436413918
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,True,SF10,7,0.27303149433811796,0.27303149433811785
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,True,SF11,3,-0.22372313546520797,
+FINAL,dawn wakes,1,pay_nrem,debt_nrem,True,SF12,8,-0.26315787335739593,-0.2631578733573958
+FINAL,dawn wakes,3,pay_rem,debt_rem,False,SF07,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem,False,SF08,3,-1.4425024539672826,
+FINAL,dawn wakes,3,pay_rem,debt_rem,False,SF09,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem,False,SF10,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem,False,SF12,3,4.810349424513871,
+FINAL,dawn wakes,3,pay_rem,debt_rem,True,SF07,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem,True,SF08,3,-0.3539833516193315,
+FINAL,dawn wakes,3,pay_rem,debt_rem,True,SF09,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem,True,SF10,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem,True,SF12,3,-4.875764377713796,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF07,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF08,3,-1.4425024539672826,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF09,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF10,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF12,3,4.810349424513871,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF07,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF08,3,-0.3539833516193315,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF09,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF10,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF12,3,-4.875764377713796,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,3,-1.4425024539672826,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,3,4.810349424513871,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,3,-0.3539833516193315,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,1,,
+FINAL,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,3,-4.875764377713796,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,False,SF07,1,,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,False,SF08,3,0.06612866564317098,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,False,SF09,1,,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,False,SF10,1,,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,False,SF12,3,-0.7112302643036378,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,True,SF07,1,,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,True,SF08,3,-0.3259701921868336,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,True,SF09,1,,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,True,SF10,1,,
+FINAL,dawn wakes,3,pay_nrem,debt_nrem,True,SF12,3,-2.1848261161075477,
+FINAL,morning rounds,1,pay_rem,debt_rem,False,SF07,8,-0.09637191601682116,-0.09637191601682152
+FINAL,morning rounds,1,pay_rem,debt_rem,False,SF08,10,0.060875580856180715,0.06087558085618071
+FINAL,morning rounds,1,pay_rem,debt_rem,False,SF09,10,0.08308287147305561,0.08308287147305544
+FINAL,morning rounds,1,pay_rem,debt_rem,False,SF10,9,0.27890064522517843,0.27890064522517827
+FINAL,morning rounds,1,pay_rem,debt_rem,False,SF11,5,0.1732313652557408,0.17323136525574062
+FINAL,morning rounds,1,pay_rem,debt_rem,False,SF12,7,0.08347643093514295,0.08347643093514279
+FINAL,morning rounds,1,pay_rem,debt_rem,True,SF07,8,0.03836894326778629,0.03836894326778624
+FINAL,morning rounds,1,pay_rem,debt_rem,True,SF08,10,-0.18347666226911977,-0.1834766622691197
+FINAL,morning rounds,1,pay_rem,debt_rem,True,SF09,10,0.26942321330714314,0.2694232133071431
+FINAL,morning rounds,1,pay_rem,debt_rem,True,SF10,9,0.011683961824422738,0.011683961824422613
+FINAL,morning rounds,1,pay_rem,debt_rem,True,SF11,5,-0.1316926484373241,-0.13169264843732412
+FINAL,morning rounds,1,pay_rem,debt_rem,True,SF12,7,-0.05764409481587962,-0.05764409481587964
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF07,8,-0.09637191601682116,0.35095513878622586
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF08,10,0.060875580856180715,-0.16426890641653874
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF09,10,0.08308287147305561,0.07334552584159579
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF10,9,0.27890064522517843,0.5816388609094256
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF11,5,0.1732313652557408,
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF12,7,0.08347643093514295,-0.11262028364272328
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF07,8,0.03836894326778629,0.1385547794138397
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF08,10,-0.18347666226911977,-0.12192136254325855
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF09,10,0.26942321330714314,0.1879040179169691
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF10,9,0.011683961824422738,0.11221022058689456
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF11,5,-0.1316926484373241,
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF12,7,-0.05764409481587962,-0.10574717103316575
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,8,-0.09637191601682116,0.3927518581201918
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,10,0.060875580856180715,0.039999925168927836
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,10,0.08308287147305561,0.06490024039074353
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,9,0.27890064522517843,0.6010665747831319
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,5,0.1732313652557408,
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,7,0.08347643093514295,-0.2500716235973644
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,8,0.03836894326778629,0.09517892739594577
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,10,-0.18347666226911977,0.17098342778190326
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,10,0.26942321330714314,0.15523010011124444
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,9,0.011683961824422738,0.08881884059068285
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,5,-0.1316926484373241,
+FINAL,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,7,-0.05764409481587962,-0.09251088925554117
+FINAL,morning rounds,1,pay_nrem,debt_nrem,False,SF07,8,0.09764905616701859,0.09764905616701845
+FINAL,morning rounds,1,pay_nrem,debt_nrem,False,SF08,10,-0.07504817978927268,-0.07504817978927265
+FINAL,morning rounds,1,pay_nrem,debt_nrem,False,SF09,10,0.058743173933511826,0.058743173933511764
+FINAL,morning rounds,1,pay_nrem,debt_nrem,False,SF10,9,0.16994803472918515,0.169948034729185
+FINAL,morning rounds,1,pay_nrem,debt_nrem,False,SF11,5,0.006564941984005286,0.006564941984005311
+FINAL,morning rounds,1,pay_nrem,debt_nrem,False,SF12,7,0.472970307480247,0.47297030748024727
+FINAL,morning rounds,1,pay_nrem,debt_nrem,True,SF07,8,0.014417420673149255,0.014417420673149283
+FINAL,morning rounds,1,pay_nrem,debt_nrem,True,SF08,10,0.057458524637190846,0.057458524637190804
+FINAL,morning rounds,1,pay_nrem,debt_nrem,True,SF09,10,-0.26852487268869385,-0.26852487268869374
+FINAL,morning rounds,1,pay_nrem,debt_nrem,True,SF10,9,0.013596254482181361,0.01359625448218143
+FINAL,morning rounds,1,pay_nrem,debt_nrem,True,SF11,5,0.274431184780433,0.2744311847804328
+FINAL,morning rounds,1,pay_nrem,debt_nrem,True,SF12,7,0.5906634151134584,0.5906634151134588
+FINAL,morning rounds,3,pay_rem,debt_rem,False,SF07,8,-0.5767533844014943,-0.5767533844014943
+FINAL,morning rounds,3,pay_rem,debt_rem,False,SF08,10,0.18597525999942638,0.18597525999942632
+FINAL,morning rounds,3,pay_rem,debt_rem,False,SF09,10,0.4268884628125973,0.42688846281259746
+FINAL,morning rounds,3,pay_rem,debt_rem,False,SF10,9,0.9697134473525848,0.9697134473525851
+FINAL,morning rounds,3,pay_rem,debt_rem,False,SF11,5,-0.4647033647962958,-0.46470336479629565
+FINAL,morning rounds,3,pay_rem,debt_rem,False,SF12,7,0.2768574260372659,0.27685742603726604
+FINAL,morning rounds,3,pay_rem,debt_rem,True,SF07,8,-0.03323694551284892,-0.033236945512848975
+FINAL,morning rounds,3,pay_rem,debt_rem,True,SF08,10,-0.9569816073080739,-0.9569816073080732
+FINAL,morning rounds,3,pay_rem,debt_rem,True,SF09,10,0.7417444406558221,0.7417444406558222
+FINAL,morning rounds,3,pay_rem,debt_rem,True,SF10,9,0.47168782221155436,0.47168782221155436
+FINAL,morning rounds,3,pay_rem,debt_rem,True,SF11,5,-1.2882229568408923,-1.288222956840893
+FINAL,morning rounds,3,pay_rem,debt_rem,True,SF12,7,-0.39876339878047523,-0.39876339878047506
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF07,8,-0.5767533844014943,-0.03747045181941871
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF08,10,0.18597525999942638,0.2766797683496334
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF09,10,0.4268884628125973,0.4247247588414759
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF10,9,0.9697134473525848,0.9120218065813499
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF11,5,-0.4647033647962958,
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF12,7,0.2768574260372659,-0.17426123980646885
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF07,8,-0.03323694551284892,0.3597770648923055
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF08,10,-0.9569816073080739,-0.7017282169614175
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF09,10,0.7417444406558221,0.5947465529724215
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF10,9,0.47168782221155436,0.2890970359936458
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF11,5,-1.2882229568408923,
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF12,7,-0.39876339878047523,-0.5061187842813386
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,8,-0.5767533844014943,-0.010961431928104282
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,10,0.18597525999942638,1.3510479456455482
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,10,0.4268884628125973,0.4303249028340324
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,9,0.9697134473525848,0.7551672824719328
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,5,-0.4647033647962958,
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,7,0.2768574260372659,-0.5109750966938785
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,8,-0.03323694551284892,0.35560917501043454
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,10,-0.9569816073080739,-0.1538639475579797
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,10,0.7417444406558221,0.8917255826372317
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,9,0.47168782221155436,0.22996347620711585
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,5,-1.2882229568408923,
+FINAL,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,7,-0.39876339878047523,-0.5058469264034097
+FINAL,morning rounds,3,pay_nrem,debt_nrem,False,SF07,8,0.17395005415923184,0.17395005415923162
+FINAL,morning rounds,3,pay_nrem,debt_nrem,False,SF08,10,-0.05705106824488773,-0.0570510682448876
+FINAL,morning rounds,3,pay_nrem,debt_nrem,False,SF09,10,0.305650550468942,0.30565055046894174
+FINAL,morning rounds,3,pay_nrem,debt_nrem,False,SF10,9,0.10764751172810356,0.1076475117281035
+FINAL,morning rounds,3,pay_nrem,debt_nrem,False,SF11,5,0.09982790523756122,0.09982790523756117
+FINAL,morning rounds,3,pay_nrem,debt_nrem,False,SF12,7,0.27557755682658625,0.2755775568265861
+FINAL,morning rounds,3,pay_nrem,debt_nrem,True,SF07,8,0.11748187836325186,0.11748187836325193
+FINAL,morning rounds,3,pay_nrem,debt_nrem,True,SF08,10,0.11222310440760913,0.11222310440760908
+FINAL,morning rounds,3,pay_nrem,debt_nrem,True,SF09,10,-0.42984092318111655,-0.42984092318111633
+FINAL,morning rounds,3,pay_nrem,debt_nrem,True,SF10,9,-0.020315624061934157,-0.020315624061934018
+FINAL,morning rounds,3,pay_nrem,debt_nrem,True,SF11,5,0.6150302717266707,0.6150302717266707
+FINAL,morning rounds,3,pay_nrem,debt_nrem,True,SF12,7,0.5204426068849932,0.5204426068849933
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF07,6,0.6059318451021082,0.6059318451021082
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF08,8,-0.1189187346483358,-0.11891873464833544
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF09,7,-0.10317939479156543,-0.10317939479156563
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF10,7,0.2639342690458656,0.26393426904586575
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF11,3,-0.24476355759760943,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF12,8,0.08029921118484566,0.08029921118484537
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF07,6,-0.2593613243989665,-0.25936132439896675
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF08,8,-0.25664419614090894,-0.2566441961409088
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF09,7,0.1952358146882342,0.19523581468823376
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF10,7,0.24817700852304428,0.24817700852304422
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF11,3,-1.0981293179215696,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF12,8,-0.46957139149641053,-0.46957139149641086
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF07,6,0.6059318451021082,0.5055711103036462
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF08,8,-0.1189187346483358,-0.1211563168538245
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF09,7,-0.10317939479156543,1.3676880315339957
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF10,7,0.2639342690458656,1.3630146722621228
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF11,3,-0.24476355759760943,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF12,8,0.08029921118484566,0.3320199786733878
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF07,6,-0.2593613243989665,0.07444236610777552
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF08,8,-0.25664419614090894,-0.1325389510555469
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF09,7,0.1952358146882342,1.0648128497124407
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF10,7,0.24817700852304428,0.9280661816598277
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF11,3,-1.0981293179215696,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF12,8,-0.46957139149641053,-0.690895754698945
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,6,0.6059318451021082,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,8,-0.1189187346483358,-0.2378658464667845
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,7,-0.10317939479156543,1.5270030986365084
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,6,-0.11160305423658044,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,3,-0.24476355759760943,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,8,0.08029921118484566,0.41450188214313105
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,6,-0.2593613243989665,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,8,-0.39159887800641663,-0.6909292387553226
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,7,-0.014388260001027392,0.7474646322130503
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,6,-0.18769793247746677,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,3,-1.0981293179215696,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,8,-0.193479443501937,-0.6169499730681475
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF07,6,0.14392674131052205,0.14392674131052088
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF08,8,0.19714298257244378,0.1971429825724449
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF09,7,-0.020581052203450204,-0.02058105220345019
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF10,7,-0.1403974917903581,-0.14039749179035788
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF11,3,0.22224804395460465,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF12,8,0.03865431242343113,0.038654312423430814
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF07,6,0.14263069018780963,0.14263069018780963
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF08,8,0.198896956937661,0.19889695693766096
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF09,7,-0.24673710124928044,-0.24673710124928055
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF10,7,-0.2190416071483635,-0.21904160714836327
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF11,3,0.05458471282671121,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF12,8,-0.17226585749992687,-0.17226585749992693
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF08,3,-0.6626654553416609,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF12,3,-0.6684114797277593,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF08,3,-0.23428026348242598,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF12,3,-2.6780252466401357,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF08,3,-0.6626654553416609,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF12,3,-0.6684114797277593,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF08,3,-0.23428026348242598,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF12,3,-2.6780252466401357,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,3,-0.6626654553416609,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,3,-0.6684114797277593,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,3,-0.23428026348242598,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,3,-2.6780252466401357,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF08,3,2.4596821332890055,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF12,3,0.26809278340271225,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF07,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF08,3,9.604644283899113,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF09,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF10,1,,
+FINAL,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF12,3,0.41460425429676984,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF07,4,0.41714814876070216,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF08,8,-0.12658346880161123,-0.12658346880161114
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF09,7,-0.24838859628936844,-0.2483885962893685
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF10,7,0.2600561151228244,0.26005611512282434
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF11,3,-0.1016854358907187,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF12,8,-0.2846936908252455,-0.28469369082524487
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF07,4,0.38875589368998736,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF08,8,-0.5731728527216801,-0.5731728527216796
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF09,7,-0.3721071862980509,-0.37210718629805084
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF10,7,0.18998528247531402,0.189985282475314
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF11,3,-0.2541482142799851,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF12,8,-0.4174257596507882,-0.4174257596507883
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF07,4,0.41714814876070216,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF08,8,-0.12658346880161123,-0.19649190324271337
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF09,7,-0.24838859628936844,-0.7575019765021053
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF10,7,0.2600561151228244,0.1832130180266734
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF11,3,-0.1016854358907187,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF12,8,-0.2846936908252455,-0.41803408164407
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF07,4,0.38875589368998736,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF08,8,-0.5731728527216801,-0.5555151572797506
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF09,7,-0.3721071862980509,-0.4087668495776237
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF10,7,0.18998528247531402,0.4654891235819953
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF11,3,-0.2541482142799851,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF12,8,-0.4174257596507882,-0.20172672723840493
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,4,0.41714814876070216,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,8,-0.12658346880161123,-0.7022918517624867
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,7,-0.24838859628936844,-1.1565815754473123
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,6,0.08317750049500769,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,3,-0.1016854358907187,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,8,-0.2846936908252455,-0.7010923659442229
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,4,0.38875589368998736,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,8,-0.7080132193971749,-1.0750944957508095
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,7,-0.6798826688074249,-0.6960685010527569
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,6,-0.3907324233692129,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,3,-0.2541482142799851,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,8,-0.29712200371892833,-0.10337113919033955
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF07,4,-0.45043081078868064,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF08,8,-0.15806651900384364,-0.1580665190038434
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF09,7,0.046971651845319144,0.046971651845319345
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF10,7,-0.2806726612805133,-0.2806726612805133
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF11,3,-0.34557759707511787,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF12,8,-0.14726246476971494,-0.14726246476971483
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF07,4,-0.43163721025271357,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF08,8,-0.22602795936079453,-0.22602795936079453
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF09,7,0.136809320179938,0.13680932017993797
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF10,7,0.24511249034623225,0.24511249034623211
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF11,3,0.02690462215874734,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF12,8,-0.25523036743941,-0.25523036743940963
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF12,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF12,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF12,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF12,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF12,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF07,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF08,2,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF09,1,,
+FINAL,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF12,2,,
+pass2med,dawn wakes,1,pay_rem,debt_rem,False,SF07,6,0.08977210430027371,0.08977210430027383
+pass2med,dawn wakes,1,pay_rem,debt_rem,False,SF08,9,0.5025922353760041,0.5025922353760038
+pass2med,dawn wakes,1,pay_rem,debt_rem,False,SF09,8,0.16221144808793958,0.16221144808793955
+pass2med,dawn wakes,1,pay_rem,debt_rem,False,SF10,7,0.07880720443101819,0.07880720443101805
+pass2med,dawn wakes,1,pay_rem,debt_rem,False,SF11,4,-0.2203467555818051,
+pass2med,dawn wakes,1,pay_rem,debt_rem,False,SF12,7,0.24739561806280813,0.24739561806280835
+pass2med,dawn wakes,1,pay_rem,debt_rem,True,SF07,6,0.36155512234016257,0.36155512234016285
+pass2med,dawn wakes,1,pay_rem,debt_rem,True,SF08,9,0.22592021608477172,0.22592021608477206
+pass2med,dawn wakes,1,pay_rem,debt_rem,True,SF09,8,-0.00024900105428227594,-0.0002490010542823412
+pass2med,dawn wakes,1,pay_rem,debt_rem,True,SF10,7,0.12195548193055807,0.1219554819305584
+pass2med,dawn wakes,1,pay_rem,debt_rem,True,SF11,4,-0.3901551356940997,
+pass2med,dawn wakes,1,pay_rem,debt_rem,True,SF12,7,0.678910103449687,0.6789101034496873
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF07,6,0.08977210430027371,0.1677523981887881
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF08,9,0.5025922353760041,0.6313191389718867
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF09,8,0.16221144808793958,-0.5798689022133044
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF10,7,0.07880720443101819,-1.20786140834289
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF11,4,-0.2203467555818051,
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,False,SF12,7,0.24739561806280813,0.30018105001213613
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF07,6,0.36155512234016257,0.312996438207921
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF08,9,0.22592021608477172,0.40490022887861093
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF09,8,-0.00024900105428227594,-0.12404015712365955
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF10,7,0.12195548193055807,0.30860714941944867
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF11,4,-0.3901551356940997,
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem,True,SF12,7,0.678910103449687,0.8021133222234683
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,6,0.08977210430027371,
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,9,0.5025922353760041,-0.46905912381895876
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,8,0.16221144808793958,-1.3659177850739455
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,7,0.07880720443101819,-0.3792417671994849
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,4,-0.2203467555818051,
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,7,0.24739561806280813,0.8310398410884493
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,6,0.36155512234016257,
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,9,0.22592021608477172,0.045896716591763476
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,8,-0.00024900105428227594,-0.21051920939533772
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,7,0.12195548193055807,0.40637727782339916
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,4,-0.3901551356940997,
+pass2med,dawn wakes,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,7,0.678910103449687,0.7883379356471341
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,False,SF07,6,-0.1010925444445299,-0.10109254444452975
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,False,SF08,9,-0.12286744000940995,-0.12286744000940955
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,False,SF09,8,-0.0729722963777972,-0.07297229637779726
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,False,SF10,7,-0.2864921786343117,-0.28649217863431164
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,False,SF11,4,0.08292050535722041,
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,False,SF12,7,0.037108783715046605,0.03710878371504668
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,True,SF07,6,-0.023524783199638823,-0.023524783199638796
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,True,SF08,9,-0.7973938376431069,-0.7973938376431077
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,True,SF09,8,-0.004316298528058432,-0.00431629852805843
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,True,SF10,7,0.2975092318946072,0.2975092318946073
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,True,SF11,4,0.04339905313165806,
+pass2med,dawn wakes,1,pay_nrem,debt_nrem,True,SF12,7,-0.08270100957174197,-0.08270100957174198
+pass2med,dawn wakes,3,pay_rem,debt_rem,False,SF07,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem,False,SF08,3,1.6254343171580659,
+pass2med,dawn wakes,3,pay_rem,debt_rem,False,SF09,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem,False,SF10,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem,False,SF12,3,1.0922085482206667,
+pass2med,dawn wakes,3,pay_rem,debt_rem,True,SF07,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem,True,SF08,3,2.774228374083446,
+pass2med,dawn wakes,3,pay_rem,debt_rem,True,SF09,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem,True,SF10,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem,True,SF12,3,1.4609478229235564,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF07,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF08,3,1.6254343171580659,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF09,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF10,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,False,SF12,3,1.0922085482206667,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF07,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF08,3,2.774228374083446,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF09,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF10,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem,True,SF12,3,1.4609478229235564,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,3,1.6254343171580659,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,3,1.0922085482206667,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,3,2.774228374083446,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,1,,
+pass2med,dawn wakes,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,3,1.4609478229235564,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,False,SF07,1,,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,False,SF08,3,0.17132642273794083,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,False,SF09,1,,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,False,SF10,1,,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,False,SF12,3,-0.3831138861993975,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,True,SF07,1,,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,True,SF08,3,-0.17468560695504426,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,True,SF09,1,,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,True,SF10,1,,
+pass2med,dawn wakes,3,pay_nrem,debt_nrem,True,SF12,3,-0.1596504686079654,
+pass2med,morning rounds,1,pay_rem,debt_rem,False,SF07,8,0.46418480252862,0.46418480252862027
+pass2med,morning rounds,1,pay_rem,debt_rem,False,SF08,10,0.4323718525091893,0.4323718525091891
+pass2med,morning rounds,1,pay_rem,debt_rem,False,SF09,10,0.1300858905860023,0.13008589058600226
+pass2med,morning rounds,1,pay_rem,debt_rem,False,SF10,9,0.4950899975406683,0.49508999754066735
+pass2med,morning rounds,1,pay_rem,debt_rem,False,SF11,5,0.3309856264068841,0.3309856264068842
+pass2med,morning rounds,1,pay_rem,debt_rem,False,SF12,7,0.6073678958289707,0.6073678958289708
+pass2med,morning rounds,1,pay_rem,debt_rem,True,SF07,8,0.004949059179071394,0.004949059179071236
+pass2med,morning rounds,1,pay_rem,debt_rem,True,SF08,10,0.49769059119440656,0.4976905911944068
+pass2med,morning rounds,1,pay_rem,debt_rem,True,SF09,10,0.35756470230935505,0.3575647023093552
+pass2med,morning rounds,1,pay_rem,debt_rem,True,SF10,9,0.35816051119201076,0.35816051119201076
+pass2med,morning rounds,1,pay_rem,debt_rem,True,SF11,5,-0.04651587769703915,-0.046515877697039354
+pass2med,morning rounds,1,pay_rem,debt_rem,True,SF12,7,0.08066689608102011,0.08066689608102011
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF07,8,0.46418480252862,0.494794448667177
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF08,10,0.4323718525091893,0.4373397767194157
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF09,10,0.1300858905860023,0.15029391268928496
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF10,9,0.4950899975406683,0.5224379736934885
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF11,5,0.3309856264068841,
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,False,SF12,7,0.6073678958289707,0.1184435096866222
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF07,8,0.004949059179071394,-0.052937405710139246
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF08,10,0.49769059119440656,0.5538577565775311
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF09,10,0.35756470230935505,0.2604068529010861
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF10,9,0.35816051119201076,0.34680265185114645
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF11,5,-0.04651587769703915,
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem,True,SF12,7,0.08066689608102011,-0.06880724261149242
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,8,0.46418480252862,-0.16603051964311774
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,10,0.4323718525091893,0.46089715082210286
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,10,0.1300858905860023,-0.21740971805925643
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,9,0.4950899975406683,0.5148262903913233
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,5,0.3309856264068841,
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,7,0.6073678958289707,-0.4360470127712885
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,8,0.004949059179071394,0.039975382156515166
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,10,0.49769059119440656,0.4910154734529855
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,10,0.35756470230935505,0.3970420680397852
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,9,0.35816051119201076,0.3256210333197563
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,5,-0.04651587769703915,
+pass2med,morning rounds,1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,7,0.08066689608102011,-0.002199431991196668
+pass2med,morning rounds,1,pay_nrem,debt_nrem,False,SF07,8,0.13837904211186686,0.13837904211186675
+pass2med,morning rounds,1,pay_nrem,debt_nrem,False,SF08,10,0.08349468975059321,0.08349468975059318
+pass2med,morning rounds,1,pay_nrem,debt_nrem,False,SF09,10,0.04232957513735028,0.04232957513735023
+pass2med,morning rounds,1,pay_nrem,debt_nrem,False,SF10,9,0.21698765990778193,0.2169876599077818
+pass2med,morning rounds,1,pay_nrem,debt_nrem,False,SF11,5,-0.010108979663823006,-0.010108979663822825
+pass2med,morning rounds,1,pay_nrem,debt_nrem,False,SF12,7,0.47594968060686693,0.47594968060686654
+pass2med,morning rounds,1,pay_nrem,debt_nrem,True,SF07,8,0.07666871152809854,0.07666871152809855
+pass2med,morning rounds,1,pay_nrem,debt_nrem,True,SF08,10,0.44470763075035386,0.444707630750354
+pass2med,morning rounds,1,pay_nrem,debt_nrem,True,SF09,10,-0.10363460021011905,-0.1036346002101191
+pass2med,morning rounds,1,pay_nrem,debt_nrem,True,SF10,9,0.21871579920309953,0.21871579920309958
+pass2med,morning rounds,1,pay_nrem,debt_nrem,True,SF11,5,0.07030754310838798,0.07030754310838795
+pass2med,morning rounds,1,pay_nrem,debt_nrem,True,SF12,7,0.5759739043065893,0.5759739043065891
+pass2med,morning rounds,3,pay_rem,debt_rem,False,SF07,8,0.4191370238403527,0.41913702384035273
+pass2med,morning rounds,3,pay_rem,debt_rem,False,SF08,10,1.2512148071237432,1.2512148071237437
+pass2med,morning rounds,3,pay_rem,debt_rem,False,SF09,10,0.5656879730509515,0.5656879730509514
+pass2med,morning rounds,3,pay_rem,debt_rem,False,SF10,9,-0.31484760899057385,-0.3148476089905733
+pass2med,morning rounds,3,pay_rem,debt_rem,False,SF11,5,-0.6161805851143727,-0.6161805851143722
+pass2med,morning rounds,3,pay_rem,debt_rem,False,SF12,7,1.7702981354500054,1.7702981354500058
+pass2med,morning rounds,3,pay_rem,debt_rem,True,SF07,8,0.7099045739958287,0.7099045739958285
+pass2med,morning rounds,3,pay_rem,debt_rem,True,SF08,10,1.5308148749330526,1.5308148749330532
+pass2med,morning rounds,3,pay_rem,debt_rem,True,SF09,10,0.5924788904755702,0.5924788904755705
+pass2med,morning rounds,3,pay_rem,debt_rem,True,SF10,9,1.046778069845954,1.046778069845954
+pass2med,morning rounds,3,pay_rem,debt_rem,True,SF11,5,-1.4337396123506014,-1.4337396123506005
+pass2med,morning rounds,3,pay_rem,debt_rem,True,SF12,7,1.5266667792855266,1.526666779285526
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF07,8,0.4191370238403527,-0.6293173798520192
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF08,10,1.2512148071237432,1.3990291739672271
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF09,10,0.5656879730509515,0.6435021709086963
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF10,9,-0.31484760899057385,-0.2889615781393271
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF11,5,-0.6161805851143727,
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,False,SF12,7,1.7702981354500054,-0.4724262955608061
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF07,8,0.7099045739958287,0.41502427425336
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF08,10,1.5308148749330526,1.3875452470584066
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF09,10,0.5924788904755702,0.3864817943323367
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF10,9,1.046778069845954,0.86649081543353
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF11,5,-1.4337396123506014,
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem,True,SF12,7,1.5266667792855266,1.0161259013959831
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,8,0.4191370238403527,-1.545994799674987
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,10,1.2512148071237432,1.1952198924410768
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,10,0.5656879730509515,1.22227396644598
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,9,-0.31484760899057385,-0.486576337265609
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,5,-0.6161805851143727,
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,7,1.7702981354500054,-0.31749228331766344
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,8,0.7099045739958287,0.3320329044747936
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,10,1.5308148749330526,1.5705758498422635
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,10,0.5924788904755702,0.7970199507148686
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,9,1.046778069845954,0.7716704456992104
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,5,-1.4337396123506014,
+pass2med,morning rounds,3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,7,1.5266667792855266,1.0551546255385746
+pass2med,morning rounds,3,pay_nrem,debt_nrem,False,SF07,8,0.3614213902289418,0.36142139022894154
+pass2med,morning rounds,3,pay_nrem,debt_nrem,False,SF08,10,0.20579583640841828,0.2057958364084181
+pass2med,morning rounds,3,pay_nrem,debt_nrem,False,SF09,10,0.3361618478436121,0.3361618478436119
+pass2med,morning rounds,3,pay_nrem,debt_nrem,False,SF10,9,0.1738958392884805,0.1738958392884804
+pass2med,morning rounds,3,pay_nrem,debt_nrem,False,SF11,5,0.18393107132853725,0.18393107132853717
+pass2med,morning rounds,3,pay_nrem,debt_nrem,False,SF12,7,0.5781363997772685,0.5781363997772682
+pass2med,morning rounds,3,pay_nrem,debt_nrem,True,SF07,8,0.2865303540648477,0.28653035406484784
+pass2med,morning rounds,3,pay_nrem,debt_nrem,True,SF08,10,0.6075993684516474,0.6075993684516476
+pass2med,morning rounds,3,pay_nrem,debt_nrem,True,SF09,10,-0.15677479780934114,-0.15677479780934112
+pass2med,morning rounds,3,pay_nrem,debt_nrem,True,SF10,9,0.14768276296912092,0.14768276296912097
+pass2med,morning rounds,3,pay_nrem,debt_nrem,True,SF11,5,0.1784980049240234,0.1784980049240233
+pass2med,morning rounds,3,pay_nrem,debt_nrem,True,SF12,7,0.565052345819243,0.5650523458192429
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF07,6,0.10225994679059257,0.10225994679059258
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF08,9,0.5257540095730596,0.5257540095730598
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF09,8,-0.27223484827503286,-0.2722348482750326
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF10,7,-0.2779953880543356,-0.2779953880543359
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF11,4,-0.1264869775557813,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,False,SF12,7,0.09400242750810153,0.09400242750810156
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF07,6,-0.33245323186592596,-0.33245323186592596
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF08,9,0.1982985560671928,0.19829855606719263
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF09,8,-0.044719311923909995,-0.04471931192390991
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF10,7,-0.4670287522530729,-0.46702875225307305
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF11,4,-0.36184393524692177,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem,True,SF12,7,-0.0630443949248865,-0.06304439492488652
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF07,6,0.10225994679059257,-0.04400250179687473
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF08,9,0.5257540095730596,0.6693407969732945
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF09,8,-0.27223484827503286,1.1653333621946433
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF10,7,-0.2779953880543356,0.3759864430806914
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF11,4,-0.1264869775557813,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF12,7,0.09400242750810153,0.5190353881012835
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF07,6,-0.33245323186592596,-0.07674259177118598
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF08,9,0.1982985560671928,0.9293993357492757
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF09,8,-0.044719311923909995,0.3322917012053196
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF10,7,-0.4670287522530729,1.7951386412026649
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF11,4,-0.36184393524692177,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF12,7,-0.0630443949248865,-0.25896957682506366
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,6,0.10225994679059257,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,9,0.5257540095730596,0.09972029546489669
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,8,-0.27223484827503286,-1.8718055127215676
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,7,-0.2779953880543356,0.9393864934128611
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,4,-0.1264869775557813,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,7,0.09400242750810153,0.5154302310406974
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,6,-0.33245323186592596,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,9,0.1982985560671928,0.6638333578384068
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,8,-0.044719311923909995,-0.17278511547735678
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,7,-0.4670287522530729,1.9465076549248768
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,4,-0.36184393524692177,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,7,-0.0630443949248865,-0.3901982972851947
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF07,6,0.2569387783419086,0.25693877834190804
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF08,9,0.1252145452986939,0.12521454529869436
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF09,8,0.28348468246350844,0.2834846824635085
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF10,7,0.06799614570867457,0.06799614570867457
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF11,4,0.11885025850512215,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,False,SF12,7,0.022745014998392588,0.02274501499839232
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF07,6,0.043202832163425464,0.043202832163425575
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF08,9,0.21717385196746816,0.21717385196746805
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF09,8,0.15302703656602273,0.1530270365660229
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF10,7,-0.05968673359010361,-0.059686733590103604
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF11,4,0.03716794509968511,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",1,pay_nrem,debt_nrem,True,SF12,7,-0.10750728151586256,-0.10750728151586249
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF08,3,1.0825895359648061,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,False,SF12,3,0.5408198579411381,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF08,3,0.780716551972715,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem,True,SF12,3,0.8426291628245568,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF08,3,1.0825895359648061,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF12,3,0.5408198579411381,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF08,3,0.780716551972715,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF12,3,0.8426291628245568,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,3,1.0825895359648061,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,3,0.5408198579411381,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,3,0.780716551972715,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,3,0.8426291628245568,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF08,3,0.8768749259995888,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,False,SF12,3,0.4892759359764892,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF07,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF08,3,0.7006307458119322,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF09,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF10,1,,
+pass2med,"dawn wakes, A includes the wake (sensitivity)",3,pay_nrem,debt_nrem,True,SF12,3,0.5070539777797957,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF07,5,0.03254451619706545,0.03254451619706554
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF08,8,0.5622275359314242,0.5622275359314246
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF09,7,0.3212014030482512,0.32120140304825107
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF10,7,-0.2112977423032162,-0.21129774230321605
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF11,4,-0.2187948539076107,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,False,SF12,7,0.5598929132057929,0.5598929132057924
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF07,5,0.1391953932302802,0.13919539323028027
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF08,8,0.04141648694907095,0.041416486949071046
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF09,7,-0.07667217401987865,-0.07667217401987869
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF10,7,-0.2680259709434784,-0.26802597094347846
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF11,4,0.15291820104789297,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem,True,SF12,7,0.6657703183211545,0.6657703183211545
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF07,5,0.03254451619706545,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF08,8,0.5622275359314242,0.6366885167771715
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF09,7,0.3212014030482512,-0.14739678031597905
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF10,7,-0.2112977423032162,-1.5389912624673048
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF11,4,-0.2187948539076107,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,False,SF12,7,0.5598929132057929,0.376571670576033
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF07,5,0.1391953932302802,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF08,8,0.04141648694907095,-0.008091325843322839
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF09,7,-0.07667217401987865,-0.20764465368237894
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF10,7,-0.2680259709434784,-0.011460948699777262
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF11,4,0.15291820104789297,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem,True,SF12,7,0.6657703183211545,0.8211026436433517
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,5,0.03254451619706545,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,8,0.5622275359314242,-0.35563734849497275
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,7,0.3212014030482512,-0.7927226814399205
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,7,-0.2112977423032162,-0.24047042706568578
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF11,4,-0.2187948539076107,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,7,0.5598929132057929,1.0945079697229119
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,5,0.1391953932302802,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,8,0.04141648694907095,-0.6492225462753984
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,7,-0.07667217401987865,-0.28318448641747185
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,7,-0.2680259709434784,0.37468633009990326
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF11,4,0.15291820104789297,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,7,0.6657703183211545,1.0223057664316526
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF07,5,-0.08356999692400395,-0.0835699969240043
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF08,8,-0.18313491919918387,-0.1831349191991836
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF09,7,-0.05237349028400573,-0.05237349028400578
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF10,7,-0.11563746693300243,-0.11563746693300266
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF11,4,-0.23789241141583345,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,False,SF12,7,-0.03381253981399328,-0.03381253981399321
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF07,5,-0.0976953584360362,-0.09769535843603602
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF08,8,-1.0962050765570157,-1.096205076557015
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF09,7,-0.0731257611089425,-0.07312576110894244
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF10,7,0.2554257334584777,0.25542573345847763
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF11,4,0.3048112046265109,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",1,pay_nrem,debt_nrem,True,SF12,7,-0.08516738807487036,-0.08516738807487029
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,False,SF12,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem,True,SF12,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,False,SF12,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem,True,SF12,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,False,SF12,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_rem,debt_rem + debt_nrem + onset_h,True,SF12,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,False,SF12,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF07,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF08,2,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF09,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF10,1,,
+pass2med,"dawn wakes, 10-min-bin windows (sensitivity)",3,pay_nrem,debt_nrem,True,SF12,2,,

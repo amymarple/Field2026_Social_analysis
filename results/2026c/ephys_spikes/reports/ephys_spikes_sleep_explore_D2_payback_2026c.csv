@@ -1,0 +1,801 @@
+kind,B_h,outcome,predictors,day_demeaned,scores,stat,observed,sim_mean,sim_2.5%,sim_97.5%,n_sim
+evening,1,pay_nrem,debt_nrem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_nrem,debt_nrem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_nrem,debt_nrem,False,final,slope,0.1730360697890194,0.29078425624382476,0.15769975989314625,0.4591696591201997,100
+evening,1,pay_nrem,debt_nrem,False,final,ci_lo,-0.0168359100277999,0.024092270485621223,-0.08238046371867164,0.15178756009271974,100
+evening,1,pay_nrem,debt_nrem,False,final,ci_hi,0.3629080496058389,0.5574762420020284,0.37941522293174723,0.7768696210384759,100
+evening,1,pay_nrem,debt_nrem,False,final,p,0.0740710288186327,0.049874090119533435,0.0008309293971194401,0.1633708663097555,100
+evening,1,pay_nrem,debt_nrem,False,final,animals_positive,5.0,5.45,4.0,6.0,100
+evening,1,pay_nrem,debt_nrem,False,final,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_nrem,debt_nrem,False,final,mean_x,-7.158349762660664,-7.392437928301018,-9.059584821434274,-6.182284095715481,100
+evening,1,pay_nrem,debt_nrem,False,final,mean_y,-4.874781251297208,-3.3182892515595994,-3.923600625436062,-2.716135990002078,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,slope,0.3120080556702738,0.32050379854748007,0.19914006387524816,0.4390049986258134,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,ci_lo,0.1143207675783238,0.0673807705859088,-0.08055469971120804,0.1972134138078372,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,ci_hi,0.5096953437622237,0.5736268265090514,0.40360643030697946,0.7878280427649735,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,p,0.0019788163034766,0.025907140816111073,2.0384808039794157e-05,0.12101426390646423,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,animals_positive,6.0,5.46,4.0,6.0,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,mean_x,-7.674583521093674,-7.316873038237833,-8.705677467903067,-6.104763403971876,100
+evening,1,pay_nrem,debt_nrem,False,pass2med,mean_y,-4.2920461990361,-3.3946240996936727,-3.972311311146809,-2.9190480539760273,100
+evening,1,pay_nrem,debt_nrem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_nrem,debt_nrem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_nrem,debt_nrem,True,final,slope,-0.0046788602128583,0.05847274881067102,-0.09756066443634602,0.1894489969170704,100
+evening,1,pay_nrem,debt_nrem,True,final,ci_lo,-0.187349991412256,-0.08507483501239213,-0.26341272936657956,0.0629770581347134,100
+evening,1,pay_nrem,debt_nrem,True,final,ci_hi,0.1779922709865393,0.2020203326337342,0.03665472731490345,0.3839781212425847,100
+evening,1,pay_nrem,debt_nrem,True,final,p,0.9599616735295358,0.364497678028245,0.0045523389238293875,0.9695530289600528,100
+evening,1,pay_nrem,debt_nrem,True,final,animals_positive,4.0,3.76,1.0,6.0,100
+evening,1,pay_nrem,debt_nrem,True,final,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_nrem,debt_nrem,True,final,mean_x,-7.158349762660664,-7.392437928301018,-9.059584821434274,-6.182284095715481,100
+evening,1,pay_nrem,debt_nrem,True,final,mean_y,-4.874781251297208,-3.3182892515595994,-3.923600625436062,-2.716135990002078,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,slope,0.0702644917054614,0.0947137920623155,-0.060409251483234554,0.2382205103016461,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,ci_lo,-0.0643088634570704,-0.0692440402593897,-0.2762151622251999,0.08351039707085517,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,ci_hi,0.2048378468679933,0.25867162438402075,0.08628125651149302,0.5245425296110277,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,p,0.3061415827293376,0.2963419608193604,0.0009255659666019775,0.829278131607048,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,animals_positive,4.0,4.19,2.0,6.0,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,mean_x,-7.674583521093674,-7.316873038237833,-8.705677467903067,-6.104763403971876,100
+evening,1,pay_nrem,debt_nrem,True,pass2med,mean_y,-4.2920461990361,-3.3946240996936727,-3.972311311146809,-2.9190480539760273,100
+evening,1,pay_rem,debt_rem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem,False,final,slope,0.0328968230998951,0.04339843790284644,-0.07253197650944711,0.15219069095821317,100
+evening,1,pay_rem,debt_rem,False,final,ci_lo,-0.0405979162839171,-0.04930532911998086,-0.18975682925723547,0.04316939410393442,100
+evening,1,pay_rem,debt_rem,False,final,ci_hi,0.1063915624837073,0.1361022049256738,0.020783060992821824,0.3201420227010472,100
+evening,1,pay_rem,debt_rem,False,final,p,0.3803262714712918,0.3517661442936084,0.00022983102991003002,0.9186253921248613,100
+evening,1,pay_rem,debt_rem,False,final,animals_positive,5.0,3.62,1.0,5.5249999999999915,100
+evening,1,pay_rem,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem,debt_rem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem,debt_rem,False,final,mean_y,-0.7738934914087515,-0.506348518334001,-0.8626907894746302,-0.08707938473607106,100
+evening,1,pay_rem,debt_rem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem,False,pass2med,slope,0.0563702842759236,0.039440628358605706,-0.07446115154721346,0.14606843553125914,100
+evening,1,pay_rem,debt_rem,False,pass2med,ci_lo,0.0135889703906912,-0.06062750932771835,-0.25103776469356126,0.051727702096577614,100
+evening,1,pay_rem,debt_rem,False,pass2med,ci_hi,0.0991515981611559,0.13950876604492982,0.014833587250967424,0.27080869885067793,100
+evening,1,pay_rem,debt_rem,False,pass2med,p,0.0098080825028379,0.3347263549175885,0.0013203396452941,0.9075502381960009,100
+evening,1,pay_rem,debt_rem,False,pass2med,animals_positive,5.0,3.59,1.0,6.0,100
+evening,1,pay_rem,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem,debt_rem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem,debt_rem,False,pass2med,mean_y,-0.7055488293239659,-0.45095720469858686,-0.8528431355915759,-0.008056099177966233,100
+evening,1,pay_rem,debt_rem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem,True,final,slope,0.0292902597196802,0.009384649437212294,-0.11889946984814749,0.1426076446314256,100
+evening,1,pay_rem,debt_rem,True,final,ci_lo,-0.0590668367036445,-0.09196535680972055,-0.2811634027469643,0.0028438644084808444,100
+evening,1,pay_rem,debt_rem,True,final,ci_hi,0.117647356143005,0.11073465568414513,-0.0052201519789632795,0.3541324584511327,100
+evening,1,pay_rem,debt_rem,True,final,p,0.5158695821857209,0.3970743386292115,0.015923163517746097,0.9343339226905734,100
+evening,1,pay_rem,debt_rem,True,final,animals_positive,3.0,3.16,1.0,5.0,100
+evening,1,pay_rem,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem,debt_rem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem,debt_rem,True,final,mean_y,-0.7738934914087515,-0.506348518334001,-0.8626907894746302,-0.08707938473607106,100
+evening,1,pay_rem,debt_rem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem,True,pass2med,slope,0.040867269761831,0.009242013956674804,-0.0999928158109434,0.11963555987928585,100
+evening,1,pay_rem,debt_rem,True,pass2med,ci_lo,-0.0235558114356848,-0.0974861954913056,-0.2882742708227686,0.01679978754572157,100
+evening,1,pay_rem,debt_rem,True,pass2med,ci_hi,0.1052903509593468,0.11597022340465525,0.008295251764293791,0.2868570973040539,100
+evening,1,pay_rem,debt_rem,True,pass2med,p,0.2137506714236693,0.41551665939452576,0.015009570026296432,0.9600656443906669,100
+evening,1,pay_rem,debt_rem,True,pass2med,animals_positive,5.0,3.11,0.0,6.0,100
+evening,1,pay_rem,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem,debt_rem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem,debt_rem,True,pass2med,mean_y,-0.7055488293239659,-0.45095720469858686,-0.8528431355915759,-0.008056099177966233,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,slope,0.0327284850861368,0.04295606806780347,-0.07184759431057565,0.1334115706952842,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,ci_lo,-0.0451413739100716,-0.04615647306844714,-0.19407415649942067,0.04621147708842946,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,ci_hi,0.1105983440823453,0.13206860920405414,0.014829386460301752,0.3266939833811663,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,p,0.4100717287701896,0.3307015532471665,0.0031970893678289454,0.9245937445264344,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,animals_positive,4.0,3.03,1.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,animals,5.0,5.0,5.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,final,mean_y,-0.7738934914087515,-0.506348518334001,-0.8626907894746302,-0.08707938473607106,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,slope,0.0411568531094117,0.04231777838950669,-0.0632290361946995,0.14815183250391964,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_lo,-0.008062743095727,-0.055298518665800246,-0.22818497129250076,0.05337093479475261,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_hi,0.0903764493145505,0.13993407544481365,0.018085554158924894,0.2890137488636677,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,p,0.1012342841400803,0.3589715760440751,0.0016861035776568952,0.9680239414446377,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,animals_positive,4.0,2.98,0.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,animals,5.0,5.0,5.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_y,-0.7055488293239659,-0.45095720469858686,-0.8528431355915759,-0.008056099177966233,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,slope,0.013995225612859,0.015142064092623437,-0.11268954930431149,0.14173437722004362,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,ci_lo,-0.0806819095156796,-0.09047855607025265,-0.26692048906237276,0.016334606303717126,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,ci_hi,0.1086723607413976,0.12076268425549957,-0.0017931370313502796,0.375315939216216,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,p,0.7720282033392971,0.4099785882730621,0.008460121291429493,0.953933476205428,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,animals_positive,3.0,2.58,1.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,animals,5.0,5.0,5.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,final,mean_y,-0.7738934914087515,-0.506348518334001,-0.8626907894746302,-0.08707938473607106,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,slope,0.0339987339811171,0.01962201831539226,-0.10093677434672708,0.13711805391230078,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_lo,-0.0527043843830755,-0.09017362783945072,-0.2766907850017963,0.03055339109349231,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_hi,0.1207018523453099,0.12941766447023526,0.002150225527933505,0.2922970398415785,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,p,0.4421563023323572,0.4028337031576557,0.008808628810116084,0.9810559514528291,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,animals_positive,4.0,2.75,0.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,animals,5.0,5.0,5.0,5.0,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_y,-0.7055488293239659,-0.45095720469858686,-0.8528431355915759,-0.008056099177966233,100
+evening,1,pay_rem_dur,debt_rem,False,final,n_windows,16.0,18.46,15.0,22.0,100
+evening,1,pay_rem_dur,debt_rem,False,final,clusters,5.0,5.65,4.0,7.0,100
+evening,1,pay_rem_dur,debt_rem,False,final,slope,1.855314208229904,0.056131097980625794,-2.1177330243455366,2.5940621439079314,100
+evening,1,pay_rem_dur,debt_rem,False,final,ci_lo,0.0523847375462227,-2.298054931606131,-6.153846143251393,0.5887250616033672,100
+evening,1,pay_rem_dur,debt_rem,False,final,ci_hi,3.658243678913585,2.410317127567383,-0.5043898856550283,6.050351973751537,100
+evening,1,pay_rem_dur,debt_rem,False,final,p,0.0437047587203335,0.46413483853581733,7.508545510919789e-05,0.9625454283420974,100
+evening,1,pay_rem_dur,debt_rem,False,final,animals_positive,0.0,0.43,0.0,2.0,100
+evening,1,pay_rem_dur,debt_rem,False,final,animals,0.0,0.81,0.0,2.5249999999999915,100
+evening,1,pay_rem_dur,debt_rem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem_dur,debt_rem,False,final,mean_y,-3.45850415359182,-0.791960944227354,-11.023041496231373,12.617285186759586,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,n_windows,16.0,21.3,18.0,25.52499999999999,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,clusters,4.0,6.45,5.0,8.0,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,slope,-1.6232139057933803,-0.12144678079272085,-2.0957085236353636,1.9571662549018807,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,ci_lo,-4.714692328475072,-2.0610847950490703,-5.451337549949627,0.8628176421164538,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,ci_hi,1.468264516888311,1.8181912334636288,-0.5354122765836594,4.483324265729242,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,p,0.3034326330153614,0.40577376982135654,0.000401228303757645,0.9667048716478277,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,animals_positive,0.0,0.92,0.0,3.0,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,animals,0.0,1.77,0.0,4.0,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem_dur,debt_rem,False,pass2med,mean_y,2.842438002510288,-0.6818836971034026,-11.91670086337191,12.24205833583087,100
+evening,1,pay_rem_dur,debt_rem,True,final,n_windows,16.0,18.46,15.0,22.0,100
+evening,1,pay_rem_dur,debt_rem,True,final,clusters,5.0,5.65,4.0,7.0,100
+evening,1,pay_rem_dur,debt_rem,True,final,slope,1.6625965668875538,0.1926199963522791,-2.2338542746693197,3.7235544518584556,100
+evening,1,pay_rem_dur,debt_rem,True,final,ci_lo,-0.0817433155193176,-2.371029857543167,-7.195805613136918,1.5533370245954865,100
+evening,1,pay_rem_dur,debt_rem,True,final,ci_hi,3.406936449294425,2.756269850247725,-0.4483324686782061,8.693861101802499,100
+evening,1,pay_rem_dur,debt_rem,True,final,p,0.0617458919893765,0.4194294178177571,3.2974190123615534e-05,0.9782169958133425,100
+evening,1,pay_rem_dur,debt_rem,True,final,animals_positive,0.0,0.5,0.0,2.0,100
+evening,1,pay_rem_dur,debt_rem,True,final,animals,0.0,0.81,0.0,2.5249999999999915,100
+evening,1,pay_rem_dur,debt_rem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem_dur,debt_rem,True,final,mean_y,-3.45850415359182,-0.791960944227354,-11.023041496231373,12.617285186759586,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,n_windows,16.0,21.3,18.0,25.52499999999999,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,clusters,4.0,6.45,5.0,8.0,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,slope,-1.0557246947575618,0.05294322768470921,-2.7669483981379894,2.607600048225865,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,ci_lo,-2.8968644483974577,-2.0679456717179012,-5.14386618966849,0.75126726537294,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,ci_hi,0.7854150588823343,2.17383212708732,-0.9721621918021903,5.665863235218194,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,p,0.2610726404247099,0.3951262993836447,0.0004992095914478726,0.9826009098501025,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,animals_positive,0.0,0.81,0.0,2.0,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,animals,0.0,1.77,0.0,4.0,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem_dur,debt_rem,True,pass2med,mean_y,2.842438002510288,-0.6818836971034026,-11.91670086337191,12.24205833583087,100
+evening,1,pay_rem_n,debt_rem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem_n,debt_rem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem_n,debt_rem,False,final,slope,0.0008108607276184,0.05019617339398495,-0.05540748716957035,0.1482810702578249,100
+evening,1,pay_rem_n,debt_rem,False,final,ci_lo,-0.0588544876836561,-0.04092290201708427,-0.13749767397827986,0.050087858712244436,100
+evening,1,pay_rem_n,debt_rem,False,final,ci_hi,0.0604762091388931,0.14131524880505425,0.013852947818518258,0.2919898383406193,100
+evening,1,pay_rem_n,debt_rem,False,final,p,0.978749904491394,0.3107182674214049,0.0005175649107040651,0.8360149724263298,100
+evening,1,pay_rem_n,debt_rem,False,final,animals_positive,2.0,3.88,1.0,6.0,100
+evening,1,pay_rem_n,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem_n,debt_rem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem_n,debt_rem,False,final,mean_y,-0.7057242503351465,-0.5103447200313137,-0.934534499805794,-0.0963657201624159,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,slope,0.0427875811789494,0.048063301268540755,-0.07521838498037432,0.1540923272154991,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,ci_lo,0.0196699381740987,-0.048581429300006106,-0.20081157009515002,0.05845152849867392,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,ci_hi,0.0659052241838001,0.14470803183708764,0.02257992043268825,0.28566682142456923,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,p,0.000286041337718,0.30236301036747193,0.0010146747337309075,0.9347333718920549,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,animals_positive,5.0,3.9,2.0,6.0,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem_n,debt_rem,False,pass2med,mean_y,-0.7140573017423151,-0.4563661710181407,-0.8595099010412454,-0.07287031829954566,100
+evening,1,pay_rem_n,debt_rem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem_n,debt_rem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem_n,debt_rem,True,final,slope,-0.0081241045936349,0.012131858012988219,-0.10709405293241224,0.1142080655174181,100
+evening,1,pay_rem_n,debt_rem,True,final,ci_lo,-0.0836804053085932,-0.08797002621358466,-0.23117938416024097,0.018589262598639432,100
+evening,1,pay_rem_n,debt_rem,True,final,ci_hi,0.0674321961213233,0.11223374223956116,0.00543689397876427,0.31586462768101287,100
+evening,1,pay_rem_n,debt_rem,True,final,p,0.8330879125883935,0.4277590131240728,0.004938079869096168,0.9467098191474033,100
+evening,1,pay_rem_n,debt_rem,True,final,animals_positive,3.0,3.19,1.0,6.0,100
+evening,1,pay_rem_n,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem_n,debt_rem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,1,pay_rem_n,debt_rem,True,final,mean_y,-0.7057242503351465,-0.5103447200313137,-0.934534499805794,-0.0963657201624159,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,slope,0.0231858352026468,0.009878447637682954,-0.10493310698713422,0.10760017684033117,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,ci_lo,-0.0462452186142841,-0.08556453033895403,-0.23715130442634622,0.021127270156941765,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,ci_hi,0.0926168890195777,0.10532142561431995,0.003129181015309685,0.241906024163229,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,p,0.5127825175260968,0.42624753660232584,0.013570084890713301,0.9225040303223387,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,animals_positive,4.0,3.17,1.0,6.0,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,1,pay_rem_n,debt_rem,True,pass2med,mean_y,-0.7140573017423151,-0.4563661710181407,-0.8595099010412454,-0.07287031829954566,100
+evening,3,pay_nrem,debt_nrem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_nrem,debt_nrem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_nrem,debt_nrem,False,final,slope,0.1141949268414168,0.16770063918183406,-0.07653751645548218,0.36568618317662677,100
+evening,3,pay_nrem,debt_nrem,False,final,ci_lo,-0.4534603803601353,-0.30886078942005474,-0.5137071563038407,-0.12226168321136738,100
+evening,3,pay_nrem,debt_nrem,False,final,ci_hi,0.681850234042969,0.6442620677837227,0.3071796213572142,0.9271516812686169,100
+evening,3,pay_nrem,debt_nrem,False,final,p,0.6933706741390725,0.49358036150602724,0.16296395446206496,0.8783380417479723,100
+evening,3,pay_nrem,debt_nrem,False,final,animals_positive,4.0,4.59,3.0,6.0,100
+evening,3,pay_nrem,debt_nrem,False,final,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_nrem,debt_nrem,False,final,mean_x,-7.158349762660664,-7.392437928301018,-9.059584821434274,-6.182284095715481,100
+evening,3,pay_nrem,debt_nrem,False,final,mean_y,-11.120235760818709,-9.49990097274822,-10.243412327140248,-8.733681850401652,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,slope,0.3053874807638395,0.2587755154176461,0.036198119536768755,0.46366235521528787,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,ci_lo,-0.2754870253838461,-0.27046988851839054,-0.5484451790554024,-0.015175742632051448,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,ci_hi,0.8862619869115251,0.7880209193536828,0.4090234420545963,1.0674587894142669,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,p,0.3028098554184771,0.3747420966627805,0.05822990625742333,0.876362170217127,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,animals_positive,5.0,4.74,3.0,6.0,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,mean_x,-7.674583521093674,-7.316873038237833,-8.705677467903067,-6.104763403971876,100
+evening,3,pay_nrem,debt_nrem,False,pass2med,mean_y,-10.951314558756074,-10.052674408561984,-10.712158711293522,-9.213017520333207,100
+evening,3,pay_nrem,debt_nrem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_nrem,debt_nrem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_nrem,debt_nrem,True,final,slope,0.0125481953322509,-0.029445457221384263,-0.31101310300953505,0.2012709153690952,100
+evening,3,pay_nrem,debt_nrem,True,final,ci_lo,-0.2435496537608779,-0.32310637044267365,-0.5870144587141359,-0.029392116547412056,100
+evening,3,pay_nrem,debt_nrem,True,final,ci_hi,0.2686460444253797,0.26421545599990515,-0.06695533237330636,0.5127464003439938,100
+evening,3,pay_nrem,debt_nrem,True,final,p,0.9234938481049269,0.5013550437568864,0.00590324174755544,0.976403036763446,100
+evening,3,pay_nrem,debt_nrem,True,final,animals_positive,3.0,2.7,1.0,4.0,100
+evening,3,pay_nrem,debt_nrem,True,final,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_nrem,debt_nrem,True,final,mean_x,-7.158349762660664,-7.392437928301018,-9.059584821434274,-6.182284095715481,100
+evening,3,pay_nrem,debt_nrem,True,final,mean_y,-11.120235760818709,-9.49990097274822,-10.243412327140248,-8.733681850401652,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,slope,0.0924431930780043,0.06269678325839957,-0.154344676033019,0.37010242842449487,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,ci_lo,-0.1686456560832296,-0.21646456533834402,-0.46541819054156186,0.059967433247755296,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,ci_hi,0.3535320422392382,0.34185813185514324,0.08384443554633564,0.6881394749826788,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,p,0.4877070269605916,0.5227618214071491,0.012701497458780485,0.9829906739853775,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,animals_positive,4.0,3.46,2.0,6.0,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,mean_x,-7.674583521093674,-7.316873038237833,-8.705677467903067,-6.104763403971876,100
+evening,3,pay_nrem,debt_nrem,True,pass2med,mean_y,-10.951314558756074,-10.052674408561984,-10.712158711293522,-9.213017520333207,100
+evening,3,pay_rem,debt_rem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem,False,final,slope,0.0495014899451793,0.014476816378250686,-0.11167808848815866,0.11371081005934879,100
+evening,3,pay_rem,debt_rem,False,final,ci_lo,-0.0242204991288734,-0.08626401632751061,-0.28184213047524603,0.021506026326772842,100
+evening,3,pay_rem,debt_rem,False,final,ci_hi,0.1232234790192321,0.11521764908401196,0.015048846344063107,0.27343552858588166,100
+evening,3,pay_rem,debt_rem,False,final,p,0.1881603854119378,0.42125701387951464,0.013528742190088114,0.9087222539882234,100
+evening,3,pay_rem,debt_rem,False,final,animals_positive,5.0,3.42,1.0,5.0,100
+evening,3,pay_rem,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem,debt_rem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem,debt_rem,False,final,mean_y,-1.4604792958816597,-1.1393597770178874,-1.5997919129363447,-0.674753690032493,100
+evening,3,pay_rem,debt_rem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem,False,pass2med,slope,0.0892323352224467,0.012339095454709568,-0.11335817242971605,0.12955335418921882,100
+evening,3,pay_rem,debt_rem,False,pass2med,ci_lo,0.0150442376914607,-0.10208670095285394,-0.31013768922255636,0.04191281924216343,100
+evening,3,pay_rem,debt_rem,False,pass2med,ci_hi,0.1634204327534327,0.1267648918622731,0.004837296292139956,0.2831552486172524,100
+evening,3,pay_rem,debt_rem,False,pass2med,p,0.0184026481993009,0.40399326657429263,0.0028589892087655003,0.9164875893190467,100
+evening,3,pay_rem,debt_rem,False,pass2med,animals_positive,5.0,3.31,1.0,6.0,100
+evening,3,pay_rem,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem,debt_rem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem,debt_rem,False,pass2med,mean_y,-1.4019988809751092,-1.1525066117638845,-1.6045219614841983,-0.6326953409968636,100
+evening,3,pay_rem,debt_rem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem,True,final,slope,0.0385255742698268,-0.004436936894819481,-0.15675508390609894,0.13967659410715325,100
+evening,3,pay_rem,debt_rem,True,final,ci_lo,-0.0679926066856877,-0.12002334628814912,-0.32483544036179396,0.009368556680942207,100
+evening,3,pay_rem,debt_rem,True,final,ci_hi,0.1450437552253414,0.11114947249851015,-0.008478150978826832,0.3732026175013648,100
+evening,3,pay_rem,debt_rem,True,final,p,0.4783981902343045,0.419096426653671,0.011331490937514482,0.9707230936711928,100
+evening,3,pay_rem,debt_rem,True,final,animals_positive,4.0,2.86,0.4750000000000001,5.0,100
+evening,3,pay_rem,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem,debt_rem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem,debt_rem,True,final,mean_y,-1.4604792958816597,-1.1393597770178874,-1.5997919129363447,-0.674753690032493,100
+evening,3,pay_rem,debt_rem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem,True,pass2med,slope,0.0633062236258852,-0.007939357115649123,-0.1623814045372183,0.12181412426986135,100
+evening,3,pay_rem,debt_rem,True,pass2med,ci_lo,-0.0591815651835102,-0.12881726781844713,-0.35570727812675046,0.0037062763843600773,100
+evening,3,pay_rem,debt_rem,True,pass2med,ci_hi,0.1857940124352807,0.11293855358714888,-0.008093226558779752,0.29873474605050937,100
+evening,3,pay_rem,debt_rem,True,pass2med,p,0.3110687859361319,0.44947048232909753,0.014643119995199292,0.9627526888399389,100
+evening,3,pay_rem,debt_rem,True,pass2med,animals_positive,4.0,2.87,1.0,6.0,100
+evening,3,pay_rem,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem,debt_rem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem,debt_rem,True,pass2med,mean_y,-1.4019988809751092,-1.1525066117638845,-1.6045219614841983,-0.6326953409968636,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,slope,0.0495337565112614,0.013766273571218702,-0.09839714220832832,0.1120956162154626,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,ci_lo,-0.0253427139816533,-0.08542833363440326,-0.2637308126440164,0.031399838120137455,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,ci_hi,0.1244102270041762,0.11296088077684069,0.007424190110945649,0.2834011164443712,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,p,0.1947709345562214,0.42706014198321873,0.005634658236177236,0.951056408178739,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,animals_positive,5.0,2.62,1.0,4.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,animals,5.0,5.0,5.0,5.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,final,mean_y,-1.4604792958816597,-1.1393597770178874,-1.5997919129363447,-0.674753690032493,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,slope,0.0790213066732103,0.014755877938728219,-0.11004564860342356,0.136289182201461,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_lo,-0.0132855720394898,-0.09796330076710977,-0.2831864549075259,0.05188750225619635,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_hi,0.1713281853859106,0.1274750566445662,0.0033242546616690325,0.28912908456316905,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,p,0.0933725384118955,0.4188264148507061,0.0003244037852508425,0.885903701181278,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,animals_positive,4.0,2.75,0.0,5.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,animals,5.0,5.0,5.0,5.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_y,-1.4019988809751092,-1.1525066117638845,-1.6045219614841983,-0.6326953409968636,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,slope,0.015340458501109,-9.497437154592462e-05,-0.1552109641572942,0.13944608935812364,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,ci_lo,-0.0969726235162057,-0.11927600933371163,-0.3131190834130696,0.0058691184316884745,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,ci_hi,0.1276535405184237,0.11908606059061981,-0.0013451661081902537,0.3911470273842974,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,p,0.7889265889731749,0.45248430222400726,0.008304937354636688,0.9508324595771257,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,animals_positive,3.0,2.31,0.0,4.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,animals,5.0,5.0,5.0,5.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,final,mean_y,-1.4604792958816597,-1.1393597770178874,-1.5997919129363447,-0.674753690032493,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,slope,0.0465822845778105,-0.0003051505850537771,-0.156260376998093,0.1407393848280692,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_lo,-0.0959784595248602,-0.12345108391803336,-0.36922875648883785,0.011176921534641272,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_hi,0.1891430286804813,0.12284078274792583,-0.006511279402427167,0.33431181334250637,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,p,0.5218957160669484,0.4407486639454556,0.023235973267858298,0.9567363855635439,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,animals_positive,2.0,2.46,0.4750000000000001,5.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,animals,5.0,5.0,5.0,5.0,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_y,-1.4019988809751092,-1.1525066117638845,-1.6045219614841983,-0.6326953409968636,100
+evening,3,pay_rem_dur,debt_rem,False,final,n_windows,19.0,22.84,19.0,28.0,100
+evening,3,pay_rem_dur,debt_rem,False,final,clusters,7.0,7.33,6.0,9.0,100
+evening,3,pay_rem_dur,debt_rem,False,final,slope,1.18386709126926,-0.061239324635394735,-1.9342961233206435,1.6320178810178918,100
+evening,3,pay_rem_dur,debt_rem,False,final,ci_lo,-1.1118056483553032,-2.0586549507710616,-4.888731575518078,0.12276344690216999,100
+evening,3,pay_rem_dur,debt_rem,False,final,ci_hi,3.479539830893823,1.9361763015002722,-0.5174539822792953,5.29627176954784,100
+evening,3,pay_rem_dur,debt_rem,False,final,p,0.3121390941749653,0.4386423659467143,0.0015928589655769877,0.9142451891225534,100
+evening,3,pay_rem_dur,debt_rem,False,final,animals_positive,1.0,0.97,0.0,2.5249999999999915,100
+evening,3,pay_rem_dur,debt_rem,False,final,animals,1.0,1.91,0.0,4.0,100
+evening,3,pay_rem_dur,debt_rem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem_dur,debt_rem,False,final,mean_y,3.582153573544694,0.307971927937354,-11.098055114944,13.831111485215589,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,n_windows,21.0,27.08,23.475,31.0,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,clusters,7.0,8.21,7.0,9.0,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,slope,0.4443157691591793,-0.03842724160980375,-2.0256043974636486,1.5242212050348276,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,ci_lo,-2.2902609472978304,-1.7355509113080725,-4.352840253277231,0.26397750739921977,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,ci_hi,3.1788924856161893,1.6586964280884657,-0.2765187964694436,3.3453171571076266,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,p,0.7501389150854476,0.45050922047172226,0.0050934398060708905,0.959829427163462,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,animals_positive,0.0,1.6,0.0,3.5249999999999915,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,animals,1.0,3.09,2.0,4.0,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem_dur,debt_rem,False,pass2med,mean_y,8.830645698325394,-0.9892363778598594,-10.7587630135171,8.166848243970046,100
+evening,3,pay_rem_dur,debt_rem,True,final,n_windows,19.0,22.84,19.0,28.0,100
+evening,3,pay_rem_dur,debt_rem,True,final,clusters,7.0,7.33,6.0,9.0,100
+evening,3,pay_rem_dur,debt_rem,True,final,slope,0.9849031778891364,-0.1326868698311524,-2.174481341404022,2.788123004793923,100
+evening,3,pay_rem_dur,debt_rem,True,final,ci_lo,-0.4777291863312799,-2.3177429211660634,-6.290152978826171,0.04087705673361596,100
+evening,3,pay_rem_dur,debt_rem,True,final,ci_hi,2.447535542109553,2.0523691815037584,-0.6783352401106872,6.8914086561699355,100
+evening,3,pay_rem_dur,debt_rem,True,final,p,0.1869034997969525,0.4329961074916636,5.0579753465877985e-05,0.9585489471568025,100
+evening,3,pay_rem_dur,debt_rem,True,final,animals_positive,0.0,0.98,0.0,2.5249999999999915,100
+evening,3,pay_rem_dur,debt_rem,True,final,animals,1.0,1.91,0.0,4.0,100
+evening,3,pay_rem_dur,debt_rem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem_dur,debt_rem,True,final,mean_y,3.582153573544694,0.307971927937354,-11.098055114944,13.831111485215589,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,n_windows,21.0,27.08,23.475,31.0,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,clusters,7.0,8.21,7.0,9.0,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,slope,0.4987768776442073,0.07288965932334684,-1.8380034197739223,2.33013681272434,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,ci_lo,-2.2674965222418835,-1.8665325415803107,-5.061807693765324,0.7116716604408293,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,ci_hi,3.2650502775302983,2.0123118602270043,-0.24765447951505876,4.800499786160676,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,p,0.7237930034942439,0.4289933834335586,0.0022617753931337124,0.9462411614849038,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,animals_positive,0.0,1.55,0.0,3.0,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,animals,1.0,3.09,2.0,4.0,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem_dur,debt_rem,True,pass2med,mean_y,8.830645698325394,-0.9892363778598594,-10.7587630135171,8.166848243970046,100
+evening,3,pay_rem_n,debt_rem,False,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem_n,debt_rem,False,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem_n,debt_rem,False,final,slope,0.0061584715686382,0.023603411728996132,-0.08509570774045393,0.10925275047287168,100
+evening,3,pay_rem_n,debt_rem,False,final,ci_lo,-0.0533043084451805,-0.07323473085267368,-0.2304349103713512,0.021161196192745108,100
+evening,3,pay_rem_n,debt_rem,False,final,ci_hi,0.0656212515824569,0.12044155431066597,0.026897787352005705,0.2551940891020915,100
+evening,3,pay_rem_n,debt_rem,False,final,p,0.8391424177390353,0.4169698345916222,0.009675164064726205,0.9410185751229672,100
+evening,3,pay_rem_n,debt_rem,False,final,animals_positive,3.0,3.53,2.0,5.0,100
+evening,3,pay_rem_n,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem_n,debt_rem,False,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem_n,debt_rem,False,final,mean_y,-1.4616048380321018,-1.1913040153543377,-1.6924848236399836,-0.8165666787332839,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,slope,0.0600302616309698,0.021950293192151,-0.09820463706803975,0.14089073814434003,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,ci_lo,0.0063693561348657,-0.08622243137937194,-0.2481223584206858,0.052689172171798575,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,ci_hi,0.1136911671270739,0.130123017763674,0.004800726633828224,0.28354395185360104,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,p,0.0283358759956262,0.4366887018110107,0.0029453759282282175,0.9858721808383556,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,animals_positive,4.0,3.36,1.0,6.0,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem_n,debt_rem,False,pass2med,mean_y,-1.576958044132516,-1.232899286017007,-1.6391881393905352,-0.8283167183708003,100
+evening,3,pay_rem_n,debt_rem,True,final,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem_n,debt_rem,True,final,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem_n,debt_rem,True,final,slope,0.0024508072062248,0.001829278125640329,-0.14272096904667644,0.1260815105702535,100
+evening,3,pay_rem_n,debt_rem,True,final,ci_lo,-0.0850703919250992,-0.10828164235395449,-0.32742395213058545,0.025778688031834977,100
+evening,3,pay_rem_n,debt_rem,True,final,ci_hi,0.089972006337549,0.11194019860523514,-0.014612837742504282,0.3302260873306787,100
+evening,3,pay_rem_n,debt_rem,True,final,p,0.9562310575554354,0.43761432616834556,0.006049047163117377,0.9501086775154456,100
+evening,3,pay_rem_n,debt_rem,True,final,animals_positive,3.0,3.04,1.0,5.0,100
+evening,3,pay_rem_n,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem_n,debt_rem,True,final,mean_x,-3.635509059582378,-1.2567204336959639,-2.5220188313012004,-0.11520081287317874,100
+evening,3,pay_rem_n,debt_rem,True,final,mean_y,-1.4616048380321018,-1.1913040153543377,-1.6924848236399836,-0.8165666787332839,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,n_windows,44.0,44.0,44.0,44.0,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,clusters,9.0,9.0,9.0,9.0,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,slope,0.0341095834702322,-0.006961227348586324,-0.13942713217151576,0.09368686535541522,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,ci_lo,-0.0582628417018178,-0.11104899533287528,-0.2886648221509766,0.009329541792336318,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,ci_hi,0.1264820086422824,0.09712654063570261,-0.016403217036896567,0.23912898038385147,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,p,0.4692257956372833,0.4734084593703475,0.01649657919523972,0.9671320750570847,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,animals_positive,5.0,2.95,1.0,5.0,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,mean_x,-2.490540396019388,-1.3581341827311166,-2.500762061737819,-0.3031328984573711,100
+evening,3,pay_rem_n,debt_rem,True,pass2med,mean_y,-1.576958044132516,-1.232899286017007,-1.6391881393905352,-0.8283167183708003,100
+morning,1,pay_nrem,debt_nrem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_nrem,debt_nrem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_nrem,debt_nrem,False,final,slope,0.1300918565798962,0.10089124583103644,0.0328451031942572,0.15718917288548057,100
+morning,1,pay_nrem,debt_nrem,False,final,ci_lo,-0.0074393097200415,-0.0328943570827504,-0.11696937798074121,0.02994177422066297,100
+morning,1,pay_nrem,debt_nrem,False,final,ci_hi,0.2676230228798341,0.23467684874482336,0.1564602393002107,0.3276182522472184,100
+morning,1,pay_nrem,debt_nrem,False,final,p,0.0637468880850164,0.18226573612444288,0.00999217636447742,0.6238608618097973,100
+morning,1,pay_nrem,debt_nrem,False,final,animals_positive,5.0,4.75,3.0,6.0,100
+morning,1,pay_nrem,debt_nrem,False,final,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_nrem,debt_nrem,False,final,mean_x,-7.6033581485846895,-7.0557415596514295,-7.9956483704301915,-5.8042825092242385,100
+morning,1,pay_nrem,debt_nrem,False,final,mean_y,-6.674013139034337,-5.823433992499144,-6.897671906723221,-5.017109998643916,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,slope,0.1626990445726726,0.10658147815153471,0.04012911245901653,0.15348404690194953,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,ci_lo,0.0326082594566219,-0.026177394664446928,-0.0897575994569274,0.03984058277218122,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,ci_hi,0.2927898296887234,0.23934035096751644,0.1528805303104755,0.2981714280665179,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,p,0.0142363378732229,0.15213281772288878,0.005506909556039878,0.5066026947053603,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,animals_positive,5.0,5.0,4.0,6.0,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,mean_x,-9.154952059939818,-8.599879373574078,-9.36403352209846,-7.754702638318316,100
+morning,1,pay_nrem,debt_nrem,False,pass2med,mean_y,-7.611032660568337,-6.438857382461809,-7.4161783314139775,-5.531557509190614,100
+morning,1,pay_nrem,debt_nrem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_nrem,debt_nrem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_nrem,debt_nrem,True,final,slope,0.0454515062997167,0.0772396620315735,-0.03736006344113567,0.17274645909500774,100
+morning,1,pay_nrem,debt_nrem,True,final,ci_lo,-0.114678001235642,-0.09675738000772131,-0.23588918662561895,0.029868422119362043,100
+morning,1,pay_nrem,debt_nrem,True,final,ci_hi,0.2055810138350755,0.25123670407086834,0.10242551299631517,0.39785965621399283,100
+morning,1,pay_nrem,debt_nrem,True,final,p,0.5779918279906625,0.41100557024368756,0.016992868967811103,0.9248208861220888,100
+morning,1,pay_nrem,debt_nrem,True,final,animals_positive,5.0,3.74,2.0,6.0,100
+morning,1,pay_nrem,debt_nrem,True,final,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_nrem,debt_nrem,True,final,mean_x,-7.6033581485846895,-7.0557415596514295,-7.9956483704301915,-5.8042825092242385,100
+morning,1,pay_nrem,debt_nrem,True,final,mean_y,-6.674013139034337,-5.823433992499144,-6.897671906723221,-5.017109998643916,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,slope,0.1669319792495618,0.1290266615399331,0.01741204034823693,0.24050933958798745,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,ci_lo,-0.0050760443157313,-0.03252535439320199,-0.17384643267348907,0.10378489234993972,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,ci_hi,0.3389400028148551,0.2905786774730683,0.15091669721045847,0.43700792686688605,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,p,0.0571548867383579,0.18744801799781047,0.000512860444922055,0.7154315421934662,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,animals_positive,5.0,4.36,3.0,6.0,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,mean_x,-9.154952059939818,-8.599879373574078,-9.36403352209846,-7.754702638318316,100
+morning,1,pay_nrem,debt_nrem,True,pass2med,mean_y,-7.611032660568337,-6.438857382461809,-7.4161783314139775,-5.531557509190614,100
+morning,1,pay_rem,debt_rem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem,False,final,slope,0.0866244873009647,0.06033211220955814,-0.14932521826481018,0.3040525758914756,100
+morning,1,pay_rem,debt_rem,False,final,ci_lo,-0.0995384831216601,-0.1694484308815026,-0.4364097080815731,0.1091512518683088,100
+morning,1,pay_rem,debt_rem,False,final,ci_hi,0.2727874577235896,0.2901126553006189,0.05082204688860527,0.6167629822410065,100
+morning,1,pay_rem,debt_rem,False,final,p,0.3617680211963034,0.4514269649109892,0.001308422465570365,0.9656424508506697,100
+morning,1,pay_rem,debt_rem,False,final,animals_positive,5.0,3.52,1.0,6.0,100
+morning,1,pay_rem,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem,debt_rem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem,debt_rem,False,final,mean_y,-2.3201927398482365,-2.41514248101896,-3.1768836485642873,-1.7349398156238667,100
+morning,1,pay_rem,debt_rem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem,False,pass2med,slope,0.3973928986799859,0.032140747922769136,-0.21198639717263335,0.30037007490706324,100
+morning,1,pay_rem,debt_rem,False,pass2med,ci_lo,0.2300341025855119,-0.18400747653646168,-0.5299728860193105,0.1567169809495846,100
+morning,1,pay_rem,debt_rem,False,pass2med,ci_hi,0.5647516947744599,0.24828897238199996,-0.02849850454520365,0.5160334963309943,100
+morning,1,pay_rem,debt_rem,False,pass2med,p,3.2567073412118725e-06,0.4145454241427895,0.00038203935577466074,0.9787378416567973,100
+morning,1,pay_rem,debt_rem,False,pass2med,animals_positive,6.0,3.21,1.0,5.5249999999999915,100
+morning,1,pay_rem,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem,debt_rem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem,debt_rem,False,pass2med,mean_y,-2.8312980739635982,-2.3951049421605948,-3.0236276962449473,-1.7494333177086157,100
+morning,1,pay_rem,debt_rem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem,True,final,slope,0.0400816407350284,0.03599608137542409,-0.20439411561483592,0.3404544924888131,100
+morning,1,pay_rem,debt_rem,True,final,ci_lo,-0.1405677578573037,-0.22195889393296295,-0.5251332897779476,0.0904467711415352,100
+morning,1,pay_rem,debt_rem,True,final,ci_hi,0.2207310393273606,0.2939510566838111,0.034622205351427474,0.6407130694523009,100
+morning,1,pay_rem,debt_rem,True,final,p,0.6636585259855918,0.469270175779788,0.003735555693309305,0.9772185378962381,100
+morning,1,pay_rem,debt_rem,True,final,animals_positive,3.0,3.22,1.0,6.0,100
+morning,1,pay_rem,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem,debt_rem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem,debt_rem,True,final,mean_y,-2.3201927398482365,-2.41514248101896,-3.1768836485642873,-1.7349398156238667,100
+morning,1,pay_rem,debt_rem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem,True,pass2med,slope,0.3354649196054037,0.0047565691014870145,-0.2272217980330639,0.2745588081628764,100
+morning,1,pay_rem,debt_rem,True,pass2med,ci_lo,0.1752874828239741,-0.24253667420631625,-0.5878567470818588,0.07234036031971734,100
+morning,1,pay_rem,debt_rem,True,pass2med,ci_hi,0.4956423563868334,0.2520498124092903,-0.03363142402179416,0.5605311715697661,100
+morning,1,pay_rem,debt_rem,True,pass2med,p,4.046340271945148e-05,0.44183533902963673,0.0014750064003494073,0.9400996617508833,100
+morning,1,pay_rem,debt_rem,True,pass2med,animals_positive,5.0,3.05,1.0,5.5249999999999915,100
+morning,1,pay_rem,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem,debt_rem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem,debt_rem,True,pass2med,mean_y,-2.8312980739635982,-2.3951049421605948,-3.0236276962449473,-1.7494333177086157,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,slope,0.0647562143083329,0.04293397837346478,-0.19159246762594742,0.2877132954361699,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,ci_lo,-0.0606845165299337,-0.1991909668584781,-0.47651982773445273,0.06364727747300715,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,ci_hi,0.1901969451465997,0.2850589236054076,0.046974855656692106,0.6138996079195375,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,p,0.3116378212935951,0.4743056705648258,0.007227814748764351,0.9734759582026865,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,animals_positive,3.0,2.85,1.0,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,animals,5.0,5.0,5.0,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,final,mean_y,-2.3201927398482365,-2.41514248101896,-3.1768836485642873,-1.7349398156238667,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,slope,0.3741621934663461,0.013656413858572178,-0.2246881799125721,0.2862081129810548,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_lo,0.1675104245431055,-0.2117988190076389,-0.568459811275886,0.13686665215641036,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_hi,0.5808139623895867,0.23911164672478324,-0.019850861575515674,0.48529148292759994,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,p,0.0003871429171218,0.4283185781929907,0.0013987129971103523,0.9758558119363706,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,animals_positive,5.0,2.61,0.0,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,animals,5.0,5.0,5.0,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_y,-2.8312980739635982,-2.3951049421605948,-3.0236276962449473,-1.7494333177086157,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,slope,0.0402892226261214,0.02818336990349003,-0.20889962189590014,0.3323718944768427,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,ci_lo,-0.1486695033569319,-0.2310206781758019,-0.5369194758542997,0.0682080923931428,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,ci_hi,0.2292479486091748,0.2873874179827819,0.015652604684234014,0.640296820025874,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,p,0.6760218819906376,0.4771216517130381,0.004082972865895638,0.975131044450425,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,animals_positive,3.0,2.73,1.0,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,animals,5.0,5.0,5.0,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,final,mean_y,-2.3201927398482365,-2.41514248101896,-3.1768836485642873,-1.7349398156238667,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,slope,0.3204788447176717,0.006663654034813892,-0.2244726437192556,0.30219974612823325,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_lo,0.1285914004319189,-0.2432340230995932,-0.6057039190047778,0.08825364433242087,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_hi,0.5123662890034244,0.2565613311692209,-0.0074163152561487235,0.5459083827066854,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,p,0.0010625682371087,0.4488776452480222,0.0029106810382907525,0.9616414700059549,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,animals_positive,3.0,2.49,0.4750000000000001,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,animals,5.0,5.0,5.0,5.0,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_y,-2.8312980739635982,-2.3951049421605948,-3.0236276962449473,-1.7494333177086157,100
+morning,1,pay_rem_dur,debt_rem,False,final,n_windows,47.0,46.38,44.0,49.0,100
+morning,1,pay_rem_dur,debt_rem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_dur,debt_rem,False,final,slope,-3.5401655957545843,0.011192019551127964,-2.8576887747759425,2.772272420976158,100
+morning,1,pay_rem_dur,debt_rem,False,final,ci_lo,-8.599426130917514,-2.6785583537154163,-6.675312316493218,0.39897233699829737,100
+morning,1,pay_rem_dur,debt_rem,False,final,ci_hi,1.5190949394083448,2.700942392817672,-0.6252039303323869,6.587849189610716,100
+morning,1,pay_rem_dur,debt_rem,False,final,p,0.1702301505437736,0.45183403571298825,0.003925209275169,0.9723547132432072,100
+morning,1,pay_rem_dur,debt_rem,False,final,animals_positive,2.0,3.09,1.0,5.5249999999999915,100
+morning,1,pay_rem_dur,debt_rem,False,final,animals,6.0,5.94,5.0,6.0,100
+morning,1,pay_rem_dur,debt_rem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem_dur,debt_rem,False,final,mean_y,8.910997137399855,1.3937952478200024,-7.617793543707024,12.195830120286159,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,n_windows,48.0,47.85,45.475,49.0,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,slope,0.8970309869763631,-0.041903986546481684,-2.2260105368673067,2.476954317672266,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,ci_lo,-5.168265676177202,-2.3194648701964358,-5.664503535387702,0.2694839329885632,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,ci_hi,6.962327650129928,2.235656897103472,-0.23643334318414674,5.251441843878863,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,p,0.7719155817925829,0.4839546162715168,0.008884145038551438,0.9598199885892931,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,animals_positive,4.0,3.0,1.0,5.0,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,animals,6.0,5.96,5.0,6.0,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem_dur,debt_rem,False,pass2med,mean_y,6.938329944040582,1.223606901097294,-7.3410885879363175,11.378741116837169,100
+morning,1,pay_rem_dur,debt_rem,True,final,n_windows,47.0,46.38,44.0,49.0,100
+morning,1,pay_rem_dur,debt_rem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_dur,debt_rem,True,final,slope,-2.9094490567690854,0.06303929612349381,-3.551262425093123,4.475574277073739,100
+morning,1,pay_rem_dur,debt_rem,True,final,ci_lo,-8.220062340364843,-3.212772501100823,-7.477434203435203,1.0021103670425175,100
+morning,1,pay_rem_dur,debt_rem,True,final,ci_hi,2.401164226826672,3.338851093347811,-1.011862873440646,8.571644035717124,100
+morning,1,pay_rem_dur,debt_rem,True,final,p,0.2829225591851592,0.4245829090771579,0.00187298673520096,0.9453531996333572,100
+morning,1,pay_rem_dur,debt_rem,True,final,animals_positive,2.0,2.93,1.0,5.5249999999999915,100
+morning,1,pay_rem_dur,debt_rem,True,final,animals,6.0,5.94,5.0,6.0,100
+morning,1,pay_rem_dur,debt_rem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem_dur,debt_rem,True,final,mean_y,8.910997137399855,1.3937952478200024,-7.617793543707024,12.195830120286159,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,n_windows,48.0,47.85,45.475,49.0,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,slope,0.3397197983199442,0.10202535380676771,-2.6182867126623135,2.597795411134644,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,ci_lo,-7.946425095195249,-2.644306758336435,-6.211677159141343,0.1611409329184763,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,ci_hi,8.625864691835137,2.8483574659499693,-0.191816730139469,6.151142857530776,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,p,0.9359543979427504,0.489163664198759,0.024233795437614017,0.9785575653420472,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,animals_positive,4.0,2.96,1.0,5.0,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,animals,6.0,5.96,5.0,6.0,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem_dur,debt_rem,True,pass2med,mean_y,6.938329944040582,1.223606901097294,-7.3410885879363175,11.378741116837169,100
+morning,1,pay_rem_n,debt_rem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem_n,debt_rem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_n,debt_rem,False,final,slope,0.1270784645562207,0.046932590239635606,-0.1356340517076436,0.20970102663311793,100
+morning,1,pay_rem_n,debt_rem,False,final,ci_lo,-0.0969101090019647,-0.11496793817169468,-0.35649808102291336,0.05582470322395935,100
+morning,1,pay_rem_n,debt_rem,False,final,ci_hi,0.3510670381144062,0.2088331186509659,0.047774928093843816,0.4174703384932568,100
+morning,1,pay_rem_n,debt_rem,False,final,p,0.2661498215573329,0.41924390041319065,0.0021056600278504256,0.9852709427451258,100
+morning,1,pay_rem_n,debt_rem,False,final,animals_positive,4.0,3.29,1.0,5.0,100
+morning,1,pay_rem_n,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem_n,debt_rem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem_n,debt_rem,False,final,mean_y,-1.8764448634196624,-1.9532716628702482,-2.4960250198386733,-1.400201035447083,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,slope,0.2629554556299658,0.027870686057826922,-0.1457779198760255,0.29096444111634134,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,ci_lo,0.1479592171026955,-0.1325166371228304,-0.3815064906108393,0.13086067378181118,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,ci_hi,0.3779516941572362,0.18825800923848424,0.000877614653295446,0.4491369551243837,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,p,7.403696839332359e-06,0.42996310254733977,0.00036557316392860756,0.9834814097520699,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,animals_positive,5.0,3.3,0.0,6.0,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem_n,debt_rem,False,pass2med,mean_y,-2.395113741236965,-1.983978280265997,-2.4229040084828473,-1.4960055349768278,100
+morning,1,pay_rem_n,debt_rem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem_n,debt_rem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_n,debt_rem,True,final,slope,0.0635626740240471,0.031342736488601364,-0.1542416109539034,0.20010005877823162,100
+morning,1,pay_rem_n,debt_rem,True,final,ci_lo,-0.1687465398920198,-0.15357914891593621,-0.3693521582518829,0.05877576975517246,100
+morning,1,pay_rem_n,debt_rem,True,final,ci_hi,0.2958718879401142,0.21626462189313894,0.007755314796484482,0.42558600103579836,100
+morning,1,pay_rem_n,debt_rem,True,final,p,0.5917716942707001,0.471544271423558,0.0017113025068739402,0.9840840830694414,100
+morning,1,pay_rem_n,debt_rem,True,final,animals_positive,3.0,3.22,1.0,5.0,100
+morning,1,pay_rem_n,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem_n,debt_rem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,1,pay_rem_n,debt_rem,True,final,mean_y,-1.8764448634196624,-1.9532716628702482,-2.4960250198386733,-1.400201035447083,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,slope,0.1824778557047403,0.003094342047931466,-0.18419186400471987,0.23260603952278885,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,ci_lo,0.0288929538903089,-0.17362277506161264,-0.4120061831767014,0.10709992078803357,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,ci_hi,0.3360627575191717,0.17981145915747554,-0.06546668799186477,0.40968653404106387,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,p,0.0198760465078582,0.41653852862199137,8.971523734121159e-05,0.9354716918535471,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,animals_positive,4.0,3.22,1.0,5.5249999999999915,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,1,pay_rem_n,debt_rem,True,pass2med,mean_y,-2.395113741236965,-1.983978280265997,-2.4229040084828473,-1.4960055349768278,100
+morning,3,pay_nrem,debt_nrem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_nrem,debt_nrem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_nrem,debt_nrem,False,final,slope,0.1677751108122845,0.18395625712298658,0.02120487950054557,0.3044705392551253,100
+morning,3,pay_nrem,debt_nrem,False,final,ci_lo,-0.0486599991975517,0.026047156480630093,-0.16272709310171796,0.17176946352891198,100
+morning,3,pay_nrem,debt_nrem,False,final,ci_hi,0.3842102208221209,0.34186535776534316,0.16616599172452828,0.4859387080110225,100
+morning,3,pay_nrem,debt_nrem,False,final,p,0.1286831496609131,0.09570315397005089,1.1952192142727502e-06,0.7393755205644725,100
+morning,3,pay_nrem,debt_nrem,False,final,animals_positive,5.0,4.88,3.0,6.0,100
+morning,3,pay_nrem,debt_nrem,False,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_nrem,debt_nrem,False,final,mean_x,-7.6033581485846895,-7.0557415596514295,-7.9956483704301915,-5.8042825092242385,100
+morning,3,pay_nrem,debt_nrem,False,final,mean_y,-3.6394313898200834,-4.383731312707104,-5.998887873169835,-2.869988607185072,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,slope,0.3182590780896108,0.19469909114106718,0.08139977489879206,0.31986926072619337,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,ci_lo,0.1808506637772715,0.043613669412627856,-0.10837206749469362,0.18047435542198875,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,ci_hi,0.45566749240195,0.34578451286950646,0.20020356036693848,0.5106488155970998,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,p,5.636670029819079e-06,0.05430118782499829,1.7863516761680238e-06,0.39617885461335894,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,animals_positive,6.0,5.03,3.0,6.0,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,mean_x,-9.154952059939818,-8.599879373574078,-9.36403352209846,-7.754702638318316,100
+morning,3,pay_nrem,debt_nrem,False,pass2med,mean_y,-5.279955109119666,-5.354441311472525,-6.687557104826479,-4.092649943917999,100
+morning,3,pay_nrem,debt_nrem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_nrem,debt_nrem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_nrem,debt_nrem,True,final,slope,0.0860767647907205,0.09293362584654828,-0.14159002930013498,0.2726541548404462,100
+morning,3,pay_nrem,debt_nrem,True,final,ci_lo,-0.1484262768105724,-0.15348979028974719,-0.4088753905543246,0.06293125203929564,100
+morning,3,pay_nrem,debt_nrem,True,final,ci_hi,0.3205798063920135,0.33935704198284383,0.06238136428347373,0.5996048029643521,100
+morning,3,pay_nrem,debt_nrem,True,final,p,0.471879076266361,0.42649513566085545,0.0075900606937953,0.9687831262849937,100
+morning,3,pay_nrem,debt_nrem,True,final,animals_positive,4.0,3.68,2.0,5.5249999999999915,100
+morning,3,pay_nrem,debt_nrem,True,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_nrem,debt_nrem,True,final,mean_x,-7.6033581485846895,-7.0557415596514295,-7.9956483704301915,-5.8042825092242385,100
+morning,3,pay_nrem,debt_nrem,True,final,mean_y,-3.6394313898200834,-4.383731312707104,-5.998887873169835,-2.869988607185072,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,slope,0.2376779472951976,0.15395925929057128,-0.04219258716120367,0.35930400326225365,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,ci_lo,0.0705751023849914,-0.09205700023684667,-0.33095714127763737,0.13498641478205858,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,ci_hi,0.4047807922054037,0.3999755188179892,0.1428237907977253,0.6356340144675581,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,p,0.0053076209535825,0.3156292972975869,0.0002078818400611325,0.9079973044237714,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,animals_positive,5.0,4.1,2.0,6.0,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,mean_x,-9.154952059939818,-8.599879373574078,-9.36403352209846,-7.754702638318316,100
+morning,3,pay_nrem,debt_nrem,True,pass2med,mean_y,-5.279955109119666,-5.354441311472525,-6.687557104826479,-4.092649943917999,100
+morning,3,pay_rem,debt_rem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem,False,final,slope,0.1737808680152027,0.08020816937664393,-0.3702776299049607,0.555133857672563,100
+morning,3,pay_rem,debt_rem,False,final,ci_lo,-0.5678455674574845,-0.3949484385186179,-0.9135244711215911,0.1458465220474891,100
+morning,3,pay_rem,debt_rem,False,final,ci_hi,0.91540730348789,0.5553647772719059,0.059276551380337855,1.133678723728889,100
+morning,3,pay_rem,debt_rem,False,final,p,0.6460427382320102,0.47687427642118896,0.003981633296640976,0.9789318826257721,100
+morning,3,pay_rem,debt_rem,False,final,animals_positive,4.0,3.3,1.0,5.0,100
+morning,3,pay_rem,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem,debt_rem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem,debt_rem,False,final,mean_y,0.2919189374696443,-0.7381908137988978,-1.8994626851744285,0.49044363912716704,100
+morning,3,pay_rem,debt_rem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem,False,pass2med,slope,0.7432561147690552,0.07475028948101123,-0.37813631232366923,0.5954803207346863,100
+morning,3,pay_rem,debt_rem,False,pass2med,ci_lo,0.4608569813887175,-0.3736418982931777,-1.0338247200948996,0.22941116071974432,100
+morning,3,pay_rem,debt_rem,False,pass2med,ci_hi,1.0256552481493928,0.5231424772552002,-0.008972954878689742,1.1453990710365958,100
+morning,3,pay_rem,debt_rem,False,pass2med,p,2.489394660443325e-07,0.40622835492305703,0.0007729866180391251,0.9719769983264788,100
+morning,3,pay_rem,debt_rem,False,pass2med,animals_positive,4.0,3.5,1.0,6.0,100
+morning,3,pay_rem,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem,debt_rem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem,debt_rem,False,pass2med,mean_y,-0.8036946241712977,-0.6960756530666344,-1.583651729307574,0.45257322070362505,100
+morning,3,pay_rem,debt_rem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem,True,final,slope,-0.0621579419879503,0.02844108305802923,-0.48065171171732496,0.48531201637837124,100
+morning,3,pay_rem,debt_rem,True,final,ci_lo,-0.8186780398546498,-0.48554044988800193,-1.1099603844616155,-0.007229766164481188,100
+morning,3,pay_rem,debt_rem,True,final,ci_hi,0.6943621558787492,0.5424226160040604,-0.006824563244565658,1.272507358734025,100
+morning,3,pay_rem,debt_rem,True,final,p,0.8720646749065314,0.4889113083400409,0.020891944108228373,0.9700205565038728,100
+morning,3,pay_rem,debt_rem,True,final,animals_positive,2.0,3.07,1.0,5.0,100
+morning,3,pay_rem,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem,debt_rem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem,debt_rem,True,final,mean_y,0.2919189374696443,-0.7381908137988978,-1.8994626851744285,0.49044363912716704,100
+morning,3,pay_rem,debt_rem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem,True,pass2med,slope,0.9606618505759978,0.013335154989713265,-0.5086890334045592,0.5389988092900602,100
+morning,3,pay_rem,debt_rem,True,pass2med,ci_lo,0.4702363005522422,-0.49545620977986005,-1.2115972639596093,0.2169369962138742,100
+morning,3,pay_rem,debt_rem,True,pass2med,ci_hi,1.4510874005997534,0.5221265197592865,-0.04705181497383777,1.282190393363081,100
+morning,3,pay_rem,debt_rem,True,pass2med,p,0.000123414475284,0.40817945186397414,0.0024156173353193852,0.9897539178088407,100
+morning,3,pay_rem,debt_rem,True,pass2med,animals_positive,5.0,3.06,1.0,6.0,100
+morning,3,pay_rem,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem,debt_rem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem,debt_rem,True,pass2med,mean_y,-0.8036946241712977,-0.6960756530666344,-1.583651729307574,0.45257322070362505,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,slope,0.1192429200140253,0.02706054797840383,-0.4263541568119314,0.5309238283842779,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,ci_lo,-0.4418498900933807,-0.47910933555990254,-0.9946176337757867,0.038688921364466916,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,ci_hi,0.6803357301214314,0.5332304315167101,-0.006611947243676985,1.166079837132086,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,p,0.6770224276854405,0.5202241868644005,0.016195605779130207,0.9842953963289146,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,animals_positive,3.0,2.57,0.0,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,animals,5.0,5.0,5.0,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,final,mean_y,0.2919189374696443,-0.7381908137988978,-1.8994626851744285,0.49044363912716704,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,slope,0.5940593908828447,0.019100172081017948,-0.4889535718567215,0.53228279601704,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_lo,-0.0091964410698892,-0.4456822013935801,-1.0959175943209125,0.15251044842196096,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,ci_hi,1.1973152228355786,0.48388254555561594,-0.016713433639811048,1.0042225355655674,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,p,0.0535963111428382,0.3930397885631337,0.004261559282215165,0.9459829448001731,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,animals_positive,2.0,2.71,1.0,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,animals,5.0,5.0,5.0,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem,debt_rem + debt_nrem,False,pass2med,mean_y,-0.8036946241712977,-0.6960756530666344,-1.583651729307574,0.45257322070362505,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,slope,-0.0550977329770654,0.013544062707600118,-0.5049184896098462,0.4535727560172147,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,ci_lo,-0.7969840701106032,-0.49740719537087763,-1.1179709145801027,0.0035679482849891335,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,ci_hi,0.6867886041564724,0.5244953207860779,-0.018844208646503123,1.188898324360869,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,p,0.8842681116232886,0.5118170252781692,0.026135840935165796,0.9706693380022804,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,animals_positive,3.0,2.47,0.4750000000000001,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,animals,5.0,5.0,5.0,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,final,mean_y,0.2919189374696443,-0.7381908137988978,-1.8994626851744285,0.49044363912716704,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,slope,0.8929477541924431,0.01422748145582211,-0.5540935809521013,0.5846475062198193,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_lo,0.287855613300527,-0.5058487366361489,-1.253460119413084,0.22264853985277566,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,ci_hi,1.4980398950843592,0.5343036995477931,-0.0437620290194473,1.3241101297413027,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,p,0.0038235726718774,0.41147670645791345,0.0008562276349969751,0.9903677145612872,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,animals_positive,5.0,2.38,0.0,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,animals,5.0,5.0,5.0,5.0,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem,debt_rem + debt_nrem,True,pass2med,mean_y,-0.8036946241712977,-0.6960756530666344,-1.583651729307574,0.45257322070362505,100
+morning,3,pay_rem_dur,debt_rem,False,final,n_windows,49.0,48.96,48.0,49.0,100
+morning,3,pay_rem_dur,debt_rem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_dur,debt_rem,False,final,slope,-0.2615320118707673,-0.082949621717438,-1.1505053014301863,0.7508666492922816,100
+morning,3,pay_rem_dur,debt_rem,False,final,ci_lo,-2.063027887891232,-1.1795844635874897,-2.56268533010302,-0.0448204380860661,100
+morning,3,pay_rem_dur,debt_rem,False,final,ci_hi,1.539963864149697,1.0136852201526139,-0.07072273860026705,2.1660363691756928,100
+morning,3,pay_rem_dur,debt_rem,False,final,p,0.7759984188912652,0.53604457233022,0.02417699451855574,0.9833365652841101,100
+morning,3,pay_rem_dur,debt_rem,False,final,animals_positive,2.0,3.01,1.0,5.0,100
+morning,3,pay_rem_dur,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_dur,debt_rem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem_dur,debt_rem,False,final,mean_y,1.5499973822746604,0.13429690040827588,-3.167505585132439,3.2816841037442517,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,slope,0.8456978760517736,-0.06280914973645495,-1.170801341818665,1.1068071624553353,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,ci_lo,-0.2747908450379303,-1.081426376136216,-2.479515938026156,0.18504857897512603,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,ci_hi,1.9661865971414776,0.9558080766633058,-0.10230909993017313,2.772797082029782,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,p,0.1390605310707892,0.3956182164605543,0.0047838264247346855,0.9544995775553055,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,animals_positive,3.0,2.82,0.0,5.0,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem_dur,debt_rem,False,pass2med,mean_y,0.2946791837812553,-0.13521249665033694,-3.146222410504898,2.9527276055945326,100
+morning,3,pay_rem_dur,debt_rem,True,final,n_windows,49.0,48.96,48.0,49.0,100
+morning,3,pay_rem_dur,debt_rem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_dur,debt_rem,True,final,slope,-0.0026791262583883,-0.03413378408428906,-1.2562070650201131,1.0599931939475715,100
+morning,3,pay_rem_dur,debt_rem,True,final,ci_lo,-1.1852492791631195,-1.331392273216419,-2.7863495378319967,-0.09295320467669603,100
+morning,3,pay_rem_dur,debt_rem,True,final,ci_hi,1.179891026646343,1.2631247050478407,-0.027400659606392735,2.7637757751777694,100
+morning,3,pay_rem_dur,debt_rem,True,final,p,0.9964571481436616,0.5195455968290483,0.03405986370030395,0.9826585024093436,100
+morning,3,pay_rem_dur,debt_rem,True,final,animals_positive,4.0,2.99,1.0,5.0,100
+morning,3,pay_rem_dur,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_dur,debt_rem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem_dur,debt_rem,True,final,mean_y,1.5499973822746604,0.13429690040827588,-3.167505585132439,3.2816841037442517,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,slope,2.2222444408195963,-0.07405298025891377,-1.2941354183881182,1.3744634001503202,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,ci_lo,0.7273277425619606,-1.2941374249066921,-3.092608537611679,0.39919098877096826,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,ci_hi,3.717161139077232,1.1460314643888647,-0.25491342369345893,2.7910814128927,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,p,0.0035734114394982,0.42607520817434386,0.0009616229077281775,0.9877006045971447,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,animals_positive,4.0,2.83,0.4750000000000001,5.0,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem_dur,debt_rem,True,pass2med,mean_y,0.2946791837812553,-0.13521249665033694,-3.146222410504898,2.9527276055945326,100
+morning,3,pay_rem_n,debt_rem,False,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem_n,debt_rem,False,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_n,debt_rem,False,final,slope,0.130196478152514,0.06262093984220386,-0.23490157084794916,0.42044096694690153,100
+morning,3,pay_rem_n,debt_rem,False,final,ci_lo,-0.5826204987107138,-0.2659581307793639,-0.650365261752716,0.10887498883514252,100
+morning,3,pay_rem_n,debt_rem,False,final,ci_hi,0.843013455015742,0.3912000104637717,-0.011117664097236692,0.7941989312844915,100
+morning,3,pay_rem_n,debt_rem,False,final,p,0.7203517855446606,0.4650039244530442,0.007235287121215088,0.928718008487447,100
+morning,3,pay_rem_n,debt_rem,False,final,animals_positive,4.0,3.28,1.0,5.5249999999999915,100
+morning,3,pay_rem_n,debt_rem,False,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_n,debt_rem,False,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem_n,debt_rem,False,final,mean_y,0.3405694457900397,-0.4939816298988665,-1.2488964660554467,0.22416526566556483,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,slope,0.438022007599621,0.07956785287252952,-0.2555315423614399,0.4495598829596488,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,ci_lo,0.0181023947773129,-0.25792815159954324,-0.7127227511879589,0.088367384179143,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,ci_hi,0.8579416204219291,0.41706385734460233,0.05817197537206271,0.8297247425928947,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,p,0.0409084758768423,0.4576992255576593,0.004165880374223255,0.9592433701316357,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,animals_positive,4.0,3.54,1.475,6.0,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem_n,debt_rem,False,pass2med,mean_y,-0.5951360896350791,-0.50197389318686,-1.307092762825543,0.29939556800361566,100
+morning,3,pay_rem_n,debt_rem,True,final,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem_n,debt_rem,True,final,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_n,debt_rem,True,final,slope,-0.1457927886699075,0.019933271062697603,-0.34795688844189265,0.2826138483565841,100
+morning,3,pay_rem_n,debt_rem,True,final,ci_lo,-0.7402279926866648,-0.3251742225969501,-0.7108496884894705,0.010815364628938449,100
+morning,3,pay_rem_n,debt_rem,True,final,ci_hi,0.4486424153468498,0.3650407647223454,-0.07880567084450696,0.7327365256002741,100
+morning,3,pay_rem_n,debt_rem,True,final,p,0.6307254114078218,0.5051273701594323,0.004735445675163988,0.9673007714841989,100
+morning,3,pay_rem_n,debt_rem,True,final,animals_positive,3.0,2.93,0.0,5.0,100
+morning,3,pay_rem_n,debt_rem,True,final,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_n,debt_rem,True,final,mean_x,0.1373192657946537,-0.9349143923847646,-1.69209699255979,-0.28534711361459,100
+morning,3,pay_rem_n,debt_rem,True,final,mean_y,0.3405694457900397,-0.4939816298988665,-1.2488964660554467,0.22416526566556483,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,n_windows,49.0,49.0,49.0,49.0,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,clusters,12.0,12.0,12.0,12.0,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,slope,0.2378426351690907,0.029582004676848975,-0.3716036469352117,0.45428376595356007,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,ci_lo,-0.2337527110032164,-0.331127713421108,-0.8228561522293153,0.15935111914377909,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,ci_hi,0.7094379813413979,0.3902917227748059,-0.06517786328503633,0.9292377898677384,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,p,0.3229171771573158,0.3962231416237932,0.001304193898670415,0.9071323227268197,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,animals_positive,4.0,3.13,0.0,6.0,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,animals,6.0,6.0,6.0,6.0,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,mean_x,-0.6946508796165753,-0.883303643021587,-1.4198628347160647,-0.19685535586363728,100
+morning,3,pay_rem_n,debt_rem,True,pass2med,mean_y,-0.5951360896350791,-0.50197389318686,-1.307092762825543,0.29939556800361566,100

@@ -1,0 +1,7 @@
+scores,this,A4_baseline,rows_A4,rows_this,rows_matched,max_abs_d_slope,max_abs_d_ci,max_abs_d_p,n_windows_equal,animal_signs_equal
+FINAL,"numpy engine, phase x day",phase x day (plan),40,40,40,3.4705571749782393e-13,4.902744876744691e-13,1.5576429035490946e-12,True,True
+FINAL,"statsmodels engine, phase x day",phase x day (plan),40,40,40,1.5298873279334657e-13,2.4358293160275934e-13,9.836575998178887e-14,True,True
+FINAL,"numpy engine, common day",common linear day (Phase 2),40,40,40,4.377331830340836e-13,6.075695502261169e-13,9.68358726538554e-12,True,True
+pass2med,"numpy engine, phase x day",phase x day (plan),40,40,40,7.871064910958125e-13,8.637118797949483e-13,1.8470884544097288e-12,True,True
+pass2med,"statsmodels engine, phase x day",phase x day (plan),40,40,40,4.0611958240788226e-13,1.0160761121369433e-12,2.7466917629226373e-13,True,True
+pass2med,"numpy engine, common day",common linear day (Phase 2),40,40,40,4.2388315080188477e-13,6.45039577307216e-13,8.214540159201533e-13,True,True
