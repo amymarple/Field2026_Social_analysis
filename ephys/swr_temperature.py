@@ -17,6 +17,7 @@ leave-one-animal-out; hour profile; verdict = Established / Candidate / No (see 
   python ephys/swr_temperature.py run [--swr-root …] [--states-root …]
   python ephys/swr_temperature.py rate       (Amendment 2: day / night ripple RATE per period, from the saved bins)
   python ephys/swr_temperature.py extremes   (rate at the hottest vs the coldest time of each day)
+  python ephys/swr_temperature.py figure     (NREM ripple rate per day and within a day, with temperature)
   python ephys/swr_temperature.py --selftest
 """
 from __future__ import annotations
@@ -952,6 +953,116 @@ def extremes(a):
     print("\n".join(L[L.index("## Answer"):L.index("## Definitions")]))
 
 
+# ------------------------------------------------------------------ figure: rate per day and within a day (user 10-09)
+def rate_day_hour_figure(a):
+    """NREM ripple rate (kept events / NREM minute) per biological day (day and night periods) and by clock hour, with the
+    outdoor temperature; from the saved 30-min bins (tiers validated / good, to 09-11 19:40, the analysis' exclusions)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
+    from _common import figure_dir
+    from sleep_quant import sun_times
+    rd = report_dir(COHORT)
+    man = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
+    run = Path(man["run_dir"])
+    b = pd.read_csv(run / "bins_30min.csv.gz", parse_dates=["b0"])
+    wx = pd.read_csv(run / "weather_anomaly.csv.gz", parse_dates=["t"]).dropna(subset=["temp_C"])
+    hp = pd.read_csv(rd / f"ephys_spikes_swr_temperature_hour_profile_{COHORT}.csv")
+    per = periods(b, hp)
+    per["mid"] = pd.to_datetime("2026-" + per.bio) + np.where(per.phase == "day", pd.Timedelta(hours=13), pd.Timedelta(hours=25))
+    animals = sorted(b.animal.unique())
+    cmap = plt.get_cmap("tab10")
+    colr = {an: cmap(i) for i, an in enumerate(animals)}
+    fig = plt.figure(figsize=(14, 10))
+    gs = fig.add_gridspec(3, 2, height_ratios=[1.3, 0.7, 1.3], hspace=0.38, wspace=0.22)
+    ax1 = fig.add_subplot(gs[0, :])
+    ax2 = fig.add_subplot(gs[1, :], sharex=ax1)
+    # night shading on the date axes
+    d0, d1 = pd.Timestamp("2026-08-31"), pd.Timestamp("2026-09-12")
+    for D in pd.date_range(d0 - pd.Timedelta(days=1), d1):
+        ss = pd.Timestamp(sun_times(D.date())[1])
+        sr2 = pd.Timestamp(sun_times((D + pd.Timedelta(days=1)).date())[0])
+        for ax in (ax1, ax2):
+            ax.axvspan(ss, sr2, color="0.85", alpha=0.5, lw=0)
+    for an in animals:
+        g = per[per.animal == an].sort_values("mid")
+        for ab, gg in g.groupby("ab"):
+            ax1.plot(gg.mid, gg.R, "-", color=colr[an], lw=1, alpha=0.7)
+            dd = gg[gg.phase == "day"]
+            nn = gg[gg.phase == "night"]
+            ax1.plot(dd.mid, dd.R, "o", color=colr[an], ms=5, label=an if ab == g.ab.iloc[0] else None)
+            ax1.plot(nn.mid, nn.R, "o", mfc="white", mec=colr[an], ms=5)
+        for ab in g.ab.unique()[1:]:  # probe-block change: a short tick at the bottom in the animal's colour
+            ax1.plot([g[g.ab == ab].mid.min()] * 2, [16, 22], color=colr[an], lw=2)
+    ax1.set_ylabel("NREM ripple rate\n(events / NREM min)", fontsize=9)
+    ax1.set_title("A  Per day: each animal's day period (filled, sunrise-sunset) and night period (open, sunset-sunrise); "
+                  "lines join one probe block, a coloured tick at the bottom = new block; grey = night", fontsize=9, loc="left")
+    ax1.legend(fontsize=8, ncol=6, frameon=False, loc="upper left")
+    ax1.set_ylim(15, None)
+    ax2.plot(wx.t, wx.temp_C, color="0.35", lw=0.7)
+    ax2.set_ylabel("outdoor T (degC)", fontsize=9)
+    ax2.set_title("B  Outdoor temperature (on-site weather station)", fontsize=9, loc="left")
+    ax2.set_xlim(d0 + pd.Timedelta(hours=12), pd.Timestamp("2026-09-11 20:00"))
+    ax2.xaxis.set_major_locator(mdates.DayLocator())
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
+    plt.setp(ax1.get_xticklabels(), visible=False)
+    for ax in (ax1, ax2):
+        ax.tick_params(labelsize=8)
+    # within a day: absolute per animal, and the shared (block-demeaned) profile with temperature
+    ax3 = fig.add_subplot(gs[2, 0])
+    ax4 = fig.add_subplot(gs[2, 1])
+    b["h"] = (b.b0 + pd.Timedelta(minutes=15)).dt.hour
+    mu = b.groupby("ab").apply(lambda g: g.n.sum() / g.N.sum())
+    b["r_dm"] = b.r - b.ab.map(mu)
+    srs = [sun_times(D.date()) for D in pd.date_range(d0, pd.Timestamp("2026-09-11"))]
+    sr_h = np.mean([x[0].hour + x[0].minute / 60 for x in srs])
+    ss_h = np.mean([x[1].hour + x[1].minute / 60 for x in srs])
+    prof = []
+    for an in animals:
+        g = b[b.animal == an]
+        hh = g.groupby("h").apply(lambda x: pd.Series({"R": x.n.sum() / x.N.sum(), "N": x.N.sum(),
+                                                       "dm": np.average(x.r_dm, weights=x.N)}))
+        hh = hh[hh.N >= 20]
+        ax3.plot(hh.index + 0.5, hh.R, "-o", color=colr[an], ms=3, lw=1, label=an)
+        prof.append(hh.dm.rename(an))
+    P = pd.concat(prof, axis=1)
+    m, se, nA = P.mean(1), P.std(1, ddof=1) / np.sqrt(P.notna().sum(1)), P.notna().sum(1)
+    keep = nA >= 3  # hours seen in >= 3 animals
+    P, m, se, nA = P[keep], m[keep], se[keep], nA[keep]
+    ax4.bar(P.index + 0.5, m, width=0.8, color=["#2b4f8a" if (h < sr_h or h >= ss_h) else "#d98c00" for h in P.index], alpha=0.8)
+    ax4.errorbar(P.index + 0.5, m, yerr=se, fmt="none", ecolor="0.2", lw=0.8, capsize=2)
+    ax4.axhline(0, color="0.4", lw=0.6)
+    th = wx.assign(h=wx.t.dt.hour).groupby("h").temp_C.mean()
+    ax5 = ax4.twinx()
+    ax5.plot(th.index + 0.5, th.values, color="0.3", lw=1.2, ls="--")
+    ax5.set_ylabel("outdoor T, mean by hour (degC, dashed)", fontsize=8)
+    for ax in (ax3, ax4):
+        ax.axvspan(0, sr_h, color="0.85", alpha=0.5, lw=0)
+        ax.axvspan(ss_h, 24, color="0.85", alpha=0.5, lw=0)
+        ax.set_xlim(0, 24)
+        ax.set_xticks(range(0, 25, 3))
+        ax.set_xlabel("clock hour (EDT)", fontsize=9)
+        ax.tick_params(labelsize=8)
+    ax5.tick_params(labelsize=8)
+    ax3.set_ylabel("NREM ripple rate (events / NREM min)", fontsize=9)
+    ax3.set_title("C  Within a day, per animal (all its days pooled; hours with >= 20 NREM min)", fontsize=9, loc="left")
+    ax3.legend(fontsize=7, ncol=3, frameon=False)
+    ax4.set_ylabel("rate - the block's mean (events / NREM min)", fontsize=9)
+    ax4.set_title("D  Within a day, shared profile: mean +- SEM over animals of the block-demeaned rate (hours with >= 3 animals)", fontsize=9, loc="left")
+    fig.suptitle(f"NREM sharp-wave ripple rate per NREM time, cohort {COHORT} (kept NREM events of tier validated / good sessions, "
+                 "08-31 -> 09-11 19:40; first 30 min of each file, probe-advance settle windows excluded)", fontsize=10)
+    out = figure_dir(COHORT) / f"ephys_spikes_swr_rate_day_and_hour_{COHORT}.png"
+    fig.savefig(out, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+    tab = pd.DataFrame({"mean_dm": m, "sem": se, "animals": nA}).sort_index()
+    tab.index.name = "hour"
+    tab.round(2).to_csv(rd / f"ephys_spikes_swr_rate_by_hour_{COHORT}.csv")
+    per.drop(columns=["mid"]).to_csv(rd / f"ephys_spikes_swr_rate_by_period_{COHORT}.csv", index=False)
+    print(f"wrote {out}")
+    print(tab.round(1).to_string())
+
+
 # ------------------------------------------------------------------ selftest
 def selftest():
     rng = np.random.default_rng(1)
@@ -998,7 +1109,7 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run", "rate", "extremes"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "rate", "extremes", "figure"])
     ap.add_argument("--swr-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/swr")
     ap.add_argument("--states-root", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final")
     ap.add_argument("--quality", default=str(report_dir(COHORT) / f"ephys_spikes_swr_quality_{COHORT}.csv"))
@@ -1015,6 +1126,8 @@ def main():
         rate_analysis(a)
     if a.cmd == "extremes":
         extremes(a)
+    if a.cmd == "figure":
+        rate_day_hour_figure(a)
 
 
 if __name__ == "__main__":
