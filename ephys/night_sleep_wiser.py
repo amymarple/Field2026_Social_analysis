@@ -573,9 +573,28 @@ def _f(x, nd=2):
     return "" if x is None or (isinstance(x, float) and not np.isfinite(x)) else f"{x:.{nd}f}"
 
 
-# ------------------------------------------------------------------ strict naps (plan Amendment 1, the user's definition)
+# ------------------------------------------------------------------ strict naps (plan Amendments 1 + 2)
 NAP_BRK_S, NAP_MIN_S, NAP_MIN_NREM_S = 120, 300, 180
 FLANK_S, FLANK_WAKE, FLANK_FIELD_S, FLANK_COVER = 1800, 0.5, 300, 0.8
+# cohort-3 house centres = the IMU-certified still medians of the WISER failure audit (independent of this analysis)
+HOUSES_C3 = {"house_1": (417.7, 716.9), "house_2": (621.2, 732.6)}
+RAIN = {"09-03", "09-09"}            # rain nights (WISER noise x1.4); the 09-10 morning falls in the 09-09 night's end
+VARIANTS = {  # name: (house centres, buffer_in, exit_s, drop qc_i1 field seconds)
+    "primary (re-centred, 14 in, exit 30 s)": ("c3", 14.0, 30.0, False),
+    "exit 10 s": ("c3", 14.0, 10.0, False),
+    "exit 60 s": ("c3", 14.0, 60.0, False),
+    "cohort-1 rectangles, 21 in": ("c1", 21.0, 30.0, False),
+    "qc_i1 field seconds dropped": ("c3", 14.0, 30.0, True),
+}
+
+
+class _EM2Houses:
+    """Minimal environment map for hysteretic_visits: cohort 3 has only the two houses."""
+    def active_rois(self, night):
+        return ["house_1", "house_2"]
+
+    def resource_type(self, r):
+        return "refuge"
 
 
 def sleep_stretches(state: np.ndarray, brk: int = NAP_BRK_S, min_s: int = NAP_MIN_S, min_nrem: int = NAP_MIN_NREM_S) -> list:
@@ -597,10 +616,74 @@ def sleep_stretches(state: np.ndarray, brk: int = NAP_BRK_S, min_s: int = NAP_MI
     return [(a, b) for a, b in out if (b - a) >= min_s and int((state[a:b] == N).sum()) >= min_nrem]
 
 
+def load_fixes(an: str) -> pd.DataFrame:
+    """The animal's unmasked default-track fixes (V3 / B2 x, y) on the local clock, with the qc_i1 flag."""
+    from default_tracks import list_default_tracks, load_default_track
+    idx = list_default_tracks(COHORT)
+    parts = []
+    for d in idx[idx.label == an].date:
+        df = load_default_track(an, d)
+        df = df[~(df.m_handling | df.m_silence | df.m_off_animal | df.m_tag_validity)]
+        qf = Path(f"D:/Field2026_analysis_out/{COHORT}/wiser_default_tracks_qc/{an}/{pd.Timestamp(d):%Y%m%d}.csv.gz")
+        if qf.exists():
+            q = pd.read_csv(qf, usecols=["t_ms", "qc_i1"])
+            df = df.merge(q, on="t_ms", how="left")
+        else:
+            df["qc_i1"] = 0
+        parts.append(pd.DataFrame({"datetime": pd.to_datetime(df.t_ms, unit="ms", utc=True).dt.tz_convert("America/New_York").dt.tz_localize(None),
+                                   "x": df.x.to_numpy(), "y": df.y.to_numpy(), "shortid": an, "night": str(d)[:10],
+                                   "qc_i1": df.qc_i1.fillna(0).astype(bool).to_numpy()}))
+    return pd.concat(parts, ignore_index=True).sort_values("datetime").reset_index(drop=True)
+
+
+def smoothed_zone(F: pd.DataFrame, t_sec: pd.Series, houses: str, buffer_in: float, exit_s: float, drop_qc: bool) -> np.ndarray:
+    """Per second: 1 house_1 / 2 house_2 inside a hysteretic visit, 3 field with a fix within +-5 s, else 0 unknown."""
+    from semimarkov_decisions import hysteretic_visits
+    rois = json.loads((REPO / "wiser/configs/wiser_rois.json").read_text(encoding="utf-8"))
+    H = [dict(r) for r in rois["rois"] if r["name"] in ("house_1", "house_2")]
+    if houses == "c3":
+        for r in H:
+            r["x"], r["y"] = HOUSES_C3[r["name"]]
+    cfg = {"rois": H}
+    vis = []
+    for night, g in F.groupby("night"):
+        v = hysteretic_visits(g, cfg, _EM2Houses(), buffer_in=buffer_in, bin_s=5.0, enter_s=10.0, exit_s=exit_s)
+        if len(v):
+            vis.append(v[["roi", "t_start", "t_end"]])
+    V = pd.concat(vis, ignore_index=True) if vis else pd.DataFrame(columns=["roi", "t_start", "t_end"])
+    t = t_sec.to_numpy(dtype="datetime64[ns]")
+    z = np.zeros(len(t), np.int8)
+    left = pd.DataFrame({"t": t, "i": np.arange(len(t))})
+    m = pd.merge_asof(left, F[["datetime", "qc_i1"]].rename(columns={"datetime": "t"}), on="t", direction="nearest",
+                      tolerance=pd.Timedelta(seconds=5))
+    has = m.qc_i1.notna().to_numpy()
+    z[has] = 3
+    if drop_qc:
+        z[has & m.qc_i1.fillna(False).astype(bool).to_numpy()] = 0
+    for r in V.itertuples():
+        a, b = np.searchsorted(t, np.datetime64(r.t_start)), np.searchsorted(t, np.datetime64(r.t_end))
+        z[a:b] = 1 if r.roi == "house_1" else 2
+    return z
+
+
+def handling_mask(t: pd.Series) -> np.ndarray:
+    """Seconds inside a house-lid event (catch / battery round / probe advance) +- its margin."""
+    e = json.loads((REPO / "cv/configs/cohort3_lid_events.json").read_text(encoding="utf-8"))
+    mg = pd.Timedelta(minutes=float(e.get("margin_min", 5)))
+    m = np.zeros(len(t), bool)
+    tv = t.to_numpy(dtype="datetime64[ns]")
+    for ev in e["events"]:
+        a = np.datetime64(pd.Timestamp(ev["start"]) - mg)
+        b = np.datetime64(pd.Timestamp(ev["end"]) + mg)
+        m[(tv >= a) & (tv < b)] = True
+    return m
+
+
 def flank_ok(S: pd.DataFrame, t0: pd.Timestamp, t1: pd.Timestamp) -> tuple[bool, dict]:
-    """The flank [t0, t1): covered >= 80 %, >= 50 % WAKE, >= 5 min in the field (known zone)."""
-    g = S[(S.t >= t0) & (S.t < t1)]
-    g = g[g.state > 0]
+    """The flank [t0, t1): non-handling recorded seconds cover >= 80 %, >= 50 % of them WAKE, >= 5 min in the field."""
+    i0, i1 = np.searchsorted(S.t.to_numpy(), np.datetime64(t0)), np.searchsorted(S.t.to_numpy(), np.datetime64(t1))
+    g = S.iloc[i0:i1]
+    g = g[(g.state > 0) & ~g.handling]
     cover = len(g) / FLANK_S
     wake = float((g.state == W).mean()) if len(g) else np.nan
     field = int((g.zone == 3).sum())
@@ -608,82 +691,49 @@ def flank_ok(S: pd.DataFrame, t0: pd.Timestamp, t1: pd.Timestamp) -> tuple[bool,
     return ok, dict(cover=cover, wake=wake, field_min=field / 60)
 
 
-def naps(a):
-    import swr_temperature as stp
-    rd = report_dir(COHORT)
-    man = json.loads((rd / f"run_manifest_night_sleep_wiser_{COHORT}.json").read_text())
-    run_dir = Path(man["run_dir"])
-    NT = pd.read_csv(rd / f"ephys_spikes_night_sleep_wiser_nights_{COHORT}.csv", parse_dates=["mso", "sunset", "sunrise"])
-    LW = pd.read_csv(run_dir / "long_wakes.csv", parse_dates=["start", "end"])
-    nap_rows, comp_rows, nights_rows = [], [], []
-    tabs = {}
-    for f in sorted(run_dir.glob("seconds_*.parquet")) or sorted(run_dir.glob("seconds_*.csv.gz")):
-        an = f.name.split("_")[1].split(".")[0]
-        S = pd.read_parquet(f) if f.suffix == ".parquet" else pd.read_csv(f, parse_dates=["t"])
-        S = S.sort_values("t").reset_index(drop=True)
-        S["cat"] = np.where(S.state.isin([N, R]) & S.tau_h.notna(), "main", np.where(S.state.isin([N, R]), "other", "-"))
-        lw = LW[LW.animal == an].sort_values("start")
-        stretches = []
-        for rec, g in S.groupby("rec", sort=False):
-            st = g.state.to_numpy()
-            tt = g.t.to_numpy()
-            for a_, b_ in sleep_stretches(st):
-                stretches.append((pd.Timestamp(tt[a_]), pd.Timestamp(tt[b_ - 1]) + pd.Timedelta(seconds=1), g.index[a_], g.index[b_ - 1]))
-        for r in NT[NT.animal == an].itertuples():
-            D = pd.Timestamp("2026-" + r.night)
-            has_mso = pd.notna(r.mso)
-            end = r.mso if has_mso else r.sunrise + pd.Timedelta(hours=2)
-            cand = lw[(lw.start >= D + pd.Timedelta(hours=15)) & (lw.start < end)]
-            if not len(cand):
-                nights_rows.append(dict(animal=an, night=r.night, active_start=pd.NaT, active_end=end, mso_defined=has_mso, naps=np.nan))
+def detect_naps(an: str, S: pd.DataFrame, NT: pd.DataFrame, lw: pd.DataFrame) -> tuple[list, list, pd.Series]:
+    """Strict naps of one animal (plan Amendment 1); returns nap rows, night rows and the per-second category."""
+    cat = pd.Series(np.where(S.state.isin([N, R]) & S.tau_h.notna(), "main", np.where(S.state.isin([N, R]), "other", "-")), index=S.index)
+    stretches = []
+    for rec, g in S.groupby("rec", sort=False):
+        st, tt = g.state.to_numpy(), g.t.to_numpy()
+        for a_, b_ in sleep_stretches(st):
+            stretches.append((pd.Timestamp(tt[a_]), pd.Timestamp(tt[b_ - 1]) + pd.Timedelta(seconds=1), g.index[a_], g.index[b_ - 1]))
+    naps_, nights_ = [], []
+    for r in NT[NT.animal == an].itertuples():
+        D = pd.Timestamp("2026-" + r.night)
+        has_mso = pd.notna(r.mso)
+        end = r.mso if has_mso else r.sunrise + pd.Timedelta(hours=2)
+        cand = lw[(lw.start >= D + pd.Timedelta(hours=15)) & (lw.start < end)]
+        if not len(cand):
+            nights_.append(dict(animal=an, night=r.night, active_start=pd.NaT, active_end=end, mso_defined=has_mso, naps=np.nan))
+            continue
+        beg = cand.start.iloc[0]
+        n = 0
+        for s0, s1, i0, i1 in stretches:
+            if s0 < beg or s1 > end:
                 continue
-            beg = cand.start.iloc[0]
-            n_naps = 0
-            for s0, s1, i0, i1 in stretches:
-                if s0 < beg or s1 > end:
-                    continue
-                okb, fb = flank_ok(S, s0 - pd.Timedelta(seconds=FLANK_S), s0)
-                oka, fa = flank_ok(S, s1, s1 + pd.Timedelta(seconds=FLANK_S))
-                g = S.loc[i0:i1]
-                kz = g.zone[g.zone > 0]
-                strict = okb and oka
-                if strict:
-                    S.loc[i0:i1, "cat"] = np.where(S.loc[i0:i1, "state"].isin([N, R]), "nap", "-")
-                    n_naps += 1
-                nap_rows.append(dict(animal=an, night=r.night, start=s0, end=s1, dur_min=(s1 - s0).total_seconds() / 60,
-                                     nrem_min=float((g.state == N).sum() / 60), rem_min=float((g.state == R).sum() / 60),
-                                     house_share=float((kz < 3).mean()) if len(kz) else np.nan, strict=strict,
-                                     before_wake=fb["wake"], before_field_min=fb["field_min"], before_cover=fb["cover"],
-                                     after_wake=fa["wake"], after_field_min=fa["field_min"], after_cover=fa["cover"],
-                                     mso_defined=has_mso))
-            nights_rows.append(dict(animal=an, night=r.night, active_start=beg, active_end=end, mso_defined=has_mso, naps=n_naps,
-                                    active_h=(end - beg).total_seconds() / 3600))
-        tabs[an] = S
-        h = S.t.dt.hour
-        rec_ = S[S.state > 0]
-        for hh, g in rec_.groupby(rec_.t.dt.hour):
-            n = len(g)
-            comp_rows.append(dict(animal=an, hour=hh, p_nrem_main=float(((g.state == N) & (g.cat == "main")).sum() / n),
-                                  p_nrem_nap=float(((g.state == N) & (g.cat == "nap")).sum() / n),
-                                  p_nrem_other=float(((g.state == N) & (g.cat == "other")).sum() / n)))
-        print(f"{an}: {sum(1 for x in nap_rows if x['animal'] == an and x['strict'])} strict naps", flush=True)
-    NP_ = pd.DataFrame(nap_rows)
-    NN = pd.DataFrame(nights_rows)
-    C = pd.DataFrame(comp_rows)
-    # nap onset frequency per clock hour: strict-nap onsets / analysed nights, per animal, then mean +- SEM
-    strict = NP_[NP_.strict].copy()
-    strict["h"] = strict.start.dt.hour
-    fr = []
-    for an, g in NN[NN.naps.notna()].groupby("animal"):
-        nn = len(g)
-        cnt = strict[strict.animal == an].groupby("h").size().reindex(range(24), fill_value=0)
-        fr.append(pd.DataFrame({"animal": an, "hour": range(24), "naps_per_night": cnt.to_numpy() / nn, "nights": nn}))
-    FR = pd.concat(fr, ignore_index=True)
-    FRm = FR.groupby("hour").naps_per_night.agg(["mean", lambda v: v.std(ddof=1) / np.sqrt(len(v))]).rename(columns={"<lambda_0>": "sem"})
-    Cm = C.groupby("hour")[["p_nrem_main", "p_nrem_nap", "p_nrem_other"]].mean()
-    # ripple rate in strict naps vs other pre-MSO sleep vs the first 2 h of the main sleep (ripple-eligible NREM only)
-    man_t = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
-    ev = pd.read_csv(Path(man_t["run_dir"]) / "nrem_events.csv.gz", parse_dates=["t"], usecols=["t", "animal"])
+            okb, fb = flank_ok(S, s0 - pd.Timedelta(seconds=FLANK_S), s0)
+            oka, fa = flank_ok(S, s1, s1 + pd.Timedelta(seconds=FLANK_S))
+            g = S.loc[i0:i1]
+            kz = g.zone[g.zone > 0]
+            strict = okb and oka
+            if strict:
+                cat.loc[i0:i1] = np.where(g.state.isin([N, R]), "nap", "-")
+                n += 1
+            naps_.append(dict(animal=an, night=r.night, rain_night=r.night in RAIN, start=s0, end=s1,
+                              dur_min=(s1 - s0).total_seconds() / 60, nrem_min=float((g.state == N).sum() / 60),
+                              rem_min=float((g.state == R).sum() / 60), house_share=float((kz < 3).mean()) if len(kz) else np.nan,
+                              strict=strict, before_wake=fb["wake"], before_field_min=fb["field_min"], before_cover=fb["cover"],
+                              after_wake=fa["wake"], after_field_min=fa["field_min"], after_cover=fa["cover"], mso_defined=has_mso))
+        nights_.append(dict(animal=an, night=r.night, active_start=beg, active_end=end, mso_defined=has_mso, naps=n,
+                            active_h=(end - beg).total_seconds() / 3600))
+    return naps_, nights_, cat
+
+
+def eligible_nrem(a) -> pd.DataFrame:
+    """Ripple-eligible NREM seconds (tiers validated / good, the temperature analysis' exclusions)."""
+    import swr_temperature as stp
     q = stp.sessions(Path(a.quality), Path(a.review), ["validated", "good"])
     win = stp.settle_windows(Path(a.cohort_yaml))
     elig = []
@@ -695,28 +745,86 @@ def naps(a):
             sec = s_["ts"][s_["state"] == N].astype(int)
         t = pd.Series(row.start_t + pd.to_timedelta(sec, unit="s"))
         elig.append(pd.DataFrame({"animal": row.animal, "t": t[stp.keep_mask(t, row, stp.FEMALES, win)].values}))
-    EL = pd.concat(elig, ignore_index=True).sort_values("t")
-    rr = []
-    for an, S in tabs.items():
-        cat = S[["t", "cat", "tau_h"]].sort_values("t")
-        e = pd.merge_asof(EL[EL.animal == an], cat, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
-        v = pd.merge_asof(ev[ev.animal == an].sort_values("t"), cat, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
-        row = {"animal": an}
-        for nm, me, mv in (("strict_nap", e.cat == "nap", v.cat == "nap"), ("other_night_sleep", e.cat == "other", v.cat == "other"),
-                           ("main_first_2h", (e.cat == "main") & (e.tau_h < 2), (v.cat == "main") & (v.tau_h < 2)),
-                           ("main_all", e.cat == "main", v.cat == "main")):
-            nmin = float(me.sum() / 60)
-            row[f"{nm}_nrem_min"] = nmin
-            row[f"{nm}_rate"] = float(mv.sum() / nmin) if nmin >= 10 else np.nan
-        rr.append(row)
-    RR = pd.DataFrame(rr)
-    NP_.to_csv(rd / f"ephys_spikes_night_naps_{COHORT}.csv", index=False)
-    NN.to_csv(rd / f"ephys_spikes_night_naps_per_night_{COHORT}.csv", index=False)
-    FR.to_csv(rd / f"ephys_spikes_night_naps_frequency_{COHORT}.csv", index=False)
-    C.to_csv(rd / f"ephys_spikes_night_naps_nrem_composition_{COHORT}.csv", index=False)
-    RR.to_csv(rd / f"ephys_spikes_night_naps_ripple_rate_{COHORT}.csv", index=False)
-    fig = naps_figure(Cm, FRm, NT, rd)
-    naps_report(NP_, NN, FRm, Cm, RR, fig, rd)
+    return pd.concat(elig, ignore_index=True).sort_values("t")
+
+
+def ripple_by_kind(an: str, S: pd.DataFrame, cat: pd.Series, EL: pd.DataFrame, ev: pd.DataFrame) -> dict:
+    c = pd.DataFrame({"t": S.t, "cat": cat, "tau_h": S.tau_h}).sort_values("t")
+    e = pd.merge_asof(EL[EL.animal == an], c, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
+    v = pd.merge_asof(ev[ev.animal == an].sort_values("t"), c, on="t", direction="nearest", tolerance=pd.Timedelta(seconds=2))
+    row = {"animal": an}
+    for nm, me, mv in (("strict_nap", e.cat == "nap", v.cat == "nap"), ("other_night_sleep", e.cat == "other", v.cat == "other"),
+                       ("main_first_2h", (e.cat == "main") & (e.tau_h < 2), (v.cat == "main") & (v.tau_h < 2)),
+                       ("main_all", e.cat == "main", v.cat == "main")):
+        nmin = float(me.sum() / 60)
+        row[f"{nm}_nrem_min"] = nmin
+        row[f"{nm}_rate"] = float(mv.sum() / nmin) if nmin >= 10 else np.nan
+    return row
+
+
+def naps(a):
+    rd = report_dir(COHORT)
+    man = json.loads((rd / f"run_manifest_night_sleep_wiser_{COHORT}.json").read_text())
+    run_dir = Path(man["run_dir"])
+    NT = pd.read_csv(rd / f"ephys_spikes_night_sleep_wiser_nights_{COHORT}.csv", parse_dates=["mso", "sunset", "sunrise"])
+    LW = pd.read_csv(run_dir / "long_wakes.csv", parse_dates=["start", "end"])
+    man_t = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
+    ev = pd.read_csv(Path(man_t["run_dir"]) / "nrem_events.csv.gz", parse_dates=["t"], usecols=["t", "animal"])
+    EL = eligible_nrem(a)
+    res = {v: dict(naps=[], nights=[], comp=[], rr=[]) for v in VARIANTS}
+    for f in sorted(run_dir.glob("seconds_*.parquet")) or sorted(run_dir.glob("seconds_*.csv.gz")):
+        an = f.name.split("_")[1].split(".")[0]
+        S = pd.read_parquet(f) if f.suffix == ".parquet" else pd.read_csv(f, parse_dates=["t"])
+        S = S.sort_values("t").reset_index(drop=True)
+        S["handling"] = handling_mask(S.t)
+        F = load_fixes(an)
+        lw = LW[LW.animal == an].sort_values("start")
+        for vn, (houses, buf, ex, dq) in VARIANTS.items():
+            S["zone"] = smoothed_zone(F, S.t, houses, buf, ex, dq)
+            nap_rows, night_rows, cat = detect_naps(an, S, NT, lw)
+            res[vn]["naps"] += nap_rows
+            res[vn]["nights"] += night_rows
+            res[vn]["rr"].append(ripple_by_kind(an, S, cat, EL, ev))
+            rec_ = S[S.state > 0]
+            ct = cat[S.state > 0]
+            for hh, g in rec_.groupby(rec_.t.dt.hour):
+                cc = ct.loc[g.index]
+                n = len(g)
+                res[vn]["comp"].append(dict(animal=an, hour=hh, p_nrem_main=float(((g.state == N) & (cc == "main")).sum() / n),
+                                            p_nrem_nap=float(((g.state == N) & (cc == "nap")).sum() / n),
+                                            p_nrem_other=float(((g.state == N) & (cc == "other")).sum() / n)))
+            if vn.startswith("primary"):
+                S[["t", "zone", "handling"]].to_csv(run_dir / f"zones_smoothed_{an}.csv.gz", index=False)
+        print(f"{an}: " + ", ".join(f"{vn.split(' (')[0]} {sum(1 for x in res[vn]['naps'] if x['animal'] == an and x['strict'])}" for vn in VARIANTS), flush=True)
+    out = {}
+    for vn, d in res.items():
+        NP_, NN, C, RR = pd.DataFrame(d["naps"]), pd.DataFrame(d["nights"]), pd.DataFrame(d["comp"]), pd.DataFrame(d["rr"])
+        strict = NP_[NP_.strict].assign(h=lambda x: x.start.dt.hour)
+        fr = []
+        for an_, g in NN[NN.naps.notna()].groupby("animal"):
+            cnt = strict[strict.animal == an_].groupby("h").size().reindex(range(24), fill_value=0)
+            fr.append(pd.DataFrame({"animal": an_, "hour": range(24), "naps_per_night": cnt.to_numpy() / len(g), "nights": len(g)}))
+        FR = pd.concat(fr, ignore_index=True)
+        FRm = FR.groupby("hour").naps_per_night.agg(["mean", lambda v: v.std(ddof=1) / np.sqrt(len(v))]).rename(columns={"<lambda_0>": "sem"})
+        out[vn] = dict(NP=NP_, NN=NN, C=C, RR=RR, FR=FR, FRm=FRm, Cm=C.groupby("hour")[["p_nrem_main", "p_nrem_nap", "p_nrem_other"]].mean())
+    P = out[next(iter(VARIANTS))]
+    P["NP"].to_csv(rd / f"ephys_spikes_night_naps_{COHORT}.csv", index=False)
+    P["NN"].to_csv(rd / f"ephys_spikes_night_naps_per_night_{COHORT}.csv", index=False)
+    P["FR"].to_csv(rd / f"ephys_spikes_night_naps_frequency_{COHORT}.csv", index=False)
+    P["C"].to_csv(rd / f"ephys_spikes_night_naps_nrem_composition_{COHORT}.csv", index=False)
+    P["RR"].to_csv(rd / f"ephys_spikes_night_naps_ripple_rate_{COHORT}.csv", index=False)
+    sens = []
+    for vn, o in out.items():
+        s, nn, rr = o["NP"][o["NP"].strict], o["NN"][o["NN"].naps.notna()], o["RR"].dropna(subset=["strict_nap_rate", "main_first_2h_rate"])
+        sens.append(dict(variant=vn, strict_naps=len(s), of_stretches=len(o["NP"]), per_night_median=nn.naps.median(),
+                         per_night_mean=nn.naps.mean(), dur_median=s.dur_min.median(), peak_hour=int(o["FRm"]["mean"].idxmax()),
+                         share_21_03=float(o["FRm"].loc[[21, 22, 23, 0, 1, 2], "mean"].sum() / max(o["FRm"]["mean"].sum(), 1e-9)),
+                         naps_higher=f"{int((rr.strict_nap_rate > rr.main_first_2h_rate).sum())} / {len(rr)}",
+                         rain_naps=int(s.rain_night.sum())))
+    SE = pd.DataFrame(sens)
+    SE.to_csv(rd / f"ephys_spikes_night_naps_sensitivity_{COHORT}.csv", index=False)
+    fig = naps_figure(P["Cm"], P["FRm"], NT, rd)
+    naps_report(P["NP"], P["NN"], P["FRm"], P["Cm"], P["RR"], SE, fig, rd)
 
 
 def naps_figure(Cm: pd.DataFrame, FRm: pd.DataFrame, NT: pd.DataFrame, rd: Path) -> Path:
@@ -737,16 +845,15 @@ def naps_figure(Cm: pd.DataFrame, FRm: pd.DataFrame, NT: pd.DataFrame, rd: Path)
     ax.set_ylabel("share of recorded time", fontsize=9)
     ax.set_title("A  Circadian NREM: share of each clock hour in NREM, by kind (mean over animals); ticks = main sleep onsets",
                  fontsize=9, loc="left")
-    ax.plot(msoh, np.full(len(msoh), 0.93), "|", color="k", ms=10)
-    ax.legend(fontsize=8, frameon=False, loc="upper center", ncol=3)
+    ax.plot(msoh, np.full(len(msoh), 0.78), "|", color="k", ms=10)
+    ax.legend(fontsize=8, frameon=False, loc="upper right", ncol=1)
     ax.set_ylim(0, 1)
     ax = axes[1]
     ax.bar(FRm.index + 0.5, FRm["mean"], yerr=FRm["sem"], width=0.85, color="#f28e2b", capsize=2)
     ax.set_ylabel("strict-nap onsets\nper night per hour", fontsize=9)
     ax.set_title("B  Nap frequency: strict-nap onsets per animal-night in each clock hour (mean +- SEM over animals)", fontsize=9, loc="left")
     ax = axes[2]
-    ax.bar(FRm.index + 0.5, FRm["mean"] / max(FRm["mean"].max(), 1e-9) * 1.0, width=0.85, color="#f28e2b", alpha=0.25,
-           label="nap frequency (scaled, as B)")
+    ax.bar(FRm.index + 0.5, FRm["mean"] / max(FRm["mean"].max(), 1e-9), width=0.85, color="#f28e2b", alpha=0.25)
     ax.set_yticks([])
     a1 = ax.twinx()
     a1.errorbar(hp.h + 0.5, hp.Dz, yerr=hp.Dz_sem, fmt="-o", color="#6a3d9a", ms=4, capsize=2)
@@ -765,7 +872,7 @@ def naps_figure(Cm: pd.DataFrame, FRm: pd.DataFrame, NT: pd.DataFrame, rd: Path)
         a_.tick_params(labelsize=8)
     axes[2].set_xlabel("clock hour (EDT); grey = night (sunset -> sunrise)", fontsize=9)
     fig.suptitle(f"Naps in the circadian NREM pattern, cohort {COHORT} (strict nap: before the main sleep onset, >= 5 min of sleep, "
-                 "exploration in the field in the 30 min before and after)", fontsize=10)
+                 "exploration in the field in the 30 min before and after; house / field smoothed)", fontsize=10)
     fig.tight_layout()
     out = figure_dir(COHORT) / f"ephys_spikes_night_naps_circadian_{COHORT}.png"
     fig.savefig(out, dpi=125)
@@ -773,7 +880,7 @@ def naps_figure(Cm: pd.DataFrame, FRm: pd.DataFrame, NT: pd.DataFrame, rd: Path)
     return out
 
 
-def naps_report(NP_, NN, FRm, Cm, RR, fig, rd):
+def naps_report(NP_, NN, FRm, Cm, RR, SE, fig, rd):
     s = NP_[NP_.strict]
     nn = NN[NN.naps.notna()]
     L = []
@@ -781,21 +888,22 @@ def naps_report(NP_, NN, FRm, Cm, RR, fig, rd):
     w(f"# Naps at night: frequency, timing and ripples ({COHORT})")
     w("")
     w(f"Generated by `ephys/night_sleep_wiser.py naps` (repo `{git_commit()}`) from the per-second tables of the night-sleep run; "
-      "definition = plan Amendment 1 of [`implementation_plan/2026-10-09-night-sleep-wiser.md`](../../../../implementation_plan/2026-10-09-night-sleep-wiser.md) "
-      "(the user's: before the main sleep starts, plenty of activity / exploring before and after).")
+      "definition = plan Amendments 1 + 2 of [`implementation_plan/2026-10-09-night-sleep-wiser.md`](../../../../implementation_plan/2026-10-09-night-sleep-wiser.md) "
+      "(the user's: before the main sleep starts, plenty of activity / exploring before and after; house / field smoothed with "
+      "the WISER session's recommended rule).")
     w("")
     w("## Answer")
     w("")
-    w(f"- **{len(s)} strict naps** in {len(nn)} analysed animal-nights (active phase defined): median "
-      f"{nn.naps.median():.0f} per night (IQR {nn.naps.quantile(0.25):.0f} - {nn.naps.quantile(0.75):.0f}); per animal "
+    w(f"- **{len(s)} strict naps** in {len(nn)} analysed animal-nights: median {nn.naps.median():.0f} per night (IQR "
+      f"{nn.naps.quantile(0.25):.0f} - {nn.naps.quantile(0.75):.0f}); per animal "
       + ", ".join(f"{an} {g.naps.mean():.1f}" for an, g in nn.groupby("animal")) + " per night.")
     w(f"- Duration median {s.dur_min.median():.0f} min (IQR {s.dur_min.quantile(0.25):.0f} - {s.dur_min.quantile(0.75):.0f}), NREM "
-      f"median {s.nrem_min.median():.0f} min; in a house for a median {100 * s.house_share.median():.0f} % of their seconds.")
-    w(f"- Of {len(NP_)} pre-onset night sleep stretches (>= 5 min), {len(s)} ({100 * len(s) / max(len(NP_), 1):.0f} %) meet the "
-      f"exploration criterion on both sides.")
+      f"median {s.nrem_min.median():.0f} min; in a house for a median {100 * s.house_share.median():.0f} % of their seconds; "
+      f"{int(s.rain_night.sum())} on the rain nights (09-03, 09-09).")
+    w(f"- Of {len(NP_)} pre-onset night sleep stretches (>= 5 min), {len(s)} ({100 * len(s) / max(len(NP_), 1):.0f} %) have "
+      "exploration on both sides.")
     pk = FRm["mean"].idxmax()
-    w(f"- **Timing:** most frequent at hour {pk:02d} ({FRm.loc[pk, 'mean']:.2f} onsets per night); per-hour frequencies in the "
-      "table below.")
+    w(f"- **Timing:** from 21:00 to 05:00, most frequent at hour {pk:02d} ({FRm.loc[pk, 'mean']:.2f} onsets per night).")
     v = RR.dropna(subset=["strict_nap_rate", "main_first_2h_rate"])
     w(f"- **Ripple rate:** strict naps vs the first 2 h of the main sleep: " + "; ".join(
         f"{r.animal} {r.strict_nap_rate:.0f} vs {r.main_first_2h_rate:.0f}" for r in v.itertuples())
@@ -803,17 +911,24 @@ def naps_report(NP_, NN, FRm, Cm, RR, fig, rd):
     w("")
     w(f"![naps in the circadian NREM pattern](../figures/{fig.name})")
     w("")
-    w("## Per clock hour")
+    w("## Sensitivity (membership rule)")
+    w("")
+    w("| Variant | Strict naps | Of stretches | Per night (median / mean) | Duration median (min) | Peak hour | Share 21-03 h | Naps > main-sleep start | On rain nights |")
+    w("|---|---|---|---|---|---|---|---|---|")
+    for r in SE.itertuples():
+        w(f"| {r.variant} | {r.strict_naps} | {r.of_stretches} | {r.per_night_median:.0f} / {r.per_night_mean:.1f} | "
+          f"{r.dur_median:.0f} | {r.peak_hour:02d} | {100 * r.share_21_03:.0f} % | {r.naps_higher} | {r.rain_naps} |")
+    w("")
+    w("## Per clock hour (primary)")
     w("")
     w("| Hour | Strict-nap onsets per night (mean) | SEM | NREM in main sleep | NREM in strict naps | Other NREM |")
     w("|---|---|---|---|---|---|")
     for hh in range(24):
-        fm = FRm.loc[hh] if hh in FRm.index else None
-        cm = Cm.loc[hh] if hh in Cm.index else None
-        w(f"| {hh:02d} | {fm['mean']:.2f} | {fm['sem']:.2f} | {cm.p_nrem_main:.2f} | {cm.p_nrem_nap:.2f} | {cm.p_nrem_other:.2f} |"
-          if fm is not None and cm is not None else f"| {hh:02d} | | | | | |")
+        if hh in FRm.index and hh in Cm.index:
+            fm, cm = FRm.loc[hh], Cm.loc[hh]
+            w(f"| {hh:02d} | {fm['mean']:.2f} | {fm['sem']:.2f} | {cm.p_nrem_main:.2f} | {cm.p_nrem_nap:.2f} | {cm.p_nrem_other:.2f} |")
     w("")
-    w("## Ripple rate by kind of sleep (ripple-eligible NREM: tiers validated / good, the temperature analysis' exclusions)")
+    w("## Ripple rate by kind of sleep (primary; ripple-eligible NREM: tiers validated / good)")
     w("")
     w("| Animal | Strict naps (rate, NREM min) | Other night sleep | Main sleep, first 2 h | Main sleep, all |")
     w("|---|---|---|---|---|")
@@ -828,12 +943,18 @@ def naps_report(NP_, NN, FRm, Cm, RR, fig, rd):
       f"{NAP_MIN_S // 60} min from first to last sleep epoch and >= {NAP_MIN_NREM_S // 60} min NREM.")
     w("- **Active phase of night D**: from the start of the first long wake (>= 30 min) beginning after 15:00 of D to the night's "
       "main sleep onset (MSO; if none, sunrise D+1 + 2 h).")
-    w(f"- **Strict nap**: a sleep stretch inside the active phase whose 30-min flanks before and after are each covered >= "
-      f"{100 * FLANK_COVER:.0f} % by the record, >= {100 * FLANK_WAKE:.0f} % WAKE and >= {FLANK_FIELD_S // 60} min in the field "
-      "(WISER zone, known seconds). Text: sleep taken between bouts of active exploration, before the main sleep.")
+    w(f"- **Strict nap**: a sleep stretch inside the active phase whose 30-min flanks before and after each have >= "
+      f"{100 * FLANK_COVER:.0f} % recorded non-handling seconds, >= {100 * FLANK_WAKE:.0f} % of them WAKE and >= "
+      f"{FLANK_FIELD_S // 60} min in the field. Handling = a house-lid event of `cv/configs/cohort3_lid_events.json` +- 5 min.")
+    w("- **House / field (primary)**: `semimarkov_decisions.hysteretic_visits` on the V3 / B2 default-track x, y (masked fixes "
+      "dropped): 5-s bins, a bin is NEAR when >= 50 % of its fixes lie in the house rectangle grown by 14 in, FAR when <= 20 %; "
+      "a visit starts after 10 s NEAR and ends after 30 s FAR; short same-house flickers (< 30 s) merged. Rectangles = the "
+      "cohort-1 sizes re-centred on the cohort-3 IMU-certified still medians (house_1 417.7, 716.9; house_2 621.2, 732.6 in; "
+      "failure audit). A second is in a house inside a visit, in the field when outside every visit with a fix within +-5 s, "
+      "else unknown. Recommended by the WISER session (IMU-video calibration); not validated against video for cohort 3.")
     w("- **Nap frequency**: strict-nap onsets in a clock hour / the animal's analysed nights; mean +- SEM over animals.")
-    w("- **NREM composition**: per clock hour, the share of recorded seconds that are NREM inside the main sleep (from the MSO to the "
-      "next long wake), inside strict naps, or elsewhere.")
+    w("- **NREM composition**: per clock hour, the share of recorded seconds that are NREM inside the main sleep, inside strict "
+      "naps, or elsewhere.")
     w("- **Ripple rate**: kept NREM SWR events / ripple-eligible NREM minutes inside each kind of sleep (>= 10 min).")
     (rd / f"ephys_spikes_night_naps_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
 

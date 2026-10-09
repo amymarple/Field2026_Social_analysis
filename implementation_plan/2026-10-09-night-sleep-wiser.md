@@ -116,3 +116,36 @@ to explore).
 - **Nap onset frequency:** strict-nap onsets per animal-night per clock hour, mean ± SEM over animals. It is marked
   on the circadian NREM depth / ripple-rate panel.
 - **Per night:** the number of naps, their durations, and their zone (house / field).
+
+## Amendment 2 (2026-10-09, written before recomputing): smoothed house / field membership
+
+The user: "the in-the-field part can be smoothed; ask the other agents for the best algorithm".
+
+**Answers.**
+- IMU-video校准 (the WISER session): `semimarkov_decisions.hysteretic_visits` on the V3 track x / y, houses only.
+  - Parameters: 5-s bins, 14-in buffer, enter 10 s, exit 30 s, near 0.5 / far 0.2, flicker merge 30 s.
+  - Sensitivity: exit 10 / 60 s; buffer 21 in.
+  - Caveats: the house rectangles are cohort-1 placements; the rain nights; the `qc_i1` windows.
+- field2026-social-analysis-9b: the same rectangle caveat (house_1 moved only on 09-18, after the cohort). Handling
+  windows (lids lifted at every catch, `cv/configs/cohort3_lid_events.json`, ± 5 min margin) are not exploration.
+
+**Rectangle check.** Both sources put the cohort-3 houses away from the cohort-1 rectangles:
+- house_1: 416.2, 716.8 (day-sleep NREM positions); 417.7, 716.9 (certified still segments). About 5 in off.
+- house_2: 619.3, 732.3 and 621.2, 732.6. About 16 in off, at the rectangle's +y end.
+
+**Membership (primary).**
+- Rectangles: the cohort-1 sizes / orientation, re-centred on the IMU-certified still medians of the failure audit.
+  Those are independent of the nap analysis: house_1 (417.7, 716.9), house_2 (621.2, 732.6).
+- Rule: `hysteretic_visits` on V3 x / y; masked fixes (handling, silence, off-animal) dropped.
+- Per second:
+  - house_k inside a visit to house_k;
+  - field when no visit and a fix lies within ± 5 s;
+  - else unknown.
+- Seconds inside a lid event ± 5 min are handling: removed from the flanks (not covered).
+
+**Sensitivity.**
+- exit 10 s; exit 60 s;
+- the cohort-1 rectangles with a 21-in buffer;
+- field seconds inside a `qc_i1` window not counted;
+- the unsmoothed nearest-fix rule (the first run).
+- Naps on the rain nights (09-03, 09-09, 09-10 morning) are reported apart.

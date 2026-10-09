@@ -61,3 +61,38 @@ the main sleep, not naps".
 - This is consistent with ripples being raised in the sleep that follows waking experience. That is an interpretation,
   not tested here.
 - The daytime decline matches the discharge of sleep pressure from the dawn onset.
+
+## Update: strict naps marked in the circadian NREM figure (plan Amendments 1 + 2)
+
+**The user's nap definition:**
+- before the main sleep starts;
+- plenty of activity / exploring before and after.
+
+**Implemented:** `night_sleep_wiser.py naps`. A strict nap is a sleep stretch that:
+- lasts ≥ 5 min with ≥ 3 min NREM (wake gaps < 2 min bridged);
+- falls inside the night's active phase, from the first long wake after 15:00 to the main sleep onset;
+- has 30-min flanks before and after that are each ≥ 80 % recorded non-handling seconds, ≥ 50 % of them WAKE, with
+  ≥ 5 min in the field.
+
+**House / field smoothed as the user asked; the other agents were consulted.**
+- IMU-video校准 recommended `semimarkov_decisions.hysteretic_visits` on the V3 x / y: 5-s bins, 14-in buffer, enter
+  10 s, exit 30 s, flicker merge 30 s; houses only.
+- Both agents flagged the cohort-1 rectangles. The cohort-3 rest positions are about 5 in (house_1) and 16 in (house_2)
+  off, so the rectangles were re-centred on the failure audit's IMU-certified still medians:
+  - house_1 (417.7, 716.9);
+  - house_2 (621.2, 732.6).
+- The house-lid events ± 5 min (`cv/configs/cohort3_lid_events.json`) are excluded from the flanks.
+
+**Results** (primary; figure `figures/ephys_spikes_night_naps_circadian_2026c.png`, report `…night_naps_2026c.md`):
+- **Count:** 115 strict naps in 57 animal-nights, median 2 per night (IQR 1–3); 49 % of the pre-onset night sleep
+  stretches qualify.
+- **Shape:** median 24 min, inside a house.
+- **Timing:** from 21:00 to 05:00, peaking at 22:00 (0.37 onsets per night per hour), with 89 % between 21:00 and 03:00.
+  None after 05:00.
+- **Ripple rate** higher than in the first 2 h of the main sleep in 6 / 6 animals.
+
+**Sensitivity:**
+- exit 10 / 60 s, the cohort-1 rectangles + 21 in, and dropping the `qc_i1` field seconds give 108–119 naps, the same
+  peak hour, 88–89 % between 21:00 and 03:00, and naps higher in 5–6 / 6.
+- The unsmoothed rule gave 117.
+- 25 naps fall on the rain nights.
