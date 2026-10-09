@@ -1,0 +1,6 @@
+criterion,pass,numbers
+B-full not worse than M2t by > 0.1 %,True,delta -1.071 %
+B-full beats hard reset (holds),False,"delta -0.041 % [-0.165, +0.107], animals 4/6"
+B-full beats pause (holds),False,"delta -0.123 % [-0.390, +0.241], animals 4/6"
+B-full beats gate-only by >= 0.5 %,True,delta -2.173 %
+tau_w profile minimum interior (30 s - 10 min) and LOAO-stable,True,"chosen tau_w (mode over folds) 600 s; LOAO argmins SF07 300, SF08 300, SF09 300, SF10 600, SF11 600, SF12 600"

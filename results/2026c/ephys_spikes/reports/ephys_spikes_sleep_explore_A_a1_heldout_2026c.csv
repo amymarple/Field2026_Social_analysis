@@ -1,0 +1,5 @@
+comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds,stretches,n_since_equals_resume_share,scores
+RESTART vs RESUME,anchored post-long-wake stretches,15900,134,-0.5546389311979552,-1.0454541911239006,0.02317994063782037,12,15,5,6,False,387,1.0,FINAL
+RESTART vs RESUME,wake ends >= 3 h after the record start,13943,110,-0.4975212186747862,-1.1899099142120442,0.29505585632508713,10,15,4,6,False,324,,FINAL
+RESTART vs RESUME,anchored post-long-wake stretches,17466,145,-0.9506203756491769,-1.737913010715953,-0.19382290392533333,11,15,5,6,True,420,1.0,pass2med
+RESTART vs RESUME,wake ends >= 3 h after the record start,15231,120,-0.8720881033866157,-2.0367431119610266,0.2020074681061397,11,15,5,6,False,351,,pass2med

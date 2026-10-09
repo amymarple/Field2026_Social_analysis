@@ -1,7 +1,13 @@
 # Sleep behaviour explore: the internal schedule, day vs night sleep, and a model of the implicit scheduler (cohort 2026c)
 
-**Date:** 2026-10-08. **Status:** PLAN, written before any of its results. The user asked for it to be written
-("行 写吧"); it runs step by step after the user's go.
+**Date:** 2026-10-08. **Status:**
+- written before any of its results;
+- **Steps A and B DONE 2026-10-09** (the user: "正式版跑吧然后B直接上"):
+  - [Step A report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_A_2026c.md);
+  - [Step B report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_B_2026c.md) + post-hoc
+    [diagnosis](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_B_diag_2026c.md);
+  - claims #6a, #32–#36 in the claim audit;
+- Step C running (the user: "干完做C").
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;
@@ -295,9 +301,10 @@ together; each gets a claim number only if it holds.
 
 ## 7. Outputs
 
-**Code:** `ephys/sleep_explore.py` (steps A, C, F) and `ephys/sleep_model.py` (steps B, D, E), both with `--selftest`
-(synthetic sequences with known τ_w and gate: the profile must recover them) and `--smoke`. Each is dispatched from
-`sleep_schedule.py` as `explore_<step>`.
+**Code:** `ephys/sleep_explore.py` (step A; step F later), `ephys/sleep_explore_c.py` (step C), `ephys/sleep_model.py`
+(steps B, D, E) and `ephys/sleep_model_diag.py` (the post-hoc split of step B), each with `--selftest` (synthetic
+sequences with known answers; the τ_w profile must recover the simulated τ_w). Standalone CLIs, as built (the
+planned dispatch from `sleep_schedule.py` was not added).
 
 **Results:**
 - reports `results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_<step>_2026c.md` + CSVs + figures;

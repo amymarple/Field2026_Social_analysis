@@ -300,3 +300,42 @@ code first):
 - the day-demeaned morning payback.
 
 **Next stage:** [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../implementation_plan/2026-10-08-sleep-behaviour-explore.md).
+
+## Sleep-behaviour explore, Steps A and B (2026-10-08 → 10-09; plan [2026-10-08-sleep-behaviour-explore.md](../implementation_plan/2026-10-08-sleep-behaviour-explore.md))
+
+**Step A, the reproduction gate** — `ephys/sleep_explore.py stepA`.
+- Written and run by an Opus subagent, reviewed by the main session (selftest rerun).
+- Report: [ephys_spikes_sleep_explore_A_2026c.md](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_A_2026c.md).
+- Verdicts against the pre-registered rules:
+
+| part | claim | verdict |
+|---|---|---|
+| A1 | #6a | **PASS** → Established. |
+| A2 | #6b | PASS by the letter; the pass2med Cox does not confirm it. |
+| A3 | #14b | PARTIAL: night ratio 0.41 / 0.52 after 2–7-min wakes, 6/6 rats; the 7–30-min bin has too few night episodes. |
+| A4 | #10 | PASS on fixed thresholds, with the new phase × day baselines; FINAL n.s. |
+| A5 | movement → waking | PASS: 63 % of the mover excess survives excluding wakes < 15 s after the onset; 90 % under the ungated scoring. |
+
+- Deviations are listed in the report: 4 ungated pilot sessions (not 7); a simulated resumption benchmark; block-clustered
+  Cox SEs computed in the module.
+
+**Step B, the minimal scheduler model** — `ephys/sleep_model.py stepB`.
+- The model: one counter P = NREM since the last REM, emptied at REM by exp(−r/κ), discounted over a wake by
+  exp(−d/τ_w), read out by a spline in a multinomial hazard per 10-s NREM step. It is compared with M2t, a hard reset,
+  a pause, every-wake erasure and gate-only.
+- Validation: nested forward chaining over day-half blocks.
+- Selftest: synthetic data generated with τ_w = 2 min → the profile picks 2 min.
+- Results (claims #32–#36):
+  - **The counter beats M2t:** −1.07 % FINAL, −0.51 % pass2med, 6/6.
+  - **REM empties it fully.**
+  - **τ_w ≈ 5–10 min,** interior and leave-one-animal-out stable.
+  - **Pre-registered "beats reset and pause": FAIL on FINAL;** pause rejected on pass2med.
+  - **Post-hoc split** (`ephys/sleep_model_diag.py`):
+    - after wakes ≥ 7 min, reset ≫ pause (6/6, both scorings);
+    - after 2–7-min wakes, the discount wins on FINAL only.
+  - **No dark step** is needed beyond the smooth clock.
+  - **Wall-clock time since REM adds** (−0.36 %, 6/6).
+  - **Fragmentation is absorbed** (#17 superseded).
+
+**Runtime.** Step B took ~3.5 h on 6 workers. The PC was shared: another session's local SWR run used ~100 GB, so the
+first 14-worker attempt died with a MemoryError and was rerun.

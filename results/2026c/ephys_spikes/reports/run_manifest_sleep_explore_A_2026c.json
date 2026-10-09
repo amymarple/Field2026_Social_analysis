@@ -1,0 +1,62 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_explore_A_20261008_2131",
+  "git_commit": "0332a4a+dirty",
+  "parts": [
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5"
+  ],
+  "inputs": {
+    "states_FINAL": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_final",
+    "states_pass2med": "D:\\3rd_rat_spikes\\analysis\\sleep_server\\states_1s_pass2med",
+    "review": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\reports\\ephys_spikes_sleep_review_2026c.csv",
+    "gaps": "D:\\Field2026_analysis_out\\2026c\\sleep_schedule_phase0_20261007_1818\\gaps.csv",
+    "library": "D:\\Field2026_analysis_out\\2026c\\sleep_events_20261008_1721",
+    "pilot_root": "D:\\3rd_rat_spikes\\analysis\\sleep\\imu"
+  },
+  "runtime_s": {
+    "load": 7.8,
+    "a1": 364.2,
+    "a2": 3.7,
+    "a3": 4.9,
+    "a4": 63.6,
+    "a5": 5.5,
+    "total": 449.7
+  },
+  "verdicts": [
+    {
+      "part": "A1",
+      "claim": "#6a a wake \u2265 7 min is not resumed",
+      "verdict": "PASS",
+      "key": "FINAL: OLS N_pre -0.021 [-0.053, +0.011], rats 6/6, Cox N_pre -0.005 [-0.083, +0.072], held-out \u0394 -0.55 % | pass2med: OLS N_pre -0.012 [-0.049, +0.026], rats 6/6, Cox N_pre +0.043 [-0.025, +0.110], held-out \u0394 -0.95 %"
+    },
+    {
+      "part": "A2",
+      "claim": "#6b graded only at night",
+      "verdict": "PASS",
+      "key": "FINAL: dark +0.23 [+0.10, +0.37], light -0.21 [-0.48, +0.06] | pass2med: dark +0.14 [+0.04, +0.24], light -0.00 [-0.16, +0.16] | caveat: pass2med: the censored Cox does not confirm the dark slope (-0.029 [-0.166, +0.107]); only 4/6 rats have a positive dark slope"
+    },
+    {
+      "part": "A3",
+      "claim": "#14b night REM-entry ratio at matched prior wake",
+      "verdict": "PARTIAL",
+      "key": "FINAL: ratio 2-7 0.41 (6/6 rats), 7-30 0.52 (3/3) | pass2med: ratio 2-7 0.52 (6/6 rats), 7-30 0.43 (2/2)"
+    },
+    {
+      "part": "A4",
+      "claim": "#10 morning REM payback (day-demeaned)",
+      "verdict": "PASS",
+      "key": "FINAL: 1 h +0.04 (p 0.664), 3 h -0.06 (p 0.872) | pass2med: 1 h +0.34 (p 0.000), 3 h +0.96 (p 0.000)"
+    },
+    {
+      "part": "A5",
+      "claim": "#28b / #29a movement raises waking beyond the scorer's rules",
+      "verdict": "PASS",
+      "key": "library NREM excess +0.094 \u2192 +0.059 excl. < 15 s (ratio 0.63); pilot ungated / FINAL excess ratio 0.90 (FINAL only, by nature)"
+    }
+  ],
+  "plan": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
+  "smoke": false
+}

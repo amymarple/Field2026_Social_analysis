@@ -1,0 +1,17 @@
+fold,chosen_B,chosen_reset,chosen_pause,chosen_everywake,chosen_const,chosen_mech_B,chosen_mech_reset,chosen_mech_pause
+0,,,,,,,,
+1,B:P_tw600_k60,B:R7_k60,B:P_twinf_k0,B:P_tw0_k20,B:Pc_tw600_f95,Bm:P_tw600_k60,Bm:R7_k0,Bm:P_twinf_k180
+2,B:P_tw300_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw300_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+3,B:P_tw300_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw300_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+4,B:P_tw300_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw300_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+5,B:P_tw300_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw300_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+6,B:P_tw300_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw300_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+7,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+8,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+9,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+10,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+11,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+12,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+13,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+14,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k180,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0
+15,B:P_tw600_k0,B:R7_k0,B:P_twinf_k0,B:P_tw0_k60,B:Pc_tw600_f100,Bm:P_tw300_k0,Bm:R7_k0,Bm:P_twinf_k0

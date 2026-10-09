@@ -1,0 +1,6 @@
+part,claim,verdict,key
+A1,#6a a wake ≥ 7 min is not resumed,PASS,"FINAL: OLS N_pre -0.021 [-0.053, +0.011], rats 6/6, Cox N_pre -0.005 [-0.083, +0.072], held-out Δ -0.55 % | pass2med: OLS N_pre -0.012 [-0.049, +0.026], rats 6/6, Cox N_pre +0.043 [-0.025, +0.110], held-out Δ -0.95 %"
+A2,#6b graded only at night,PASS,"FINAL: dark +0.23 [+0.10, +0.37], light -0.21 [-0.48, +0.06] | pass2med: dark +0.14 [+0.04, +0.24], light -0.00 [-0.16, +0.16] | caveat: pass2med: the censored Cox does not confirm the dark slope (-0.029 [-0.166, +0.107]); only 4/6 rats have a positive dark slope"
+A3,#14b night REM-entry ratio at matched prior wake,PARTIAL,"FINAL: ratio 2-7 0.41 (6/6 rats), 7-30 0.52 (3/3) | pass2med: ratio 2-7 0.52 (6/6 rats), 7-30 0.43 (2/2)"
+A4,#10 morning REM payback (day-demeaned),PASS,"FINAL: 1 h +0.04 (p 0.664), 3 h -0.06 (p 0.872) | pass2med: 1 h +0.34 (p 0.000), 3 h +0.96 (p 0.000)"
+A5,#28b / #29a movement raises waking beyond the scorer's rules,PASS,"library NREM excess +0.094 → +0.059 excl. < 15 s (ratio 0.63); pilot ungated / FINAL excess ratio 0.90 (FINAL only, by nature)"
