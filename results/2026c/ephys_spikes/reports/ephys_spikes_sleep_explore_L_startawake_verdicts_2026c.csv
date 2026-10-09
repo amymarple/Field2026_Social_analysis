@@ -1,0 +1,7 @@
+scores,part,pass,verdict,numbers
+final,L2 (base),,onset / initialisation,morning L_s obs 34.8 min vs 21.8-42.3 (inside); evening L_s obs 72.2 min vs 47.6-214.1 (inside)
+final,L2 (base + A),,onset / initialisation,morning L_s obs 34.8 min vs 21.1-41.7 (inside); evening L_s obs 72.2 min vs 46.4-197.4 (inside)
+final,F,False,no first-entry gap,"natural wake, after the first REM: REM O/E 0.89 [0.81, 1.02]; natural wake, before the first REM: REM O/E 0.69 [0.49, 0.98]; round, after the first REM: REM O/E 1.04 [0.90, 1.24]; round, before the first REM: REM O/E 1.16 [0.98, 1.49]"
+pass2med,L2 (base),,mixed,morning L_s obs 34.7 min vs 12.3-36.6 (inside); evening L_s obs 203.9 min vs 41.4-199.2 (above)
+pass2med,L2 (base + A),,onset / initialisation,morning L_s obs 34.7 min vs 10.8-35.9 (inside); evening L_s obs 203.9 min vs 39.7-208.0 (inside)
+pass2med,F,False,no first-entry gap,"natural wake, after the first REM: REM O/E 0.87 [0.80, 0.93]; natural wake, before the first REM: REM O/E 0.85 [0.68, 1.02]; round, after the first REM: REM O/E 0.88 [0.78, 0.99]; round, before the first REM: REM O/E 0.81 [0.69, 0.99]"

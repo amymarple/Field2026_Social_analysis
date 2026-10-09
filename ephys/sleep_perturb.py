@@ -795,6 +795,266 @@ def runT(a) -> None:
     print("written", rd / "ephys_spikes_sleep_explore_T_2026c.md", flush=True)
 
 
+# ------------------------------------------------------------------ part L: where is the first-REM delay? (plan §12, Amendment 4)
+DOC_L = r"""Part L of the sleep-behaviour explore (plan §12, Amendment 4, written before results): where is the first-REM delay
+after the battery rounds (#57)? Check 1 splits the latency at the first NREM and simulates conditionally on the observed
+pre-onset states; check 2 asks whether the held-out model mispredicts the first REM entry or all REM entries.
+
+Usage:  python ephys/sleep_perturb.py runL [--scorings final pass2med] [--reps 100] [--workers 8]
+
+Definitions (per post-round record, s from its start t0; rounds, records, scorings as parts S / P):
+  t_N        start of the first NREM bout (sensitivity, observed split only: the first NREM bout >= 60 s).
+  t_R        start of the first REM bout at or after t_N (censored at the record end).
+  W0         t_N - t0, the onset wait.     L_s = t_R - t_N, the latency after sleep onset (wall clock; censored).
+  in [t_N, min(t_R, end)):  N1 = NREM s (= L_N, the latency on the NREM clock; censored), W1 = WAKE s (awake after onset
+             before the first REM), nW1 = WAKE bouts starting there, U1 = unknown s.
+  T_wake     time from t_N to the start of the first WAKE bout after onset (any length; censored at the record end).
+  summaries  per kind (morning / evening): KM medians of W0, L_s, L_N, T_wake; means over rounds of W1, nW1; observed vs
+             100 simulated replicates (2.5-97.5 % of the replicate statistic).
+  models     part P's generative base (sleep_sim v2 fitted with every post-round 3 h masked), without and with part P's
+             cross-fitted one-phase arousal A (fitted on waking only, by date-parity halves).
+  conditional simulation   every observed bout before t_N is a forced block; the simulation starts in NREM at t_N (as after
+             any forced block); later long wakes and unknown runs are forced as usual. Only round records are simulated.
+  L1   observed W0 vs the unconditional simulation (description).
+  L2   conditional simulation: the observed L_s KM median inside the simulated 95 % range for morning AND evening rounds
+       -> "the delay is sleep onset / initialisation"; later than the range on both scorings -> "after sleep onset". Read
+       for the base and for base + A.
+  L3   L_N, W1, nW1, T_wake observed vs the conditional simulation (description).
+  F    S's forward-chained held-out steps (heldout_steps_<scoring>, perturbation-blind pb_rem / pb_wake): post-round steps
+       (0-3 h) split at the record's first REM; natural long wakes (>= 30 min, 0-3 h after the wake end, not post-round)
+       split at the first REM after the wake end (reference). O/E = sum [y = k] / sum p_k, block-bootstrap CI (2000).
+       Gap at the first entry = post-round "before" REM O/E CI < 1 and "after" not below 1 (CI upper >= 1), both scorings.
+"""
+
+
+def onset_split(st: np.ndarray, min_nrem: int = 1) -> dict | None:
+    from sleep_schedule import N, R
+    L = len(st)
+    bl = bouts(st)
+    tN = next((a for s_, a, b in bl if s_ == N and (b - a) >= min_nrem), None)
+    if tN is None:
+        return None
+    tR = next((a for s_, a, b in bl if s_ == R and a >= tN), None)
+    end = tR if tR is not None else L
+    seg = st[tN:end]
+    tw = next((a for s_, a, b in bl if s_ == W and a >= tN), None)
+    return {"W0": tN, "Ls": end - tN, "evR": int(tR is not None), "LN": int((seg == N).sum()), "W1": int((seg == W).sum()),
+            "nW1": sum(1 for s_, a, b in bl if s_ == W and tN <= a < end), "U1": int((seg == 0).sum()),
+            "Tw": (tw - tN) if tw is not None else (L - tN), "evW": int(tw is not None),
+            "rem_before_tN": int(any(s_ == R and a < tN for s_, a, b in bl))}
+
+
+def onset_table(recs: list[dict], rs: dict, min_nrem: int = 1) -> pd.DataFrame:
+    rows = []
+    for rc in recs:
+        if rc["record_id"] not in rs:
+            continue
+        o = onset_split(rc["state"], min_nrem)
+        rows.append({"record_id": rc["record_id"], "animal": rc["animal"], "kind": rs[rc["record_id"]], "has_nrem": o is not None, **(o or {})})
+    return pd.DataFrame(rows)
+
+
+def onset_summary(O: pd.DataFrame) -> dict:
+    from sleep_schedule_phase3 import km_median
+    O = O[O.has_nrem]
+    return {"W0_med": km_median(O.W0.to_numpy(float), np.ones(len(O))), "Ls_med": km_median(O.Ls.to_numpy(float), O.evR.to_numpy()),
+            "LN_med": km_median(O.LN.to_numpy(float), O.evR.to_numpy()), "Tw_med": km_median(O.Tw.to_numpy(float), O.evW.to_numpy()),
+            "W1_mean": float(O.W1.mean()), "nW1_mean": float(O.nW1.mean()), "rounds": len(O)}
+
+
+def inputs_cond(rc: dict, levels: list[str], tN: int) -> dict:
+    from sleep_sim import record_inputs
+    I = dict(record_inputs(rc, levels))
+    if tN <= 0:
+        return I
+    pre = [(a, b, s_) for s_, a, b in bouts(rc["state"]) if b <= tN]
+    keep = [(int(a), int(b), int(t_)) for a, b, t_ in zip(I["fs"], I["fe"], I["ft"]) if a >= tN]
+    allb = sorted(pre + keep)
+    I["fs"] = np.array([x[0] for x in allb], np.int64)
+    I["fe"] = np.array([x[1] for x in allb], np.int64)
+    I["ft"] = np.array([x[2] for x in allb], np.int8)
+    return I
+
+
+def _rep_L(rep: int, rrecs: list[dict], Ms: dict, rs: dict, AR: dict) -> list[dict]:
+    from sleep_sim import simulate_records
+    out = []
+    for var, (M, ar) in Ms.items():
+        sim = simulate_records(rrecs, M, 70_000 + rep, arousal=ar)
+        O = onset_table(sim, rs)
+        for kind in ("morning", "evening"):
+            out.append({"rep": rep, "variant": var, "kind": kind, **onset_summary(O[O.kind == kind])})
+    return out
+
+
+def check1(lab: str, recs: list[dict], RI: pd.DataFrame, T: dict, reps: int, workers: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    from joblib import Parallel, delayed
+    from sleep_sim import build_model, record_inputs, simulate_records
+    rs = dict(zip(RI.record_id, RI.kind))
+    masked = []
+    for rc in recs:
+        st = rc["state"].copy()
+        if rc["record_id"] in rs:
+            st[:POST_S] = 0
+        masked.append({**rc, "state": st})
+    M = build_model(masked)
+    pr = np.flatnonzero(T["post"])
+    Pg = predict(T["D"], pr, M["mN"], M["stN"], M["levels"])
+    y, sp, hp = T["D"]["y"][pr].astype(int), T["s"][pr], T["half"][pr]
+    par = {h: fit_arousal(Pg[hp != h, 2], sp[hp != h], y[hp != h])[0] for h in (0, 1)}
+    AR = {r.record_id: (float(par[r.half]["a"]), float(par[r.half]["tau_s"])) for r in RI.itertuples()}
+    rrecs = [rc for rc in recs if rc["record_id"] in rs]
+    obs = onset_table(rrecs, rs)
+    obs60 = onset_table(rrecs, rs, min_nrem=60)
+    tN = {r.record_id: int(r.W0) for r in obs.itertuples() if r.has_nrem}
+    unc = {**M, "inputs": [record_inputs(rc, M["levels"]) for rc in rrecs]}
+    cnd = {**M, "inputs": [inputs_cond(rc, M["levels"], tN.get(rc["record_id"], 0)) for rc in rrecs]}
+    Ms = {"unconditional, base": (unc, None), "unconditional, base + A": (unc, AR), "conditional, base": (cnd, None), "conditional, base + A": (cnd, AR)}
+    simulate_records(rrecs[:1], unc, 0)
+    res = Parallel(n_jobs=workers, backend="loky")(delayed(_rep_L)(r, rrecs, Ms, rs, AR) for r in range(reps))
+    S = pd.DataFrame([x for r in res for x in r])
+    rows = []
+    for kind in ("morning", "evening"):
+        o = onset_summary(obs[obs.kind == kind])
+        o60 = onset_summary(obs60[obs60.kind == kind])
+        for var in Ms:
+            s = S[(S.variant == var) & (S.kind == kind)]
+            for st in ("W0_med", "Ls_med", "LN_med", "Tw_med", "W1_mean", "nW1_mean"):
+                sv = s[st].to_numpy(float)
+                lo, hi = np.nanpercentile(sv, [2.5, 97.5])
+                ov = o[st]
+                rows.append({"scores": lab, "kind": kind, "variant": var, "stat": st, "observed": ov, "observed_nrem60": o60[st], "sim_mean": float(np.nanmean(sv)),
+                             "sim_2.5%": lo, "sim_97.5%": hi, "side": "above" if ov > hi else ("below" if ov < lo else "inside"), "rounds": o["rounds"]})
+    obs = obs.assign(scores=lab)
+    info = pd.DataFrame([{"scores": lab, "round_records": len(rrecs), "without_nrem": int((~obs.has_nrem).sum()),
+                          "rem_before_first_nrem": int(obs.rem_before_tN.fillna(0).sum()), "a_half0": par[0]["a"], "tau_half0_s": par[0]["tau_s"],
+                          "a_half1": par[1]["a"], "tau_half1_s": par[1]["tau_s"]}])
+    return pd.DataFrame(rows), obs, info
+
+
+def check2(lab: str, recs: list[dict], boot: int = 2000) -> pd.DataFrame:
+    from sleep_schedule import N, R
+    from sleep_stability import OUTD, boot_blocks
+    H = pd.read_csv(OUTD / f"heldout_steps_{lab}.csv.gz")
+    H["round_kind"] = H.round_kind.fillna("")
+    byrid = {rc["record_id"]: rc for rc in recs}
+    s = H.s_since_rec_start.to_numpy(int)
+    ok = np.array([byrid[r]["state"][x] == N if r in byrid and x < len(byrid[r]["state"]) else False for r, x in zip(H.record_id, s)])
+    assert ok.mean() > 0.999, ok.mean()
+    cell = np.array([""] * len(H), dtype=object)
+    for rid, idx in H.groupby("record_id").indices.items():
+        st = byrid[rid]["state"]
+        rpos = np.flatnonzero(st == R)
+        ss = s[idx]
+        if H.round_kind.iloc[idx[0]] != "":
+            win = ss < POST_S
+            frem = rpos[0] if len(rpos) else np.inf
+            cell[idx[win]] = np.where(ss[win] < frem, "round, before the first REM", "round, after the first REM")
+        else:
+            win = np.zeros(len(idx), bool)
+        ends = np.array([b for s_, a, b in bouts(st) if s_ == W and (b - a) >= NAT_S])
+        if len(ends):
+            k = np.searchsorted(ends, ss, side="right") - 1
+            for j in np.flatnonzero((k >= 0) & ~win):
+                e = ends[k[j]]
+                if ss[j] - e < POST_S:
+                    nxt = rpos[rpos >= e]
+                    fr = nxt[0] if len(nxt) else np.inf
+                    cell[idx[j]] = "natural wake, before the first REM" if ss[j] < fr else "natural wake, after the first REM"
+    H["cell"] = cell
+    rows = []
+    for c, g in H[H.cell != ""].groupby("cell"):
+        for tr, yc, pc in (("REM", 1, "pb_rem"), ("WAKE", 2, "pb_wake")):
+            e, lo, hi = boot_blocks(g, lambda q, yc=yc, pc=pc: (q.y == yc).sum() / q[pc].sum(), n=boot)
+            pa = g.groupby("animal").apply(lambda q, yc=yc, pc=pc: (q.y == yc).sum() / q[pc].sum(), include_groups=False)
+            rows.append({"scores": lab, "cell": c, "transition": tr, "steps": len(g), "observed": int((g.y == yc).sum()), "expected": float(g[pc].sum()),
+                         "OE": e, "ci_lo": lo, "ci_hi": hi, "animals_OE_lt_1": int((pa < 1).sum()), "animals": len(pa)})
+    return pd.DataFrame(rows)
+
+
+def runL(a) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from _common import git_commit, write_json
+    from output_paths import figure_dir, report_dir, run_dir
+    from sleep_model import PASS2MED, STATES, records_for
+    from sleep_quant import md_table, save_fig
+    from sleep_stability import gaps_table
+    sfx = "_startawake" if a.start_awake_only else ""
+    out = run_dir("sleep_explore_L" + sfx, "2026c")
+    rd, fd = report_dir("2026c", "ephys_spikes"), figure_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    t0 = time.time()
+    gaps = gaps_table()
+    C1, OB, INF, C2 = [], [], [], []
+    for lab in a.scorings:
+        recs = records_for(STATES if lab == "final" else PASS2MED)
+        RI = round_info(recs, gaps)
+        if a.start_awake_only:                                     # POST HOC (2026-10-09): drop rounds whose record starts in NREM
+            first = {rc["record_id"]: int(bouts(rc["state"])[0][0]) for rc in recs}
+            RI = RI[RI.record_id.map(first) != 3].reset_index(drop=True)
+        T = step_table(recs, RI)
+        c1, ob, inf = check1(lab, recs, RI, T, a.reps, a.workers)
+        C1.append(c1)
+        OB.append(ob)
+        INF.append(inf)
+        print(f"[{lab}] check 1 {time.time() - t0:.0f} s", flush=True)
+        C2.append(check2(lab, recs, a.boot))
+        print(f"[{lab}] check 2 {time.time() - t0:.0f} s", flush=True)
+    C1, OB, INF, C2 = (pd.concat(x, ignore_index=True) for x in (C1, OB, INF, C2))
+    OB.to_csv(out / "observed_onset_split.csv", index=False)
+    for name, Tb in (("check1", C1), ("check2", C2), ("info", INF)):
+        Tb.to_csv(rd / f"ephys_spikes_sleep_explore_L{sfx}_{name}_2026c.csv", index=False)
+    v = []
+    for lab in a.scorings:
+        for base in ("base", "base + A"):
+            q = C1[(C1.scores == lab) & (C1.variant == f"conditional, {base}") & (C1.stat == "Ls_med")]
+            side = dict(zip(q.kind, q.side))
+            verdict = "onset / initialisation" if all(s_ == "inside" for s_ in side.values()) else (
+                "after sleep onset" if all(s_ == "above" for s_ in side.values()) else "mixed")
+            v.append({"scores": lab, "part": f"L2 ({base})", "pass": None, "verdict": verdict,
+                      "numbers": "; ".join(f"{r.kind} L_s obs {r.observed / 60:.1f} min vs {r['sim_2.5%'] / 60:.1f}-{r['sim_97.5%'] / 60:.1f} ({r.side})" for _, r in q.iterrows())})
+        q = C2[(C2.scores == lab) & (C2.transition == "REM")]
+        b = q[q.cell == "round, before the first REM"].iloc[0]
+        af = q[q.cell == "round, after the first REM"].iloc[0]
+        gap = bool(b.ci_hi < 1 and af.ci_hi >= 1)
+        v.append({"scores": lab, "part": "F", "pass": gap, "verdict": "gap at the first entry" if gap else "no first-entry gap",
+                  "numbers": "; ".join(f"{r.cell}: REM O/E {r.OE:.2f} [{r.ci_lo:.2f}, {r.ci_hi:.2f}]" for _, r in q.iterrows())})
+    V = pd.DataFrame(v)
+    V.to_csv(rd / f"ephys_spikes_sleep_explore_L{sfx}_verdicts_2026c.csv", index=False)
+    stats = ["W0_med", "Ls_med", "LN_med", "Tw_med"]
+    fig, axs = plt.subplots(len(a.scorings), len(stats), figsize=(4.2 * len(stats), 4 * len(a.scorings)), squeeze=False)
+    for i, lab in enumerate(a.scorings):
+        for j, st in enumerate(stats):
+            ax = axs[i, j]
+            q = C1[(C1.scores == lab) & (C1.stat == st)].reset_index(drop=True)
+            xs = np.arange(len(q))
+            ax.errorbar(xs, q.sim_mean / 60, yerr=[(q.sim_mean - q["sim_2.5%"]) / 60, (q["sim_97.5%"] - q.sim_mean) / 60], fmt="o", ms=3, label="simulated 95 %")
+            ax.plot(xs, q.observed / 60, "rs", ms=4, label="observed")
+            ax.set_xticks(xs, [f"{r.kind}\n{r.variant}" for r in q.itertuples()], rotation=75, fontsize=5)
+            ax.set_title(f"{lab}: {st} (min)", fontsize=8)
+            if i == 0 and j == 0:
+                ax.legend(fontsize=6)
+    fig.suptitle(f"L: the first-REM latency after the rounds, split at the first NREM  {gc}", fontsize=9)
+    save_fig(fig, fd / f"ephys_spikes_sleep_explore_L{sfx}_2026c.png")
+    L_ = ["# Sleep-behaviour explore — L: where is the first-REM delay after the rounds? (cohort 2026c)" +
+          (" — POST HOC subset: rounds whose record does not start in NREM" if sfx else ""), "",
+          "Plan [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../implementation_plan/2026-10-08-sleep-behaviour-explore.md) "
+          f"§12 Amendment 4 (rules written before results). Driver `ephys/sleep_perturb.py runL` (commit {gc}); bulk `{out}`; {a.reps} replicates; "
+          f"runtime {(time.time() - t0) / 60:.0f} min. **Technical ledger.**", "",
+          "## Definitions", "", "```", DOC_L.strip(), "```", "",
+          "## Verdicts", "", *md_table(V), "",
+          "## Rounds and arousal parameters", "", *md_table(INF.round(4)), "",
+          "## Check 1: the latency split, observed vs simulated", "", *md_table(C1.round(2)), "",
+          "## Check 2: REM / WAKE entry before and after the first REM (held-out, perturbation-blind)", "", *md_table(C2.round(4)), "",
+          f"![](../figures/ephys_spikes_sleep_explore_L{sfx}_2026c.png)", ""]
+    (rd / f"ephys_spikes_sleep_explore_L{sfx}_2026c.md").write_text("\n".join(L_) + "\n", encoding="utf-8")
+    write_json(rd / f"run_manifest_sleep_explore_L{sfx}_2026c.json", {"run_dir": str(out), "git_commit": gc, "reps": a.reps, "scorings": a.scorings})
+    print(V.to_string(index=False), flush=True)
+    print("written", rd / "ephys_spikes_sleep_explore_L_2026c.md", flush=True)
+
+
 # ------------------------------------------------------------------ selftest
 def selftest() -> None:
     t0 = time.time()
@@ -862,16 +1122,30 @@ def selftest() -> None:
     w_lo2 = np.mean([np.mean([(r["state"][3600:10800] == W).mean() for i, r in enumerate(simulate_records(sub, M, rep, arousal=neg)) if i in long_]) for rep in range(4)])
     assert w_lo2 < w_lo, (w_lo, w_lo2)
     print(f"PASS simulator part T: b = -2.5 lowers the 1-3 h WAKE share {w_lo:.3f} -> {w_lo2:.3f}", flush=True)
+    # 6. part L: the onset split and the conditional inputs
+    from sleep_schedule import N as N_, R as R_
+    st_ = np.array([0] * 30 + [1] * 200 + [3] * 50 + [1] * 20 + [3] * 300 + [5] * 60 + [1] * 10 + [3] * 100, np.int8)
+    o = onset_split(st_)
+    assert (o["W0"], o["Ls"], o["evR"], o["LN"], o["W1"], o["nW1"], o["Tw"], o["evW"]) == (230, 370, 1, 350, 20, 1, 50, 1), o
+    o60 = onset_split(st_, min_nrem=60)
+    assert o60["W0"] == 300 and o60["Ls"] == 300, o60
+    rc = sub[0]
+    tN = onset_split(rc["state"])["W0"]
+    Ic = inputs_cond(rc, M["levels"], tN)
+    simc = simulate_records([rc], {**M, "inputs": [Ic]}, 0)[0]["state"]
+    assert np.array_equal(simc[:tN], rc["state"][:tN]) and (tN >= len(simc) or simc[tN] == N_), "conditional prefix"
+    print(f"PASS part L: onset split on a toy record; the conditional simulation keeps the observed {tN} s before the first NREM and starts in NREM", flush=True)
     print(f"selftest PASS ({time.time() - t0:.0f} s)", flush=True)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run", "runT"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "runT", "runL"])
     ap.add_argument("--scorings", nargs="+", default=["final", "pass2med"], choices=["final", "pass2med"])
     ap.add_argument("--reps", type=int, default=100)
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--start-awake-only", action="store_true", help="runL, POST HOC: only rounds whose record does not start in NREM")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
     if a.selftest:
@@ -880,6 +1154,8 @@ def main() -> None:
         run(a)
     elif a.cmd == "runT":
         runT(a)
+    elif a.cmd == "runL":
+        runL(a)
     else:
         ap.print_help()
 

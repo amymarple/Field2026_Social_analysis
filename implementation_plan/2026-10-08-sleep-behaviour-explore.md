@@ -28,6 +28,9 @@
   (start with its Reading); claims #56–#57, #47 corrected; part Q not triggered (residuals on different quantities).
 - **Amendment 3 (§11), part T DONE 2026-10-09:** [T report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_T_2026c.md);
   T1 / T2 fail on both scorings (#58); FINAL's REM residual base-dependent, pass2med's debt slope robust (#43).
+- **Amendment 4 (§12), part L DONE 2026-10-09:** [L report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_L_2026c.md)
+  + a post-hoc subset; the post-round recording starts before placement (#59), the delay is mostly this offset;
+  claims #59–#61. Proposed next: re-anchor the post-round clocks at the WISER house return.
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;

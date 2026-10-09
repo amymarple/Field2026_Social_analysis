@@ -1,0 +1,97 @@
+scores,kind,variant,stat,observed,observed_nrem60,sim_mean,sim_2.5%,sim_97.5%,side,rounds
+final,morning,"unconditional, base",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+final,morning,"unconditional, base",Ls_med,1699.0,1592.0,1219.63,644.65,1854.1,inside,50
+final,morning,"unconditional, base",LN_med,852.0,838.0,736.42,544.85,964.0,inside,50
+final,morning,"unconditional, base",Tw_med,181.0,239.0,105.03,74.0,157.24999999999991,above,50
+final,morning,"unconditional, base",W1_mean,756.5,704.84,599.491,482.40799999999996,727.3489999999999,above,50
+final,morning,"unconditional, base",nW1_mean,3.96,3.54,3.2302000000000004,2.5295,4.180499999999997,inside,50
+final,morning,"unconditional, base + A",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+final,morning,"unconditional, base + A",Ls_med,1699.0,1592.0,1410.25,723.725,1928.7499999999998,inside,50
+final,morning,"unconditional, base + A",LN_med,852.0,838.0,745.14,505.775,950.1749999999997,inside,50
+final,morning,"unconditional, base + A",Tw_med,181.0,239.0,67.19,41.95,101.72499999999992,above,50
+final,morning,"unconditional, base + A",W1_mean,756.5,704.84,657.0250000000001,494.671,797.3009999999995,inside,50
+final,morning,"unconditional, base + A",nW1_mean,3.96,3.54,4.1742,3.1590000000000003,5.0,inside,50
+final,morning,"conditional, base",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+final,morning,"conditional, base",Ls_med,1699.0,1592.0,1558.75,923.425,2035.525,inside,50
+final,morning,"conditional, base",LN_med,852.0,838.0,815.37,609.9,1024.0,inside,50
+final,morning,"conditional, base",Tw_med,181.0,239.0,101.57,61.95,154.19999999999993,above,50
+final,morning,"conditional, base",W1_mean,756.5,704.84,676.6443999999999,554.072,794.559,inside,50
+final,morning,"conditional, base",nW1_mean,3.96,3.54,3.5507999999999997,2.8295,4.3105,inside,50
+final,morning,"conditional, base + A",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+final,morning,"conditional, base + A",Ls_med,1699.0,1592.0,1632.74,1059.3,2076.15,inside,50
+final,morning,"conditional, base + A",LN_med,852.0,838.0,816.45,592.4,1005.0,inside,50
+final,morning,"conditional, base + A",Tw_med,181.0,239.0,61.59,39.475,88.52499999999999,above,50
+final,morning,"conditional, base + A",W1_mean,756.5,704.84,730.7785999999999,623.242,880.1225,inside,50
+final,morning,"conditional, base + A",nW1_mean,3.96,3.54,4.497200000000001,3.5695,5.421,inside,50
+final,evening,"unconditional, base",W0_med,43.0,213.0,0.0,0.0,0.0,above,44
+final,evening,"unconditional, base",Ls_med,4333.0,3394.0,2181.42,1145.975,4395.149999999997,inside,44
+final,evening,"unconditional, base",LN_med,1434.0,1409.0,948.59,693.325,1269.2249999999997,above,44
+final,evening,"unconditional, base",Tw_med,47.0,159.0,59.15,33.475,91.09999999999997,inside,44
+final,evening,"unconditional, base",W1_mean,6782.909090909091,5697.590909090909,5710.287954545455,3973.6812499999996,7633.842045454544,inside,44
+final,evening,"unconditional, base",nW1_mean,10.818181818181818,10.227272727272727,7.489545454545455,5.372159090909091,9.73181818181818,above,44
+final,evening,"unconditional, base + A",W0_med,43.0,213.0,0.0,0.0,0.0,above,44
+final,evening,"unconditional, base + A",Ls_med,4333.0,3394.0,2595.24,1493.325,5991.899999999991,inside,44
+final,evening,"unconditional, base + A",LN_med,1434.0,1409.0,982.78,701.8,1267.1,above,44
+final,evening,"unconditional, base + A",Tw_med,47.0,159.0,39.44,24.475,69.04999999999998,inside,44
+final,evening,"unconditional, base + A",W1_mean,6782.909090909091,5697.590909090909,5922.296136363635,3978.6585227272726,8137.569886363635,inside,44
+final,evening,"unconditional, base + A",nW1_mean,10.818181818181818,10.227272727272727,8.234545454545454,6.154545454545454,10.431818181818182,above,44
+final,evening,"conditional, base",W0_med,43.0,213.0,43.0,43.0,43.0,inside,44
+final,evening,"conditional, base",Ls_med,4333.0,3394.0,3162.2,1522.55,6564.274999999999,inside,44
+final,evening,"conditional, base",LN_med,1434.0,1409.0,1019.51,786.4,1368.424999999999,above,44
+final,evening,"conditional, base",Tw_med,47.0,159.0,51.66,28.475,87.09999999999997,inside,44
+final,evening,"conditional, base",W1_mean,6782.909090909091,5697.590909090909,6525.823636363635,4514.055113636364,8796.385795454546,inside,44
+final,evening,"conditional, base",nW1_mean,10.818181818181818,10.227272727272727,8.130454545454546,5.973863636363637,10.969886363636363,inside,44
+final,evening,"conditional, base + A",W0_med,43.0,213.0,43.0,43.0,43.0,inside,44
+final,evening,"conditional, base + A",Ls_med,4333.0,3394.0,3697.36,1828.15,8572.224999999993,inside,44
+final,evening,"conditional, base + A",LN_med,1434.0,1409.0,1043.66,825.225,1324.725,above,44
+final,evening,"conditional, base + A",Tw_med,47.0,159.0,35.69,21.475,57.099999999999966,inside,44
+final,evening,"conditional, base + A",W1_mean,6782.909090909091,5697.590909090909,6712.453636363636,4386.713068181818,9002.447727272725,inside,44
+final,evening,"conditional, base + A",nW1_mean,10.818181818181818,10.227272727272727,8.797045454545454,6.314772727272728,10.937499999999998,inside,44
+pass2med,morning,"unconditional, base",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+pass2med,morning,"unconditional, base",Ls_med,1631.0,1591.0,723.0,420.175,1217.1749999999997,above,50
+pass2med,morning,"unconditional, base",LN_med,823.0,823.0,558.21,397.95,718.15,above,50
+pass2med,morning,"unconditional, base",Tw_med,172.0,234.0,116.43,83.95,171.52499999999998,above,50
+pass2med,morning,"unconditional, base",W1_mean,744.72,704.06,468.8934000000001,344.0575,590.0774999999998,above,50
+pass2med,morning,"unconditional, base",nW1_mean,4.08,3.76,2.2632000000000003,1.6485,2.8505,above,50
+pass2med,morning,"unconditional, base + A",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+pass2med,morning,"unconditional, base + A",Ls_med,1631.0,1591.0,844.03,451.7,1507.25,above,50
+pass2med,morning,"unconditional, base + A",LN_med,823.0,823.0,577.52,373.175,778.8249999999999,above,50
+pass2med,morning,"unconditional, base + A",Tw_med,172.0,234.0,72.59,45.475,106.0,above,50
+pass2med,morning,"unconditional, base + A",W1_mean,744.72,704.06,518.5853999999999,395.2915,650.673,above,50
+pass2med,morning,"unconditional, base + A",nW1_mean,4.08,3.76,3.1702000000000004,2.3285,4.0104999999999995,above,50
+pass2med,morning,"conditional, base",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+pass2med,morning,"conditional, base",Ls_med,1631.0,1591.0,938.18,543.825,1500.6999999999998,above,50
+pass2med,morning,"conditional, base",LN_med,823.0,823.0,624.85,443.325,781.0999999999999,above,50
+pass2med,morning,"conditional, base",Tw_med,172.0,234.0,113.16,76.425,169.575,above,50
+pass2med,morning,"conditional, base",W1_mean,744.72,704.06,531.9985999999999,422.3945,651.4579999999999,above,50
+pass2med,morning,"conditional, base",nW1_mean,4.08,3.76,2.484,1.9084999999999999,3.115499999999998,above,50
+pass2med,morning,"conditional, base + A",W0_med,0.0,0.0,0.0,0.0,0.0,inside,50
+pass2med,morning,"conditional, base + A",Ls_med,1631.0,1591.0,1084.93,617.475,1745.5499999999997,inside,50
+pass2med,morning,"conditional, base + A",LN_med,823.0,823.0,634.71,445.475,851.625,inside,50
+pass2med,morning,"conditional, base + A",Tw_med,172.0,234.0,71.21,43.375,102.57499999999997,above,50
+pass2med,morning,"conditional, base + A",W1_mean,744.72,704.06,585.4304,469.073,736.021,above,50
+pass2med,morning,"conditional, base + A",nW1_mean,4.08,3.76,3.4318,2.739,4.14,inside,50
+pass2med,evening,"unconditional, base",W0_med,24.0,207.0,0.0,0.0,0.0,above,44
+pass2med,evening,"unconditional, base",Ls_med,6367.0,2592.0,1384.46,618.325,2541.449999999999,above,44
+pass2med,evening,"unconditional, base",LN_med,1457.0,1443.0,644.5,429.125,901.5999999999998,above,44
+pass2med,evening,"unconditional, base",Tw_med,57.0,168.0,62.43,39.475,90.62499999999996,inside,44
+pass2med,evening,"unconditional, base",W1_mean,6335.954545454545,4256.090909090909,4397.543181818182,3043.6056818181814,5840.847159090909,above,44
+pass2med,evening,"unconditional, base",nW1_mean,8.75,7.568181818181818,5.331590909090908,3.9261363636363638,6.962499999999998,above,44
+pass2med,evening,"unconditional, base + A",W0_med,24.0,207.0,0.0,0.0,0.0,above,44
+pass2med,evening,"unconditional, base + A",Ls_med,6367.0,2592.0,1953.19,894.8,3229.2999999999997,above,44
+pass2med,evening,"unconditional, base + A",LN_med,1457.0,1443.0,740.2,503.85,1011.3,above,44
+pass2med,evening,"unconditional, base + A",Tw_med,57.0,168.0,40.95,25.95,65.09999999999997,inside,44
+pass2med,evening,"unconditional, base + A",W1_mean,6335.954545454545,4256.090909090909,4814.2225,3603.603977272727,6024.730113636363,above,44
+pass2med,evening,"unconditional, base + A",nW1_mean,8.75,7.568181818181818,6.439545454545454,5.090909090909091,7.969886363636363,above,44
+pass2med,evening,"conditional, base",W0_med,24.0,207.0,24.0,24.0,24.0,inside,44
+pass2med,evening,"conditional, base",Ls_med,6367.0,2592.0,2090.68,1005.3,4534.549999999999,above,44
+pass2med,evening,"conditional, base",LN_med,1457.0,1443.0,751.05,532.3,964.8749999999999,above,44
+pass2med,evening,"conditional, base",Tw_med,57.0,168.0,53.76,34.0,82.62499999999996,inside,44
+pass2med,evening,"conditional, base",W1_mean,6335.954545454545,4256.090909090909,5100.603863636364,3840.6676136363635,6389.757386363635,inside,44
+pass2med,evening,"conditional, base",nW1_mean,8.75,7.568181818181818,5.857954545454546,4.459659090909091,7.311931818181816,above,44
+pass2med,evening,"conditional, base + A",W0_med,24.0,207.0,24.0,24.0,24.0,inside,44
+pass2med,evening,"conditional, base + A",Ls_med,6367.0,2592.0,2406.39,1393.475,4974.449999999997,above,44
+pass2med,evening,"conditional, base + A",LN_med,1457.0,1443.0,779.33,514.325,1033.6,above,44
+pass2med,evening,"conditional, base + A",Tw_med,57.0,168.0,37.34,24.0,60.04999999999998,inside,44
+pass2med,evening,"conditional, base + A",W1_mean,6335.954545454545,4256.090909090909,5289.111136363636,4186.194318181819,6644.754545454544,inside,44
+pass2med,evening,"conditional, base + A",nW1_mean,8.75,7.568181818181818,6.720681818181819,5.317045454545455,8.1375,above,44

@@ -476,3 +476,24 @@ at the round, peak $b$ at $\tau_2$), fitted on waking only over the 6 h after th
 - **REM residual:** FINAL's extra REM at 3 h comes inside with the 6-h-blind base (base-dependent); pass2med's debt
   slope stays above with every variant and base (the only robust REM residual).
 
+## Sleep-behaviour explore, Amendment 4 — part L, where is the first-REM delay? (2026-10-09; the user: "行1，2先做")
+
+Plan §12, committed (901067b) before results, after a reviewer note (the simulator starts every free stretch in NREM).
+`ephys/sleep_perturb.py runL [--start-awake-only]` (selftest 26 s: the onset split on a toy record; the conditional
+simulation keeps the observed pre-onset states). Runs 4 min each.
+
+**Definitions (headline).** $L = W_0 + L_s$ split at the first NREM $t_N$; after onset $L_N$ (NREM clock), $W_1$ (awake
+after onset), $T_{wake}$ (onset to the first awakening, the user's "入睡到 awake"); conditional simulation = observed
+bouts before $t_N$ forced. Check 2: held-out REM / WAKE O/E before vs after the first REM.
+
+**Results** (#59–#61; #44, #56, #57, #58 updated):
+- Half the post-round records open with ~2 min scored NREM; the field record (recording-inquiry) says Record Start is
+  pressed outside the house before placement (2.7–16.7 min before the return on 09-05) → every post-round clock includes
+  the end of the round (#59).
+- L2 (pre-registered): FINAL latency after onset reproduced (both kinds); pass2med not (base), mixed (with A). Post hoc,
+  records that start awake: reproduced on both scorings except pass2med evening without A; the late first awakening
+  disappears. #57's "REM-side" reading withdrawn.
+- Remaining: after evening rounds pass2med needs more NREM before the first REM (L_N 24–26 vs ≤ 16–23 min; #60, Candidate).
+- Check 2: no first-entry REM gap; the waking excess sits before the first REM (WAKE O/E ~1.5; #61).
+- Proposed next: re-anchor S2 / P / L at the WISER house return.
+
