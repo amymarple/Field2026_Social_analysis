@@ -135,3 +135,28 @@ sunrise → sunset of date D, the night period is sunset D → sunrise D+1.
 
 The cold nights sit in the middle of the cohort, around the probe advances, the 09-07 six-rat huddle and SF11's
 implant loss. A linear day trend cannot separate them.
+
+## Update 2026-10-09 (2): the day split at solar noon; the hottest vs the coldest time (the user's questions)
+
+**Day split at solar noon** (`swr_temperature.py rate --split-day`). Morning = sunrise → solar noon (≈ 13:00 EDT);
+afternoon = solar noon → sunset. Report: `…swr_temperature_rate_daysplit_2026c.md`.
+
+| Period | Mean rate (/NREM min) | Slope vs temperature (/NREM min per °C) | Verdict |
+|---|---|---|---|
+| Morning | 68 | −0.64 [−2.14, 0.85] | No relation |
+| Afternoon | 61 | −1.48 [−2.70, −0.26] | Candidate |
+| Night | 83 | −1.87 [−2.93, −0.82] | Candidate (unchanged) |
+
+- **Afternoon:** 3/5 animals share the sign, SF12 carries it (r −0.97), and validated blocks give −0.12. Amplitude also
+  falls on warm afternoons (−0.6 %/°C), so detection could explain part of it.
+
+**Hottest vs coldest time** (`swr_temperature.py extremes`). Per biological date: ± 1 h around that day's temperature
+maximum (sunrise → sunset; usually 14:30–17:30) vs ± 1 h around that night's minimum (usually 05:00–06:30, sometimes
+around midnight). Kept NREM events / NREM minutes, ≥ 10 NREM min, paired per animal × date. Report:
+`…swr_temperature_extremes_2026c.md`.
+
+- **The coldest time has the higher NREM ripple rate:** +15.2 /NREM min [3.7, 26.7] (date clusters).
+  - 24 of 27 pairs; 6 / 6 animals (animal-level t(5) p 0.006).
+  - 79.0 vs 63.8 /NREM min, about 11.5 °C colder.
+- This is also late rest phase vs the end of the active phase, so it is not separable from time of day / sleep
+  pressure.

@@ -16,6 +16,7 @@ leave-one-animal-out; hour profile; verdict = Established / Candidate / No (see 
 
   python ephys/swr_temperature.py run [--swr-root …] [--states-root …]
   python ephys/swr_temperature.py rate       (Amendment 2: day / night ripple RATE per period, from the saved bins)
+  python ephys/swr_temperature.py extremes   (rate at the hottest vs the coldest time of each day)
   python ephys/swr_temperature.py --selftest
 """
 from __future__ import annotations
@@ -617,7 +618,7 @@ def write_report(a, q, ev, b, R, PA, V, dn, S, LO, hp, figs, rd, out):
 
 
 # ------------------------------------------------------------------ Amendment 2: day / night ripple RATE per period
-def periods(b: pd.DataFrame, hp: pd.DataFrame) -> pd.DataFrame:
+def periods(b: pd.DataFrame, hp: pd.DataFrame, split_day: bool = False) -> pd.DataFrame:
     """One row per animal x block x period (day of biological date D = [sunrise D, sunset D); night of D = [sunset D,
     sunrise D+1)), from the 30-min bins: R = sum n / sum N, T = NREM-minute-weighted temperature, hour-adjusted rate."""
     from sleep_quant import sun_times
@@ -628,6 +629,12 @@ def periods(b: pd.DataFrame, hp: pd.DataFrame) -> pd.DataFrame:
         sr, _ = sun_times(t.date())
         bio.append((t.normalize() - pd.Timedelta(days=1)) if t < pd.Timestamp(sr) else t.normalize())
     d["bio"] = pd.to_datetime(bio).strftime("%m-%d")
+    if split_day:  # the user (10-09): day = sunrise -> solar noon (morning) + solar noon -> sunset (afternoon), by bin centre
+        st = [tuple(pd.Timestamp(x) for x in sun_times(t.date())) for t in c]
+        am = np.asarray([t < sr_ + (ss_ - sr_) / 2 for t, (sr_, ss_) in zip(c, st)])
+        isday = (d.phase == "day").to_numpy()
+        d.loc[isday & am, "phase"] = "morning"
+        d.loc[isday & ~am, "phase"] = "afternoon"
     prof = hp.set_index("hour").r_dm
     d["r_adj"] = d.r - d.hour.astype(int).map(prof).fillna(0)
     rows = []
@@ -675,6 +682,8 @@ def per_animal_period(p: pd.DataFrame, y: str, tcol: str) -> pd.DataFrame:
 
 
 def rate_analysis(a):
+    split = bool(getattr(a, "split_day", False))
+    sfx = "_daysplit" if split else ""
     from scipy import stats
     rd = report_dir(COHORT)
     man = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
@@ -682,12 +691,13 @@ def rate_analysis(a):
     hp = pd.read_csv(rd / f"ephys_spikes_swr_temperature_hour_profile_{COHORT}.csv")
     q = pd.read_csv(a.quality)
     vab = set((q[q.tier == "validated"].animal + "|" + q[q.tier == "validated"].block_from.astype(str)))
-    p = periods(b, hp)
-    p.to_csv(Path(man["run_dir"]) / "periods_day_night.csv.gz", index=False)
+    p = periods(b, hp, split)
+    p.to_csv(Path(man["run_dir"]) / f"periods_day_night{sfx}.csv.gz", index=False)
+    PH = [x for x in ("day", "morning", "afternoon", "night") if x in set(p.phase)]
     rows, pas = [], []
     for y, ylab in (("R", "rate"), ("R_adj", "hour-adjusted rate"), ("A", "relative amplitude (check)")):
         for tcol in ("T", "T_anom"):
-            for ph in ("day", "night"):
+            for ph in PH:
                 d = p[p.phase == ph]
                 f = fit_period(d, y, tcol)
                 pa_ = per_animal_period(d, y, tcol)
@@ -711,23 +721,23 @@ def rate_analysis(a):
                                  verdict=v))
                 pas.append(pa_.assign(outcome=y, temp=tcol, phase=ph))
     R, PA = pd.DataFrame(rows), pd.concat(pas, ignore_index=True)
-    R.to_csv(rd / f"ephys_spikes_swr_temperature_rate_tests_{COHORT}.csv", index=False)
-    PA.to_csv(rd / f"ephys_spikes_swr_temperature_rate_per_animal_{COHORT}.csv", index=False)
-    p.to_csv(rd / f"ephys_spikes_swr_temperature_rate_periods_{COHORT}.csv", index=False)
-    fig = rate_figure(p)
-    rate_report(p, R, PA, fig, rd, man["run_dir"])
-    print(f"wrote {rd / f'ephys_spikes_swr_temperature_rate_{COHORT}.md'} ({len(p)} periods)")
+    R.to_csv(rd / f"ephys_spikes_swr_temperature_rate{sfx}_tests_{COHORT}.csv", index=False)
+    PA.to_csv(rd / f"ephys_spikes_swr_temperature_rate{sfx}_per_animal_{COHORT}.csv", index=False)
+    p.to_csv(rd / f"ephys_spikes_swr_temperature_rate{sfx}_periods_{COHORT}.csv", index=False)
+    fig = rate_figure(p, PH, sfx)
+    rate_report(p, R, PA, fig, rd, man["run_dir"], PH, sfx)
+    print(f"wrote {rd / f'ephys_spikes_swr_temperature_rate{sfx}_{COHORT}.md'} ({len(p)} periods)")
 
 
-def rate_figure(p: pd.DataFrame) -> Path:
+def rate_figure(p: pd.DataFrame, PH=("day", "night"), sfx: str = "") -> Path:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from _common import figure_dir
     animals = sorted(p.animal.unique())
-    fig, axes = plt.subplots(2, len(animals) + 1, figsize=(2.7 * (len(animals) + 1), 5.4), squeeze=False)
-    col = {"day": "#d98c00", "night": "#2b4f8a"}
-    for i, ph in enumerate(("day", "night")):
+    fig, axes = plt.subplots(len(PH), len(animals) + 1, figsize=(2.7 * (len(animals) + 1), 2.7 * len(PH)), squeeze=False)
+    col = {"day": "#d98c00", "morning": "#e6a817", "afternoon": "#c0392b", "night": "#2b4f8a"}
+    for i, ph in enumerate(PH):
         d = p[p.phase == ph].copy()
         d["Rd"] = d.R - d.groupby("ab").R.transform("mean")
         for j, an in enumerate(animals + ["all (block-demeaned)"]):
@@ -745,21 +755,25 @@ def rate_figure(p: pd.DataFrame) -> Path:
             ax.tick_params(labelsize=7)
             if j == 0:
                 ax.set_ylabel("NREM ripple rate (/NREM min)", fontsize=8)
-            if i == 1:
+            if i == len(PH) - 1:
                 ax.set_xlabel("outdoor T during NREM (degC)", fontsize=8)
     fig.suptitle("Day and night NREM ripple rate vs temperature, one point per animal x period (circle = first block, "
                  "square = later block; 'all' = rate minus its block mean)", fontsize=9)
     fig.tight_layout()
-    out = figure_dir(COHORT) / f"ephys_spikes_swr_temperature_rate_{COHORT}.png"
+    out = figure_dir(COHORT) / f"ephys_spikes_swr_temperature_rate{sfx}_{COHORT}.png"
     fig.savefig(out, dpi=120)
     plt.close(fig)
     return out
 
 
-def rate_report(p, R, PA, fig, rd, run_dir):
+def rate_report(p, R, PA, fig, rd, run_dir, PH=("day", "night"), sfx=""):
     L = []
     w = L.append
-    w(f"# Day and night NREM ripple RATE vs temperature ({COHORT})")
+    w(f"# Day and night NREM ripple RATE vs temperature ({COHORT})" + (" - day split at solar noon" if sfx else ""))
+    if sfx:
+        w("")
+        w("Day split as the user asked (10-09): morning = sunrise -> solar noon (the midpoint of sunrise and sunset, about 13:00 "
+          "EDT), afternoon = solar noon -> sunset; a 30-min bin goes by its centre. The night is unchanged.")
     w("")
     w(f"Generated by `ephys/swr_temperature.py rate` (repo `{git_commit()}`) from the 30-min bins of `{run_dir}`. "
       "Plan Amendment 2 ([plan](../../../../implementation_plan/2026-10-08-swr-temperature.md)): written after the bin-level "
@@ -768,7 +782,7 @@ def rate_report(p, R, PA, fig, rd, run_dir):
     w("")
     w("## Answer")
     w("")
-    for ph in ("day", "night"):
+    for ph in PH:
         r = R[(R.outcome == "R") & (R.temp == "T") & (R.phase == ph)].iloc[0]
         ra = R[(R.outcome == "R") & (R.temp == "T_anom") & (R.phase == ph)].iloc[0]
         rj = R[(R.outcome == "R_adj") & (R.temp == "T") & (R.phase == ph)].iloc[0]
@@ -837,7 +851,105 @@ def rate_report(p, R, PA, fig, rd, run_dir):
       "SF08 block 1 and SF12 block 1 are the least trustworthy blocks (quality guide).")
     w("- One value per animal per period and 12 dates: weather varies little between dates within a phase; a slope across "
       "dates can also carry anything else that changed from day to day (handling, disturbance, the probe).")
-    (rd / f"ephys_spikes_swr_temperature_rate_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+    (rd / f"ephys_spikes_swr_temperature_rate{sfx}_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+
+
+# ------------------------------------------------------------------ hottest vs coldest time of each day (user 10-09)
+def extremes(a):
+    """Per biological date D (sunrise D -> sunrise D+1): the hottest window = +-1 h around the time of the maximum outdoor
+    temperature between sunrise and sunset of D; the coldest window = +-1 h around the minimum between sunset D and sunrise
+    D+1. Per animal x block: R = sum n / sum N over the 30-min bins whose centre falls in the window (>= 10 NREM min);
+    paired difference R_cold - R_hot per animal x date (same block)."""
+    import statsmodels.api as sm
+    from scipy import stats
+    from sleep_quant import sun_times
+    rd = report_dir(COHORT)
+    man = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
+    run = Path(man["run_dir"])
+    b = pd.read_csv(run / "bins_30min.csv.gz", parse_dates=["b0"])
+    wx = pd.read_csv(run / "weather_anomaly.csv.gz", parse_dates=["t"]).dropna(subset=["temp_C"])
+    b["c"] = b.b0 + pd.Timedelta(minutes=15)
+    rows = []
+    for D in pd.date_range("2026-08-31", "2026-09-11"):
+        sr, ss = (pd.Timestamp(x) for x in sun_times(D.date()))
+        sr2, _ = (pd.Timestamp(x) for x in sun_times((D + pd.Timedelta(days=1)).date()))
+        day = wx[(wx.t >= sr) & (wx.t < ss)]
+        night = wx[(wx.t >= ss) & (wx.t < sr2)]
+        if len(day) < 100 or len(night) < 100:
+            continue
+        th, tc = day.loc[day.temp_C.idxmax()], night.loc[night.temp_C.idxmin()]
+        for nm, w0 in (("hot", th), ("cold", tc)):
+            g = b[(b.c >= w0.t - pd.Timedelta(hours=1)) & (b.c <= w0.t + pd.Timedelta(hours=1))]
+            for (an, ab), gg in g.groupby(["animal", "ab"]):
+                N = gg.N.sum()
+                if N >= 10:
+                    rows.append(dict(date=D.strftime("%m-%d"), window=nm, t_extreme=w0.t.strftime("%H:%M"), T=w0.temp_C,
+                                     animal=an, ab=ab, nrem_min=N, R=gg.n.sum() / N, T_bins=float(np.average(gg.temp_C, weights=gg.N))))
+    e = pd.DataFrame(rows)
+    pr = e.pivot_table(index=["date", "animal", "ab"], columns="window", values=["R", "T", "nrem_min"]).dropna()
+    pr.columns = [f"{x}_{y}" for x, y in pr.columns]
+    pr = pr.reset_index()
+    pr["diff"] = pr.R_cold - pr.R_hot
+    pr["dT"] = pr.T_cold - pr.T_hot
+    pa = pr.groupby("animal").agg(pairs=("diff", "size"), R_hot=("R_hot", "mean"), R_cold=("R_cold", "mean"),
+                                  diff=("diff", "mean"), diff_sem=("diff", lambda x: x.std(ddof=1) / np.sqrt(len(x)) if len(x) > 1 else np.nan),
+                                  cold_higher=("diff", lambda x: int((x > 0).sum())), T_hot=("T_hot", "mean"), T_cold=("T_cold", "mean"))
+    m = sm.OLS(pr["diff"], np.ones(len(pr))).fit(cov_type="cluster", cov_kwds={"groups": pd.factorize(pr.date)[0], "use_correction": True})
+    G = pr.date.nunique()
+    tq = stats.t.ppf(0.975, G - 1)
+    est, se = float(m.params.iloc[0]), float(m.bse.iloc[0])
+    am = pa["diff"]
+    ta = stats.ttest_1samp(am, 0)
+    e.to_csv(rd / f"ephys_spikes_swr_temperature_extremes_windows_{COHORT}.csv", index=False)
+    pr.to_csv(rd / f"ephys_spikes_swr_temperature_extremes_pairs_{COHORT}.csv", index=False)
+    times = e.drop_duplicates(["date", "window"]).pivot(index="date", columns="window", values=["t_extreme", "T"])
+    L = []
+    w = L.append
+    w(f"# NREM ripple rate at the hottest vs the coldest time of the day ({COHORT})")
+    w("")
+    w(f"Generated by `ephys/swr_temperature.py extremes` (repo `{git_commit()}`) from the 30-min bins of `{run}` (same events "
+      "and exclusions as the temperature analysis: tiers validated / good, kept NREM events, to 09-11 19:40). The user asked "
+      "(10-09): at the hottest time around midday and the coldest time at night, which ripple rate is higher?")
+    w("")
+    w("## Answer")
+    w("")
+    w(f"- **The coldest time has the higher NREM ripple rate.** Paired per animal x date (same block): cold - hot = "
+      f"{est:+.1f} events/NREM min [95 % CI {est - tq * se:+.1f}, {est + tq * se:+.1f}] (SEs clustered by date, t({G - 1})), "
+      f"{len(pr)} pairs, {int((pr['diff'] > 0).sum())} / {len(pr)} with the cold window higher; per animal "
+      f"{int((pa['diff'] > 0).sum())} / {len(pa)} animals higher in the cold window (animal-level mean {am.mean():+.1f}, "
+      f"t({len(am) - 1}) p {ta.pvalue:.3f}).")
+    w(f"- Mean rates: hottest window {pr.R_hot.mean():.1f}, coldest window {pr.R_cold.mean():.1f} events/NREM min; the "
+      f"temperature difference averages {pr.dT.mean():+.1f} degC.")
+    w("- This is a time-of-day contrast (midday rest vs the end of the night), not a temperature effect: the per-period "
+      "analysis ([rate report](ephys_spikes_swr_temperature_rate_2026c.md)) found no temperature relation in the day and only a "
+      "Candidate one at night.")
+    w("")
+    w("## Per animal")
+    w("")
+    w("| Animal | Pairs (dates) | Rate hottest | Rate coldest | Cold - hot (SEM) | Dates cold higher | T hottest / coldest (degC) |")
+    w("|---|---|---|---|---|---|---|")
+    for an, r in pa.iterrows():
+        w(f"| {an} | {int(r.pairs)} | {r.R_hot:.1f} | {r.R_cold:.1f} | {r['diff']:+.1f} ({fmt(r.diff_sem, 1)}) | "
+          f"{int(r.cold_higher)} / {int(r.pairs)} | {r.T_hot:.1f} / {r.T_cold:.1f} |")
+    w("")
+    w("## The windows")
+    w("")
+    w("| Date | Hottest at | T max | Coldest at (that night) | T min |")
+    w("|---|---|---|---|---|")
+    for d_, r in times.iterrows():
+        w(f"| {d_} | {r[('t_extreme', 'hot')] if ('t_extreme', 'hot') in r else ''} | {fmt(r.get(('T', 'hot')), 1)} | "
+          f"{r[('t_extreme', 'cold')] if ('t_extreme', 'cold') in r else ''} | {fmt(r.get(('T', 'cold')), 1)} |")
+    w("")
+    w("## Definitions")
+    w("")
+    w("- **Hottest window** of biological date D: +-1 h around the 5-min weather sample with the highest outdoor temperature "
+      "between sunrise and sunset of D. **Coldest window**: +-1 h around the lowest between sunset D and sunrise D+1.")
+    w("- **Window rate** $R = \\sum n_k / \\sum N_k$ over the 30-min bins whose centre lies in the window (kept NREM SWR events "
+      "per NREM minute); >= 10 NREM minutes required.")
+    w("- **Paired difference** $\\Delta = R_{cold} - R_{hot}$ per animal x date x block; pooled mean with SEs clustered by date "
+      "(CR1, $t(G-1)$); animal-level = the per-animal mean differences, one-sample t.")
+    (rd / f"ephys_spikes_swr_temperature_extremes_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+    print("\n".join(L[L.index("## Answer"):L.index("## Definitions")]))
 
 
 # ------------------------------------------------------------------ selftest
@@ -886,12 +998,13 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run", "rate"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "rate", "extremes"])
     ap.add_argument("--swr-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/swr")
     ap.add_argument("--states-root", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final")
     ap.add_argument("--quality", default=str(report_dir(COHORT) / f"ephys_spikes_swr_quality_{COHORT}.csv"))
     ap.add_argument("--review", default=str(report_dir(COHORT) / f"ephys_spikes_sleep_review_{COHORT}.csv"))
     ap.add_argument("--cohort-yaml", default=str(HERE.parent / f"cohorts/{COHORT}.yaml"))
+    ap.add_argument("--split-day", action="store_true", help="rate: split the day at solar noon (morning / afternoon)")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
     if a.selftest:
@@ -900,6 +1013,8 @@ def main():
         run(a)
     if a.cmd == "rate":
         rate_analysis(a)
+    if a.cmd == "extremes":
+        extremes(a)
 
 
 if __name__ == "__main__":
