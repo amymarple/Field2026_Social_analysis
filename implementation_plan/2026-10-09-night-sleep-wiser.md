@@ -149,3 +149,48 @@ The user: "the in-the-field part can be smoothed; ask the other agents for the b
 - field seconds inside a `qc_i1` window not counted;
 - the unsmoothed nearest-fix rule (the first run).
 - Naps on the rain nights (09-03, 09-09, 09-10 morning) are reported apart.
+
+## Amendment 3 (2026-10-09, written before computing): the nap advantage under depth control; REM vs SWR
+
+The user asked two things:
+- does the nap advantage survive controlling NREM depth?
+- draw the REM share per NREM in figure C, to see whether REM and SWR compete or exclude each other.
+
+**N1, nap vs main sleep at equal depth.**
+- **Units:**
+  - each strict nap (primary membership);
+  - each 30-min τ chunk of the main sleep with ≥ 5 eligible NREM min. "First 2 h" = τ < 2 h.
+  - Per unit: kept NREM SWR events, eligible NREM minutes, mean depth z (the raw `imu_fixch` slope, z within
+    animal × block).
+- **Model:**
+  - $r_u = \alpha_{a,b} + \beta \tilde D_u + \gamma\,\mathrm{nap}_u$, WLS with weights = NREM minutes, SEs clustered by
+    biological night, $t(G-1)$;
+  - γ is reported with and without $\tilde D$, against all main sleep and against its first 2 h;
+  - per-animal γ.
+- **Depth-matched:** within animal × block, quintiles of depth over the eligible NREM seconds. The nap − main rate
+  difference per quintile, averaged with weights = min(nap, main) NREM minutes.
+- **Reading:** the nap advantage survives depth when γ (with depth) has a CI excluding 0, is positive in ≥ 4 animals,
+  and the depth-matched difference is positive.
+
+**R1, circadian REM share.** Per clock hour, REM seconds / NREM seconds (all included records), mean ± SEM over animals.
+Drawn in figure C with depth and ripple rate.
+
+**R2, across bins.**
+- 30-min clock bins within animal × block with ≥ 5 eligible NREM min.
+- Model: $r_k = \alpha_{a,b} + \beta_{REM}\,s_k + \beta_D \tilde D_k$ + hour harmonics (k = 1, 2), WLS, SEs clustered by
+  date. $s_k$ = REM / (NREM + REM) in the bin.
+- β_REM per 10 percentage points; per-animal signs.
+
+**R3, NREM → REM vs NREM → WAKE transitions.**
+- Transitions: NREM runs ≥ 120 s followed by ≥ 30 s of REM, or by ≥ 30 s of WAKE.
+- Ripple rate (kept events / eligible NREM seconds) in 15-s bins over the last 120 s of the run, relative to the same
+  run's −300 … −120 s baseline.
+- Per animal: (last 60 s rate) / baseline, REM-bound vs WAKE-bound. Animal-level paired difference, $t(n-1)$.
+
+**Reading.** Competition or exclusion is supported when:
+- R2's β_REM < 0 beyond depth and hour, in ≥ 4 animals;
+- and R3 shows a pre-REM drop below the run's own baseline that the pre-WAKE runs do not show.
+- Otherwise, a shared circadian pattern is not evidence of competition.
+
+**Output.** `ephys/swr_rem_naps.py` (`run`, `--selftest`); report `…swr_rem_naps_2026c.md`; the circadian figure with
+REM / NREM in panel C.

@@ -96,3 +96,42 @@ the main sleep, not naps".
   peak hour, 88–89 % between 21:00 and 03:00, and naps higher in 5–6 / 6.
 - The unsmoothed rule gave 117.
 - 25 naps fall on the rain nights.
+
+## Update: naps at equal depth; REM vs SWR (plan Amendment 3, written before computing)
+
+New `ephys/swr_rem_naps.py` (`run`, `--selftest`). Report: `…swr_rem_naps_2026c.md`; figures
+`…night_naps_circadian_rem_2026c.png` (REM per NREM added to panel C) and `…swr_rem_naps_2026c.png`.
+
+**N1: the nap advantage survives depth.**
+
+| Comparison | Without depth (/NREM min) | With depth (/NREM min) | Animals positive |
+|---|---|---|---|
+| Strict naps vs the first 2 h of the main sleep | +10.4 | +10.9 [4.3, 17.6] | 5/5 |
+| Strict naps vs all main sleep | +19.4 | +13.8 [7.6, 20.0] | — |
+
+- Depth-matched quintiles within block: +12.0 [3.3, 20.7] (p 0.016), positive in 6/6.
+
+**R1: REM per NREM by clock hour** mirrors the ripple rate:
+- 0.016–0.04 at 21–23 h, when naps are almost REM-free;
+- 0.05–0.11 from 00 to 06 h;
+- 0.20–0.25 from 09 to 17 h.
+
+**R2: ripple rate vs REM share across 30-min bins within block.**
+- −5.8 /NREM min per 10 % REM share; −2.19 [−3.79, −0.59] with depth + hour (p 0.012).
+- Negative in 4/6 animals: SF12 −7.3, SF10 −2.5; SF07 and SF11 are positive, not significant.
+
+**R3: the last 60 s of NREM vs the run's own −300 … −120 s baseline.**
+- Ratio before REM 0.72–0.85; before WAKE 0.85–1.05.
+- REM − WAKE = −0.14 (p 0.025); REM-bound lower in 6/6.
+
+**Check with all detected NREM events (theta / movement / LFP-EMG flags ignored).** The theta exclusion could create a
+pre-REM drop, because theta rises before REM.
+- R3 REM − WAKE = −0.09 (p 0.042), still 6/6: the drop survives, about a third of it was the flag.
+- R2 −2.17 [−3.89, −0.45], but negative in only 3/6.
+
+**Reading (plan rule).**
+- The nap advantage survives depth.
+- REM / SWR exclusion is supported at the transition level: ripples fall in the minute before REM more than before
+  waking, in every animal, also with the flags ignored.
+- Across bins, the REM-share relationship is significant pooled but not consistent across animals.
+- The 24-h mirror of REM and ripple rate is partly the clock (R2 shrinks from −5.8 to −2.2 with depth + hour).
