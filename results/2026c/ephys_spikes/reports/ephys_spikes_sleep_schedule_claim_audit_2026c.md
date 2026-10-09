@@ -1,6 +1,6 @@
 # Claim audit — the internal sleep schedule: memory, carry-over across wakes, compensation, night vs day (cohort 2026c, 2026-10-08)
 
-`/scientific-report-promotion` on Phases 0–6 and the sleep-behaviour explore Steps A–E + Amendment 1 (updated 2026-10-09: #48–#53 from part F1, #14 / #34 notes; #43–#47 from parts S and G, Step F2 listed without numbers; #10, #40–#43 from Steps D–E; #14b, #35, #37–#39 from Step C; #5, #6a, #6b, #10, #14b, #17, #28b, #29a, #32–#36; 2026-10-08 from the logic audit: #6a/#6b, #10, #13, #14b, #24, #28b, #29a, #30, #31; LFP-feature claims moved to the next stage) of
+`/scientific-report-promotion` on Phases 0–6 and the sleep-behaviour explore Steps A–E + Amendment 1 (updated 2026-10-09: #54–#55 from the REM ripple model, next stage; #48–#53 from part F1, #14 / #34 notes; #43–#47 from parts S and G, Step F2 listed without numbers; #10, #40–#43 from Steps D–E; #14b, #35, #37–#39 from Step C; #5, #6a, #6b, #10, #14b, #17, #28b, #29a, #32–#36; 2026-10-08 from the logic audit: #6a/#6b, #10, #13, #14b, #24, #28b, #29a, #30, #31; LFP-feature claims moved to the next stage) of
 [implementation_plan/2026-10-07-sleep-internal-schedule.md](../../../../implementation_plan/2026-10-07-sleep-internal-schedule.md)
 (rev. 2 + Amendments 1–5). Change log:
 [change_log/2026-10-08-sleep-internal-schedule.md](../../../../change_log/2026-10-08-sleep-internal-schedule.md).
@@ -189,6 +189,17 @@ contrasted; deviations stated in each section):
 
 Also in F1, without numbers: H5 (the night ramp #6b — longer night wakes, later first REM — is time of night, not wake length) INCONCLUSIVE — ln d keeps CI > 0 with hours since sunset on FINAL only (+0.17 [+0.03, +0.31] vs +0.06 [−0.09, +0.20]), and FINAL's loses it without post-round sleeps; H23 (2–7-min wakes are two kinds) does not hold (in #34).
 
+**Ripples in the REM-entry model** (2026-10-09; [REM ripple model](ephys_spikes_rem_ripple_model_2026c.md), driver `ephys/rem_ripple_model.py`, the SWRdetection session;
+plan [2026-10-09-rem-ripple-model.md](../../../../implementation_plan/2026-10-09-rem-ripple-model.md) pre-registered with the
+model owner, Amendment 2 artifact checks before they ran, a read-only Fable audit, Amendment 3 before its follow-up ran;
+LFP-feature claims → **next stage (LFP)** by the 2026-10-08 scope rule; base = B-full at P_tw600_k0, steps reproduced row
+for row; ALL detected events primary, kept events sensitivity; animal rule n − 1 of n = 4/5, SF11 only in training):
+
+| # | claim | status | main_evidence | allowed_wording | forbidden_wording |
+|---|---|---|---|---|---|
+| 54 | At the scale of the REM cycle, NREM ripples add no REM-entry information beyond the count, the clock and the wake history. | **Established** (scoped, bounded negative; both scorings) → **next stage (LFP)** | T1: 10-min ripple rate at lags 0 / 60 / 120 s, no held-out gain on either scoring (e.g. lag 60 s, all events, −0.006 % FINAL, +0.019 % pass2med; bound ~0.05 %). Ripples older than the last minute add nothing: lagged ρ = ln((C + 0.5)/(P + 0.5)) ≈ 0, also on steps ≥ 60 s into a bout where the lag can see (K7: −0.007 % / +0.031 %). Scope: 5 test animals (SF11 only in training); sleep-onset NREM after long wakes not tested (≥ 3 min NREM in the past 12 min required). | "At the scale of the REM cycle, NREM ripples added no REM-entry information beyond the NREM count, the clock and the wake history: no held-out gain above ~0.05 % from the recent ripple rate, and none from ripples older than the last minute." | "Ripples play no role in REM timing" (bounded, linear 10-min rate and a counter only; sleep onset not tested); "not beyond NREM depth" (the depth control K4b is inconclusive: FINAL beyond depth −0.205 % holds, pass2med −0.063 % does not). |
+| 55 | Short NREM bouts that end in REM are ripple-poor, and that poverty carries the ripple counter's held-out gain; the gain is confined to the first one to two minutes of NREM bouts. | **Established** (description, both scorings) → **next stage (LFP)** | Ripple counter C (P's bookkeeping, events instead of minutes): C for P −0.33 % / −0.30 %, B + ρ −0.33 % / −0.28 %, 4–5/5. K7: steps ≥ 60 s into a bout, unlagged ρ −0.115 % (FINAL, 5/5) / −0.105 % [−0.270, +0.012] (pass2med, not held); ≥ 120 s nothing (+0.025 / +0.030 %). K8: 40 % / 41 % of REM entries come from NREM bouts ≤ 60 s, 42–43 % of those directly after REM; ripple rate 24 / 21 per min vs 51 / 48 in short bouts ending in WAKE; 28 % without a ripple; in bouts > 5 min the rate before REM equals that before WAKE (74 vs 76; 73 vs 75 per min). Circular shifts of the ripple sequence remove the gain. | "Short NREM bouts that ended in REM — 40 % of REM entries, often between REM bouts of one episode — had about half the ripple rate of short bouts that ended in waking; in long NREM bouts the ripple rate before REM and before waking was the same." | "Ripples predict / trigger REM"; "REM readiness"; a "pre-REM ripple drop" as a predictive or transition-local signal; "ripples vanish as REM begins" (withdrawn after the Fable audit). Not a mechanism: the scorer's REM / NREM call and the detector read the same LFP, so this is not separable from how the scorer cuts REM episodes. |
+
 **Synthesis, at the strongest wording the statuses allow** (rewritten 2026-10-08 after the logic audit; each part keeps
 its status):
 - **Established.**
@@ -219,6 +230,8 @@ its status):
   next REM lasts (#48); brief awakenings are most frequent right after a REM (#51); REM already taken that day adds
   nothing (#52); intervals between REMs do not shorten within an episode (#53). Night REM ends in waking more often
   (#49) and quick returns to REM are rarer at night (#50) — both Candidate.
+- **Ripples (2026-10-09, next stage LFP).** NREM ripples add no REM-scheduling information beyond the count (#54); the
+  ripple counter's small gain comes from ripple-poor short NREM bouts between REM bouts (#55).
 - **Organising idea (interpretation).** Only REM entry is regulated, by this count and a smooth daily curve (#35); a
   separate REM-repayment process appears only after handled interruptions (#43). Daily totals may be regular because the inputs are regular, not because a
   budget is enforced. This is tested by the scheduler model of the plan.
