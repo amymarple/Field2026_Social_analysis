@@ -19,7 +19,9 @@
   "figure_watch": [
    "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_*",
    "results/2026c/ephys_spikes/figures/ephys_spikes_night_sleep_*",
-   "results/2026c/ephys_spikes/figures/ephys_spikes_mic_*"
+   "results/2026c/ephys_spikes/figures/ephys_spikes_mic_*",
+   "results/2026c/ephys_spikes/figures/ephys_spikes_rem_ripple_*",
+   "results/2026c/ephys_spikes/figures/ephys_spikes_swr_rem_*"
   ],
   "branches": [
    "q.history",
@@ -31,7 +33,8 @@
    "q.model",
    "q.social",
    "q.environment",
-   "q.vulnerability"
+   "q.vulnerability",
+   "q.ripples"
   ]
  },
  "nodes": [
@@ -330,12 +333,18 @@
    "text": "Proposed by the logic audit (Fable, 2026-10-08) and kept in the claim audit's synthesis as an interpretation: REM entry is the regulated knob (#14: the night limits entry, not duration), REM duration and REM exits follow no history, and daily totals are regular because the inputs are regular, not because a budget is enforced. #40 is consistent with it (the generative model has history on REM entry only), but REM-bout duration and REM exits were never tested for regulation (step F H7, H8): stays proposed.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (the claim audit grew with #44–#55 and the part-P rows); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
-     "l0": 180,
-     "l1": 182,
+     "l0": 247,
+     "l1": 249,
      "anchor": "Organising idea (interpretation)"
     },
     {
@@ -399,14 +408,18 @@
     {
      "round": "r6",
      "what": "Fable conflict review M1: 'read through a smooth daily curve' inside the Established sentence bundled #35 (Candidate); reworded to 'a daily curve (smooth, with no light switch: candidate, #35)'. Verdicts unchanged."
+    },
+    {
+     "round": "r7",
+     "what": "Source line re-cited (the claim audit grew with #44–#55 and the part-P rows); content unchanged. The ripple round (#54–#55) bears on the count model (j.model.r6), not on this judgment's verdicts."
     }
    ],
    "round_added": "r6",
    "sources": [
     {
      "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
-     "l0": 159,
-     "l1": 185,
+     "l0": 213,
+     "l1": 251,
      "anchor": "Synthesis, at the strongest wording"
     }
    ]
@@ -440,12 +453,18 @@
     }
    ],
    "cost": "hours (states only)",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r6",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 266,
-     "l1": 269,
+     "l0": 273,
+     "l1": 276,
      "anchor": "REM bout duration is unregulated"
     }
    ]
@@ -1652,12 +1671,18 @@
    "text": "Step F H11 of the explore plan (Benington–Heller 'REM attempts'); would also explain the early peak that #3 forbids reading as a permissive state. Untested.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 270,
-     "l1": 270,
+     "l0": 277,
+     "l1": 277,
      "anchor": "MA rate rises with P"
     }
    ]
@@ -1671,12 +1696,18 @@
    "text": "Step F H20 of the explore plan. Untested.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 279,
-     "l1": 279,
+     "l0": 286,
+     "l1": 286,
      "anchor": "Inter-REM intervals shorten within a sleep episode"
     }
    ]
@@ -1753,11 +1784,15 @@
    "type": "next_step",
    "branch": "q.drive",
    "title": "Measure NREM depth independently of the scorer (LFP delta waves on fixed channels)",
-   "text": "#4 uses the scorer's own slow-wave metric. An independent depth (e.g. delta-wave rate from the lab's detector, on fixed channels) removes the circularity. Next-stage LFP work.",
+   "text": "#4 uses the scorer's own slow-wave metric. An independent depth (e.g. delta-wave rate from the lab's detector, on fixed channels) removes the circularity. Next-stage LFP work. Since r7 it also serves the ripple branch: the depth control of the ripple counter (K4b) used the scorer's slope and is inconclusive (the scorings disagree); rerun it with the independent depth, on the same subset with its own baseline.",
    "changes": [
     {
      "round": "r6",
      "what": "Priority 6 → 12 (the explore stage's next steps come first; LFP is the next stage by the user's scope rule)."
+    },
+    {
+     "round": "r7",
+     "what": "Extended to the ripple branch: tests h.rip.depth; two outcomes for the ripple counter's gain (K4b inconclusive, #54 forbidden wording). Outcome pointers j.drive → j.drive.r4 (the current judgment)."
     }
    ],
    "priority": 12,
@@ -1768,7 +1803,7 @@
      "if": "Independent depth still predicts REM vs wake endings",
      "then": "#4 can move toward established; depth enters the vulnerability test.",
      "changes": [
-      "j.drive",
+      "j.drive.r4",
       "j.vulnerability"
      ]
     },
@@ -1776,7 +1811,21 @@
      "if": "No effect with independent depth",
      "then": "#4 was scorer circularity; depth is weakened.",
      "changes": [
-      "j.drive"
+      "j.drive.r4"
+     ]
+    },
+    {
+     "if": "Independent depth absorbs the ripple counter's gain on both scorings (same subset, own baseline, as K4b)",
+     "then": "The short-bout ripple signal of #55 is NREM depth: h.rip.depth supported.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    },
+    {
+     "if": "The gain survives independent depth on both scorings",
+     "then": "The short-bout ripple signal is beyond depth; it stays scorer's cut vs brief-NREM physiology (n.rip_short_bouts).",
+     "changes": [
+      "j.ripples.r7"
      ]
     }
    ],
@@ -1788,6 +1837,12 @@
      "l0": 40,
      "l1": 40,
      "anchor": "SW is the scorer's own NREM criterion"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 200,
+     "l1": 200,
+     "anchor": "the depth control K4b is inconclusive"
     }
    ]
   },
@@ -2585,6 +2640,10 @@
     {
      "round": "r4",
      "what": "open → mixed: time scale 5–10 min supported (#34), not separable from a step at ~7 min."
+    },
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+9: the explore plan grew with its Amendments 1–2); content unchanged."
     }
    ],
    "round_added": "r2",
@@ -2597,8 +2656,8 @@
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 118,
-     "l1": 122,
+     "l0": 127,
+     "l1": 131,
      "anchor": "P — the REM-entry count"
     }
    ]
@@ -2637,12 +2696,18 @@
    "text": "Step F H5 of the explore plan: within the dark, longer wakes end later in the night, so a clock effect could look like a wake-length dose. Untested directly; the C1 held-out null for dark × ln(prior wake) on top of the smooth clock (r.c1_ramp) is compatible with it.",
    "level": "pattern",
    "status": "open",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 264,
-     "l1": 264,
+     "l0": 271,
+     "l1": 271,
      "anchor": "The night ramp (#6b) is time of night"
     }
    ]
@@ -2656,12 +2721,18 @@
    "text": "Step F H17 of the explore plan: first-REM latency when the WISER house differs from the pre-wake site, matched wake length. Untested.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 276,
-     "l1": 276,
+     "l0": 283,
+     "l1": 283,
      "anchor": "Sleeping at a new site after a long wake delays REM"
     }
    ]
@@ -2675,6 +2746,12 @@
    "text": "Step B H19 (#36): a spline of wall time since the last REM (wakes included) on top of the count. Which process it reflects — a wall-clock refractory dip or a slow clock — is not separated (forbidden wording).",
    "level": "pattern",
    "status": "supported",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r4",
    "sources": [
     {
@@ -2685,8 +2762,8 @@
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 278,
-     "l1": 278,
+     "l0": 285,
+     "l1": 285,
      "anchor": "The post-REM refractory dip is wall-clock"
     }
    ]
@@ -2968,6 +3045,10 @@
     {
      "round": "r4",
      "what": "Superseded by j.carryover.r4 (Step B: reset vs discount vs pause)."
+    },
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+9: the explore plan grew with its Amendments 1–2); content unchanged."
     }
    ],
    "round_added": "r2",
@@ -2980,8 +3061,8 @@
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 62,
-     "l1": 66,
+     "l0": 71,
+     "l1": 75,
      "anchor": "Short and long wakes"
     }
    ]
@@ -3154,12 +3235,18 @@
     }
    ],
    "cost": "hours (states + IMU seconds cache + WISER)",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r6",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 282,
-     "l1": 282,
+     "l0": 289,
+     "l1": 289,
      "anchor": "The 2–7-min wakes are two kinds"
     }
    ]
@@ -3920,6 +4007,10 @@
     {
      "round": "r6",
      "what": "open → mixed: adds nothing to NREM endings held out (#42); the amount reading stays inseparable from the night (#31)."
+    },
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
     }
    ],
    "round_added": "r2",
@@ -3932,8 +4023,8 @@
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 124,
-     "l1": 126,
+     "l0": 131,
+     "l1": 133,
      "anchor": "S — an NREM homeostat"
     }
    ]
@@ -3966,12 +4057,18 @@
    "text": "Step F H4 of the explore plan: sleep pressure built by behaviour. Untested.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 263,
-     "l1": 263,
+     "l0": 270,
+     "l1": 270,
      "anchor": "NREM after a wake follows the wake's activity"
     }
    ]
@@ -3985,6 +4082,12 @@
    "text": "Proposed by the logic audit (THE LOGIC point 6; the plan's D variable). Step D's rule for it (natural dawn wakes show the payback AND the count model without a deficit does not) is not met: D2 holds, D1 does not (low power).",
    "level": "pattern",
    "status": "open",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
@@ -3995,8 +4098,8 @@
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 128,
-     "l1": 129,
+     "l0": 135,
+     "l1": 136,
      "anchor": "D — a slow REM deficit"
     }
    ]
@@ -4014,14 +4117,18 @@
     {
      "round": "r6",
      "what": "open → weakened: simulated without a deficit the slope is +0.005 / +0.01 vs observed +0.34 / +0.96 (D2, #43)."
+    },
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 236,
-     "l1": 236,
+     "l0": 243,
+     "l1": 243,
      "anchor": "the payback is the count seen through the gate"
     }
    ]
@@ -4483,6 +4590,12 @@
     }
    ],
    "cost": "low (payback_from_records / dawn_payback_from_records exist; hours)",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r6",
    "sources": [
     {
@@ -4493,8 +4606,8 @@
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 277,
-     "l1": 277,
+     "l0": 284,
+     "l1": 284,
      "anchor": "Handling delays REM beyond the wake it causes"
     }
    ]
@@ -4526,12 +4639,18 @@
     }
    ],
    "cost": "hours (states + WISER default tracks)",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r6",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 263,
-     "l1": 263,
+     "l0": 270,
+     "l1": 270,
      "anchor": "NREM after a wake follows the wake's activity"
     }
    ]
@@ -5075,6 +5194,10 @@
     {
      "round": "r6",
      "what": "Priority 7 → 13."
+    },
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
     }
    ],
    "round_added": "r1",
@@ -5087,8 +5210,8 @@
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 43,
-     "l1": 43,
+     "l0": 50,
+     "l1": 50,
      "anchor": "Not allowed now (next stage, LFP)"
     }
    ]
@@ -5137,14 +5260,18 @@
     {
      "round": "r5",
      "what": "open → weakened: no step at dusk or dawn beyond the smooth curve on either scoring (#35); a dawn-only hint on pass2med."
+    },
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 85,
-     "l1": 85,
+     "l0": 92,
+     "l1": 92,
      "anchor": "whether the gain follows the light step"
     }
    ]
@@ -5162,14 +5289,18 @@
     {
      "round": "r5",
      "what": "open → supported (candidate, #35)."
+    },
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 85,
-     "l1": 85,
+     "l0": 92,
+     "l1": 92,
      "anchor": "whether the gain follows the light step"
     },
     {
@@ -5214,12 +5345,18 @@
    "text": "Step F H8 of the explore plan. Untested; the simulator's REM exits carry only the clock, no history.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 267,
-     "l1": 267,
+     "l0": 274,
+     "l1": 274,
      "anchor": "REM exits differ by phase"
     }
    ]
@@ -6274,12 +6411,18 @@
    "text": "Step F H15 of the explore plan, answered within #38 (per tagged mate, WISER same house; SF11 untagged after 09-07).",
    "level": "pattern",
    "status": "supported",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 274,
-     "l1": 274,
+     "l0": 281,
+     "l1": 281,
      "anchor": "Group size changes sleep maintenance, not REM entry"
     },
     {
@@ -6435,12 +6578,18 @@
     }
    ],
    "cost": "hours (states + WISER default tracks)",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r6",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 275,
-     "l1": 275,
+     "l0": 282,
+     "l1": 282,
      "anchor": "A housemate leaving the house ends the partner's sleep"
     }
    ]
@@ -6904,14 +7053,18 @@
     {
      "round": "r5",
      "what": "proposed → weakened (#39)."
+    },
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+9: the explore plan grew with its Amendments 1–2); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 218,
-     "l1": 222,
+     "l0": 227,
+     "l1": 231,
      "anchor": "C4. The 12-day drift"
     }
    ]
@@ -6929,14 +7082,18 @@
     {
      "round": "r5",
      "what": "proposed → open (named by j.environment)."
+    },
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+9: the explore plan grew with its Amendments 1–2); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 218,
-     "l1": 222,
+     "l0": 227,
+     "l1": 231,
      "anchor": "C4. The 12-day drift"
     },
     {
@@ -6956,12 +7113,18 @@
    "text": "Step F H14 of the explore plan; would reconcile #22 (share) with #23 (not entry timing). Untested.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 273,
-     "l1": 273,
+     "l0": 280,
+     "l1": 280,
      "anchor": "Warmth raises REM share through maintenance, not entry"
     }
    ]
@@ -6975,12 +7138,18 @@
    "text": "Step F H22 of the explore plan. Untested.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 281,
-     "l1": 281,
+     "l0": 288,
+     "l1": 288,
      "anchor": "Rain disturbs sleep"
     }
    ]
@@ -7315,18 +7484,24 @@
    "title": "Do a few fitted rules — one count since the last REM and a daily clock — generate the rats' sleep, without a budget?",
    "text": "Theme 3 of the sleep behaviour explore (the user, 2026-10-08): if an internal scheduler exists it must be visible in the sleep sequence alone, so the model uses no LFP features. Deterministic latent variables computed from the observed sequence (P the REM-entry count, S an NREM homeostat, D a slow REM deficit, G a day/night gate); held out against the feature model and rivals, then simulated conditional on the observed long wakes and gaps.",
    "status": "open",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 88,
-     "l1": 91,
+     "l0": 95,
+     "l1": 98,
      "anchor": "Theme 3, the scheduler"
     },
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 112,
-     "l1": 116,
+     "l0": 119,
+     "l1": 123,
      "anchor": "The scheduler model (Theme 3), specified now"
     }
    ]
@@ -7343,14 +7518,18 @@
     {
      "round": "r4",
      "what": "proposed → supported (#32, #33)."
+    },
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+9: the explore plan grew with its Amendments 1–2); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 118,
-     "l1": 122,
+     "l0": 127,
+     "l1": 131,
      "anchor": "P — the REM-entry count"
     },
     {
@@ -7374,14 +7553,18 @@
     {
      "round": "r6",
      "what": "proposed → weakened (#41)."
+    },
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 240,
-     "l1": 240,
+     "l0": 247,
+     "l1": 247,
      "anchor": "momentum alternative"
     },
     {
@@ -7426,12 +7609,18 @@
    "text": "Step F H9 of the explore plan tests its absence ('REM minutes since sunrise' added to the hazard). Untested.",
    "level": "pattern",
    "status": "proposed",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 268,
-     "l1": 268,
+     "l0": 275,
+     "l1": 275,
      "anchor": "There is no daily REM quota"
     }
    ]
@@ -7622,7 +7811,7 @@
    "type": "result",
    "branch": "q.model",
    "title": "#40 Simulating only the fitted rules, conditional on the observed long wakes and gaps, reproduces the rats' sleep — daily REM / NREM and their day-to-day variation, and the night → day pattern with day fixed effects",
-   "text": "The count (emptied by REM, × exp(−d/10 min) over a wake), the smooth daily clock and a brief arousal before REM: 27/28 checks within the pre-registered tolerances on each scoring. Daily REM 1.683 vs 1.694 h, SD 0.343 vs 0.342 (FINAL); REM share day / night 17.4 / 7.3 vs 17.4 / 6.8 %; latencies 5/6 cells (fail: night after 7–30-min wakes, FINAL, 14 episodes). Carry-over curve: same sign in every bin with a clear observed effect. Night → day slope with day fixed effects (within day, between animals; the pre-registered term): NREM simulated −0.13 / −0.09 vs observed −0.12 / −0.10; REM inside the simulated range on both scorings. v1 → v2 correction: short wakes are sampled with their next state (12–15 % of REM bouts follow a ≤ 10-s wake).",
+   "text": "The count (emptied by REM, × exp(−d/10 min) over a wake), the smooth daily clock and a brief arousal before REM: 27 of 28 checks within the pre-registered tolerances (13/14 FINAL, 14/14 pass2med; '27/28 on each scoring' was a wording error, corrected in the report and the audit 2026-10-09). Daily REM 1.683 vs 1.694 h, SD 0.343 vs 0.342 (FINAL); REM share day / night 17.4 / 7.3 vs 17.4 / 6.8 %; latencies 5/6 cells (fail: night after 7–30-min wakes, FINAL, 14 episodes). Carry-over curve: same sign in every bin with a clear observed effect. Night → day slope with day fixed effects (within day, between animals; the pre-registered term): NREM simulated −0.13 / −0.09 vs observed −0.12 / −0.10; REM inside the simulated range on both scorings. v1 → v2 correction: short wakes are sampled with their next state (12–15 % of REM bouts follow a ≤ 10-s wake).",
    "status": "established",
    "scope": "generative check, 100 replicates, both scorings; conditional on the observed waking; the night → day pattern only with day fixed effects",
    "effect": "positive",
@@ -7637,6 +7826,10 @@
     {
      "round": "r6",
      "what": "Claim scoped by the audit (commit a3ca36e) after the Fable conflict review: the night → day pattern only with day fixed effects; two forbidden wordings added (REM covariance across days; 'no within-animal REM balance'). c.night_day_rem resolved. Status unchanged (Established)."
+    },
+    {
+     "round": "r7",
+     "what": "Evidence count corrected to match the audit's #40 row and the E report (commit 181e7ea): '27/28 checks on each scoring' → '27 of 28 checks: 13/14 FINAL, 14/14 pass2med' (a wording error in the source); citation re-pointed. Status and allowed wording unchanged."
     }
    ],
    "round_added": "r6",
@@ -7650,8 +7843,8 @@
     {
      "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_E_2026c.md",
      "l0": 12,
-     "l1": 26,
-     "anchor": "27 / 28 checks pass"
+     "l1": 21,
+     "anchor": "27 of 28 checks pass"
     },
     {
      "path": "docs/methods/sleep_logic_conflicts_2026-10-09.md",
@@ -7764,14 +7957,18 @@
     {
      "round": "r4",
      "what": "Superseded by j.model.r4 (Step B)."
+    },
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+9: the explore plan grew with its Amendments 1–2); content unchanged."
     }
    ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 112,
-     "l1": 116,
+     "l0": 121,
+     "l1": 125,
      "anchor": "The scheduler model (Theme 3), specified now"
     }
    ]
@@ -7805,12 +8002,24 @@
    "type": "judgment",
    "branch": "q.model",
    "title": "A few rules generate the sleep without a budget: the count beats momentum, an NREM homeostat adds nothing, only the post-round REM repayment is missing",
-   "text": "One count since the last REM (emptied by REM, fading over a wake), a smooth daily clock and a brief arousal before REM, simulated conditional on the observed long wakes and gaps, reproduce daily REM and NREM and their day-to-day variation, the day/night REM share and entry rate, first-REM latencies (5/6 cells), the carry-over curve and the night → day pattern with day fixed effects (#40, established; the simulator was corrected v1 → v2 after the first run; with a linear day term a between-day REM residual remains on FINAL, an open ledger item). The count beats a momentum model held out (#41); an hour-scale NREM homeostat adds nothing to NREM endings (#42). The rules do not produce the REM repayment after morning rounds (#43, candidate). Not tested: a daily REM quota (H9), REM maintenance terms (H7, H8); latencies after the longest night wakes run short without a wall-clock term (post hoc).",
+   "text": "One count since the last REM (emptied by REM, fading over a wake), a smooth daily clock and a brief arousal before REM, simulated conditional on the observed long wakes and gaps, reproduce daily REM and NREM and their day-to-day variation, the day/night REM share and entry rate, first-REM latencies (5/6 cells), the carry-over curve and the night → day pattern with day fixed effects (#40, established; the simulator was corrected v1 → v2 after the first run; with a linear day term a between-day REM residual remains on FINAL, an open ledger item). The count beats a momentum model held out (#41); an hour-scale NREM homeostat adds nothing to NREM endings (#42). The rules do not produce the REM repayment after morning rounds (#43, candidate). Not tested: a daily REM quota (H9), REM maintenance terms (H7, H8); latencies after the longest night wakes run short without a wall-clock term (post hoc). A ripple rival (r7, next stage LFP): at the scale of the REM cycle, NREM ripples add no REM-entry information beyond the count, the clock and the wake history (#54, bounded at ~0.05 %; sleep onset untested); the ripple counter's small gain is the ripple poverty of short REM-ending NREM bouts (#55, a description) — see q.ripples.",
    "status": "current",
    "changes": [
     {
      "round": "r6",
      "what": "Fable conflict review M4: the night → day pattern scoped to day fixed effects, as #40 now is. Verdicts unchanged."
+    },
+    {
+     "round": "r7",
+     "what": "Refined: the REM ripple model (#54) adds a rival that fails — NREM ripples add nothing beyond the count at the REM-cycle scale (bounded); r.s54 added to the basis and to the h.model.count verdict's scope. Verdicts unchanged."
+    },
+    {
+     "round": "r7",
+     "what": "Fable review r7: r.s55 added to the basis (the text cites #55 as a description; no verdict edge rests on it)."
+    },
+    {
+     "round": "r7",
+     "what": "h.model.generative verdict scope: '27/28 checks, both scorings' → '27 of 28 checks over both scorings (13/14 FINAL, 14/14 pass2med)', following the audit's #40 correction. Verdict unchanged."
     }
    ],
    "round_added": "r6",
@@ -7948,13 +8157,864 @@
     }
    ],
    "cost": "hours (inside the step-B machinery)",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source line re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r6",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 268,
-     "l1": 268,
+     "l0": 275,
+     "l1": 275,
      "anchor": "There is no daily REM quota"
+    }
+   ]
+  },
+  {
+   "id": "q.ripples",
+   "type": "question",
+   "short": "Ripples and REM?",
+   "title": "Do NREM sharp-wave ripples carry REM-entry information beyond the count — is the ripple-rich / REM-poor reciprocity a link or shared drivers?",
+   "text": "The user (2026-10-09): add the NREM ripple rate to the REM-entry model as a candidate predictor, never as a nap or REM criterion ('the same NREM duration may contain different hippocampal activity'), and test held-out gain with information from before each step only. The question behind it: is 'ripple-rich, REM-poor' (naps, the early main sleep) a coincidence of the clock and sleep pressure, or a link? Reference model = Step B's B-full with the count fixed at P_tw600_k0 (count + clock + experiment day + L1 wake history + animal), both scorings. Pre-registered with the model's owner (Amendment 1); artifact checks (Amendment 2) and the follow-up after a read-only Fable audit (Amendment 3) were each written before they ran. Ripples are an LFP feature: their claims belong to the next stage (LFP) by the 2026-10-08 scope rule.",
+   "status": "open",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 7,
+     "l1": 18,
+     "anchor": "The user wants to add ripples"
+    },
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 91,
+     "l1": 95,
+     "anchor": "Reference model"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 192,
+     "l1": 196,
+     "anchor": "by the 2026-10-08 scope rule"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.readiness",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "ripples carry REM readiness",
+   "title": "Link: NREM ripples carry REM-entry information beyond the count — REM readiness tracks what happened in NREM, not only how much of it",
+   "text": "The user's idea, tested as pre-registered: only a held-out gain from the ripple rate with its window ending 60 s before the step (the readiness test) supports it; a gain at lag 0 can be the transition already under way. The ripple counter (ripples instead of NREM minutes, P's bookkeeping) was to be read as 'how much NREM vs what happened in it' only if the readiness test held.",
+   "level": "pattern",
+   "status": "weakened",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 108,
+     "l1": 113,
+     "anchor": "readiness test, primary for the user's question"
+    },
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 159,
+     "l1": 164,
+     "anchor": "Pre-registered reading: T2 is read"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.shared",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "shared drivers",
+   "title": "Shared drivers: once the count, the daily clock and the wake history are known, NREM ripples add nothing about REM entry — so the reciprocity need not be a link",
+   "text": "The plan's alternative ('a coincidence of the clock and sleep pressure'): the ripple rate and REM share both follow the time of day, NREM depth and the count, so the macro reciprocity needs no ripple → REM-entry link. Predictive level only; says nothing about what ripples do otherwise.",
+   "level": "pattern",
+   "status": "supported",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 18,
+     "l1": 18,
+     "anchor": "The question behind it"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.precursor",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "pre-REM ripple drop",
+   "title": "Precursor: the ripple counter's gain is a pre-REM ripple drop at the end of NREM bouts — the transition already under way",
+   "text": "The Amendment-2 reading of the counter's gain (it vanished when the last 60 s were left out), withdrawn after the read-only Fable audit: for steps < 60 s into a bout the lagged counter carries no within-bout information by construction, and 70–80 % of the gain sits there. Kept as the rival that K7 then tested where the lag can see.",
+   "level": "pattern",
+   "status": "weakened",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 199,
+     "l1": 203,
+     "anchor": "K2, the pre-REM precursor"
+    },
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 239,
+     "l1": 242,
+     "anchor": "The lag test (i) is uninformative where the gain sits"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.scorer_cut",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "scorer's REM cuts",
+   "title": "Scorer's cut: the ripple poverty of short REM-ending NREM bouts reflects how the scorer cuts REM episodes into REM and brief NREM labels",
+   "text": "Named by the Fable audit (plan Amendment 3) and kept in #55: the scorer's NREM / REM call and the ripple detector read the same LFP, so brief 'NREM' labels inside a REM episode can be ripple-poor because their LFP is REM-like, not because the rat was in a different kind of NREM.",
+   "level": "pattern",
+   "status": "open",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 243,
+     "l1": 245,
+     "anchor": "scorer's NREM labels within REM episodes"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 201,
+     "l1": 201,
+     "anchor": "not separable from how the scorer cuts REM episodes"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.brief_nrem",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "ripple-poor brief NREM",
+   "title": "Physiology: brief NREM stretches between REM bouts of one episode are genuinely ripple-poor — a property of REM episodes, not of the scorer",
+   "text": "The alternative to the scorer's cut, named by this map (r7) from #55's 'not separable' clause: the short NREM returns inside a REM episode would be real NREM of a different kind (e.g. light or intermediate sleep), poor in ripples. It would make the ripple counter's gain a real within-episode signal, not a scoring artefact.",
+   "level": "pattern",
+   "status": "open",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 201,
+     "l1": 201,
+     "anchor": "often between REM bouts of one episode"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 15,
+     "l1": 15,
+     "anchor": "often inside a REM episode"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.depth",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "depth carries it",
+   "title": "Depth: what the ripple counter carries about REM entry is NREM depth, not ripples as such",
+   "text": "Pre-registered as artifact check (iii) (K4: the discount-weighted mean NREM depth since the last REM, the scorer's raw spectral slope) and re-run with a same-subset baseline after the Fable audit (K4b). 'Carried by depth' needs the ripple term to fail beyond depth while it holds alone on the same subset.",
+   "level": "pattern",
+   "status": "open",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 213,
+     "l1": 216,
+     "anchor": "K4, depth"
+    },
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 269,
+     "l1": 270,
+     "anchor": "Carried by depth"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.drive_lowers",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "REM drive lowers ripples",
+   "title": "Reverse link: the REM drive that the count tracks also lowers the NREM ripple rate — a link that a held-out test beyond the count cannot see",
+   "text": "Proposed by this map (r7), not by a report. #54 is a predictive null beyond the count: if the process the count tracks also suppressed ripples, ripples would carry nothing beyond the count either, so #54 cannot separate this from ripples and REM merely sharing the clock and depth. Across the main sleep the ripple rate falls (1.11 → 0.87 × the block mean) while REM per NREM rises (0.08 → 0.21), together with depth and the clock (M1). Discriminator: the ripple rate against the count at matched clock, depth and time in the bout (n.rip_rate_vs_count).",
+   "level": "pattern",
+   "status": "open",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 200,
+     "l1": 200,
+     "anchor": "NREM ripples add no REM-entry information beyond the count"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_macro_2026c.md",
+     "l0": 7,
+     "l1": 7,
+     "anchor": "M1 allocation"
+    }
+   ]
+  },
+  {
+   "id": "h.rip.last_minute",
+   "type": "hypothesis",
+   "branch": "q.ripples",
+   "short": "last-minute dip within long bouts",
+   "title": "Within long NREM bouts a last-minute ripple dip precedes REM and carries transition-local held-out information beyond the count — not readiness",
+   "text": "From the Fable review r7: naps R3 describes a pooled last-minute dip before REM in runs ≥ 5 min, but no held-out test of a last-minute term within long bouts exists (T1 is a 10-min window, K7's ρ is cumulative since the last REM, K8 compares whole-bout rates). Even if it held it would be the transition under way, not REM readiness; a dip can also be the loss of detections in intermediate sleep. Untested.",
+   "level": "pattern",
+   "status": "proposed",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 349,
+     "l1": 352,
+     "anchor": "Whether a last-minute term carries held-out information within long bouts was not tested here"
+    },
+    {
+     "path": "change_log/2026-10-09-rem-ripple-model.md",
+     "l0": 117,
+     "l1": 119,
+     "anchor": "not tested as a predictor"
+    }
+   ]
+  },
+  {
+   "id": "an.swr_naps",
+   "figs": [
+    {
+     "name": "ephys_spikes_swr_rem_naps_2026c.png",
+     "path": "results/2026c/ephys_spikes/figures/ephys_spikes_swr_rem_naps_2026c.png",
+     "pub": "figs/ephys_spikes_swr_rem_naps_2026c.png",
+     "cap": "Naps report: A nap − main-sleep ripple rate by NREM depth quintile; B ripple rate vs REM share in 30-min bins; C ripple rate over the last 300 s of NREM runs ending in REM vs WAKE, relative to the run's −300…−120 s rate"
+    },
+    {
+     "name": "ephys_spikes_night_naps_circadian_rem_2026c.png",
+     "path": "results/2026c/ephys_spikes/figures/ephys_spikes_night_naps_circadian_rem_2026c.png",
+     "pub": "figs/ephys_spikes_night_naps_circadian_rem_2026c.png",
+     "cap": "Naps report R1: REM per NREM by clock hour (the circadian figure of the night naps)"
+    }
+   ],
+   "type": "analysis",
+   "title": "Naps and REM vs ripples (night-sleep plan Amendment 3): nap ripple rate at equal depth (N1), REM per NREM by hour (R1), ripple rate vs REM share (R2), ripples before REM vs WAKE (R3)",
+   "text": "Descriptive; written before computing; kept NREM SWR events, with an all-events check; no claim-audit entry (ledger).",
+   "ph": [
+    "swr naps"
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 3,
+     "l1": 3,
+     "anchor": "plan Amendment 3"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 13,
+     "l1": 13,
+     "anchor": "Reading rule (plan)"
+    }
+   ]
+  },
+  {
+   "id": "an.swr_macro",
+   "figs": [
+    {
+     "name": "ephys_spikes_swr_rem_macro_2026c.png",
+     "path": "results/2026c/ephys_spikes/figures/ephys_spikes_swr_rem_macro_2026c.png",
+     "pub": "figs/ephys_spikes_swr_rem_macro_2026c.png",
+     "cap": "Macro report: A REM per NREM and relative ripple rate by sleep period (naps, other night sleep, main-sleep hours); B across sleep periods per animal; C across days (one main sleep per day)"
+    }
+   ],
+   "type": "analysis",
+   "title": "REM vs ripples at the macro scale (night-sleep plan Amendment 4): allocation by sleep period (M1), across sleep periods (M2), across days (M3)",
+   "text": "The user's 'competition at the macro scale' (REM scarce in the night naps, abundant by day; ripples the opposite). Descriptive; written before computing; kept events; no claim-audit entry (ledger).",
+   "ph": [
+    "swr macro"
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_macro_2026c.md",
+     "l0": 3,
+     "l1": 3,
+     "anchor": "plan Amendment 4"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_macro_2026c.md",
+     "l0": 10,
+     "l1": 10,
+     "anchor": "Reading rule (plan)"
+    }
+   ]
+  },
+  {
+   "id": "an.rip_t",
+   "figs": [
+    {
+     "name": "ephys_spikes_rem_ripple_model_2026c.png",
+     "path": "results/2026c/ephys_spikes/figures/ephys_spikes_rem_ripple_model_2026c.png",
+     "pub": "figs/ephys_spikes_rem_ripple_model_2026c.png",
+     "cap": "REM ripple model: held-out log-loss change of each ripple term vs B-full (T1 window rates, T2 counter, Amendment-2 checks K2–K5), FINAL and pass2med; filled = holds. Amendment 3 (K7, K4b, K8) is in tables only"
+    }
+   ],
+   "type": "analysis",
+   "title": "REM ripple model T1–T3 (pre-registered, Amendment 1): the 10-min ripple rate at lags 0 / 60 / 120 s, and the ripple counter since the last REM, on top of B-full (P_tw600_k0), held out",
+   "text": "Forward chaining over day-half blocks (15 folds), both scorings; ALL detected NREM events primary, KEPT as sensitivity; causal block normaliser. The rebuilt steps matched the owner's cached held-out steps row for row, and B vs gate-only reproduced Step B (FINAL −2.35 % vs −2.17 %, the counter's key fixed rather than chosen per fold; pass2med −1.97 %). Rule: CI < 0 and ≥ 4/5 test animals, on both scorings.",
+   "ph": [
+    "rip model"
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 7,
+     "l1": 9,
+     "anchor": "Recent rate (T1)"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 58,
+     "l1": 61,
+     "anchor": "Alignment with the owner's cached held-out steps"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 86,
+     "l1": 111,
+     "anchor": "T1 L60 ALL (readiness, primary)"
+    }
+   ]
+  },
+  {
+   "id": "an.rip_k",
+   "figs": [
+    {
+     "name": "ephys_spikes_rem_ripple_model_2026c.png",
+     "path": "results/2026c/ephys_spikes/figures/ephys_spikes_rem_ripple_model_2026c.png",
+     "pub": "figs/ephys_spikes_rem_ripple_model_2026c.png",
+     "cap": "REM ripple model: held-out log-loss change of each ripple term vs B-full (T1 window rates, T2 counter, Amendment-2 checks K2–K5), FINAL and pass2med; filled = holds. Amendment 3 (K7, K4b, K8) is in tables only"
+    }
+   ],
+   "type": "analysis",
+   "title": "REM ripple model, Amendment 2 (written before it ran): artifact checks of the counter gain K1–K6 — outcome split, lagged counter, circular shifts, depth, normaliser, direction — and a post-hoc split of where the gain sits",
+   "text": "Pre-registered reading: ρ counts as REM-readiness information only if, on both scorings, (i) the lagged ρ at 60 s holds, (ii) the gain beats every circular shift, (iii) it holds beyond depth and (iv) the binary REM log-loss improves. As run: (i) FAIL, (ii) pass, (iii) FAIL, (iv) pass. Post hoc (not pre-registered): 54 % / 64 % of the gain on the last step before REM, 70–80 % in the first minute of a bout. The Fable audit later found (i) and (iii) uninformative as run.",
+   "ph": [
+    "rip model"
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 222,
+     "l1": 232,
+     "anchor": "Reading, pre-registered."
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 151,
+     "l1": 197,
+     "anchor": "Conditions: (i) FAIL, (ii) pass, (iii) FAIL, (iv) pass"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 290,
+     "l1": 290,
+     "anchor": "Post hoc: where the unlagged gain sits"
+    }
+   ]
+  },
+  {
+   "id": "an.rip_k3",
+   "type": "analysis",
+   "title": "REM ripple model, Amendment 3 (after a read-only Fable audit, before running): K7 the lag where it can see (steps ≥ 60 / 120 s into a bout), K4b depth with a same-subset baseline, K8 REM- and WAKE-ending bouts by length",
+   "text": "The audit found no leakage and no material bug; the readings and the null's bound (~0.05 % for a linear 10-min window term at lags 0–120 s) were fixed before running.",
+   "ph": [
+    "rip model"
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 237,
+     "l1": 247,
+     "anchor": "What the audit found"
+    },
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 263,
+     "l1": 275,
+     "anchor": "Reading, fixed now."
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 246,
+     "l1": 288,
+     "anchor": "Amendment 3: the lag where it can see"
+    }
+   ]
+  },
+  {
+   "id": "r.swr_macro",
+   "type": "result",
+   "branch": "q.ripples",
+   "title": "Across sleep periods REM per NREM and the NREM ripple rate are reciprocal; naps and the early main sleep are ripple-rich and REM-poor; no consistent day-to-day trade-off",
+   "text": "M1 (6 animals): naps REM per NREM 0.055 with a ripple rate 1.23 × the block mean; the main sleep goes from REM 0.083 / ripples 1.11 in its first hour to REM 0.211 / ripples 0.87 in its last. M2 across sleep periods: Spearman ρ −0.54 (p 0.005), negative in 6/6; with depth partialled −0.37 (p 0.018), 6/6. M3 across days (one main sleep per day): ρ −0.26 (n.s.), negative in 3/5. Naps report R2 (30-min bins within block): −2.19 ripples per NREM min per 10 % REM share beyond depth and hour (p 0.012), negative in 4/6 (all events: 3/6). Kept events; not an audited claim.",
+   "status": "ledger",
+   "effect": "descriptive",
+   "inference": "association",
+   "ph": [
+    "swr macro",
+    "swr naps"
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_macro_2026c.md",
+     "l0": 7,
+     "l1": 9,
+     "anchor": "M2 across sleep periods"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 10,
+     "l1": 10,
+     "anchor": "R2 ripple rate vs REM share"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 12,
+     "l1": 12,
+     "anchor": "Check - all detected NREM events"
+    }
+   ]
+  },
+  {
+   "id": "r.swr_r3",
+   "type": "result",
+   "branch": "q.ripples",
+   "title": "Naps report R3: in NREM runs ≥ 5 min, the last-minute ripple rate relative to the run's own earlier rate is lower before REM than before WAKE (6/6)",
+   "text": "Method: NREM runs ≥ 300 s followed directly by ≥ 30 s of REM or WAKE, anchored at the run's end, each with ≥ 200 ripple-eligible NREM s; events and eligible seconds pooled per animal × outcome; ratio = rate in the last 60 s / rate at −300…−120 s of the same runs; '6/6' = animals whose REM ratio − WAKE ratio < 0. Transitions REM / WAKE: SF07 106 / 53, SF08 101 / 52, SF09 100 / 63, SF10 184 / 49, SF11 9 / 8, SF12 102 / 46 (SF11 rests on 17). Kept events: REM − WAKE −0.14 (animal-level p 0.025), 6/6; all detected NREM events −0.09 (p 0.042), 6/6. The report's limits: the last seconds of NREM before REM are intermediate sleep, the 1-s scoring can blur the boundary, and the detector excludes REM seconds. Pooled, not per bout; no held-out test. Not a claim-audit entry: the allowed / forbidden wording below is the Fable review r7's. A different quantity from #55's K8 (whole-bout rates): c.pre_rem_drop resolved.",
+   "status": "ledger",
+   "effect": "descriptive",
+   "inference": "descriptive",
+   "ph": [
+    "swr naps"
+   ],
+   "allowed": "In NREM runs ≥ 5 min the ripple rate of the last minute, relative to the run's own −300…−120 s rate, was lower before REM than before waking (pooled per animal, 6/6, kept and all events). Description; the last seconds before REM are intermediate sleep, and the scorer and detector read the same LFP.",
+   "forbidden": "'Ripples drop / vanish before REM' unqualified; 'predicts', 'readiness', 'transition-local signal'; 'the counter's gain is this dip'.",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Fable review r7: n per animal and the method added (pooled per animal × outcome; '6/6' defined; SF11 on 17 transitions); allowed / forbidden wording from the review (no audit entry; status stays ledger); c.pre_rem_drop resolved as different quantities; link to the new proposed h.rip.last_minute."
+    }
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 11,
+     "l1": 12,
+     "anchor": "R3 transitions"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 50,
+     "l1": 57,
+     "anchor": "Transitions REM / WAKE"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 65,
+     "l1": 65,
+     "anchor": "NREM runs >= 300 s followed directly"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md",
+     "l0": 69,
+     "l1": 69,
+     "anchor": "The last seconds of NREM before REM are intermediate sleep"
+    },
+    {
+     "path": "ephys/swr_rem_naps.py",
+     "l0": 292,
+     "l1": 306,
+     "anchor": "min_nrem=300"
+    }
+   ]
+  },
+  {
+   "id": "r.s54",
+   "type": "result",
+   "branch": "q.ripples",
+   "title": "#54 At the scale of the REM cycle, NREM ripples add no REM-entry information beyond the count, the clock and the wake history",
+   "text": "T1: the 10-min ripple rate at lags 0 / 60 / 120 s gives no held-out gain on either scoring (primary, lag 60 s, all events: −0.006 % [−0.036, +0.021] FINAL, +0.019 % [−0.041, +0.106] pass2med; bound ~0.05 %); in sample its REM coefficient is slightly positive (+0.10 per SD at 60 s), not negative. Ripples older than the last minute add nothing: the lagged ρ = ln((C + 0.5)/(P + 0.5)) ≈ 0 (−0.010 % / +0.001 %), also on steps ≥ 60 s into a bout where the lag can see (K7: −0.007 % / +0.031 %). Scope: 5 test animals (SF11 only in training); sleep-onset NREM after long wakes not tested (≥ 3 min NREM in the past 12 min required).",
+   "status": "established",
+   "scope": "scoped, bounded negative; both scorings; next stage (LFP)",
+   "effect": "not_detected",
+   "null_reading": "A bounded null within scope, not 'no effect': the T1 CIs exclude a held-out gain above ~0.05 % from a linear 10-min window rate at lags 0–120 s, and the lagged counter adds nothing where the lag can see. Untested: sleep-onset NREM after long wakes, other or non-linear ripple features, SF11 (training only). The depth control is inconclusive, so 'not beyond depth' is not claimed.",
+   "inference": "predictive",
+   "ph": [
+    "rip model"
+   ],
+   "allowed": "At the scale of the REM cycle, NREM ripples added no REM-entry information beyond the NREM count, the clock and the wake history: no held-out gain above ~0.05 % from the recent ripple rate, and none from ripples older than the last minute.",
+   "forbidden": "'Ripples play no role in REM timing' (bounded, linear 10-min rate and a counter only; sleep onset not tested); 'not beyond NREM depth' (the depth control K4b is inconclusive: FINAL beyond depth −0.205 % holds, pass2med −0.063 % does not).",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 200,
+     "l1": 200,
+     "anchor": "NREM ripples add no REM-entry information beyond the count"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 7,
+     "l1": 7,
+     "anchor": "Recent rate (T1)"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 17,
+     "l1": 17,
+     "anchor": "carry no REM-timing information at the scale of the REM cycle"
+    },
+    {
+     "path": "change_log/2026-10-09-rem-ripple-model.md",
+     "l0": 59,
+     "l1": 59,
+     "anchor": "In-sample direction"
+    }
+   ]
+  },
+  {
+   "id": "r.s55",
+   "type": "result",
+   "branch": "q.ripples",
+   "title": "#55 Short NREM bouts that end in REM are ripple-poor, and that poverty carries the ripple counter's held-out gain; the gain is confined to the first one to two minutes of NREM bouts",
+   "text": "Ripple counter C (P's bookkeeping, events instead of minutes): C replacing P −0.33 % / −0.30 %, B + ρ −0.33 % / −0.28 %, 4–5/5. The gain sits in REM more than in WAKE (binary REM log-loss −0.56 % / −0.46 %, 5/5), and circular shifts of each record's ripple sequence remove it (timing, not the record-level rate). K7: on steps ≥ 60 s into a bout the unlagged ρ gives −0.115 % (FINAL, 5/5, holds) / −0.105 % [−0.270, +0.012] (pass2med, not held); from 120 s nothing (+0.025 / +0.030 %). K8: 40 % / 41 % of REM entries come from NREM bouts ≤ 60 s, 42–43 % of those directly after REM; ripple rate 24 / 21 per min vs 51 / 48 in short bouts ending in WAKE; 28 % without a ripple; in bouts longer than 5 min the whole-bout ripple rate before REM equals that before WAKE (74 vs 76; 73 vs 75 per min) — a whole-bout median, which does not test a last-minute dip (naps R3 is a different quantity; c.pre_rem_drop).",
+   "status": "established",
+   "scope": "description, both scorings; next stage (LFP)",
+   "effect": "descriptive",
+   "inference": "descriptive",
+   "ph": [
+    "rip model"
+   ],
+   "allowed": "Short NREM bouts that ended in REM — 40 % of REM entries, often between REM bouts of one episode — had about half the ripple rate of short bouts that ended in waking; in long NREM bouts the whole-bout ripple rate before REM and before waking was the same.",
+   "forbidden": "'Ripples predict / trigger REM'; 'REM readiness'; a 'pre-REM ripple drop' as a predictive or transition-local signal; 'ripples vanish as REM begins' (withdrawn after the Fable audit). Not a mechanism: the scorer's REM / NREM call and the detector read the same LFP, so this is not separable from how the scorer cuts REM episodes.",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Fable review r7 (a precision, not a dispute): 'the ripple rate before REM equals that before WAKE' in long bouts → 'the WHOLE-BOUT ripple rate', in the text and in the allowed wording. The claim audit row #55 now carries the same word (commit a7e4796), so the allowed field is again verbatim. Change-log citation re-pointed (its revised reading was reworded by the main session)."
+    }
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 201,
+     "l1": 201,
+     "anchor": "Short NREM bouts that end in REM are ripple-poor"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 13,
+     "l1": 15,
+     "anchor": "The short bouts (K8)"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 180,
+     "l1": 195,
+     "anchor": "K1 — where the held-out change sits"
+    },
+    {
+     "path": "change_log/2026-10-09-rem-ripple-model.md",
+     "l0": 113,
+     "l1": 119,
+     "anchor": "It does not come from steps ≥ 120 s into a bout (K7)"
+    }
+   ]
+  },
+  {
+   "id": "r.rip_a2",
+   "type": "result",
+   "branch": "q.ripples",
+   "title": "Amendment-2 reading (withdrawn): the counter's gain is transition-local — ripples vanish in the last minute before REM",
+   "text": "History only, never audited. As first reported (commit 33c222c), the counter lagged by 60 s lost the whole gain (FINAL −0.010 %, pass2med +0.001 %) and the gain failed beyond depth on pass2med; this was read as 'the ripple information about REM is local: ripples vanish in the final minute before REM entry'. The read-only Fable audit found the lag check uninformative for steps < 60 s into a bout, where 70–80 % of the gain sits, and the depth check without a same-subset baseline; Amendment 3 replaced the reading (#55). The claim audit forbids 'ripples vanish as REM begins' and a 'pre-REM ripple drop' as a transition-local signal.",
+   "status": "superseded",
+   "superseded_by": "r.s55",
+   "previous_status": "ledger",
+   "effect": "positive",
+   "inference": "predictive",
+   "ph": [
+    "rip model"
+   ],
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Added as superseded history: withdrawn by the change log's revised reading and the claim audit (#55's forbidden wording); replaced by #55."
+    }
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 11,
+     "l1": 11,
+     "anchor": "Two of these readings were revised after the audit"
+    },
+    {
+     "path": "change_log/2026-10-09-rem-ripple-model.md",
+     "l0": 118,
+     "l1": 118,
+     "anchor": "transition-local drop in the last minute before REM"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 201,
+     "l1": 201,
+     "anchor": "withdrawn after the Fable audit"
+    }
+   ]
+  },
+  {
+   "id": "r.rip_k4b",
+   "type": "result",
+   "branch": "q.ripples",
+   "title": "K4b: the depth control of the ripple counter, with its own baseline, is inconclusive — the two scorings disagree",
+   "text": "On the subset where the discount-weighted mean depth since the last REM exists (it drops the first NREM minute after a REM): FINAL ρ alone −0.155 % (not held), beyond depth −0.205 % (holds); pass2med ρ alone −0.127 % (holds), beyond depth −0.063 % [−0.172, +0.021] (not held); depth alone −0.414 % on pass2med (holds), +0.030 % on FINAL. Depth is the scorer's raw spectral slope (partly circular with the NREM call). Not evidence either way.",
+   "status": "ledger",
+   "effect": "mixed",
+   "inference": "predictive",
+   "ph": [
+    "rip model"
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 258,
+     "l1": 267,
+     "anchor": "K4b depth subset: rho0 beyond dbar"
+    },
+    {
+     "path": "change_log/2026-10-09-rem-ripple-model.md",
+     "l0": 94,
+     "l1": 97,
+     "anchor": "K4b, depth with its own baseline"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 200,
+     "l1": 200,
+     "anchor": "the depth control K4b is inconclusive"
+    }
+   ]
+  },
+  {
+   "id": "j.ripples.r7",
+   "type": "judgment",
+   "branch": "q.ripples",
+   "title": "At the REM-cycle scale ripples add nothing beyond the count (bounded); the ripple counter's small gain comes from ripple-poor short REM-ending NREM bouts — scorer's cut or physiology, not separated",
+   "text": "Established (bounded negative, both scorings): at the scale of the REM cycle, NREM ripples add no REM-entry information beyond the count, the clock and the wake history — no held-out gain above ~0.05 % from the recent ripple rate, none from ripples older than the last minute (#54). Established as a description: short NREM bouts that end in REM (40 % of REM entries, often between REM bouts of one episode) are ripple-poor, and that poverty carries the ripple counter's small held-out gain, confined to the first one to two minutes of NREM bouts; in long bouts the whole-bout ripple rate before REM equals that before waking (#55). It is not separable from how the scorer cuts REM episodes (scorer and detector read the same LFP). The Amendment-2 reading — a transition-local ripple drop as REM begins — is withdrawn (r.rip_a2, superseded). Whether a last-minute ripple dip exists within long bouts and carries held-out information was not tested (T1 is a 10-min window, K7's ρ is cumulative since the last REM); naps R3 is a pooled within-run description of such a dip (ledger; a different quantity from K8, c.pre_rem_drop resolved). The depth control is inconclusive and counts for neither side. The macro reciprocity (ripple-rich naps and early main sleep are REM-poor; ρ −0.54, 6/6) is a ledger description; that drivers the model already has account for it is the report's reading, consistent with #54, not an audited claim. Limits: one cohort, 5 test animals (SF11 only in training), sleep-onset NREM after long wakes untested, ripple counts are not replay content. All ripple claims belong to the next stage (LFP).",
+   "status": "current",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Fable review r7: 'whole-bout' added to the long-bout rate statement (#55 precision); the untested last-minute question and R3's status (pooled description, different quantity from K8) stated; verdicts unchanged."
+    }
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 200,
+     "l1": 201,
+     "anchor": "NREM ripples add no REM-entry information beyond the count"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 245,
+     "l1": 246,
+     "anchor": "Ripples (2026-10-09, next stage LFP)"
+    },
+    {
+     "path": "change_log/2026-10-09-rem-ripple-model.md",
+     "l0": 105,
+     "l1": 125,
+     "anchor": "Reading (revised after the audit)"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 349,
+     "l1": 352,
+     "anchor": "Whether a last-minute term carries held-out information within long bouts was not tested here"
+    }
+   ]
+  },
+  {
+   "id": "n.rip_short_bouts",
+   "type": "next_step",
+   "branch": "q.ripples",
+   "title": "Are the ripple-poor short NREM bouts that end in REM real NREM or the scorer's cuts inside REM episodes? Read them with independent state measures, blind",
+   "text": "Sample the NREM bouts ≤ 60 s that end in REM (40 % of REM entries) and matched short bouts that end in WAKE, per animal and on both scorings; read each blind to its outcome with measures the scorer's NREM / REM call does not use or uses differently: the user's manual reading of the LFP (as in n.manual_kappa), spindle / delta-wave / theta content on fixed channels, the head IMU; and count ripples with detection that does not depend on the state call. LFP stage.",
+   "priority": 17,
+   "status": "proposed",
+   "stage": "next_stage_lfp",
+   "outcomes": [
+    {
+     "if": "Most short REM-ending 'NREM' bouts read as REM or intermediate sleep on the independent measures",
+     "then": "#55's signal is the scorer's cut inside REM episodes: the ripple counter's gain is a scoring artefact and the ripple branch reduces to #54's bounded null; the first-minute REM peak that #3 forbids reading as a permissive state reads as REM fragmentation.",
+     "changes": [
+      "j.ripples.r7",
+      "j.drive.r4"
+     ]
+    },
+    {
+     "if": "They read as genuine NREM (spindles / delta waves, no theta) and stay ripple-poor against matched WAKE-ending bouts",
+     "then": "Ripple-poor brief NREM between REM bouts is a physiological feature of REM episodes (candidate, LFP stage); the ripple counter carries a real within-episode signal.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    },
+    {
+     "if": "The independent reads disagree with each other",
+     "then": "Scorer's cut vs physiology stays open; manual κ on these bouts comes first.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    }
+   ],
+   "cost": "medium (blind reading of a sample + an LFP feature pass on storage)",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 201,
+     "l1": 201,
+     "anchor": "not separable from how the scorer cuts REM episodes"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 15,
+     "l1": 15,
+     "anchor": "cannot be separated from how the scorer cuts REM episodes"
+    }
+   ]
+  },
+  {
+   "id": "n.rip_rate_vs_count",
+   "type": "next_step",
+   "branch": "q.ripples",
+   "title": "Does the NREM ripple rate fall as the count rises, at matched clock, depth and time in the bout?",
+   "text": "Descriptive, within records: the window ripple rate (the T1 feature, causal block normaliser) on ln(1 + P), with the 2-harmonic clock, the depth z, the time in the bout and animal × block; long NREM bouts; both scorings, ALL and KEPT events. Separates a link from the counted REM drive to ripples from ripples and REM merely sharing the clock and depth. LFP stage; the S1 features sit in the ripple-model run folder.",
+   "priority": 19,
+   "status": "proposed",
+   "stage": "next_stage_lfp",
+   "outcomes": [
+    {
+     "if": "The ripple rate falls with the count at matched clock, depth and bout time (CI < 0, ≥ 4/5 animals, both scorings)",
+     "then": "Ripples track the process the count reads: the reciprocity has a within-cycle component that the held-out test beyond the count could not see — a link from REM pressure to ripples, not from ripples to REM.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    },
+    {
+     "if": "Flat (CI includes 0) at matched clock and depth",
+     "then": "The reciprocity is carried by the clock and depth only: shared drivers in the narrow sense; h.rip.drive_lowers weakened.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    }
+   ],
+   "cost": "hours (cached features)",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Priority 18 → 19: n.rip_last_minute (Fable review r7) goes right after n.rip_short_bouts."
+    }
+   ],
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_macro_2026c.md",
+     "l0": 7,
+     "l1": 7,
+     "anchor": "M1 allocation"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+     "l0": 200,
+     "l1": 200,
+     "anchor": "NREM ripples add no REM-entry information beyond the count"
+    }
+   ]
+  },
+  {
+   "id": "n.rip_last_minute",
+   "type": "next_step",
+   "branch": "q.ripples",
+   "title": "Does a last-minute ripple dip exist within long bouts, and does it carry held-out information?",
+   "text": "Proposed by the Fable review r7, after c.pre_rem_drop (R3 and K8 measure different quantities; no held-out test of a last-minute term within long bouts exists). (a) Existence: the per-bout R3 ratio (last 60 s / the bout's own −300…−120 s rate) in K8's bout set (2–5 min and > 5 min), both scorings, ALL and KEPT events, per-bout values with an animal-level test, matched on depth z and clock. (b) Held out: B + rr_last60 (events in [t − 60, t) relative to the run's earlier rate) on steps ≥ 120 s and ≥ 300 s into a bout, same subset, forward chaining; its L = 60 version is #54's expected null. (c) Control: repeat (a) on the seconds before the first theta-flagged or IMU-movement second, to separate a dip from the loss of detections in intermediate sleep. LFP stage.",
+   "priority": 18,
+   "status": "proposed",
+   "stage": "next_stage_lfp",
+   "outcomes": [
+    {
+     "if": "(a) No dip within long bouts",
+     "then": "R3's pooled dip was diluted noise; #54 and #55 stay as they are.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    },
+    {
+     "if": "(a) A dip exists and (b) is null",
+     "then": "A description without predictive value: a last-minute dip before REM within long bouts, still no REM-entry information beyond the count.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    },
+    {
+     "if": "(b) holds on both scorings (CI < 0, ≥ 4/5 animals)",
+     "then": "A new candidate: transition-local information within long bouts beyond the count — still not readiness; (c) says whether it is a dip or lost detections in intermediate sleep.",
+     "changes": [
+      "j.ripples.r7"
+     ]
+    }
+   ],
+   "cost": "hours (cached S1 features and K8 bout tables)",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 349,
+     "l1": 352,
+     "anchor": "Whether a last-minute term carries held-out information within long bouts was not tested here"
+    },
+    {
+     "path": "change_log/2026-10-09-rem-ripple-model.md",
+     "l0": 117,
+     "l1": 119,
+     "anchor": "not tested as a predictor"
     }
    ]
   },
@@ -8144,12 +9204,18 @@
    "type": "basis",
    "title": "The scorer's head-movement rules: moving + slow wave = WAKE (imu_nremgate); REM with ≥ 3 of 5 s head movement = WAKE (imu_remclean)",
    "text": "The head IMU is the scorer's EMG, so any claim linking IMU movement to the scored state carries this caveat (de-circularised for #28b / #29a by Step A A5).",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+7: the explore plan grew with its Amendment 1); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 49,
-     "l1": 52,
+     "l0": 56,
+     "l1": 59,
      "anchor": "imu_nremgate"
     },
     {
@@ -8165,12 +9231,18 @@
    "type": "basis",
    "title": "Day/night contrasts exclude the 3 h after a battery round; expected-amount baselines include phase × experiment day",
    "text": "A common linear day term cannot remove the opposite night / day trends of the drift (#30).",
+   "changes": [
+    {
+     "round": "r7",
+     "what": "Source lines re-cited (+9: the explore plan grew with its Amendments 1–2); content unchanged."
+    }
+   ],
    "round_added": "r2",
    "sources": [
     {
      "path": "implementation_plan/2026-10-08-sleep-behaviour-explore.md",
-     "l0": 105,
-     "l1": 110,
+     "l0": 114,
+     "l1": 119,
      "anchor": "Post-handling exclusion"
     }
    ]
@@ -8214,6 +9286,60 @@
      "l0": 23,
      "l1": 26,
      "anchor": "v1 → v2"
+    }
+   ]
+  },
+  {
+   "id": "b.swr_events",
+   "type": "basis",
+   "title": "SWR events for the ripple model: ALL detected NREM events primary, KEPT (flags applied) as sensitivity; the scorer and the detector read the same LFP",
+   "text": "The lab's DetectSWR port with one boundary per animal × probe block. Covered seconds: session tier validated / good in the SWR quality guide, before use_until, outside the probe-advance settle windows; SF11's ripples only to 09-02 (~17:04). ALL = every detected event whose peak second is NREM in the scoring being modelled, flags ignored; KEPT drops theta- / REM-flagged events, which shares information with the scorer's REM call, so ALL decides. No event inside the predicted step enters.",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 32,
+     "l1": 33,
+     "anchor": "Covered second"
+    },
+    {
+     "path": "implementation_plan/2026-10-09-rem-ripple-model.md",
+     "l0": 102,
+     "l1": 106,
+     "anchor": "Primary = ALL"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 352,
+     "l1": 352,
+     "anchor": "ALL vs KEPT"
+    }
+   ]
+  },
+  {
+   "id": "b.rip_subset",
+   "type": "basis",
+   "title": "Ripple-model subsets: steps whose preceding 12 min of NREM are ripple-covered (S1; S2 adds every NREM second since the last REM); 5 test animals, holds = CI < 0 and ≥ 4/5",
+   "text": "S1 needs ≥ 3 min of NREM in each window and a causal block normaliser (≥ 30 min of covered block NREM), so steps after an uncovered stretch, early in a block, or at sleep onset after a long wake are lost (FINAL: 127 461 of 179 668 steps). SF11's ripples end inside the six train-only blocks, so it has no test steps.",
+   "round_added": "r7",
+   "sources": [
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 48,
+     "l1": 54,
+     "anchor": "Subsets"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 80,
+     "l1": 80,
+     "anchor": "S1 keeps the steps whose preceding 12 min are ripple-covered"
+    },
+    {
+     "path": "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+     "l0": 353,
+     "l1": 353,
+     "anchor": "SF11 has no test steps"
     }
    ]
   }
@@ -8288,6 +9414,13 @@
    "dst": "q.vulnerability",
    "auto": true,
    "id": "q.core|proposes|q.vulnerability"
+  },
+  {
+   "src": "q.core",
+   "rel": "proposes",
+   "dst": "q.ripples",
+   "auto": true,
+   "id": "q.core|proposes|q.ripples"
   },
   {
    "src": "an.quant",
@@ -9553,6 +10686,13 @@
    "dst": "h.drive.depth",
    "auto": true,
    "id": "n.depth_lfp|tests|h.drive.depth"
+  },
+  {
+   "src": "n.depth_lfp",
+   "rel": "tests",
+   "dst": "h.rip.depth",
+   "auto": true,
+   "id": "n.depth_lfp|tests|h.rip.depth"
   },
   {
    "src": "n.rem_length_two_part",
@@ -15031,6 +16171,20 @@
   {
    "src": "j.model.r6",
    "rel": "depends_on",
+   "dst": "r.s54",
+   "auto": true,
+   "id": "j.model.r6|depends_on|r.s54"
+  },
+  {
+   "src": "j.model.r6",
+   "rel": "depends_on",
+   "dst": "r.s55",
+   "auto": true,
+   "id": "j.model.r6|depends_on|r.s55"
+  },
+  {
+   "src": "j.model.r6",
+   "rel": "depends_on",
    "dst": "b.sim_conditional",
    "auto": true,
    "id": "j.model.r6|depends_on|b.sim_conditional"
@@ -15046,7 +16200,7 @@
    "src": "j.model.r6",
    "rel": "supports",
    "dst": "h.model.count",
-   "scope": "#32, #33, #41; τ_w candidate (#34)",
+   "scope": "#32, #33, #41; τ_w candidate (#34); a ripple rival adds no REM-entry information beyond the count (#54, bounded, REM-cycle scale)",
    "strength": "established",
    "id": "j.model.r6|supports|h.model.count"
   },
@@ -15062,7 +16216,7 @@
    "src": "j.model.r6",
    "rel": "supports",
    "dst": "h.model.generative",
-   "scope": "27/28 checks, both scorings, conditional on the observed long wakes and gaps (#40)",
+   "scope": "27 of 28 checks over both scorings (13/14 FINAL, 14/14 pass2med), conditional on the observed long wakes and gaps (#40)",
    "strength": "established",
    "id": "j.model.r6|supports|h.model.generative"
   },
@@ -15151,6 +16305,623 @@
    "dst": "h.core.budget",
    "auto": true,
    "id": "n.f_quota|tests|h.core.budget"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.readiness",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.readiness"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.shared",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.shared"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.precursor",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.precursor"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.scorer_cut",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.scorer_cut"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.brief_nrem",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.brief_nrem"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.depth",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.depth"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.drive_lowers",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.drive_lowers"
+  },
+  {
+   "src": "q.ripples",
+   "rel": "proposes",
+   "dst": "h.rip.last_minute",
+   "auto": true,
+   "id": "q.ripples|proposes|h.rip.last_minute"
+  },
+  {
+   "src": "an.swr_naps",
+   "rel": "tests",
+   "dst": "h.rip.readiness",
+   "auto": true,
+   "id": "an.swr_naps|tests|h.rip.readiness"
+  },
+  {
+   "src": "an.swr_naps",
+   "rel": "tests",
+   "dst": "h.rip.shared",
+   "auto": true,
+   "id": "an.swr_naps|tests|h.rip.shared"
+  },
+  {
+   "src": "an.swr_macro",
+   "rel": "tests",
+   "dst": "h.rip.readiness",
+   "auto": true,
+   "id": "an.swr_macro|tests|h.rip.readiness"
+  },
+  {
+   "src": "an.swr_macro",
+   "rel": "tests",
+   "dst": "h.rip.shared",
+   "auto": true,
+   "id": "an.swr_macro|tests|h.rip.shared"
+  },
+  {
+   "src": "an.rip_t",
+   "rel": "tests",
+   "dst": "h.rip.readiness",
+   "auto": true,
+   "id": "an.rip_t|tests|h.rip.readiness"
+  },
+  {
+   "src": "an.rip_t",
+   "rel": "tests",
+   "dst": "h.rip.shared",
+   "auto": true,
+   "id": "an.rip_t|tests|h.rip.shared"
+  },
+  {
+   "src": "an.rip_t",
+   "rel": "tests",
+   "dst": "h.model.count",
+   "auto": true,
+   "id": "an.rip_t|tests|h.model.count"
+  },
+  {
+   "src": "an.rip_k",
+   "rel": "tests",
+   "dst": "h.rip.precursor",
+   "auto": true,
+   "id": "an.rip_k|tests|h.rip.precursor"
+  },
+  {
+   "src": "an.rip_k",
+   "rel": "tests",
+   "dst": "h.rip.depth",
+   "auto": true,
+   "id": "an.rip_k|tests|h.rip.depth"
+  },
+  {
+   "src": "an.rip_k",
+   "rel": "tests",
+   "dst": "h.rip.readiness",
+   "auto": true,
+   "id": "an.rip_k|tests|h.rip.readiness"
+  },
+  {
+   "src": "an.rip_k3",
+   "rel": "tests",
+   "dst": "h.rip.precursor",
+   "auto": true,
+   "id": "an.rip_k3|tests|h.rip.precursor"
+  },
+  {
+   "src": "an.rip_k3",
+   "rel": "tests",
+   "dst": "h.rip.depth",
+   "auto": true,
+   "id": "an.rip_k3|tests|h.rip.depth"
+  },
+  {
+   "src": "an.rip_k3",
+   "rel": "tests",
+   "dst": "h.rip.scorer_cut",
+   "auto": true,
+   "id": "an.rip_k3|tests|h.rip.scorer_cut"
+  },
+  {
+   "src": "an.rip_k3",
+   "rel": "tests",
+   "dst": "h.rip.brief_nrem",
+   "auto": true,
+   "id": "an.rip_k3|tests|h.rip.brief_nrem"
+  },
+  {
+   "src": "an.swr_macro",
+   "rel": "yields",
+   "dst": "r.swr_macro",
+   "auto": true,
+   "id": "an.swr_macro|yields|r.swr_macro"
+  },
+  {
+   "src": "an.swr_naps",
+   "rel": "yields",
+   "dst": "r.swr_macro",
+   "auto": true,
+   "id": "an.swr_naps|yields|r.swr_macro"
+  },
+  {
+   "src": "r.swr_macro",
+   "rel": "depends_on",
+   "dst": "b.swr_events",
+   "auto": true,
+   "id": "r.swr_macro|depends_on|b.swr_events"
+  },
+  {
+   "src": "r.swr_macro",
+   "rel": "depends_on",
+   "dst": "b.final_scores",
+   "auto": true,
+   "id": "r.swr_macro|depends_on|b.final_scores"
+  },
+  {
+   "src": "r.swr_macro",
+   "rel": "depends_on",
+   "dst": "b.sw_circularity",
+   "auto": true,
+   "id": "r.swr_macro|depends_on|b.sw_circularity"
+  },
+  {
+   "src": "r.swr_macro",
+   "rel": "proposes",
+   "dst": "q.ripples",
+   "note": "the reciprocity the ripple model was built to explain: a link or shared drivers?",
+   "id": "r.swr_macro|proposes|q.ripples"
+  },
+  {
+   "src": "r.swr_macro",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.readiness",
+   "vs": "h.rip.shared",
+   "note": "an association across sleep periods (largely across the clock) cannot separate a ripple → REM link from shared drivers",
+   "id": "r.swr_macro|cannot_distinguish|h.rip.readiness"
+  },
+  {
+   "src": "an.swr_naps",
+   "rel": "yields",
+   "dst": "r.swr_r3",
+   "auto": true,
+   "id": "an.swr_naps|yields|r.swr_r3"
+  },
+  {
+   "src": "r.swr_r3",
+   "rel": "depends_on",
+   "dst": "b.swr_events",
+   "auto": true,
+   "id": "r.swr_r3|depends_on|b.swr_events"
+  },
+  {
+   "src": "r.swr_r3",
+   "rel": "depends_on",
+   "dst": "b.final_scores",
+   "auto": true,
+   "id": "r.swr_r3|depends_on|b.final_scores"
+  },
+  {
+   "src": "r.swr_r3",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.scorer_cut",
+   "vs": "h.rip.brief_nrem",
+   "note": "a last-minute dip before REM can be intermediate sleep or the scorer's blurred REM border; no held-out reading",
+   "id": "r.swr_r3|cannot_distinguish|h.rip.scorer_cut"
+  },
+  {
+   "src": "r.swr_r3",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.last_minute",
+   "note": "pooled per animal × outcome, not per bout, no held-out test; a dip and the loss of detections in intermediate sleep are not separated (n.rip_last_minute)",
+   "id": "r.swr_r3|cannot_distinguish|h.rip.last_minute"
+  },
+  {
+   "src": "an.rip_t",
+   "rel": "yields",
+   "dst": "r.s54",
+   "auto": true,
+   "id": "an.rip_t|yields|r.s54"
+  },
+  {
+   "src": "an.rip_k",
+   "rel": "yields",
+   "dst": "r.s54",
+   "auto": true,
+   "id": "an.rip_k|yields|r.s54"
+  },
+  {
+   "src": "an.rip_k3",
+   "rel": "yields",
+   "dst": "r.s54",
+   "auto": true,
+   "id": "an.rip_k3|yields|r.s54"
+  },
+  {
+   "src": "r.s54",
+   "rel": "depends_on",
+   "dst": "r.s32",
+   "auto": true,
+   "id": "r.s54|depends_on|r.s32"
+  },
+  {
+   "src": "r.s54",
+   "rel": "depends_on",
+   "dst": "b.counter_key",
+   "auto": true,
+   "id": "r.s54|depends_on|b.counter_key"
+  },
+  {
+   "src": "r.s54",
+   "rel": "depends_on",
+   "dst": "b.validation",
+   "auto": true,
+   "id": "r.s54|depends_on|b.validation"
+  },
+  {
+   "src": "r.s54",
+   "rel": "depends_on",
+   "dst": "b.final_scores",
+   "auto": true,
+   "id": "r.s54|depends_on|b.final_scores"
+  },
+  {
+   "src": "r.s54",
+   "rel": "depends_on",
+   "dst": "b.fixed_thresholds",
+   "auto": true,
+   "id": "r.s54|depends_on|b.fixed_thresholds"
+  },
+  {
+   "src": "r.s54",
+   "rel": "depends_on",
+   "dst": "b.swr_events",
+   "auto": true,
+   "id": "r.s54|depends_on|b.swr_events"
+  },
+  {
+   "src": "r.s54",
+   "rel": "depends_on",
+   "dst": "b.rip_subset",
+   "auto": true,
+   "id": "r.s54|depends_on|b.rip_subset"
+  },
+  {
+   "src": "r.s54",
+   "rel": "weakens",
+   "dst": "h.rip.readiness",
+   "scope": "REM-cycle scale; bounded at ~0.05 % (linear 10-min rate at lags 0–120 s; the lagged counter)",
+   "id": "r.s54|weakens|h.rip.readiness"
+  },
+  {
+   "src": "r.s54",
+   "rel": "supports",
+   "dst": "h.rip.shared",
+   "scope": "predictive, REM-cycle scale",
+   "id": "r.s54|supports|h.rip.shared"
+  },
+  {
+   "src": "r.s54",
+   "rel": "supports",
+   "dst": "h.model.count",
+   "scope": "a ripple rival adds no REM-entry information beyond the count (bounded)",
+   "id": "r.s54|supports|h.model.count"
+  },
+  {
+   "src": "r.s54",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.drive_lowers",
+   "vs": "h.rip.shared",
+   "note": "a predictive null beyond the count is expected both if ripples and REM share independent drivers and if the process the count tracks also lowers ripples",
+   "id": "r.s54|cannot_distinguish|h.rip.drive_lowers"
+  },
+  {
+   "src": "an.rip_t",
+   "rel": "yields",
+   "dst": "r.s55",
+   "auto": true,
+   "id": "an.rip_t|yields|r.s55"
+  },
+  {
+   "src": "an.rip_k",
+   "rel": "yields",
+   "dst": "r.s55",
+   "auto": true,
+   "id": "an.rip_k|yields|r.s55"
+  },
+  {
+   "src": "an.rip_k3",
+   "rel": "yields",
+   "dst": "r.s55",
+   "auto": true,
+   "id": "an.rip_k3|yields|r.s55"
+  },
+  {
+   "src": "r.s55",
+   "rel": "depends_on",
+   "dst": "r.s32",
+   "auto": true,
+   "id": "r.s55|depends_on|r.s32"
+  },
+  {
+   "src": "r.s55",
+   "rel": "depends_on",
+   "dst": "b.swr_events",
+   "auto": true,
+   "id": "r.s55|depends_on|b.swr_events"
+  },
+  {
+   "src": "r.s55",
+   "rel": "depends_on",
+   "dst": "b.rip_subset",
+   "auto": true,
+   "id": "r.s55|depends_on|b.rip_subset"
+  },
+  {
+   "src": "r.s55",
+   "rel": "depends_on",
+   "dst": "b.final_scores",
+   "auto": true,
+   "id": "r.s55|depends_on|b.final_scores"
+  },
+  {
+   "src": "r.s55",
+   "rel": "depends_on",
+   "dst": "b.fixed_thresholds",
+   "auto": true,
+   "id": "r.s55|depends_on|b.fixed_thresholds"
+  },
+  {
+   "src": "r.s55",
+   "rel": "weakens",
+   "dst": "h.rip.precursor",
+   "scope": "the counter's gain is not a pre-REM drop within longer bouts: the unlagged ρ does not hold on both scorings 60 s into a bout and on neither from 120 s (K7)",
+   "id": "r.s55|weakens|h.rip.precursor"
+  },
+  {
+   "src": "r.s55",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.scorer_cut",
+   "vs": "h.rip.brief_nrem",
+   "note": "the scorer's REM / NREM call and the detector read the same LFP",
+   "id": "r.s55|cannot_distinguish|h.rip.scorer_cut"
+  },
+  {
+   "src": "r.s55",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.brief_nrem",
+   "vs": "h.rip.scorer_cut",
+   "note": "the scorer's REM / NREM call and the detector read the same LFP",
+   "id": "r.s55|cannot_distinguish|h.rip.brief_nrem"
+  },
+  {
+   "src": "an.rip_k",
+   "rel": "yields",
+   "dst": "r.rip_a2",
+   "auto": true,
+   "id": "an.rip_k|yields|r.rip_a2"
+  },
+  {
+   "src": "r.s55",
+   "rel": "supersedes",
+   "dst": "r.rip_a2",
+   "auto": true,
+   "id": "r.s55|supersedes|r.rip_a2"
+  },
+  {
+   "src": "an.rip_k3",
+   "rel": "yields",
+   "dst": "r.rip_k4b",
+   "auto": true,
+   "id": "an.rip_k3|yields|r.rip_k4b"
+  },
+  {
+   "src": "r.rip_k4b",
+   "rel": "depends_on",
+   "dst": "b.sw_circularity",
+   "auto": true,
+   "id": "r.rip_k4b|depends_on|b.sw_circularity"
+  },
+  {
+   "src": "r.rip_k4b",
+   "rel": "depends_on",
+   "dst": "b.rip_subset",
+   "auto": true,
+   "id": "r.rip_k4b|depends_on|b.rip_subset"
+  },
+  {
+   "src": "r.rip_k4b",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.depth",
+   "note": "the scorings disagree; not evidence for or against depth carrying the gain",
+   "id": "r.rip_k4b|cannot_distinguish|h.rip.depth"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "r.s54",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|r.s54"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "r.s55",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|r.s55"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "r.rip_k4b",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|r.rip_k4b"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "r.swr_macro",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|r.swr_macro"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "r.swr_r3",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|r.swr_r3"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "b.swr_events",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|b.swr_events"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "b.rip_subset",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|b.rip_subset"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "depends_on",
+   "dst": "b.counter_key",
+   "auto": true,
+   "id": "j.ripples.r7|depends_on|b.counter_key"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "weakens",
+   "dst": "h.rip.readiness",
+   "scope": "REM-cycle scale, bounded at ~0.05 %: linear 10-min rate at lags 0–120 s and the lagged counter; sleep onset untested (#54)",
+   "strength": "established",
+   "id": "j.ripples.r7|weakens|h.rip.readiness"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "supports",
+   "dst": "h.rip.shared",
+   "scope": "predictive, REM-cycle scale (#54); that this accounts for the macro reciprocity is the report's reading, not an audited claim",
+   "strength": "established",
+   "id": "j.ripples.r7|supports|h.rip.shared"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "weakens",
+   "dst": "h.rip.precursor",
+   "scope": "the counter's gain is not a pre-REM drop within longer bouts (#55, K7); the Amendment-2 reading is withdrawn",
+   "strength": "established",
+   "id": "j.ripples.r7|weakens|h.rip.precursor"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.scorer_cut",
+   "vs": "h.rip.brief_nrem",
+   "scope": "#55: the scorer's REM / NREM call and the detector read the same LFP",
+   "strength": "established",
+   "id": "j.ripples.r7|cannot_distinguish|h.rip.scorer_cut"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.brief_nrem",
+   "vs": "h.rip.scorer_cut",
+   "scope": "#55",
+   "strength": "established",
+   "id": "j.ripples.r7|cannot_distinguish|h.rip.brief_nrem"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.depth",
+   "scope": "K4b: the scorings disagree",
+   "strength": "candidate",
+   "id": "j.ripples.r7|cannot_distinguish|h.rip.depth"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "cannot_distinguish",
+   "dst": "h.rip.drive_lowers",
+   "vs": "h.rip.shared",
+   "scope": "a predictive null beyond the count cannot see a link from the counted drive to ripples (named by this map, r7)",
+   "strength": "candidate",
+   "id": "j.ripples.r7|cannot_distinguish|h.rip.drive_lowers"
+  },
+  {
+   "src": "n.rip_short_bouts",
+   "rel": "tests",
+   "dst": "h.rip.scorer_cut",
+   "auto": true,
+   "id": "n.rip_short_bouts|tests|h.rip.scorer_cut"
+  },
+  {
+   "src": "n.rip_short_bouts",
+   "rel": "tests",
+   "dst": "h.rip.brief_nrem",
+   "auto": true,
+   "id": "n.rip_short_bouts|tests|h.rip.brief_nrem"
+  },
+  {
+   "src": "n.rip_rate_vs_count",
+   "rel": "tests",
+   "dst": "h.rip.drive_lowers",
+   "auto": true,
+   "id": "n.rip_rate_vs_count|tests|h.rip.drive_lowers"
+  },
+  {
+   "src": "n.rip_rate_vs_count",
+   "rel": "tests",
+   "dst": "h.rip.shared",
+   "auto": true,
+   "id": "n.rip_rate_vs_count|tests|h.rip.shared"
+  },
+  {
+   "src": "n.rip_last_minute",
+   "rel": "tests",
+   "dst": "h.rip.last_minute",
+   "auto": true,
+   "id": "n.rip_last_minute|tests|h.rip.last_minute"
+  },
+  {
+   "src": "n.rip_last_minute",
+   "rel": "tests",
+   "dst": "h.rip.shared",
+   "auto": true,
+   "id": "n.rip_last_minute|tests|h.rip.shared"
   },
   {
    "src": "j.core.r6",
@@ -15326,6 +17097,27 @@
    "dst": "n.f_quota",
    "auto": true,
    "id": "j.model.r6|proposes|n.f_quota"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "proposes",
+   "dst": "n.rip_short_bouts",
+   "auto": true,
+   "id": "j.ripples.r7|proposes|n.rip_short_bouts"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "proposes",
+   "dst": "n.rip_rate_vs_count",
+   "auto": true,
+   "id": "j.ripples.r7|proposes|n.rip_rate_vs_count"
+  },
+  {
+   "src": "j.ripples.r7",
+   "rel": "proposes",
+   "dst": "n.rip_last_minute",
+   "auto": true,
+   "id": "j.ripples.r7|proposes|n.rip_last_minute"
   }
  ],
  "conflicts": [
@@ -15588,6 +17380,25 @@
    ],
    "note": "The plan's (vi) says 'after a day term' without fixing which; D1 warned that the term matters. Under the plan's scoring rule (pass2med for cross-session contrasts) the model passes either way; FINAL with a linear day term does not. Sent for adjudication: which specification governs, and whether the REM part of #13 is fully closed.",
    "round": "r6"
+  },
+  {
+   "id": "c.pre_rem_drop",
+   "title": "Is there a pre-REM ripple dip within long NREM bouts — does naps report R3 still stand as a description now that the ripple model withdrew 'a transition-local drop'?",
+   "status": "resolved",
+   "resolution": "Different quantities. R3 = the last-60-s ripple rate ÷ the same runs' −300…−120 s rate, NREM runs ≥ 300 s anchored at the run's end, pooled per animal × outcome (ephys/swr_rem_naps.py). K8 = the whole-bout rate before the last step: a −14 % last minute diluted over ≥ 5 min is ≤ −3 %, and K8's > 5-min medians differ by −2.1 / −2.4 % (same sign and size). K7's ρ is cumulative since the last REM and T1 is a 10-min window, so no held-out test of a last-minute term within long bouts exists. #55 forbids only the predictive / transition-local READING, not the measurement: R3 stands as a ledger description with its own allowed / forbidden wording (r.swr_r3); #55's long-bout statement is the whole-bout rate (r.s55, j.ripples.r7). Wording fixed by the main session: the ripple-model report (question line 21, reading line 350 + a new line 351, Answer item 4), the change log, and the swr_rem_naps.py docstring (said 120 s; the code uses 60 s). The open question went to n.rip_last_minute.",
+   "resolved_by": "Fable review r7 (different quantities)",
+   "sides": [
+    {
+     "node": "r.swr_r3",
+     "says": "Naps report R3: in NREM runs ≥ 5 min, the last-60-s ripple rate relative to the run's own −300…−120 s rate is lower before REM than before WAKE: REM − WAKE −0.14 (p 0.025), 6/6; all events −0.09 (p 0.042), 6/6. The ripple-model report still states it as a premise: 'Ripples also drop in the last minute before REM (6/6)' (its question, line 21) and 'a gain only at L = 0 is the transition already under way, since ripples drop in the last minute before REM' (its reading and limits, line 350)."
+    },
+    {
+     "node": "r.s55",
+     "says": "Claim audit #55 forbids 'a pre-REM ripple drop as a predictive or transition-local signal' and 'ripples vanish as REM begins' (withdrawn after the Fable audit); the change log's revised reading says the signal 'is not a pre-REM ripple drop within longer bouts'; K8: in bouts longer than 5 min the whole-bout ripple rate before REM equals that before WAKE (74 vs 76 / 73 vs 75 per min); K7: no unlagged gain that holds on both scorings 60 s into a bout, none on either from 120 s."
+    }
+   ],
+   "note": "Possibly different quantities: R3 is a within-run last-minute ratio (a description, kept and all events), while #55 / K7 / K8 concern the counter's held-out gain and whole-bout rates. Not decided here: whether R3 stands as a description (with #55 forbidding only its predictive / transition-local reading) or is withdrawn too, and whether the ripple-model report's lines 21 and 350 should be revised. The map keeps R3 as a ledger description and uses no pre-REM drop in any judgment. (Sides quote the sources as they read when the conflict was opened.)",
+   "round": "r7"
   }
  ],
  "rounds": [
@@ -15777,6 +17588,50 @@
      "summary": "All three open conflicts resolved, and the claim audit was corrected accordingly (commit a3ca36e). c.balance_wording: a stale #21 row — 'balancing over the day' is struck and now forbidden; #13's allowed wording is historical. c.night_gain_size: two different quantities — 'a third' is the count-matched per-step rate (C1), 'half' the model-free bouts per NREM hour (A3); #14b states both. c.night_day_rem: day fixed effects are the pre-registered term, so #40 passes and is scoped to it; the linear-day REM residual is between-day and FINAL-only, kept as an open ledger item, with a proposed decomposition (n.linear_day_residual). Statuses r2–r6 match the audit rows. Six wording / scope mismatches: M1 a candidate 'smooth curve' inside an established sentence (j.core.r6, j.daynight.r5 title); M2–M3 #21 / #13; M4 #40's scope; M5 the homeostat link in j.compensation.r6 split by strength; M6 the audit synthesis, fixed there. r.d2_nrem over-read by one step: the simulation copies the observed waking, so only a homeostat in the transition rules is excluded. In the same simulation the REM repayment is not reproduced, which strengthens #43's REM-specificity."
     }
    ]
+  },
+  {
+   "id": "r7",
+   "date": "2026-10-09",
+   "label": "REM ripple model (2026-10-09)",
+   "inputs": [
+    "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md",
+    "change_log/2026-10-09-rem-ripple-model.md",
+    "implementation_plan/2026-10-09-rem-ripple-model.md",
+    "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md",
+    "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_macro_2026c.md",
+    "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md"
+   ],
+   "answers": {
+    "aim": "Test whether NREM sharp-wave ripples carry REM-entry information beyond the count P (Step B's B-full at P_tw600_k0), the clock and the wake history, held out on both scorings — i.e. whether the macro 'ripple-rich naps / REM-poor nights' reciprocity is a link or shared drivers. Pre-registered with the model's owner; the artifact checks (Amendment 2) and the follow-up after a read-only Fable audit (Amendment 3) were each written before they ran.",
+    "answered": "At the scale of the REM cycle ripples add no REM-entry information beyond the count, the clock and the wake history (#54, Established, bounded at ~0.05 %): the recent 10-min ripple rate adds nothing at lags 0–120 s, and ripples older than the last minute add nothing, also where the lag can see (K7). The ripple counter's small held-out gain (−0.33 % / −0.30 %) is the ripple poverty of short NREM bouts that end in REM — 40 % of REM entries, often between REM bouts of one episode — confined to the first one to two minutes of NREM bouts (#55, Established as a description). The Amendment-2 reading (a transition-local drop: ripples vanish as REM begins) is withdrawn and kept only as superseded history (r.rip_a2). The depth control is inconclusive: the scorings disagree.",
+    "supported_weakened": "Weakened (established, bounded): a ripple → REM-readiness link at the REM-cycle scale. Supported (established, predictive, REM-cycle scale): shared drivers — once the count, the clock and the wake history are in, ripples add nothing about REM entry; that this accounts for the macro reciprocity is the report's reading, not an audited claim. Weakened: the precursor reading of the counter's gain (a pre-REM drop within longer bouts). The count model survives a ripple rival (j.model.r6 refined). Depth: neither way.",
+    "indistinguishable": "Whether the ripple-poor short REM-ending NREM bouts are the scorer's cuts inside REM episodes or genuinely ripple-poor brief NREM (scorer and detector read the same LFP); whether NREM depth carries the counter's gain (K4b: FINAL beyond depth holds, pass2med does not); whether the REM drive that the count tracks also lowers ripples (a link a predictive test beyond the count cannot see) vs ripples and REM sharing only the clock and depth; a ripple contribution that moves with the daily clock and is absorbed by it; sleep-onset NREM after long wakes (outside the subset); and whether a last-minute ripple dip exists within long bouts and carries held-out information — naps R3 is a pooled within-run description, a different quantity from K8's whole-bout rates (c.pre_rem_drop resolved by the Fable review r7), and no held-out test of a last-minute term exists.",
+    "next": "Top for this branch (LFP stage): n.rip_short_bouts — read the short REM-ending NREM bouts blind with independent state measures. If they read as REM or intermediate sleep, #55 is the scorer's cut: the ripple branch reduces to #54's bounded null (j.ripples.r7) and #3's first-minute REM peak reads as REM fragmentation (j.drive.r4). If they are genuine NREM and stay ripple-poor, ripple-poor brief NREM between REM bouts becomes a candidate physiological feature of REM episodes (j.ripples.r7). If the reads disagree, it stays open and manual κ comes first. n.depth_lfp (already priority 12 for #4) now also settles K4b: depth absorbing the gain on both scorings → h.rip.depth; surviving → beyond depth (j.ripples.r7). Then n.rip_last_minute (Fable review r7): no per-bout dip → R3 was diluted noise, #54 / #55 unchanged; a dip with a held-out null → a description without predictive value; a held-out gain on both scorings → a new candidate, transition-local information within long bouts, still not readiness (j.ripples.r7). n.rip_rate_vs_count separates a REM-drive → ripple link from shared drivers in the narrow sense (j.ripples.r7)."
+   },
+   "next_steps": [
+    "n.rip_short_bouts",
+    "n.depth_lfp",
+    "n.rip_last_minute",
+    "n.rip_rate_vs_count"
+   ],
+   "reviews": [
+    {
+     "by": "Fable (read-only audit of the ripple-model run, before Amendment 3)",
+     "summary": "No leakage and no material bug. The Amendment-2 lag check is uninformative where the gain sits (steps < 60 s into a bout carry 70–80 % of it); 40 % of REM entries come from ripple-poor NREM bouts ≤ 60 s, plausibly the scorer's labels inside REM episodes; the depth check lost 35 % of REM entries with no same-subset baseline. Amendment 3 (K7, K4b, K8) was written before running."
+    },
+    {
+     "by": "claim audit (/scientific-report-promotion), 2026-10-09",
+     "summary": "#54 Established (scoped, bounded negative, both scorings) and #55 Established (description), both → next stage (LFP); 'ripples vanish as REM begins' withdrawn; 'not beyond NREM depth' forbidden (K4b inconclusive)."
+    },
+    {
+     "by": "this map (r7, housekeeping)",
+     "summary": "28 citations that had drifted (the explore plan grew by 7 lines with its Amendment 1; the claim audit grew with #44–#55) were re-pointed, content unchanged, each recorded in its node's changes. Rounds for parts S, G, F2 and F1 (#44–#53) are not yet in this map."
+    },
+    {
+     "by": "Fable r7 (read-only review of round r7)",
+     "summary": "All r7 statuses consistent with claim audit #54 / #55; nothing upgraded or widened; c.pre_rem_drop resolved (different quantities). Applied here: r.swr_r3 gains its n, method and the review's allowed / forbidden wording (status stays ledger); 'whole-bout' added to #55's long-bout statement in r.s55 (text and allowed wording; the audit row carries the same word since commit a7e4796) and j.ripples.r7; r.s55 added to j.model.r6's basis; new proposed h.rip.last_minute and next step n.rip_last_minute (priority 18; n.rip_rate_vs_count → 19)."
+    }
+   ]
   }
  ],
  "derived": {
@@ -15827,16 +17682,11 @@
      "v1"
     ],
     "open_conflicts": [],
-    "new": [
+    "new": [],
+    "modified": [
+     "h.core.entry_only",
      "j.core.r6",
      "n.f_rem_maintenance"
-    ],
-    "modified": [
-     "h.core.no_history",
-     "r.s21",
-     "n.manual_kappa",
-     "j.core.r2",
-     "j.core.r6"
     ]
    },
    "q.history": {
@@ -15919,10 +17769,7 @@
      "c.sequence_wording"
     ],
     "new": [],
-    "modified": [
-     "h.form.order",
-     "j.form.r4"
-    ]
+    "modified": []
    },
    "q.drive": {
     "num": "Q3",
@@ -15984,12 +17831,11 @@
      "Ph2b"
     ],
     "open_conflicts": [],
-    "new": [
-     "n.f_cycle_structure"
-    ],
+    "new": [],
     "modified": [
-     "n.depth_lfp",
-     "n.rem_length_two_part"
+     "h.drive.rem_attempts",
+     "h.drive.progression",
+     "n.depth_lfp"
     ]
    },
    "q.carryover": {
@@ -16076,12 +17922,14 @@
      "explore C"
     ],
     "open_conflicts": [],
-    "new": [
-     "n.f_night_ramp",
-     "n.f_middle_wakes"
-    ],
+    "new": [],
     "modified": [
-     "j.carryover.r4"
+     "h.carry.discount",
+     "h.carry.night_time",
+     "h.carry.new_site",
+     "h.carry.wall_term",
+     "j.carryover.r2",
+     "n.f_middle_wakes"
     ]
    },
    "q.compensation": {
@@ -16170,29 +18018,14 @@
      "explore E"
     ],
     "open_conflicts": [],
-    "new": [
-     "h.comp.handling_repay",
-     "h.comp.round_loss",
-     "r.s43",
-     "r.d2_nrem",
-     "r.e_vi_linear",
-     "j.compensation.r6",
-     "n.origin_43",
-     "n.f_nrem_after_wake",
-     "n.linear_day_residual"
-    ],
+    "new": [],
     "modified": [
-     "h.comp.daily_balance",
-     "r.s10",
-     "r.s13",
      "h.comp.nrem_homeostat",
+     "h.comp.activity_pressure",
+     "h.comp.rem_deficit",
      "h.comp.count_gate",
-     "r.s43",
-     "r.d2_nrem",
-     "r.e_vi_linear",
-     "j.compensation.r2",
-     "j.compensation.r6",
-     "n.step_d"
+     "n.origin_43",
+     "n.f_nrem_after_wake"
     ]
    },
    "q.daynight": {
@@ -16264,8 +18097,9 @@
     "new": [],
     "modified": [
      "n.abs_lfp",
-     "r.s14b",
-     "j.daynight.r5"
+     "h.dn.light_step",
+     "h.dn.smooth_curve",
+     "h.dn.exits"
     ]
    },
    "q.model": {
@@ -16283,13 +18117,17 @@
      "r.s40",
      "r.s41",
      "r.s42",
-     "r.e_latency"
+     "r.e_latency",
+     "r.s54"
     ],
     "analyses": [
      "an.xd2",
      "an.xb",
      "an.xe_sim",
-     "an.xe_ho"
+     "an.xe_ho",
+     "an.rip_t",
+     "an.rip_k",
+     "an.rip_k3"
     ],
     "judgment": "j.model.r6",
     "old_judgments": [
@@ -16311,21 +18149,15 @@
      "explore D"
     ],
     "open_conflicts": [],
-    "new": [
+    "new": [],
+    "modified": [
+     "h.model.count",
+     "h.model.momentum",
+     "h.model.quota",
      "r.s40",
-     "r.s41",
-     "r.s42",
-     "r.e_latency",
+     "j.model.r2",
      "j.model.r6",
      "n.f_quota"
-    ],
-    "modified": [
-     "h.model.momentum",
-     "h.model.generative",
-     "r.s40",
-     "j.model.r4",
-     "j.model.r6",
-     "n.step_e"
     ]
    },
    "q.social": {
@@ -16389,10 +18221,11 @@
     "open_conflicts": [
      "c.partner_waking"
     ],
-    "new": [
+    "new": [],
+    "modified": [
+     "h.soc.group_size",
      "n.f_housemates"
-    ],
-    "modified": []
+    ]
    },
    "q.environment": {
     "num": "Q9",
@@ -16449,10 +18282,13 @@
      "explore C"
     ],
     "open_conflicts": [],
-    "new": [
-     "n.f_environment"
-    ],
-    "modified": []
+    "new": [],
+    "modified": [
+     "h.env.drift_environment",
+     "h.env.drift_adaptation",
+     "h.env.temp_maintenance",
+     "h.env.rain"
+    ]
    },
    "q.vulnerability": {
     "num": "Q10",
@@ -16483,9 +18319,80 @@
     "phases": [],
     "open_conflicts": [],
     "new": [],
+    "modified": []
+   },
+   "q.ripples": {
+    "num": "Q11",
+    "hyps": [
+     "h.rip.readiness",
+     "h.rip.shared",
+     "h.rip.precursor",
+     "h.rip.scorer_cut",
+     "h.rip.brief_nrem",
+     "h.rip.depth",
+     "h.rip.drive_lowers",
+     "h.rip.last_minute"
+    ],
+    "preds": [],
+    "results": [
+     "r.swr_macro",
+     "r.swr_r3",
+     "r.s54",
+     "r.s55",
+     "r.rip_a2",
+     "r.rip_k4b"
+    ],
+    "analyses": [
+     "an.swr_naps",
+     "an.swr_macro",
+     "an.rip_t",
+     "an.rip_k",
+     "an.rip_k3"
+    ],
+    "judgment": "j.ripples.r7",
+    "old_judgments": [],
+    "next": [
+     "n.rip_short_bouts",
+     "n.rip_last_minute",
+     "n.rip_rate_vs_count"
+    ],
+    "counts": {
+     "ledger": 3,
+     "established": 2,
+     "superseded": 1
+    },
+    "phases": [
+     "swr macro",
+     "swr naps",
+     "rip model"
+    ],
+    "open_conflicts": [],
+    "new": [
+     "h.rip.readiness",
+     "h.rip.shared",
+     "h.rip.precursor",
+     "h.rip.scorer_cut",
+     "h.rip.brief_nrem",
+     "h.rip.depth",
+     "h.rip.drive_lowers",
+     "h.rip.last_minute",
+     "r.swr_macro",
+     "r.swr_r3",
+     "r.s54",
+     "r.s55",
+     "r.rip_a2",
+     "r.rip_k4b",
+     "j.ripples.r7",
+     "n.rip_short_bouts",
+     "n.rip_rate_vs_count",
+     "n.rip_last_minute"
+    ],
     "modified": [
-     "j.vulnerability",
-     "n.within_event_history"
+     "r.swr_r3",
+     "r.s55",
+     "r.rip_a2",
+     "j.ripples.r7",
+     "n.rip_rate_vs_count"
     ]
    }
   },
@@ -16500,7 +18407,8 @@
    "q.model",
    "q.social",
    "q.environment",
-   "q.vulnerability"
+   "q.vulnerability",
+   "q.ripples"
   ],
   "accounts": [
    "h.core.regulator",
@@ -16720,12 +18628,30 @@
     "b": "h.vul.history_gates",
     "branch": "q.vulnerability",
     "strength": "candidate"
+   },
+   {
+    "a": "h.rip.scorer_cut",
+    "b": "h.rip.brief_nrem",
+    "branch": "q.ripples",
+    "strength": "established"
+   },
+   {
+    "a": "h.rip.depth",
+    "b": null,
+    "branch": "q.ripples",
+    "strength": "candidate"
+   },
+   {
+    "a": "h.rip.drive_lowers",
+    "b": "h.rip.shared",
+    "branch": "q.ripples",
+    "strength": "candidate"
    }
   ],
   "result_counts": {
-   "ledger": 10,
+   "ledger": 13,
    "unresolved": 8,
-   "established": 21,
+   "established": 23,
    "candidate": 26,
    "withdrawn": 1,
    "rejected": 2
@@ -16746,9 +18672,12 @@
    "n.abs_lfp",
    "n.manual_kappa",
    "n.rem_length_two_part",
-   "n.linear_day_residual"
+   "n.linear_day_residual",
+   "n.rip_short_bouts",
+   "n.rip_last_minute",
+   "n.rip_rate_vs_count"
   ],
-  "latest_round": "r6",
+  "latest_round": "r7",
   "rounds": {
    "r1": {
     "added": [
@@ -17200,6 +19129,81 @@
      "j.model.r4",
      "j.model.r6",
      "n.step_e"
+    ]
+   },
+   "r7": {
+    "added": [
+     "q.ripples",
+     "h.rip.readiness",
+     "h.rip.shared",
+     "h.rip.precursor",
+     "h.rip.scorer_cut",
+     "h.rip.brief_nrem",
+     "h.rip.depth",
+     "h.rip.drive_lowers",
+     "h.rip.last_minute",
+     "an.swr_naps",
+     "an.swr_macro",
+     "an.rip_t",
+     "an.rip_k",
+     "an.rip_k3",
+     "r.swr_macro",
+     "r.swr_r3",
+     "r.s54",
+     "r.s55",
+     "r.rip_a2",
+     "r.rip_k4b",
+     "j.ripples.r7",
+     "n.rip_short_bouts",
+     "n.rip_rate_vs_count",
+     "n.rip_last_minute",
+     "b.swr_events",
+     "b.rip_subset"
+    ],
+    "modified": [
+     "h.core.entry_only",
+     "j.core.r6",
+     "n.f_rem_maintenance",
+     "h.drive.rem_attempts",
+     "h.drive.progression",
+     "n.depth_lfp",
+     "h.carry.discount",
+     "h.carry.night_time",
+     "h.carry.new_site",
+     "h.carry.wall_term",
+     "j.carryover.r2",
+     "n.f_middle_wakes",
+     "h.comp.nrem_homeostat",
+     "h.comp.activity_pressure",
+     "h.comp.rem_deficit",
+     "h.comp.count_gate",
+     "n.origin_43",
+     "n.f_nrem_after_wake",
+     "n.abs_lfp",
+     "h.dn.light_step",
+     "h.dn.smooth_curve",
+     "h.dn.exits",
+     "h.soc.group_size",
+     "n.f_housemates",
+     "h.env.drift_environment",
+     "h.env.drift_adaptation",
+     "h.env.temp_maintenance",
+     "h.env.rain",
+     "q.model",
+     "h.model.count",
+     "h.model.momentum",
+     "h.model.quota",
+     "r.s40",
+     "j.model.r2",
+     "j.model.r6",
+     "n.f_quota",
+     "r.swr_r3",
+     "r.s55",
+     "r.rip_a2",
+     "j.ripples.r7",
+     "n.rip_rate_vs_count",
+     "b.scorer_gate",
+     "b.post_round"
     ]
    }
   },
@@ -17773,6 +19777,69 @@
     ]
    },
    {
+    "name": "ephys_spikes_swr_rem_naps_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_swr_rem_naps_2026c.png",
+    "pub": "figs/ephys_spikes_swr_rem_naps_2026c.png",
+    "cap": "Naps report: A nap − main-sleep ripple rate by NREM depth quintile; B ripple rate vs REM share in 30-min bins; C ripple rate over the last 300 s of NREM runs ending in REM vs WAKE, relative to the run's −300…−120 s rate",
+    "nodes": [
+     "an.swr_naps"
+    ],
+    "branches": [
+     "q.ripples"
+    ],
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md:17"
+    ]
+   },
+   {
+    "name": "ephys_spikes_night_naps_circadian_rem_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_night_naps_circadian_rem_2026c.png",
+    "pub": "figs/ephys_spikes_night_naps_circadian_rem_2026c.png",
+    "cap": "Naps report R1: REM per NREM by clock hour (the circadian figure of the night naps)",
+    "nodes": [
+     "an.swr_naps"
+    ],
+    "branches": [
+     "q.ripples"
+    ],
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_naps_2026c.md:15"
+    ]
+   },
+   {
+    "name": "ephys_spikes_swr_rem_macro_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_swr_rem_macro_2026c.png",
+    "pub": "figs/ephys_spikes_swr_rem_macro_2026c.png",
+    "cap": "Macro report: A REM per NREM and relative ripple rate by sleep period (naps, other night sleep, main-sleep hours); B across sleep periods per animal; C across days (one main sleep per day)",
+    "nodes": [
+     "an.swr_macro"
+    ],
+    "branches": [
+     "q.ripples"
+    ],
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_swr_rem_macro_2026c.md:12"
+    ]
+   },
+   {
+    "name": "ephys_spikes_rem_ripple_model_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_rem_ripple_model_2026c.png",
+    "pub": "figs/ephys_spikes_rem_ripple_model_2026c.png",
+    "cap": "REM ripple model: held-out log-loss change of each ripple term vs B-full (T1 window rates, T2 counter, Amendment-2 checks K2–K5), FINAL and pass2med; filled = holds. Amendment 3 (K7, K4b, K8) is in tables only",
+    "nodes": [
+     "an.rip_t",
+     "an.rip_k"
+    ],
+    "branches": [
+     "q.model",
+     "q.ripples"
+    ],
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_rem_ripple_model_2026c.md:84",
+     "change_log/2026-10-09-rem-ripple-model.md:24"
+    ]
+   },
+   {
     "name": "ephys_spikes_sleep_pass2med_vs_original_2026c.png",
     "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_pass2med_vs_original_2026c.png",
     "pub": "figs/ephys_spikes_sleep_pass2med_vs_original_2026c.png",
@@ -17787,6 +19854,174 @@
    }
   ],
   "unmapped_figures": [
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h10_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h10_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h10_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:494"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h11_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h11_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h11_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:585"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h20_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h20_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h20_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:669"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h23_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h23_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h23_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:733"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h5_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h5_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h5_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:168"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h7_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h7_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h7_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:274"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h8_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h8_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h8_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:341"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F1_h9_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F1_h9_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F1_h9_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F1_2026c.md:408"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F2_h14_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F2_h14_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F2_h14_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md:180"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F2_h15_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F2_h15_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F2_h15_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md:280"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F2_h16_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F2_h16_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F2_h16_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md:400"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F2_h17_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F2_h17_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F2_h17_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md:462"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F2_h22_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F2_h22_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F2_h22_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md:516"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F2_h25_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F2_h25_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F2_h25_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md:633"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_F2_h4_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_F2_h4_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_F2_h4_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_F2_2026c.md:119"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_G_g1_power_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_G_g1_power_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_G_g1_power_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_G_2026c.md:124"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_G_g2_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_G_g2_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_G_g2_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_G_2026c.md:323"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_G_g3_tertiles_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_G_g3_tertiles_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_G_g3_tertiles_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_G_2026c.md:400"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_G_g4_halves_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_G_g4_halves_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_G_g4_halves_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_G_2026c.md:484"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_P_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_P_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_P_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_P_2026c.md:380"
+    ]
+   },
+   {
+    "name": "ephys_spikes_sleep_explore_S_response_2026c.png",
+    "path": "results/2026c/ephys_spikes/figures/ephys_spikes_sleep_explore_S_response_2026c.png",
+    "pub": "figs/ephys_spikes_sleep_explore_S_response_2026c.png",
+    "cited_in": [
+     "results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_S_2026c.md:274"
+    ]
+   },
    {
     "name": "ephys_spikes_night_sleep_wiser_raster_SF07_2026c.png",
     "path": "results/2026c/ephys_spikes/figures/ephys_spikes_night_sleep_wiser_raster_SF07_2026c.png",
@@ -17864,6 +20099,6 @@
  "generated": {
   "by": "research_logic/logic_map.py build",
   "from": "research_logic/graphs/sleep_2026c.yaml",
-  "sha256_of_source": "b3f35ff586e12100063a4b2a35650ef2aa6fdd974c4631e8bb06fdf3747d39a8"
+  "sha256_of_source": "e3688ff37109bcc6d60ca8c113ef2f28c3a902ac8cc58ed26a03580d0aa558c1"
  }
 }
