@@ -139,3 +139,25 @@ temperature effect. Only T2 and the within-phase slopes speak to temperature.
   - $f_e$ is the Hilbert phase-derivative frequency at the peak trough of the 80–250 Hz signal. Single values are
     unbounded (≈ 10 % read below 100 Hz), so the bin median is used.
   - The event count reported is the one that enters the bins.
+
+## Amendment 2 (2026-10-09, the user's correction: "day / night ripple RATE vs temperature"; bin-level rate slopes already seen)
+
+The user's outcome is the NREM ripple rate, by day and by night. The cleanest form is one value per period:
+
+- **Periods.** For biological day $D$, the day period is $[\text{sunrise}_D, \text{sunset}_D)$ and the night period is
+  $[\text{sunset}_D, \text{sunrise}_{D+1})$.
+- **Period rate.** Per animal × block × period $p$ (the 30-min bins of Amendment 1's table, no re-extraction):
+  $$R_p = \frac{\sum_{k\in p} n_k}{\sum_{k\in p} N_k} \quad (\text{events per NREM minute})$$
+  - The period needs ≥ 30 NREM minutes.
+  - Text: the NREM ripple rate of that day or night.
+- **Period temperature.** $T_p = \sum_{k\in p} N_k T_k / \sum_{k\in p} N_k$: the outdoor temperature while the animal was in
+  NREM, in °C.
+- **Hour-adjusted rate** (sensitivity). The same ratio after subtracting the cohort hour profile (Amendment 1) from each
+  bin's rate, so a period with more NREM at "high-rate hours" is not favoured.
+- **Tests, per phase separately** (day periods; night periods):
+  - WLS $R_p = \alpha_{a,b} + \beta T_p + \gamma\,\mathrm{day}_p$, weights = NREM minutes, SEs clustered by date, $t(G-1)$.
+  - Animal-level: per-animal slope across dates, mean with a $t(n-1)$ CI.
+  - Per-animal Pearson / Spearman correlations.
+  - Validated blocks only.
+  - The same for the relative amplitude, as a check that detection drift does not create the rate slope.
+- **Verdict:** the Amendment 1 rule (pooled CI, animal-level CI, ≥ 4 animals same sign, validated blocks).

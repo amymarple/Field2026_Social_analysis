@@ -15,6 +15,7 @@ Amendment 1 (after a Fable audit): model H = the same + hour-of-day harmonics (k
 leave-one-animal-out; hour profile; verdict = Established / Candidate / No (see the plan).
 
   python ephys/swr_temperature.py run [--swr-root …] [--states-root …]
+  python ephys/swr_temperature.py rate       (Amendment 2: day / night ripple RATE per period, from the saved bins)
   python ephys/swr_temperature.py --selftest
 """
 from __future__ import annotations
@@ -615,6 +616,230 @@ def write_report(a, q, ev, b, R, PA, V, dn, S, LO, hp, figs, rd, out):
     (rd / f"ephys_spikes_swr_temperature_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
 
 
+# ------------------------------------------------------------------ Amendment 2: day / night ripple RATE per period
+def periods(b: pd.DataFrame, hp: pd.DataFrame) -> pd.DataFrame:
+    """One row per animal x block x period (day of biological date D = [sunrise D, sunset D); night of D = [sunset D,
+    sunrise D+1)), from the 30-min bins: R = sum n / sum N, T = NREM-minute-weighted temperature, hour-adjusted rate."""
+    from sleep_quant import sun_times
+    d = b.copy()
+    c = d.b0 + pd.Timedelta(minutes=15)
+    bio = []
+    for t in c:
+        sr, _ = sun_times(t.date())
+        bio.append((t.normalize() - pd.Timedelta(days=1)) if t < pd.Timestamp(sr) else t.normalize())
+    d["bio"] = pd.to_datetime(bio).strftime("%m-%d")
+    prof = hp.set_index("hour").r_dm
+    d["r_adj"] = d.r - d.hour.astype(int).map(prof).fillna(0)
+    rows = []
+    for (an, blk, ab, bi, ph), g in d.groupby(["animal", "block", "ab", "bio", "phase"]):
+        N = g.N.sum()
+        rows.append(dict(animal=an, block=blk, ab=ab, bio=bi, phase=ph, nrem_min=N, n=g.n.sum(), R=g.n.sum() / N,
+                         R_adj=float(np.average(g.r_adj, weights=g.N)), T=float(np.average(g.temp_C, weights=g.N)),
+                         T_anom=float(np.average(g.temp_anom, weights=g.N)),
+                         A=float(np.average(g.A.dropna(), weights=g.N[g.A.notna()])) if g.A.notna().any() else np.nan,
+                         day=float(np.average(g.day, weights=g.N)), date=bi, bins=len(g)))
+    p = pd.DataFrame(rows)
+    return p[p.nrem_min >= 30].reset_index(drop=True)
+
+
+def fit_period(p: pd.DataFrame, y: str, tcol: str, trend: bool = True) -> dict:
+    """WLS y ~ C(ab) + T [+ day], weights = NREM minutes, SEs clustered by biological date, t(G-1)."""
+    import statsmodels.formula.api as smf
+    from scipy import stats
+    d = p.dropna(subset=[y, tcol]).rename(columns={tcol: "TT"})
+    G = d.date.nunique()
+    if G < 3 or len(d) < 5:
+        return dict(n=len(d), dates=G)
+    rhs = ("C(ab) + " if d.ab.nunique() > 1 else "") + "TT" + (" + day" if trend else "")
+    m = smf.wls(f"{y} ~ {rhs}", data=d, weights=d.nrem_min).fit(cov_type="cluster", cov_kwds={"groups": pd.factorize(d.date)[0],
+                                                                                             "use_correction": True})
+    s, se = float(m.params["TT"]), float(m.bse["TT"])
+    tq = stats.t.ppf(0.975, G - 1)
+    return dict(slope=s, lo=s - tq * se, hi=s + tq * se, p=float(2 * stats.t.sf(abs(s / se), G - 1)), n=len(d), dates=G)
+
+
+def per_animal_period(p: pd.DataFrame, y: str, tcol: str) -> pd.DataFrame:
+    """Per animal across its periods: WLS slope (block intercepts, no trend: few dates per animal), Pearson / Spearman r of the
+    block-demeaned y vs T."""
+    from scipy import stats
+    rows = []
+    for an, g in p.dropna(subset=[y, tcol]).groupby("animal"):
+        r = dict(animal=an, periods=len(g))
+        if len(g) >= 3:
+            f = fit_period(g.assign(date=g.date), y, tcol, trend=False) if g.date.nunique() >= 3 else {}
+            yd = g[y] - g.groupby("ab")[y].transform("mean")
+            r.update(slope=f.get("slope", np.nan), pearson=float(stats.pearsonr(g[tcol], yd)[0]),
+                     spearman=float(stats.spearmanr(g[tcol], yd)[0]))
+        rows.append(r)
+    return pd.DataFrame(rows)
+
+
+def rate_analysis(a):
+    from scipy import stats
+    rd = report_dir(COHORT)
+    man = json.loads((rd / f"run_manifest_swr_temperature_{COHORT}.json").read_text())
+    b = pd.read_csv(Path(man["run_dir"]) / "bins_30min.csv.gz", parse_dates=["b0"])
+    hp = pd.read_csv(rd / f"ephys_spikes_swr_temperature_hour_profile_{COHORT}.csv")
+    q = pd.read_csv(a.quality)
+    vab = set((q[q.tier == "validated"].animal + "|" + q[q.tier == "validated"].block_from.astype(str)))
+    p = periods(b, hp)
+    p.to_csv(Path(man["run_dir"]) / "periods_day_night.csv.gz", index=False)
+    rows, pas = [], []
+    for y, ylab in (("R", "rate"), ("R_adj", "hour-adjusted rate"), ("A", "relative amplitude (check)")):
+        for tcol in ("T", "T_anom"):
+            for ph in ("day", "night"):
+                d = p[p.phase == ph]
+                f = fit_period(d, y, tcol)
+                pa_ = per_animal_period(d, y, tcol)
+                s_ = pa_.slope.dropna() if "slope" in pa_ else pd.Series(dtype=float)
+                al = {}
+                if len(s_) >= 3:
+                    m_, se_ = float(s_.mean()), float(s_.std(ddof=1) / np.sqrt(len(s_)))
+                    tq = stats.t.ppf(0.975, len(s_) - 1)
+                    al = dict(al=m_, al_lo=m_ - tq * se_, al_hi=m_ + tq * se_)
+                fv = fit_period(d[d.ab.isin(vab)], y, tcol)
+                fn = fit_period(d, y, tcol, trend=False)
+                agree = int((np.sign(s_) == np.sign(f.get("slope", np.nan))).sum())
+                c1 = np.isfinite(f.get("lo", np.nan)) and (f["lo"] > 0 or f["hi"] < 0)
+                c2 = bool(al) and (al["al_lo"] > 0 or al["al_hi"] < 0) and np.sign(al["al"]) == np.sign(f.get("slope"))
+                c3 = agree >= min(4, len(s_))
+                c4 = np.isfinite(fv.get("lo", np.nan)) and (fv["lo"] > 0 or fv["hi"] < 0) and np.sign(fv["slope"]) == np.sign(f.get("slope"))
+                v = "Established" if c1 and c2 and c3 and c4 else "Candidate" if c1 else "No"
+                rows.append(dict(outcome=y, label=ylab, temp=tcol, phase=ph, **{k: f.get(k) for k in ("slope", "lo", "hi", "p", "n", "dates")},
+                                 **al, same_sign=agree, animals=len(s_), val_slope=fv.get("slope"), val_lo=fv.get("lo"),
+                                 val_hi=fv.get("hi"), notrend_slope=fn.get("slope"), notrend_lo=fn.get("lo"), notrend_hi=fn.get("hi"),
+                                 verdict=v))
+                pas.append(pa_.assign(outcome=y, temp=tcol, phase=ph))
+    R, PA = pd.DataFrame(rows), pd.concat(pas, ignore_index=True)
+    R.to_csv(rd / f"ephys_spikes_swr_temperature_rate_tests_{COHORT}.csv", index=False)
+    PA.to_csv(rd / f"ephys_spikes_swr_temperature_rate_per_animal_{COHORT}.csv", index=False)
+    p.to_csv(rd / f"ephys_spikes_swr_temperature_rate_periods_{COHORT}.csv", index=False)
+    fig = rate_figure(p)
+    rate_report(p, R, PA, fig, rd, man["run_dir"])
+    print(f"wrote {rd / f'ephys_spikes_swr_temperature_rate_{COHORT}.md'} ({len(p)} periods)")
+
+
+def rate_figure(p: pd.DataFrame) -> Path:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from _common import figure_dir
+    animals = sorted(p.animal.unique())
+    fig, axes = plt.subplots(2, len(animals) + 1, figsize=(2.7 * (len(animals) + 1), 5.4), squeeze=False)
+    col = {"day": "#d98c00", "night": "#2b4f8a"}
+    for i, ph in enumerate(("day", "night")):
+        d = p[p.phase == ph].copy()
+        d["Rd"] = d.R - d.groupby("ab").R.transform("mean")
+        for j, an in enumerate(animals + ["all (block-demeaned)"]):
+            ax = axes[i, j]
+            g = d if j == len(animals) else d[d.animal == an]
+            yv = g.Rd if j == len(animals) else g.R
+            for ab_, gg in g.groupby("ab"):
+                ax.scatter(gg["T"], (gg.R - gg.R.mean()) if j == len(animals) else gg.R, s=18, color=col[ph], alpha=0.8,
+                           marker="o" if ab_.endswith("start") else "s")
+            if len(g) >= 3:
+                k = np.polyfit(g["T"], yv, 1)
+                xs = np.linspace(g["T"].min(), g["T"].max(), 10)
+                ax.plot(xs, np.polyval(k, xs), color=col[ph], lw=1)
+            ax.set_title(f"{an} - {ph}" if j < len(animals) else f"all animals - {ph}", fontsize=8)
+            ax.tick_params(labelsize=7)
+            if j == 0:
+                ax.set_ylabel("NREM ripple rate (/NREM min)", fontsize=8)
+            if i == 1:
+                ax.set_xlabel("outdoor T during NREM (degC)", fontsize=8)
+    fig.suptitle("Day and night NREM ripple rate vs temperature, one point per animal x period (circle = first block, "
+                 "square = later block; 'all' = rate minus its block mean)", fontsize=9)
+    fig.tight_layout()
+    out = figure_dir(COHORT) / f"ephys_spikes_swr_temperature_rate_{COHORT}.png"
+    fig.savefig(out, dpi=120)
+    plt.close(fig)
+    return out
+
+
+def rate_report(p, R, PA, fig, rd, run_dir):
+    L = []
+    w = L.append
+    w(f"# Day and night NREM ripple RATE vs temperature ({COHORT})")
+    w("")
+    w(f"Generated by `ephys/swr_temperature.py rate` (repo `{git_commit()}`) from the 30-min bins of `{run_dir}`. "
+      "Plan Amendment 2 ([plan](../../../../implementation_plan/2026-10-08-swr-temperature.md)): written after the bin-level "
+      "rate slopes were seen, at the user's correction ('day / night ripple RATE vs temperature'). Bin-level analysis and its "
+      f"audit: [`ephys_spikes_swr_temperature_{COHORT}.md`](ephys_spikes_swr_temperature_{COHORT}.md).")
+    w("")
+    w("## Answer")
+    w("")
+    for ph in ("day", "night"):
+        r = R[(R.outcome == "R") & (R.temp == "T") & (R.phase == ph)].iloc[0]
+        ra = R[(R.outcome == "R") & (R.temp == "T_anom") & (R.phase == ph)].iloc[0]
+        rj = R[(R.outcome == "R_adj") & (R.temp == "T") & (R.phase == ph)].iloc[0]
+        am = R[(R.outcome == "A") & (R.temp == "T") & (R.phase == ph)].iloc[0]
+        pp = PA[(PA.outcome == "R") & (PA.temp == "T") & (PA.phase == ph)]
+        w(f"- **{ph.capitalize()} ripple rate:** {fmt(r.slope, 2)} events/NREM min per degC [{fmt(r.lo, 2)}, {fmt(r.hi, 2)}] "
+          f"({r.n} animal-periods, {r.dates} dates); per animal {r.same_sign} / {r.animals} with that sign "
+          f"(Pearson r: " + ", ".join(f"{x.animal} {fmt(x.pearson, 2)}" for x in pp.itertuples()) + f"); animal-level mean "
+          f"{fmt(getattr(r, 'al', np.nan), 2)} [{fmt(getattr(r, 'al_lo', np.nan), 2)}, {fmt(getattr(r, 'al_hi', np.nan), 2)}]; "
+          f"validated blocks {fmt(r.val_slope, 2)} [{fmt(r.val_lo, 2)}, {fmt(r.val_hi, 2)}]; hour-adjusted {fmt(rj.slope, 2)} "
+          f"[{fmt(rj.lo, 2)}, {fmt(rj.hi, 2)}]; vs the anomaly {fmt(ra.slope, 2)} [{fmt(ra.lo, 2)}, {fmt(ra.hi, 2)}]. "
+          f"Amplitude check {fmt(am.slope, 3)} per degC [{fmt(am.lo, 3)}, {fmt(am.hi, 3)}]. **Verdict: {r.verdict}.**")
+    w("")
+    w("## All tests")
+    w("")
+    w("Per phase: WLS y = animal x block intercepts + beta T + gamma day, weights NREM minutes, SEs clustered by date, t(G-1). "
+      "Verdict = the Amendment 1 rule (pooled CI excludes 0, animal-level CI excludes 0, >= 4 animals same sign, validated "
+      "blocks agree).")
+    w("")
+    w("| Outcome | Temperature | Phase | Slope /degC [95 % CI] | p | Animal-level [CI] | Same sign | Validated blocks [CI] | No trend [CI] | Verdict |")
+    w("|---|---|---|---|---|---|---|---|---|---|")
+    for r in R.itertuples():
+        w(f"| {r.label} | {r.temp} | {r.phase} | {fmt(r.slope, 3)} [{fmt(r.lo, 3)}, {fmt(r.hi, 3)}] | {fmt(r.p, 3)} | "
+          f"{fmt(getattr(r, 'al', np.nan), 3)} [{fmt(getattr(r, 'al_lo', np.nan), 3)}, {fmt(getattr(r, 'al_hi', np.nan), 3)}] | "
+          f"{r.same_sign} / {r.animals} | {fmt(r.val_slope, 3)} [{fmt(r.val_lo, 3)}, {fmt(r.val_hi, 3)}] | "
+          f"{fmt(r.notrend_slope, 3)} [{fmt(r.notrend_lo, 3)}, {fmt(r.notrend_hi, 3)}] | **{r.verdict}** |")
+    w("")
+    w("## Per animal (rate vs outdoor T)")
+    w("")
+    w("| Animal | Phase | Periods | Slope /degC | Pearson r | Spearman rho |")
+    w("|---|---|---|---|---|---|")
+    for x in PA[(PA.outcome == "R") & (PA.temp == "T")].itertuples():
+        w(f"| {x.animal} | {x.phase} | {x.periods} | {fmt(getattr(x, 'slope', np.nan), 2)} | {fmt(getattr(x, 'pearson', np.nan), 2)} | "
+          f"{fmt(getattr(x, 'spearman', np.nan), 2)} |")
+    w("")
+    w("## The periods")
+    w("")
+    w("| Animal | Block | Date | Phase | NREM min | Rate /min | Outdoor T (degC) | T anomaly | Rel. amplitude |")
+    w("|---|---|---|---|---|---|---|---|---|")
+    for x in p.sort_values(["animal", "date", "phase"]).itertuples():
+        w(f"| {x.animal} | {x.block} | {x.date} | {x.phase} | {x.nrem_min:.0f} | {x.R:.1f} | {x.T:.1f} | {x.T_anom:+.1f} | {fmt(x.A, 2)} |")
+    w("")
+    w(f"![rate vs temperature](../figures/{fig.name})")
+    w("")
+    w("## Definitions")
+    w("")
+    w("- **Period**: for biological date D, day = [sunrise D, sunset D), night = [sunset D, sunrise D+1); the 30-min bins of "
+      "the bin-level analysis (same exclusions: tiers validated / good, after use_until, to 09-11 19:40, first 30 min of each "
+      "file, probe-advance settle windows, bins with >= 5 min NREM not crossed by sunrise / sunset).")
+    w("- **Period rate** $R_p = \\sum_{k\\in p} n_k / \\sum_{k\\in p} N_k$ (kept NREM SWR events per NREM minute); periods with "
+      ">= 30 NREM minutes. Text: how often ripples occur during that day's / night's NREM.")
+    w("- **Period temperature** $T_p = \\sum_k N_k T_k / \\sum_k N_k$ (degC): outdoor temperature while the animal was in NREM; "
+      "$T^{anom}_p$ the same for the anomaly (vs the usual for the hour).")
+    w("- **Hour-adjusted rate** $R^{adj}_p = \\sum_k N_k (r_k - \\bar r_{h(k)}) / \\sum_k N_k$, $\\bar r_h$ = the cohort hour profile "
+      "(within-block deviation by clock hour): removes differences in when within the period the NREM fell.")
+    w("- **Model** per phase: $R_p = \\alpha_{a,b} + \\beta T_p + \\gamma\\,\\mathrm{day}_p$, WLS weights = NREM minutes, SEs clustered by "
+      "biological date, $t(G-1)$; per animal the same without the trend (few dates); animal-level CI = mean of the per-animal "
+      "slopes, $t(n-1)$.")
+    w("- **Relative amplitude** (check): NREM-minute-weighted mean of the bins' median amplitude / the block reference's NREM "
+      "median: if the rate slope came with an amplitude slope, a fixed detection boundary could produce it.")
+    w("")
+    w("## Limits")
+    w("")
+    w("- Outdoor air, not the house or the brain; the rats sleep huddled in insulated houses.")
+    w("- Rate depends on the detection boundary (fixed per block in raw units); the amplitude check tests the obvious route. "
+      "SF08 block 1 and SF12 block 1 are the least trustworthy blocks (quality guide).")
+    w("- One value per animal per period and 12 dates: weather varies little between dates within a phase; a slope across "
+      "dates can also carry anything else that changed from day to day (handling, disturbance, the probe).")
+    (rd / f"ephys_spikes_swr_temperature_rate_{COHORT}.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+
+
 # ------------------------------------------------------------------ selftest
 def selftest():
     rng = np.random.default_rng(1)
@@ -661,7 +886,7 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "rate"])
     ap.add_argument("--swr-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/swr")
     ap.add_argument("--states-root", default="D:/3rd_rat_spikes/analysis/sleep_server/states_1s_final")
     ap.add_argument("--quality", default=str(report_dir(COHORT) / f"ephys_spikes_swr_quality_{COHORT}.csv"))
@@ -673,6 +898,8 @@ def main():
         selftest()
     if a.cmd == "run":
         run(a)
+    if a.cmd == "rate":
+        rate_analysis(a)
 
 
 if __name__ == "__main__":

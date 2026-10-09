@@ -100,3 +100,38 @@ The date-clustered inference itself agreed with a Webb wild-cluster bootstrap.
   - ideally a head / skin temperature measurement.
 - The time-of-day profile could be related to sleep history (time since the active phase, NREM depth / delta) with the
   sleep-schedule tools.
+
+## Update 2026-10-09: day and night ripple RATE vs temperature (the user's question; plan Amendment 2)
+
+**The outcome is now the NREM ripple rate per period.** One value per animal × block × period: the day period is
+sunrise → sunset of date D, the night period is sunset D → sunrise D+1.
+
+- $R_p$ = kept NREM events / NREM minutes, with ≥ 30 NREM min.
+- $T_p$ = NREM-minute-weighted outdoor temperature.
+- Model per phase: WLS with animal × block intercepts + a day trend, SEs clustered by date.
+- Each day period covers the same hours on every date, so the time-of-day confound of the bin-level analysis does not
+  arise. A hour-adjusted rate is run as a check.
+- Source: `swr_temperature.py rate`, from the saved bins (no re-extraction). Report:
+  `results/2026c/ephys_spikes/reports/ephys_spikes_swr_temperature_rate_2026c.md`.
+
+**Day ripple rate vs temperature: no relation.**
+- −0.90 /NREM min per °C [−2.70, 0.89], 50 animal-days.
+- 3 of 5 animals share that sign. Validated blocks give +0.80.
+- Day temperatures span only 15.5–24.6 °C.
+
+**Night ripple rate vs temperature: colder nights → more ripples per NREM minute. Verdict Candidate.**
+- −1.87 /NREM min per °C [−2.93, −0.82], p 0.003, 41 animal-nights, night temperatures 10.1–20.8 °C.
+- Hour-adjusted −1.73 [−2.76, −0.71]; vs the temperature anomaly −1.87 [−3.06, −0.68].
+- 4 of 5 animals negative: Pearson r SF08 −0.86, SF12 −0.85, SF10 −0.63, SF09 −0.45; SF07 +0.04.
+- Not Established:
+  - the animal-level CI [−4.2, 0.5] includes 0 (n = 5);
+  - validated blocks give −1.33 [−2.93, 0.26].
+- **Amplitude check:** night amplitude also rises slightly on cold nights (−0.5 % per °C, CI just excluding 0). With
+  a fixed detection boundary, part of the rate change could be detection.
+
+**The night contrast is mostly between:**
+- warm nights: 08-31 → 09-03 and 09-09, 19–21 °C;
+- cold nights: 09-06 and 09-07, 10.5–11.6 °C.
+
+The cold nights sit in the middle of the cohort, around the probe advances, the 09-07 six-rat huddle and SF11's
+implant loss. A linear day trend cannot separate them.
