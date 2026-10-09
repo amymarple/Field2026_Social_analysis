@@ -453,3 +453,61 @@ true model must predict the response to them, not only fit ordinary sleep. Two a
 - Pass for "the rules predict the response": the observed mean inside the simulated 95 % range at 1, 3 and 6 h for
   REM and NREM minutes and for the first-REM latency, on both scorings.
 - The REM payback slope (D2) is already known NOT to be predicted. S3 shows whether the rest of the response is.
+
+## 10. Amendment 2 (2026-10-09; the user: "干吧") — perturbation dynamics before any REM-need variable; written before these results
+
+**Why.** The user's note (2026-10-09): a rule "after a perturbation, add REM in proportion to the REM missed" only shows
+that a model can fit the repayment; it does not show how it arises. An internal variable with its own dynamics, fitted
+on other data and frozen, may predict it — and must be allowed to fail. The repayment is not yet one target: its debt
+slope is pass2med-only (#43); FINAL shows extra REM 3 h after morning rounds that follows the gap's expected REM (G3).
+What both scorings agree on is the acute waking excess (#44) and the later first REM in wall time (#47), with REM entry
+per NREM step at the model's rate. So the arousal dynamics come first; a REM-need variable only if a REM residual remains.
+
+**Part P (this amendment).** Driver `ephys/sleep_perturb.py`; `sleep_sim.py` gains an optional arousal input
+(identical output when absent). Both scorings. Rounds = usable round gaps (round_logged / round_inferred), as S.
+
+Definitions:
+- Arousal term on the NREM → WAKE logit only: $\eta_{WAKE} \mathrel{+}= a\,e^{-s/\tau_A}$, $s$ = seconds since the
+  post-round record start; $\tau_A \in \{10, 20, 40, 80\}$ min. The stay and REM logits are untouched, so
+  $P(\text{REM} \mid \text{not WAKE})$ is unchanged and only whether the rat woke informs $a$ (binary WAKE likelihood
+  with the base model's logit as offset; $(a, \tau_A)$ = maximum likelihood over the grid × continuous $a$).
+- Base for the step-level part: B-full at P_tw600_k0 trained on all steps EXCEPT the 3 h after rounds (as S2b's blind
+  model, all blocks). Symmetric base for the control: trained without the 3 h after rounds AND the 3 h after natural
+  wakes ≥ 30 min.
+- Base for the generative part: sleep_sim v2 fitted on the records with every post-round 3 h masked (as S3 blind).
+- Hold-out: 2-fold cross-fit over rounds by the parity of the round record's start date; each round is predicted /
+  simulated with $(a, \tau_A)$ fitted on the other half.
+
+Tests and pass rules (both scorings):
+- **P1, the arousal is captured (held out).**
+  - Cross-fitted blind + A vs blind on the post-round steps (0–3 h): Δ log-loss CI < 0 (block bootstrap) and ≥ 5/6 rats
+    better;
+  - and the 0–1 h WAKE O/E with A in [0.8, 1.25] with CI including 1.
+- **P1b, handling is special.** The same term fitted after natural wakes ≥ 30 min ($a_{nat}$, symmetric base):
+  $a_{round} - a_{nat}$ with block-bootstrap CI > 0.
+- **P2, the later first REM follows from the arousal alone (allowed to fail; REM rules untouched).** In the cross-fitted
+  simulation with A (100 replicates, conditional on the observed long wakes and gaps), the observed first-REM KM median
+  after morning AND evening rounds lies inside the simulated 95 % range, and ≥ 12 of S3's 14 measures (REM / NREM
+  minutes at 1, 3, 6 h, both latencies) are inside.
+- **P3, no harm to ordinary sleep.** Step E's checks (i), (iii), (iv) on all records simulated with A: ≥ 27/28 pass,
+  and not fewer than without A (same blind model).
+- **P4, duration (description).** Rounds split into gap-length tertiles within each kind: observed vs simulated (with A)
+  REM / NREM minutes at 1 and 3 h and the latency. The model has no duration term, so it predicts no duration effect.
+- **Residual REM (decides part Q).** With A in the simulation: S3's morning REM at 3 h and D2's day-demeaned morning REM
+  payback slope (`payback_from_records`, 1 h and 3 h) on the simulated records vs observed.
+
+Reading:
+
+| result | reading |
+|---|---|
+| P1 + P2 pass | the delayed REM after a round is explained by a decaying arousal; no REM-need variable needed for the timing |
+| P1 pass, P2 fail | the arousal is real but does not account for the REM timing; a REM-side process remains |
+| a REM residual outside the simulated range in the same direction on both scorings | part Q is warranted |
+| a residual on one scoring only | no unified target; #43 stays Candidate, no part Q |
+
+**Part Q (only if triggered; written now, run later).** Compare, fitted without any post-round step and frozen:
+(i) a slow REM-need state (time constant hours, kept over wakes, emptied by REM; accumulating in NREM only, or over all
+time since the last REM including the gap) and (ii) partial discharge during REM (κ > 0; already disfavoured in ordinary
+sleep, #33). Acceptance: the frozen model predicts the post-round REM time course, the gap-length effect and the
+behaviour after natural wakes, and keeps pass2med's 1–3-h post-round REM-entry O/E of 0.85 [0.78, 0.94] (a REM-need
+model that predicts more REM entry there fails).
