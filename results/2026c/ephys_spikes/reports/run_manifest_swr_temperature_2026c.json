@@ -1,0 +1,10 @@
+{
+  "name": "swr_temperature",
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\swr_temperature_20261008_2343",
+  "git": "10d469b+dirty",
+  "sessions": 134,
+  "events_loaded": 1501245,
+  "events_in_bins": 1422586,
+  "bins": 1152,
+  "plan": "implementation_plan/2026-10-08-swr-temperature.md (+ Amendment 1)"
+}
