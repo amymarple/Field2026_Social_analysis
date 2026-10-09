@@ -177,6 +177,21 @@ firing at the delta peaks of the strongest-dip site (`<lab>_cortex_check.json`).
   shank, in cortex.
 - SF10 shank 1 is dead (no live site; the scan plot now handles that).
 
+**Production result (2026-10-09; BioHPC at commit a1dfbaa, 16:49 → 18:48).**
+- 60 sessions (SF07 36, SF11 24), 0 errors.
+- Storage `3rd_rat/analysis/delta/`: VERIFY PASS (276 files, 198 MB, MD5 against an O_DIRECT read-back).
+- Server = local for all six local reference sessions (csv and evt content identical).
+- Per session: `results/2026c/ephys_spikes/reports/ephys_spikes_delta_sessions_2026c.{md,csv}`.
+
+| | SF07 | SF11 |
+|---|---|---|
+| NREM | 90.0 h | 45.8 h |
+| Events / verified | 192 529 / 73 153 | 85 962 / 61 258 |
+| Share verified per session, median [range] | 0.43 [0.24–0.62] | 0.82 [0.68–0.94] |
+| Verified rate per NREM min, median | 15.4 | 26.6 |
+| FM64 sessions (no check) | 6 | 5 |
+| Skipped (no final sleep states) | 3 | 1 |
+
 ## Open (for the user)
 
 - SF11: choose the delta channel. Shank-3 top sites (col 11 or 8) are consistent across all three blocks; shank 4
