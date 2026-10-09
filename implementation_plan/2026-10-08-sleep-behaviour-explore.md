@@ -348,3 +348,77 @@ preprocessing job through `run_then_store.sh`, and only on the user's go.
 - go / no-go per step;
 - whether to run the A5 (c) rescore if (a) and (b) disagree;
 - which F hypotheses come first, if not all.
+
+## 9. Amendment 1 (2026-10-09; the user: "模型可以预测睡眠的稳定性么… F可以干了 #43可以干") — written before these results
+
+Three parts run in parallel. Definitions, scorings and validation are as in §3, unless stated otherwise.
+
+### S — can the counter model predict sleep stability?
+
+**Model.** Step B's B-full at `P_tw600_k0`. Per-step probabilities are held out by forward chaining: a step in block
+k is predicted by the fit on blocks < k; the first 6 blocks are never predicted.
+
+**S1 — which movements end in waking (H12).**
+- Events: the Phase-6 library's first movers (source movement, pre-state NREM), tight followers, non-movers, and the
+  random co-sleep controls.
+- Model propensity: each event is mapped to the animal's NREM step that contains it; its propensity is the held-out
+  per-10-s WAKE probability `p_W` of that step.
+- (a) Discrimination: AUC of `p_W` for woke60 among first movers, per scoring, with a bootstrap CI over blocks.
+  - Compared with the AUC of a clock-only (gate-only) model.
+  - Repeated with the A5 control: wakes starting < 15 s after the onset excluded.
+- (b) Movement beyond the model: observed / expected woke60 (expected = 1 − (1 − p_W)^6) for movers and for controls;
+  the movement effect is (O/E movers) / (O/E controls).
+- Pass for "the model predicts which disturbances end in waking": AUC ≥ 0.60 with a CI above 0.5; above the
+  gate-only AUC (bootstrap CI of the difference > 0); ≥ 5/6 rats with AUC > 0.5; both scorings.
+- The movement effect is reported, not pass/fail.
+
+**S2 — stability after battery rounds vs natural long wakes.**
+- Windows: the 0–1 h and 1–3 h of NREM steps after (a) a usable round gap (record start) and (b) a natural wake
+  ≥ 30 min inside a record.
+- Measures: observed / expected (O/E) NREM → WAKE and NREM → REM transitions (expected = the sum of the held-out
+  per-step probabilities), with bootstrap CIs over blocks and per-animal O/E.
+- Pass for "the model predicts post-round stability": the WAKE O/E after rounds lies in [0.8, 1.25] with a CI that
+  includes 1.
+- The REM O/E after rounds vs after natural wakes is the H18 test below (G2).
+
+### G — where does the REM repayment after morning rounds (#43) come from? (`n.origin_43`)
+
+**G1 — dawn timing without handling.** D1 found no payback after natural dawn wakes (−0.02, 41 windows).
+- Add its power: the minimal detectable slope (80 % power, α 0.05) from the windows' debt variance and residual SD.
+- If that slope is > 0.34 (the observed round slope), D1 is uninformative and G1 stays open.
+
+**G2 — handling-specific post-round sleep (H18).**
+- Compared: post-round vs natural wakes of ≥ 30 min, matched on wake length bin and morning / evening.
+- Measures:
+  - first-REM latency in NREM time (Cox, animal strata);
+  - REM-entry O/E (as S2) in the 0–1 h and 1–3 h after.
+- Pass for "handling delays REM beyond the wake it causes": post-round REM O/E below the natural-wake O/E (bootstrap
+  CI of the difference < 0), ≥ 5/6 rats, both scorings.
+
+**G3 — the round's own sleep loss.**
+- Gap debt: the REM expected during the unrecorded gap (the phase × day baseline rate × gap duration) is added as a
+  second debt term next to the 3-h pre-round debt.
+- Pass for "the payback is the round's sleep loss": the gap-debt slope > 0 (CI) AND the pre-round debt slope falls by
+  ≥ 30 %.
+- Also reported: the payback slope by gap-length tertile.
+
+**G4 — gate release.**
+- For morning rounds only: the payback slope vs the clock time of the first post-round sleep onset relative to
+  sunrise, and vs the model's predicted REM-entry gain at that time.
+- Pass for "a deficit released where the gate opens": a larger slope where the predicted gain is higher (interaction
+  CI > 0). Reported with caution: n ≈ 49 windows.
+
+**Reading rule.**
+
+| result | reading |
+|---|---|
+| G2 pass, G3 fail | handling-specific |
+| G3 pass | the round's sleep loss |
+| G1 informative and positive | dawn timing |
+| all fail | #43 stays Candidate (power) |
+
+### F — the step-F hypotheses (table in §5, pass rules as written there)
+- **Sequence-only batch:** H5, H7, H8, H9, H10, H11, H20, H23.
+- **WISER / environment / social batch:** H4, H14, H15, H16, H17, H22, H25.
+- **Run elsewhere:** H12 in S1 and H18 in G2. H6, H13, H19, H21 and H24 were run in steps B–C.
+- Each hypothesis gets a claim number only if it holds (plan §5).
