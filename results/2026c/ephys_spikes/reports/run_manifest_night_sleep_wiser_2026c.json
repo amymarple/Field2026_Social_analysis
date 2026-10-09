@@ -1,0 +1,7 @@
+{
+  "name": "night_sleep_wiser",
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\night_sleep_wiser_20261009_1051",
+  "git": "3efd1ab+dirty",
+  "long_wake_min": 30.0,
+  "plan": "implementation_plan/2026-10-09-night-sleep-wiser.md"
+}
