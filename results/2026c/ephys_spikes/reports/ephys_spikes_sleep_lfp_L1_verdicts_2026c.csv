@@ -1,0 +1,11 @@
+scores,rule,pass,numbers
+final,(a) depth adds,False,"P+D vs P -0.045 % [-0.131, +0.064], 3/6; control P+Dc vs P +0.009 % [-0.015, +0.034], 4/6"
+final,(b) P is a proxy,False,"P+D vs D -2.033 % [-2.386, -1.619], 6/6; D vs P +2.030 % [+1.556, +2.445], 0/6"
+final,(c) two processes,False,(a) False; P+D vs D holds True
+final,(d) night via depth,False,"dark REM coef P -0.689 -> P+D -0.712; P+D+Dd vs P+D +0.006 % [-0.032, +0.047], 3/6"
+final,(e) depth reads the homeostat,True,"Delta MSE -3.35 % [-5.12, -1.64]; P slope -0.124, same sign 6/6"
+pass2med,(a) depth adds,True,"P+D vs P -0.235 % [-0.341, -0.117], 6/6; control P+Dc vs P +0.035 % [-0.051, +0.150], 1/6"
+pass2med,(b) P is a proxy,False,"P+D vs D -1.911 % [-2.167, -1.623], 6/6; D vs P +1.709 % [+1.370, +1.991], 0/6"
+pass2med,(c) two processes,True,(a) True; P+D vs D holds True
+pass2med,(d) night via depth,False,"dark REM coef P -0.697 -> P+D -0.648; P+D+Dd vs P+D -0.005 % [-0.042, +0.029], 4/6"
+pass2med,(e) depth reads the homeostat,True,"Delta MSE -0.95 % [-1.65, -0.17]; P slope -0.080, same sign 6/6"

@@ -1,0 +1,14 @@
+{
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\sleep_lfp_L1_20261010_1654",
+  "git_commit": "ede4bf8+dirty",
+  "scorings": [
+    "final",
+    "pass2med"
+  ],
+  "tiers": [
+    "validated",
+    "good",
+    "check",
+    "low_contrast"
+  ]
+}
