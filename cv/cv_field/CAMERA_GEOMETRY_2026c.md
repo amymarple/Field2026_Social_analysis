@@ -79,18 +79,47 @@ frame is in inches: origin pole A0, x along the 40-ft side (0–480), y across (
   from its pole.
 - **house_2 position** (calibration `house_check.py`, 09-18 joint fit of CH01 + CH02 + CH06): centre (342.4, 117.7) in,
   ridge 92° from x, cameras agree within 35 mm. Valid for the cohort.
-- **house_1 cohort position: not computed yet.** The 09-18 fit, (147.5, 121.7) in with ridge 90°, is the post-move
-  position.
-  - The cohort position exists in the image as the user's labels on the 09-04 12:00 frames: CH01 and CH02
-    (`landmarks_CH0[12]_20260904_120002.json`, each 7 edge pieces + the roof-number label) and CH05 (09-04 12:00 / 03:01).
-  - Map them with the noon transforms (`results/2026c/cv_field/reports/run_manifest_landmark_track_ch0102_0904noon_2026c.json`
-    → `track_frames.csv`), not the night table.
-  - A 3-D fit is planned (answers to the calibration agent in the recording repo,
-    `calibration_qc/NOTE_HOUSE1_COHORT_LABELS_2026-10-06.md`).
-  - Until it exists, the image labels are better evidence for house_1 than a WISER ROI.
+- **house_1 cohort pose (fitted 2026-10-06):** `cv/configs/house1_cohort_pose_2026c.json`. It is the `house_check.py`
+  rigid model fitted on the user's CH01 + CH02 09-04 12:00 labels: centre (142.2, 123.5) in, ridge 88.5°, soil 45 mm below
+  z = 0.
+  - The labels were mapped with the noon affines
+    (`results/2026c/cv_field/reports/run_manifest_landmark_track_ch0102_0904noon_2026c.json`), not the night-only table.
+  - Ray miss median 10.6 mm (CH01) and 4.6 mm (CH02); per-camera centres within 6 mm.
+  - With the soil offset fixed at 58 / 93 mm the centre moves 14 / 56 mm.
+  - The 09-18 fit, (147.5, 121.7) in, is the post-move position. The calibration-agent note is in the recording repo,
+    `calibration_qc/NOTE_HOUSE1_COHORT_LABELS_2026-10-06.md`.
 - **The roof is the lid**, lifted at every round, so roof edges may sit a little differently after each event; the body
   corners do not.
-- **house_1 cohort pose (fitted 2026-10-06):** `cv/configs/house1_cohort_pose_2026c.json` — house_check.py fit on the CH01 + CH02 09-04 noon labels: centre (142.2, 123.5) in, ridge 88.5°, soil 45 mm below z = 0, residuals and sensitivities inside.
+- **Body** 62.55 × 45.72 cm, long side along the ridge (≈ paddock y). Eaves 59–62 cm and ridge 88 cm above the soil;
+  the roof overhangs, with eave lines ±26–28 cm from the ridge (`calibration_qc/survey_2026-10-03.json`). Door sides are
+  not recorded.
+
+## 4b. Physical positions and the WISER map
+
+All values are paddock inches: origin pole A0, x along the 40-ft side.
+
+- **Poles:**
+  - Design grid: rows A / B / C at y = 0 / 120 / 240; columns 0–4 at x = 0 / 120 / 240 / 360 / 480 (`cv/configs/field_layout.json`).
+  - Measured in rev g, foot → top (they lean):
+    - B1 (131.2, 125.2) → (115.4, 127.0), 9.5°
+    - B2 (242.2, 115.1) → (247.7, 112.8), 3.6°
+    - B3 (357.3, 119.5) → (367.7, 117.3), 6.4°
+    - Source: `occluders.json` of `D:\Field2026_analysis_out\2026c\cv_field_ch01_occlusion_20261006_1555\`.
+  - The 10-03 tape survey (spacings at ~1.05 m, no diagonals) puts row B 11 in short: the drone sees B0 at x ≈ 10 and
+    B4 at x ≈ 476. It is not a position survey.
+  - All other poles are design positions only.
+- **Houses:** house_1 (142.2, 123.5), ridge 88.5°; house_2 (342.4, 117.7), ridge 92.0°. See §4.
+- **Walls:** design 480 × 240 in; wall tops ≈ 98 cm.
+- **WISER → paddock: only P0** (`wiser_assist_p0.py`, accepted on one CH01 hour, test median 4.4 in;
+  `D:\Field2026_analysis_out\2026c\cv_field_wiser_assist_p0_20261005_2211\mapping.json` → `accepted_map`):
+  - paddock = s R(θ) (wiser − c) + c + d, with s 0.96340, θ 0.1143°, c (501.68, 761.10), d (−272.85, −605.80).
+  - Paddock corners in WISER: A0 (263.8, 600.4), A4 (762.1, 599.4), C0 (264.3, 849.5), C4 (762.6, 848.5).
+  - The house poses in WISER: house_1 (411.7, 728.2), house_2 (619.5, 721.8).
+  - Day-sleep rest clusters (SWR session, 10-10) lie 10–12 in from these, along the ridge, in opposite directions:
+    rats resting at one end of each house.
+- **The better transform is a direct anchor ↔ pole fit:** the boxes on the poles are the UWB anchors, but their WISER
+  coordinates are still requested from the field PC (`field2026-sync/tasks/2026-09-28_lab-request-cohort3-weather-and-sync-logs.md`,
+  item 4).
 
 ## 5. Landmarks: where, names, files
 
