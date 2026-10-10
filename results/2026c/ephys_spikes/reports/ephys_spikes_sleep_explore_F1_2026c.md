@@ -6,6 +6,10 @@ Plan: [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../im
 
 ## Verdicts at a glance
 
+> **Reading note (main session, 2026-10-10):** "H7 HOLDS" means a named predictor of REM duration holds (the count, #48),
+> i.e. REM duration is NOT unregulated; "H20 HOLDS" is the pooled slope only — within episodes no shortening (#53). Read
+> the claim audit, not this table, for the claims.
+
 | H | hypothesis | verdict |
 |---|---|---|
 | H5 | night ramp is time of night, not wake length | INCONCLUSIVE |

@@ -13,7 +13,8 @@ opening NREM is.
 - Waking is highest in the field before the house entry, raised for the first hour in the house, and below the model
   1–3 h after entry, on both scorings.
 - In the morning, the first REM after the first NREM in the house is reproduced.
-- After evening rounds the first REM needs more NREM than the model on both scorings — the one REM-side residual.
+- After evening rounds the first REM needs more NREM than the model — pass2med strong, FINAL at the edge (#60, narrowed
+  after the Fable plateau audit; part W then brought FINAL inside).
 
 - **House entries.**
   - All 94 post-round records have an entry within 60 min of release (both scorings).

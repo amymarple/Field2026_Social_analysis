@@ -48,7 +48,8 @@ sleep more than the simulation. The arousal is not the whole perturbation.
   - The residuals sit on different quantities on the two scorings. By the plan's rule there is no unified target, so
     part Q is not run and #43 stays Candidate.
 - **What this means for a model of the perturbation** (interpretation; the next step is a proposal):
-  1. **The first-REM delay is REM-side.** It is not produced by the waking, and a REM-need variable (part Q's first
+  1. **The first-REM delay is REM-side** — *withdrawn 2026-10-10 by part L: the delay sits mostly in records that open with
+     scored NREM while the rat lies still in the field after release (#59, #62).* It is not produced by the waking, and a REM-need variable (part Q's first
      candidate) would bring the first REM forward after a REM loss, not delay it. A transient suppression of REM entry
      after handling, then a catch-up, fits the order of events: per NREM step the first-hour REM entry is not lower
      (S2), but the first REM is later and more REM follows. This has not been tested.

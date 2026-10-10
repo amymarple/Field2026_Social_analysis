@@ -286,9 +286,12 @@ its status):
   (#49) and quick returns to REM are rarer at night (#50) — both Candidate.
 - **Ripples (2026-10-09, next stage LFP).** NREM ripples add no REM-scheduling information beyond the count (#54); the
   ripple counter's small gain comes from ripple-poor short NREM bouts between REM bouts (#55).
-- **Organising idea (interpretation).** Only REM entry is regulated, by this count and a smooth daily curve (#35); a
-  separate REM-repayment process appears only after handled interruptions (#43). Daily totals may be regular because the inputs are regular, not because a
-  budget is enforced. This is tested by the scheduler model of the plan.
+- **Organising idea (interpretation; rewritten 2026-10-10 — the earlier "only REM entry is regulated" is superseded by
+  #48 / #49, as the plan anticipated).** The count since the last REM sets when REM starts and also predicts how long the
+  next REM lasts (#48), read through a smooth daily curve (#35); at night REM more often ends in waking (#49, Candidate).
+  A REM-repayment process is seen only after handled interruptions and only on fixed thresholds (#43). Daily totals may be
+  regular because the inputs (the waking pattern) are regular, not because a budget is enforced — shown only conditional
+  on the observed long wakes (#40); the unconditional test is the long-wake generative model.
 - **Not shown.** A day-to-day 24-h balance (#13 withdrawn), a fixed timetable, an NREM rebound proportional to wake
   length, and outside causes of awakenings.
 

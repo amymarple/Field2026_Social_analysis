@@ -42,7 +42,8 @@ contain.
 - **Reading of the later first REM — WITHDRAWN 2026-10-09 by part P** ([report](ephys_spikes_sleep_explore_P_2026c.md),
   #57). The reading was that the later first REM comes from the extra waking. Part P added the measured waking excess
   (a decaying arousal fitted on waking only, cross-fitted) to the simulation: the first-hour waking was restored, but
-  the first REM stayed later than simulated in 3 of 4 kind × scoring cells. The delay is REM-side.
+  the first REM stayed later than simulated in 3 of 4 kind × scoring cells. (Part P then read this as REM-side; part L
+  withdrew that: the delay sits mostly in records that open with scored NREM after release, #59 / #62.)
 - **What a model of the perturbation needs** (proposal, not tested):
   1. an acute arousal after handling: waking hazard × ~1.4 decaying within ~1 h, then slightly below baseline;
   2. a movement-arousal term: whether a movement wakes is not predicted by the count (S1);
