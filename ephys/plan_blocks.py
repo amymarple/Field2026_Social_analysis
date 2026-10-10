@@ -9,8 +9,9 @@ A block is the continuous recording of one logger between two handling events.
   - FM62;
   - sessions < 5 min.
 - Clipping: every block is clipped at the paddock end (09-12 10:10) and at the logger's `ephys.valid_until`.
-- Handling trim: the first TRIM_S seconds of every block are cut, because the animal is still in hand after a
-  round. K1 seeds its templates from the first isolated peaks of the file.
+- Handling minutes are NOT trimmed (user, 2026-10-10: post-handling sleep recovery is studied). `handling_until`
+  marks block start + 20 min (the animal is still in hand after a round) for the analyses; `--trim-min N` would cut
+  instead.
 - Disconnected channels: failing shanks get `disconnect` channels from `ephys.quality_flags`:
   - SF12_shank1_degraded: shank 1;
   - SF12_contact_failing: shanks 1 and 4.
@@ -66,7 +67,8 @@ def pad(animal: str) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cohort", default="2026c")
-    ap.add_argument("--trim-min", type=float, default=20.0)
+    ap.add_argument("--trim-min", type=float, default=0.0, help="cut the first N min (default 0: keep; user 2026-10-10)")
+    ap.add_argument("--handling-min", type=float, default=20.0, help="length of the flagged handling window")
     ap.add_argument("--min-block-min", type=float, default=30.0, help="drop blocks shorter than this after trimming")
     a = ap.parse_args()
     eph = ephys_block(a.cohort)
@@ -132,7 +134,7 @@ def main() -> None:
             deeper = animal in DEEPER and t1 > pd.Timestamp(DEEPER[animal][0]) and t0 < pd.Timestamp(DEEPER[animal][1])
             rows.append(dict(
                 block=f"{animal}_{b[0].start:%Y%m%d_%H%M%S}", animal=animal, firmware=int(b[0].firmware),
-                start=t0, end=t1, hours=round(hours, 3), n_sessions=len(segs), chain=chain, tier=tier,
+                start=t0, end=t1, handling_until=b[0].start + pd.Timedelta(minutes=a.handling_min), hours=round(hours, 3), n_sessions=len(segs), chain=chain, tier=tier,
                 settle_window_h=SETTLE_H if settle else 0, fm64=int(b[0].firmware) == 64, deeper_profile=deeper,
                 disconnect=" ".join(str(c) for c in sorted(disc)),
                 gb=round(sum((x[3] - x[2]) * 64 * 2 for x in segs) / 1e9, 2), segments=json.dumps(segs)))
@@ -141,8 +143,9 @@ def main() -> None:
     bt.to_csv(csv, index=False)
     lines = [f"# K1 sorting blocks, cohort {a.cohort}", "",
              "Made by `ephys/plan_blocks.py` (plan `implementation_plan/2026-10-09-k1-block-sorting.md`).", "",
-             f"- Trim: first {a.trim_min:g} min of every block (handling). Blocks shorter than {a.min_block_min:g} min "
-             f"after trimming are dropped. Clipped at the paddock end {PADDOCK_END} and at `valid_until`.",
+             f"- Trim: first {a.trim_min:g} min of every block (user 2026-10-10: keep the handling minutes; "
+             f"`handling_until` flags the first {a.handling_min:g} min). Blocks shorter than {a.min_block_min:g} min "
+             f"are dropped. Clipped at the paddock end {PADDOCK_END} and at `valid_until`.",
              f"- **{len(bt)} blocks**, {bt.hours.sum():.0f} h ({bt[~bt.fm64].hours.sum():.0f} h FM65 in "
              f"{(~bt.fm64).sum()} blocks, {bt[bt.fm64].hours.sum():.0f} h FM64 in {bt.fm64.sum()} blocks), "
              f"{bt.gb.sum() / 1000:.1f} TB.",

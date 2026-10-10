@@ -29,8 +29,13 @@ Kilosort4.
    - Never join across a battery round, probe advance, firmware change or regime step.
    - The LFP shows SF09, SF10, SF07 (per block) and SF08 block 2 stable across rounds. Matching across rounds is
      therefore easy there, and joining across rounds is not needed.
-4. **Trim the handling minutes** (first ~20 min of a post-round block) before sorting. K1 seeds its templates from the
-   first ~1e4 isolated peaks of the file (`initialize/optimizePeaks.m`), and whitening uses the whole file.
+4. **Keep the handling minutes.** User, 2026-10-10, reversing the earlier trim: post-handling sleep recovery is
+   studied, so the first ~20 min after a round stay in the sort. The block table flags them as `handling_until`
+   (block start + 20 min) for the analyses.
+   - Open point for the Fable pilot audit: K1 seeds its templates from the first ~1e4 isolated peaks of the file
+     (`initialize/optimizePeaks.m`), which are the handling minutes. The lab's sessions also start right after
+     plugging in.
+   - The pilot sorts were made with the 20-min trim; the whole-vs-part comparison does not depend on it.
 5. **Cut contact-failure periods** out of blocks, and disconnect failing shanks per block (`connected = 0`). See
    "Per-block exclusions".
 6. **Copy to the server's local `/workdir`** before sorting (user: OK). Blocks are built there.
