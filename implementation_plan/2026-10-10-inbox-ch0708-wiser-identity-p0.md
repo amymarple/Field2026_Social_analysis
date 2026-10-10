@@ -153,7 +153,8 @@ outputs stay in the run (`colour_segments_prereg_thr.csv`, `colour_log_rows_prer
 slot (CH07 09-11 13:02:09, c = 0.36, 2.1 min after the un-noted 13:00 slot): IR under the amended rule, listed in the report.
 
 **Amendment 7 (2026-10-10, after results; the user's correction) — identifying colours.** The colour that identifies each rat
-(authoritative for the cohort except the first, "messy" days ≈ 08-30 / 08-31): SF07 green, SF08 red, SF09 blue, SF10 black,
+(authoritative for the cohort except the first, "messy" days ≈ 08-30 / 08-31; **SF09 / SF10 reversed — corrected the same day by
+amendment 10: SF09 black, SF10 blue**): SF07 green, SF08 red, SF09 blue, SF10 black,
 SF11 white (looks grey), SF12 yellow. It differs from Notion's coban column for SF09 (Notion pink/black/brown; blue = the
 sticker), SF10 (Notion blue → yellow from 08-31; black is not in Notion) and SF12 (Notion yellow → blue from 08-31; yellow =
 the pre-08-31 coban and the 09-09 incident log); the user's statement wins. Added as columns `id_colour` / `id_colour_note` to
@@ -186,6 +187,17 @@ in paddock directions with an orientation control **per house** (applies to all 
 Stored per house with a timestamp and exported as `orientation_by_house: {house: {rot_deg, mirror, chosen_at}}`. It is a
 display setting, **not a fit and not the pre-registered camera ↔ WISER mapping** (still fitted from the blind clicks); the
 user's chosen orientation may serve as an independent prior / check for that fit.
+
+**Amendment 10 (2026-10-10, after results; the user's correction) — SF09 black, SF10 blue.** With the oriented top view the
+user: "感觉是我错了 SF9是黑色，SF10是蓝色。这样就对上了" — the user had the two colours reversed. `id_colour` is now SF09 black (agrees
+with Notion's coban pink/black/brown, nickname "black pink") and SF10 blue (agrees with Notion's coban; Notion's "yellow coban
+08-31" note is not in effect on the labelling days); SF07 / SF08 / SF11 / SF12 unchanged. The session renamed the close-up
+sources the same way (`inhand_closeups/SF09.MOV` = the 51.6-s clip, `SF10.MOV` = the 41.4-s clip; manifest updated); the page's
+transcoded MP4s were relinked by the source sha256 recorded at transcode time (renamed, not re-transcoded; durations
+51.64 / 41.45 s match). Stored clicks: on the first load of the fixed page, SF09 ↔ SF10 is swapped once on every click saved
+before that moment (and on `verdict_first`), originals kept (`animal_before_sf09_sf10_fix`, `relabelled_sf09_sf10`), a banner
+offers a one-click undo; guarded by a stored flag `sf09_sf10_fix`; exported. The identity of WISER tags is unaffected
+(the session's IMU ↔ WISER check); only the colour → animal key changed.
 
 **Status (2026-10-10): phase 0 DONE** — A, B, C run; report `results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`;
 change log `change_log/2026-10-10-inbox-ch0708-p0.md`. The pre-registered use of the user's clicks waits for the clicks.

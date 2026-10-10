@@ -1,8 +1,8 @@
 shortid,animal,physical_tag_id,coband_color,sticker_color,pattern,nickname,valid_from,valid_until,note,id_colour,id_colour_note
 12409,SF07,3079,green,orange,x,Rat07,2026-08-30T19:00:00-04:00,2026-09-12T10:10:00-04:00,,green,
 12386,SF08,3062,red,silver,none,mushroom,2026-08-30T19:00:00-04:00,2026-09-12T10:10:00-04:00,,red,
-12407,SF09,3077,pink/black/brown,blue,star,black pink (aza02),2026-08-30T19:00:00-04:00,2026-09-12T10:10:00-04:00,,blue,user 2026-10-10: identifying colour for the cohort except the first days; Notion coban column differs
-12395,SF10,306b,blue (yellow coban from 08-31),yellow,square with cross,,2026-08-30T19:00:00-04:00,2026-09-12T10:10:00-04:00,,black,user 2026-10-10: identifying colour for the cohort except the first days; Notion coban column differs
+12407,SF09,3077,pink/black/brown,blue,star,black pink (aza02),2026-08-30T19:00:00-04:00,2026-09-12T10:10:00-04:00,,black,user 2026-10-10 (corrected same day): black; agrees with Notion coban pink/black/brown (nickname black pink)
+12395,SF10,306b,blue (yellow coban from 08-31),yellow,square with cross,,2026-08-30T19:00:00-04:00,2026-09-12T10:10:00-04:00,,blue,user 2026-10-10 (corrected same day): blue; agrees with Notion's coban; Notion's 'yellow coban 8/31' note not in effect on the labelling days
 12378,SF11,305a,white,green,circle,Remy,2026-08-30T19:00:00-04:00,2026-09-02T00:03:00-04:00,tag battery died overnight 09-01/02 (last fix 00:03),white (looks grey),
 12376,SF11,3058,white,green,circle,Remy,2026-09-02T08:15:00-04:00,2026-09-07T08:20:00-04:00,3058 remounted on SF11 ~08:00-08:15; implant off 06:10:45 on 09-07 (ephys ends there); tag retired at the round (last regular fix 08:20); 3 stray fixes at 09:40 to drop,white (looks grey),
 12377,SF12,3059,yellow (blue coban from 08-31),red,two lines,Macdonald,2026-08-30T19:00:00-04:00,2026-09-12T10:10:00-04:00,,yellow,user 2026-10-10: identifying colour for the cohort except the first days; Notion coban column differs

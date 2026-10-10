@@ -1348,7 +1348,7 @@ def write_report(run: Path) -> Path:
               f"segment ({len(segs)}): the colour frame at the segment middle and IR frames at +6 s / +15 s after OFF (full resolution, "
               "JPEG quality 95, upright as recorded), the WISER roster of the camera's house with the pre-flash minute positions drawn as a "
               "top view (SE and SD bars, IMU shares), the identity legend (built from `wiser/configs/rat_identities_2026c.csv`: the user's "
-              "identifying colour per animal, 2026-10-10 — SF07 green, SF08 red, SF09 blue, SF10 black, SF11 white (looks grey), SF12 yellow; "
+              "identifying colour per animal, 2026-10-10, SF09 / SF10 corrected the same day — SF07 green, SF08 red, SF09 black, SF10 blue, SF11 white (looks grey), SF12 yellow; "
               "the Notion coban / sticker shown for reference; the first days about 08-30 / 08-31 are uncertain; click markers take the "
               "identifying colour) and the six in-hand close-up clips. The user clicks heads, picks "
               "SF07–SF12 / unknown and sure / likely, and answers \"pile composition complete?\"; localStorage autosave; Export CSV / JSON "

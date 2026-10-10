@@ -55,8 +55,21 @@ CSV: one row per click (`record = click`; `first_frame_kind`, `first_u_px`, `fir
 `pile_complete`, `pile_complete_first`, `revealed_at`, `note`).
 
 Identity legend on the page: the user's identifying colour per animal (2026-10-10; `id_colour` in
-`wiser/configs/rat_identities_2026c.csv`: SF07 green, SF08 red, SF09 blue, SF10 black, SF11 white (looks grey), SF12
+`wiser/configs/rat_identities_2026c.csv`: SF07 green, SF08 red, SF09 black, SF10 blue, SF11 white (looks grey), SF12
 yellow; the first days about 08-30 / 08-31 are uncertain), with the Notion coban / sticker shown for reference.
+
+## SF09 / SF10 colour fix (2026-10-10, the user's same-day correction)
+
+The page first showed SF09 blue / SF10 black, which the user had reversed; the correct colours are **SF09 black, SF10 blue**
+(the close-up clips `SF09.MOV` / `SF10.MOV` were renamed the same way). On its first load the fixed page swaps SF09 ↔ SF10
+**once** on every stored click saved before that moment (and on the blind record `verdict_first`), keeping the original
+label: per click `animal_before_sf09_sf10_fix` and `relabelled_sf09_sf10: true` (in `verdict_first`:
+`animal_before_sf09_sf10_fix`). A banner reports the count, with "undo this swap" (restores the originals, sets
+`sf09_sf10_swap_undone: true`) and "dismiss". The run-level record is `sf09_sf10_fix` in the JSON (`applied_at`,
+`n_swapped`, `click_ids`, `n_verdict_first_swapped`, `undone_at`, `banner_dismissed_at`, `rule`); the CSV adds
+`animal_before_sf09_sf10_fix`, `relabelled_sf09_sf10`, `first_animal_before_sf09_sf10_fix`, `sf09_sf10_fix_applied_at`,
+`sf09_sf10_fix_undone_at`. The flag is stored, so the swap never runs twice; clicks made after the fix are untouched. A JSON
+export made before the fix gets the same one-time swap when it is imported.
 
 ## What uses it (later, pre-registered, not run yet)
 

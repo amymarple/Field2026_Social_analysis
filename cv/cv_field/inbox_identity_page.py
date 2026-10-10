@@ -314,7 +314,48 @@ def build(run: Path, closeup_src: Path = CLOSEUP_SRC, track_root: Path | None = 
     return chk
 
 
-def refresh_legend(run: Path, csv_path: Path = IDENTITY_CSV) -> dict:
+def mp4_duration(path: Path) -> float:
+    import av
+    with av.open(str(path)) as c:
+        return float(c.duration / 1e6) if c.duration else float("nan")
+
+
+def relink_closeups(page: Path, data: dict, src_dir: Path = CLOSEUP_SRC) -> list[tuple[str, str]]:
+    """Make closeups/<SFxx>.mp4 follow the source clip now named <SFxx>.MOV (the user swapped SF09 / SF10 on 2026-10-10):
+    each existing MP4 is identified by the sha256 of the MOV it was transcoded from (recorded at transcode time), files are
+    renamed through temporary names, entries rebuilt; every MP4's duration is checked against the folder manifest. No
+    re-transcode. Idempotent. Returns the renames done."""
+    man = pd.read_csv(src_dir / "MANIFEST_sha256.csv")
+    want = {Path(r.file).stem: (str(r.sha256), float(r.duration_s)) for r in man.itertuples()}
+    have = {c["src_sha256"]: c for c in data.get("closeups", []) if c.get("dst") and c.get("src_sha256")}
+    missing = [a for a, (sha, _) in want.items() if sha not in have]
+    if missing:
+        raise ValueError(f"no transcoded MP4 recorded for the current source of {missing}: re-run build to transcode them")
+    moves = [(have[sha]["dst"], f"closeups/{a}.mp4") for a, (sha, _) in want.items() if have[sha]["dst"] != f"closeups/{a}.mp4"]
+    tmp = []
+    for a, b in moves:
+        t = page / (a + ".relink_tmp")
+        (page / a).rename(t)
+        tmp.append((t, page / b))
+    for t, b in tmp:
+        t.rename(b)
+    new = []
+    for a in sorted(want):
+        sha, dur = want[a]
+        e = dict(have[sha])
+        old = e["dst"]
+        e.update({"animal": a, "src": (src_dir / f"{a}.MOV").as_posix(), "dst": f"closeups/{a}.mp4",
+                  "manifest_match": ip.sha256(src_dir / f"{a}.MOV") == sha})
+        d = mp4_duration(page / e["dst"])
+        e.update({"mp4_duration_s": round(d, 3), "manifest_duration_s": dur, "duration_check": bool(abs(d - dur) < 0.2)})
+        if old != e["dst"]:
+            e["relinked"] = f"{datetime.now():%Y-%m-%d %H:%M}: was {old} (source files renamed: the user had SF09 / SF10 reversed)"
+        new.append(e)
+    data["closeups"] = new
+    return moves
+
+
+def refresh_legend(run: Path, csv_path: Path = IDENTITY_CSV, closeup_src: Path | None = CLOSEUP_SRC) -> dict:
     """Rewrite only the legend (from the identity CSV) and re-render index.html at the SAME path from the existing
     page_data.json: frames, close-ups, segments, page_version and run are kept, so the localStorage key
     (page_version :: run) and the user's stored clicks carry over. No video is decoded."""
@@ -324,12 +365,19 @@ def refresh_legend(run: Path, csv_path: Path = IDENTITY_CSV) -> dict:
     frames_before = {p.name: p.stat().st_mtime for p in (page / "frames").glob("*.jpg")}
     data["legend"] = legend_from_csv(csv_path)
     data["meta"].update(legend_meta(csv_path))
+    if closeup_src is not None and (Path(closeup_src) / "MANIFEST_sha256.csv").exists():
+        moves = relink_closeups(page, data, Path(closeup_src))
+        if moves:
+            data["meta"].setdefault("closeup_relinks", []).append({"at": datetime.now().isoformat(timespec="seconds"), "renames": moves})
     data["meta"]["legend_refreshed"] = datetime.now().isoformat(timespec="seconds")
     assert {k: data["meta"].get(k) for k in ("page_version", "run")} == before, "the localStorage key would change"
     (page / "page_data.json").write_text(json.dumps(data, indent=1, default=str), encoding="utf-8")
     (page / "index.html").write_text(render_html(data), encoding="utf-8")
     chk = check_page(page)
     chk["frames_untouched"] = frames_before == {p.name: p.stat().st_mtime for p in (page / "frames").glob("*.jpg")}
+    chk["closeup_durations_ok"] = all(c.get("duration_check", True) for c in data.get("closeups", []))
+    chk["closeups_detail"] = [{k: c.get(k) for k in ("animal", "dst", "src_sha256", "mp4_duration_s", "manifest_duration_s", "duration_check", "relinked")}
+                              for c in data.get("closeups", [])]
     chk["local_storage_key"] = f"{before['page_version']}::{before['run']}"
     (page / "page_check.json").write_text(json.dumps(chk, indent=2), encoding="utf-8")
     print(f"[page] legend refreshed from {csv_path.name} -> {(page / 'index.html').as_posix()}; check: {chk['verdict']}", flush=True)
@@ -383,6 +431,7 @@ tr.selrow td{background:var(--selbg)}#clist tr.crow{cursor:pointer}
 h2{font-size:14px;margin:12px 0 6px}.mut{color:var(--mut)}.warn{color:var(--warn)}.ok{color:var(--ok)}
 .hidden-wiser{border:1px dashed var(--warn);border-radius:8px;padding:10px;margin:8px 0}
 video{width:100%;max-height:260px;background:#000}details{margin:6px 0}code{font-size:12px}
+#fixbanner{padding:6px 16px;background:#fff4d6;color:#4a3300;border-bottom:1px solid #e0b84a;font-size:13px}
 #help{font-size:12px;color:var(--mut);padding:4px 16px;border-bottom:1px solid var(--line)}#help kbd{border:1px solid var(--line);border-radius:3px;padding:0 3px;font-size:11px}
 .sw{display:inline-block;width:10px;height:10px;border:1px solid var(--fg);border-radius:2px;margin-right:4px;vertical-align:-1px}
 @media (max-width:1100px){#wrap{grid-template-columns:1fr;height:auto}#viewer{height:70vh}#list,#side{max-height:40vh;border:0}}
@@ -401,7 +450,7 @@ const COLS = {'unknown': DATA.meta.unknown_css || '#ff3fd8'};
 DATA.legend.forEach(r => { COLS[r.animal] = r.css || '#888'; });   // marker colour = the user's identifying colour
 function halo(c){ const v = parseInt(String(c).slice(1), 16); return (((v >> 16) & 255) * 0.299 + ((v >> 8) & 255) * 0.587 + (v & 255) * 0.114) < 128 ? '#fff' : '#000'; }
 const LSKEY = DATA.meta.page_version + '::' + DATA.meta.run;     // unchanged since v1: stored clicks carry over
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 const R_SCREEN = 11, HIT_EXTRA = 12;                               // marker radius and selection reach, SCREEN pixels
 let state = {version: STATE_VERSION, clicks: [], segments: {}};
 let cur = 0, kind = 'colour_mid', selId = null, conf = 'sure';
@@ -422,7 +471,52 @@ function migrate(o){
   o.version = STATE_VERSION;
   return n;
 }
-function load(){ try { const s = localStorage.getItem(LSKEY); if (s) { const o = JSON.parse(s); if (o && o.clicks) { legacyMigrated = migrate(o); state = o; if (legacyMigrated) persist(); } } } catch (e) {} }
+// ---------------------------------------------------------------- SF09 / SF10 colour fix (user 2026-10-10, same day): SF09 black, SF10 blue.
+// Labels stored before this page version were given with the colours reversed: swap them ONCE, keep the original, allow one undo.
+const FIX_RULE = 'user 2026-10-10 (corrected same day): SF09 black, SF10 blue; SF09 / SF10 labels stored before the fix were swapped once';
+function swapId(a){ return a === 'SF09' ? 'SF10' : a === 'SF10' ? 'SF09' : a; }
+function applySf0910Fix(o){
+  if (o.sf09_sf10_fix) return 0;                                  // guard: never twice
+  const t = now(), ids = [], vids = [];
+  (o.clicks || []).forEach(c => {
+    const t0 = c.saved_at || c.clicked_at || '';
+    if (t0 && t0 >= t) return;                                       // saved after the fix: untouched
+    if (c.animal === 'SF09' || c.animal === 'SF10') { c.animal_before_sf09_sf10_fix = c.animal; c.animal = swapId(c.animal); c.relabelled_sf09_sf10 = true; ids.push(c.click_id); }
+    const F = c.verdict_first;
+    if (F && (F.animal === 'SF09' || F.animal === 'SF10')) { F.animal_before_sf09_sf10_fix = F.animal; F.animal = swapId(F.animal); F.relabelled_sf09_sf10 = true; vids.push(c.click_id); }
+  });
+  o.sf09_sf10_fix = {applied_at: t, n_swapped: ids.length, click_ids: ids, n_verdict_first_swapped: vids.length, verdict_first_click_ids: vids,
+                     undone_at: null, banner_dismissed_at: null, rule: FIX_RULE};
+  return ids.length;
+}
+function undoSf0910Fix(){
+  const f = state.sf09_sf10_fix; if (!f || f.undone_at) return;
+  state.clicks.forEach(c => {
+    if (c.relabelled_sf09_sf10 && c.animal_before_sf09_sf10_fix) { if (c.animal === swapId(c.animal_before_sf09_sf10_fix)) c.animal = c.animal_before_sf09_sf10_fix;
+      c.relabelled_sf09_sf10 = false; c.sf09_sf10_swap_undone = true; }
+    const F = c.verdict_first;
+    if (F && F.relabelled_sf09_sf10 && F.animal_before_sf09_sf10_fix) { if (F.animal === swapId(F.animal_before_sf09_sf10_fix)) F.animal = F.animal_before_sf09_sf10_fix;
+      F.relabelled_sf09_sf10 = false; F.sf09_sf10_swap_undone = true; }
+  });
+  f.undone_at = now(); undoStack = []; redoStack = []; save(); show(false);
+}
+function renderBanner(){
+  const f = state.sf09_sf10_fix, B = document.getElementById('fixbanner');
+  if (!f || !f.n_swapped || f.banner_dismissed_at) { B.style.display = 'none'; B.innerHTML = ''; return; }
+  B.style.display = 'block';
+  B.innerHTML = (f.undone_at ? '<b>Swap undone</b> (' + esc(f.undone_at) + '): the ' + esc(f.n_swapped) + ' SF09/SF10 clicks keep the labels you gave before the colour fix. '
+                             : '<b>' + esc(f.n_swapped) + ' clicks labelled SF09/SF10 before the colour fix were swapped (SF09 black, SF10 blue)</b>. <button id="fixundo">undo this swap</button> ') +
+                '<button id="fixdismiss">dismiss</button>';
+  const u = document.getElementById('fixundo'); if (u) u.onclick = undoSf0910Fix;
+  document.getElementById('fixdismiss').onclick = () => { f.banner_dismissed_at = now(); save(); renderBanner(); };
+}
+function load(){
+  let changed = false;
+  try { const s = localStorage.getItem(LSKEY); if (s) { const o = JSON.parse(s); if (o && o.clicks) { legacyMigrated = migrate(o); state = o; changed = legacyMigrated > 0; } } } catch (e) {}
+  if (!state.sf09_sf10_fix) { applySf0910Fix(state); changed = true; }   // also on an empty state, so later clicks are never swapped
+  state.version = STATE_VERSION;
+  if (changed) persist();
+}
 function persist(){ try { localStorage.setItem(LSKEY, JSON.stringify(state)); } catch (e) {} }
 function save(){ persist(); renderList(); }
 function esc(s){ return String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -648,7 +742,7 @@ function show(refit){
   if (f && f.path) { if (img.getAttribute('src') !== f.path) { img.setAttribute('src', f.path); img.onload = () => { if (refit !== false) fit(); drawPoints(); }; } else { if (refit !== false) fit(); } }
   else { img.removeAttribute('src'); }
   document.getElementById('fname').textContent = f ? (f.kind + ' · ' + (f.time || f.error || '')) : '';
-  hidePop(); renderList(); renderBelow(); renderSide(); renderSel(); drawPoints();
+  hidePop(); renderBanner(); renderList(); renderBelow(); renderSide(); renderSel(); drawPoints();
 }
 function go(i){ cur = clamp(i, 0, SEGS.length - 1); selId = null; kind = 'colour_mid'; show(); }
 function hidePop(){ document.getElementById('pop').style.display = 'none'; }
@@ -738,18 +832,20 @@ function orientExport(){ const o = {}; Array.from(new Set(SEGS.map(s => s.house)
   o[h] = q ? {rot_deg: +q.rot_deg, mirror: !!q.mirror, chosen_at: q.chosen_at} : {rot_deg: 0, mirror: false, chosen_at: null, default: true}; }); return o; }
 function payload(){ return {page_version: DATA.meta.page_version, state_version: STATE_VERSION, run: DATA.meta.run, exported_at: now(), save_into: DATA.meta.export_dir,
   legend_source: DATA.meta.legend_source, legacy_migrated_at: state.legacy_migrated_at || '', orientation_by_house: orientExport(),
-  orientation_note: DATA.meta.orientation_note || '', clicks: state.clicks, segments: segRows()}; }
+  orientation_note: DATA.meta.orientation_note || '', sf09_sf10_fix: state.sf09_sf10_fix || null, clicks: state.clicks, segments: segRows()}; }
 function exportJSON(){ download('inbox_identity_2026c_' + stamp() + '.json', JSON.stringify(payload(), null, 1), 'application/json'); }
 function csvq(v){ v = (v === null || v === undefined) ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
 const CSV_COLS = ['record','click_id','segment_id','camera','house','frame_kind','frame_file','frame_idx','frame_time','u_px','v_px','animal','confidence',
   'before_reveal','legacy','edited_after_reveal','deleted_after_reveal','first_frame_kind','first_u_px','first_v_px','first_animal','first_confidence',
-  'lid_segment','lid_flag','lid_target_frame','b11','b12','b13','b21','b22','b23','pile_complete','pile_complete_first','revealed_at','note','clicked_at'];
+  'lid_segment','lid_flag','lid_target_frame','b11','b12','b13','b21','b22','b23','pile_complete','pile_complete_first','revealed_at','note','clicked_at',
+  'animal_before_sf09_sf10_fix','relabelled_sf09_sf10','first_animal_before_sf09_sf10_fix','sf09_sf10_fix_applied_at','sf09_sf10_fix_undone_at'];
 function exportCSV(){
   const lines = [CSV_COLS.join(',')];
   state.clicks.forEach(c => { const B = c.B_frame_to_ref || [[null, null, null], [null, null, null]], ss = state.segments[c.segment_id] || {}, F = c.verdict_first || {};
     lines.push(['click', c.click_id, c.segment_id, c.camera, c.house, c.frame_kind, c.frame_file, c.frame_idx, c.frame_time, c.u_px, c.v_px, c.animal, c.confidence,
       !!c.before_reveal, !!c.legacy, !!c.edited_after_reveal, !!c.deleted_after_reveal, F.frame_kind, F.u_px, F.v_px, F.animal, F.confidence,
-      c.lid_segment, c.lid_flag, c.lid_target_frame, B[0][0], B[0][1], B[0][2], B[1][0], B[1][1], B[1][2], ss.complete || '', ss.complete_first || '', ss.revealed_at || '', '', c.clicked_at].map(csvq).join(',')); });
+      c.lid_segment, c.lid_flag, c.lid_target_frame, B[0][0], B[0][1], B[0][2], B[1][0], B[1][1], B[1][2], ss.complete || '', ss.complete_first || '', ss.revealed_at || '', '', c.clicked_at,
+      c.animal_before_sf09_sf10_fix, !!c.relabelled_sf09_sf10, F.animal_before_sf09_sf10_fix, (state.sf09_sf10_fix || {}).applied_at, (state.sf09_sf10_fix || {}).undone_at].map(csvq).join(',')); });
   segRows().forEach(s => { const r = CSV_COLS.map(() => ''); r[0] = 'segment'; r[2] = s.segment_id; r[3] = s.camera; r[4] = s.house;
     r[CSV_COLS.indexOf('pile_complete')] = s.complete; r[CSV_COLS.indexOf('pile_complete_first')] = s.complete_first;
     r[CSV_COLS.indexOf('revealed_at')] = s.revealed_at; r[CSV_COLS.indexOf('note')] = s.note; lines.push(r.map(csvq).join(',')); });
@@ -760,10 +856,11 @@ function importJSON(ev){
   r.onload = () => { try { const o = JSON.parse(r.result); if (!o.clicks) throw new Error('no clicks in file');
       if (!confirm('Replace the current clicks (' + state.clicks.length + ') with the ' + o.clicks.length + ' clicks in ' + f.name + '?')) return;
       const st = {clicks: o.clicks, segments: {}, legacy_migrated_at: o.legacy_migrated_at || undefined, orientation_by_house: {}};
+      if (o.sf09_sf10_fix) st.sf09_sf10_fix = o.sf09_sf10_fix;      // an export made before the fix gets it on import
       Object.entries(o.orientation_by_house || {}).forEach(([h, q]) => { if (q && q.chosen_at) st.orientation_by_house[h] = {rot_deg: +q.rot_deg, mirror: !!q.mirror, chosen_at: q.chosen_at}; });
       (o.segments || []).forEach(s => { st.segments[s.segment_id] = {complete: s.complete || '', complete_first: s.complete_first || '', note: s.note || '',
         revealed_at: s.revealed_at || '', saved_at: s.saved_at || '', n_saved_before_reveal: s.n_before_reveal}; if (!s.revealed_at) delete st.segments[s.segment_id].revealed_at; });
-      migrate(st); state = st; undoStack = []; redoStack = []; selId = null; save(); show(); } catch (e) { alert('Import failed: ' + e.message); } };
+      migrate(st); applySf0910Fix(st); st.version = STATE_VERSION; state = st; undoStack = []; redoStack = []; selId = null; save(); show(); } catch (e) { alert('Import failed: ' + e.message); } };
   r.readAsText(f); ev.target.value = '';
 }
 window.__inbox = {view: () => ({s: view.s, tx: view.tx, ty: view.ty}), selected: () => selId, state: () => JSON.parse(JSON.stringify(state)),
@@ -786,6 +883,7 @@ def render_html(data: dict) -> str:
 <code>{html.escape(m['export_dir'])}</code>.</span>
 <span class="sp"></span><button id="bjson">Export JSON</button><button id="bcsv">Export CSV</button><button id="bimp">Import JSON</button>
 <input type="file" id="fimp" accept=".json,application/json" style="display:none"></header>
+<div id="fixbanner" style="display:none"></div>
 <div id="help">Keys and mouse: click empty image = add a marker · click within 12 px of a marker = select (never adds) · drag a marker = move ·
 drag empty image = pan · wheel = zoom · <kbd>f</kbd> fit · <kbd>1</kbd>–<kbd>6</kbd> = SF07–SF12, <kbd>0</kbd> = unknown · <kbd>c</kbd> = sure / likely ·
 <kbd>Del</kbd> / <kbd>Backspace</kbd> / right-click on a marker / × in the list = delete · <kbd>Shift</kbd>+arrows = nudge 1 px, <kbd>Alt</kbd>+arrows = 10 px ·
@@ -881,12 +979,14 @@ def _close_chrome(p, browser_ws: str) -> None:
         p.terminate()
 
 
-def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | None = None) -> dict:
+def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | None = None, prior_state: dict | None = None) -> dict:
     """Drive the click page in headless Chrome like a user: add 3 markers, select one 8 px off its centre (no new marker),
     drag it, delete one with Delete and one with a right-click, undo, relabel with a number key, nudge (Shift / Alt +
     arrows) with undo / redo, check the constant marker size, reload (persisted), check the WISER panel stays hidden until
     "Save clicks & reveal WISER", then edit after the reveal and export (before_reveal / legacy / verdict_first flags).
-    seed_legacy: a v1-style stored state (clicks without the reveal flag) written before the first reload."""
+    seed_legacy: a v1-style stored state (clicks without the reveal flag) written before the first reload.
+    prior_state: the state an earlier page version stored in this profile (or the seed): its SF09 / SF10 labels must be swapped
+    once (2026-10-10 colour fix), survive a reload, be restored by "undo this swap", and stay restored after a reload."""
     data = json.loads((page / "page_data.json").read_text(encoding="utf-8"))
     lskey = f"{data['meta']['page_version']}::{data['meta']['run']}"
     sg = data["segments"][seg_index]
@@ -960,6 +1060,48 @@ def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | 
         legacy = [k for k in s0["clicks"] if k.get("legacy")]
         res["legacy_clicks"] = len(legacy)
         okk["legacy_migrated"] = (len(legacy) >= 1 and all(k["before_reveal"] for k in legacy)) if (seed_legacy or legacy) else True
+
+        prior = seed_legacy if seed_legacy is not None else prior_state
+        if prior is not None:
+            def keyf(k):
+                return (k["segment_id"], k["frame_kind"], round(float(k["u_px"]), 1), round(float(k["v_px"]), 1))
+            swp = {"SF09": "SF10", "SF10": "SF09"}
+            pri = {keyf(k): k for k in prior["clicks"]}
+            exp_sw = [q for q, k in pri.items() if k.get("animal") in swp]
+            exp_vf = [q for q, k in pri.items() if (k.get("verdict_first") or {}).get("animal") in swp]
+            s1 = st()
+            fx = s1.get("sf09_sf10_fix") or {}
+            cu = {keyf(k): k for k in s1["clicks"]}
+            banner = c.ev("document.getElementById('fixbanner').innerText")
+            res["sf0910_expected_swaps"] = len(exp_sw)
+            okk["sf0910_swapped_once"] = (len(exp_sw) >= 1 and fx.get("n_swapped") == len(exp_sw) and bool(fx.get("applied_at"))
+                                          and all(cu[q]["animal"] == swp[pri[q]["animal"]] and cu[q]["animal_before_sf09_sf10_fix"] == pri[q]["animal"]
+                                                  and cu[q]["relabelled_sf09_sf10"] is True for q in exp_sw)
+                                          and all(cu[q].get("animal") == pri[q].get("animal") and not cu[q].get("relabelled_sf09_sf10") for q in pri if q not in exp_sw)
+                                          and all(cu[q]["verdict_first"]["animal"] == swp[pri[q]["verdict_first"]["animal"]] for q in exp_vf)
+                                          and f"{len(exp_sw)} clicks labelled SF09/SF10 before the colour fix were swapped (SF09 black, SF10 blue)" in banner)
+            reload()
+            s2 = st()
+            cu2 = {keyf(k): k for k in s2["clicks"]}
+            okk["sf0910_not_twice_after_reload"] = (s2["sf09_sf10_fix"]["applied_at"] == fx.get("applied_at")
+                                                    and all(cu2[q]["animal"] == cu[q]["animal"] for q in pri))
+            c.ev("document.getElementById('fixundo').click(); 1")
+            time.sleep(0.3)
+            s3 = st()
+            cu3 = {keyf(k): k for k in s3["clicks"]}
+            okk["sf0910_undo"] = (bool(s3["sf09_sf10_fix"].get("undone_at")) and all(cu3[q].get("animal") == pri[q].get("animal") for q in pri)
+                                  and all(cu3[q]["verdict_first"]["animal"] == pri[q]["verdict_first"]["animal"] for q in exp_vf)
+                                  and all(cu3[q].get("sf09_sf10_swap_undone") is True and cu3[q]["animal_before_sf09_sf10_fix"] == pri[q]["animal"] for q in exp_sw)
+                                  and "Swap undone" in c.ev("document.getElementById('fixbanner').innerText"))
+            reload()
+            s4 = st()
+            okk["sf0910_undo_persists"] = (s4["sf09_sf10_fix"]["undone_at"] == s3["sf09_sf10_fix"]["undone_at"]
+                                           and all({keyf(k): k for k in s4["clicks"]}[q].get("animal") == pri[q].get("animal") for q in pri))
+            c.ev("document.getElementById('fixdismiss').click(); 1")
+            time.sleep(0.2)
+            okk["sf0910_banner_dismissed"] = c.ev("document.getElementById('fixbanner').style.display") == "none" and bool(st()["sf09_sf10_fix"].get("banner_dismissed_at"))
+        legend = c.ev("Array.from(document.querySelectorAll('table.legend tr')).slice(1).map(r => [r.children[0].textContent, r.querySelector('b').textContent])")
+        okk["legend_sf09_black_sf10_blue"] = dict(legend).get("SF09") == "black" and dict(legend).get("SF10") == "blue"
         go(seg_index)
         side = c.ev("document.getElementById('side').innerText")
         okk["orientation_hidden_before_reveal"] = c.ev("!document.getElementById('orient-sel') && !document.getElementById('topview')")
@@ -1048,6 +1190,8 @@ def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | 
                                          and (s2[ids["C"]]["u_px"], s2[ids["C"]]["v_px"]) == c_final
                                          and len([k for k in st()["clicks"] if k.get("legacy")]) == res["legacy_clicks"])
         okk["wiser_hidden_after_reload"] = "Roster" not in c.ev("document.getElementById('side').innerText")
+        fx_at = st()["sf09_sf10_fix"]["applied_at"]
+        okk["post_fix_clicks_untouched"] = all(not k.get("animal_before_sf09_sf10_fix") for k in st()["clicks"] if k["clicked_at"] > fx_at)
         # reveal (per segment, cannot be undone)
         c.ev("window.confirm = () => true; document.getElementById('breveal').click(); 1")
         time.sleep(0.4)
@@ -1134,6 +1278,10 @@ def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | 
                                and crow[ids["A"]]["deleted_after_reveal"] == "true"
                                and all(crow[k]["legacy"] == "true" and crow[k]["before_reveal"] == "true" for k in ex if ex[k].get("legacy"))
                                and len(crow) == len(js["clicks"]) and sum(r["record"] == "segment" for r in rows) == len(data["segments"]))
+        fxe = js.get("sf09_sf10_fix") or {}
+        okk["sf0910_fix_exported"] = (bool(fxe.get("applied_at")) and "animal_before_sf09_sf10_fix" in rows[0] and "relabelled_sf09_sf10" in rows[0]
+                                      and all(crow[q]["sf09_sf10_fix_applied_at"] == fxe["applied_at"] for q in crow)
+                                      and all((ex[q].get("animal_before_sf09_sf10_fix") or "") == crow[q]["animal_before_sf09_sf10_fix"] for q in crow))
         ob = js.get("orientation_by_house", {})
         okk["orientation_exported"] = (ob.get(house, {}).get("rot_deg") == 90 and ob[house].get("mirror") is True and bool(ob[house].get("chosen_at"))
                                        and set(ob) == {q["house"] for q in data["segments"]})
@@ -1206,8 +1354,8 @@ def selftest() -> int:
         # close-ups: two tiny synthetic clips named like the phone files
         cs = tmp / "downloads"
         cs.mkdir()
-        for lab in ("SF07", "SF08"):
-            ip._synthetic_video(cs / f"{lab}.mp4", 0, 1, dur=2.0)
+        for lab, dur in (("SF07", 2.0), ("SF08", 3.0)):          # different durations: the relink check tells them apart
+            ip._synthetic_video(cs / f"{lab}.mp4", 0, 1, dur=dur)
             shutil.move(str(cs / f"{lab}.mp4"), str(cs / f"{lab}.MOV"))
 
         class FakeCorr:
@@ -1252,8 +1400,8 @@ def selftest() -> int:
         rec("page check flags a missing file and a network URL", cb["verdict"] == "FAIL" and cb["missing"] == ["frames/x.jpg"] and cb["network_urls"])
         # legend from the identity CSV (2026-10-10 correction): the user's identifying colour per animal, Notion for reference
         lg = {r["animal"]: r for r in data["legend"]}
-        want = {"SF07": "green", "SF08": "red", "SF09": "blue", "SF10": "black", "SF11": "white (looks grey)", "SF12": "yellow"}
-        rec("legend built from the CSV: identifying colours, Notion coban kept, notes on SF09 / SF10 / SF12, source line",
+        want = {"SF07": "green", "SF08": "red", "SF09": "black", "SF10": "blue", "SF11": "white (looks grey)", "SF12": "yellow"}   # corrected same day
+        rec("legend built from the CSV: identifying colours (SF09 black, SF10 blue), Notion coban kept, notes on SF09 / SF10 / SF12, source line",
             {a: r["id_colour"] for a, r in lg.items()} == want and lg["SF09"]["coban_notion"] == "pink/black/brown"
             and all(bool(lg[a]["id_colour_note"]) == (a in ("SF09", "SF10", "SF12")) for a in want)
             and data["meta"]["legend_source"] == LEGEND_SOURCE and "3058" in lg["SF11"]["tag"] and "305a" in lg["SF11"]["tag"])
@@ -1263,7 +1411,7 @@ def selftest() -> int:
         ids.loc[ids.animal == "SF10", "id_colour"] = "grey"
         ids.to_csv(alt, index=False)
         key0 = (data["meta"]["page_version"], data["meta"]["run"])
-        rc = refresh_legend(run, alt)
+        rc = refresh_legend(run, alt, closeup_src=None)
         d2 = json.loads((run / "identity_page" / "page_data.json").read_text(encoding="utf-8"))
         rec("refresh-legend: new legend, same localStorage key, frames untouched, segments unchanged, page check PASS",
             {r["animal"]: r["id_colour"] for r in d2["legend"]}["SF10"] == "grey" and (d2["meta"]["page_version"], d2["meta"]["run"]) == key0
@@ -1276,6 +1424,23 @@ def selftest() -> int:
         except ValueError:
             raised = True
         rec("legend refuses a CSV without id_colour", raised)
+        # close-ups follow a renamed source (the user swapped SF09 / SF10 on 10-10): matched by the recorded sha256, no re-transcode
+        (cs / "SF07.MOV").rename(cs / "x.MOV")
+        (cs / "SF08.MOV").rename(cs / "SF07.MOV")
+        (cs / "x.MOV").rename(cs / "SF08.MOV")
+        pd.DataFrame([{"file": f"{a}.MOV", "sha256": ip.sha256(cs / f"{a}.MOV"), "duration_s": mp4_duration(cs / f"{a}.MOV")} for a in ("SF07", "SF08")]
+                     ).to_csv(cs / "MANIFEST_sha256.csv", index=False)
+        mtime = (run / "identity_page" / "closeups" / "SF07.mp4").stat().st_mtime
+        r1_ = refresh_legend(run, IDENTITY_CSV, closeup_src=cs)
+        d3 = json.loads((run / "identity_page" / "page_data.json").read_text(encoding="utf-8"))
+        cl = {q["animal"]: q for q in d3["closeups"]}
+        r2_ = refresh_legend(run, IDENTITY_CSV, closeup_src=cs)
+        rec("close-ups relinked by sha256 after the source rename (SF07.mp4 = the 3-s clip), durations checked, idempotent, page PASS",
+            abs(mp4_duration(run / "identity_page" / "closeups" / "SF07.mp4") - 3.0) < 0.2 and abs(mp4_duration(run / "identity_page" / "closeups" / "SF08.mp4") - 2.0) < 0.2
+            and cl["SF07"]["src_sha256"] == ip.sha256(cs / "SF07.MOV") and r1_["closeup_durations_ok"] and r1_["verdict"] == "PASS"
+            and "relinked" in cl["SF07"] and len(d3["meta"].get("closeup_relinks", [])) == 1
+            and len(json.loads((run / "identity_page" / "page_data.json").read_text(encoding="utf-8"))["meta"]["closeup_relinks"]) == 1
+            and r2_["verdict"] == "PASS" and (run / "identity_page" / "closeups" / "SF08.mp4").stat().st_mtime == mtime)
         # orientation reference maths (display only): paddock default, rotation counter-clockwise, mirror flips x; house frame inverse
         hf = ip.to_house_frame([[342.4 + 3.0, 117.7 - 5.0]], {"centre": (342.4, 117.7), "ridge_deg": 92.0})[0]
         rec("orientation maths: (1, 0) -> (1, 0) / (0, 1) at 90 / (-1, 0) mirrored; house_to_paddock inverts to_house_frame",
@@ -1285,11 +1450,16 @@ def selftest() -> int:
         # the click page driven in headless Chrome: select / move / delete / undo / relabel / nudge, persistence, blind reveal, export
         if CHROME.exists():
             seed = {"clicks": [{"segment_id": s0["segment_id"], "camera": "CH07", "house": "house_2", "frame_kind": "ir_p06", "u_px": 50.0, "v_px": 60.0,
-                                "animal": "SF10", "confidence": "sure", "clicked_at": "2026-10-10T20:00:00Z"}], "segments": {}}
+                                "animal": "SF10", "confidence": "sure", "clicked_at": "2026-10-10T20:00:00Z"},
+                               {"segment_id": s0["segment_id"], "camera": "CH07", "house": "house_2", "frame_kind": "ir_p06", "u_px": 150.0, "v_px": 60.0,
+                                "animal": "SF09", "confidence": "likely", "clicked_at": "2026-10-10T20:00:05Z"},
+                               {"segment_id": s0["segment_id"], "camera": "CH07", "house": "house_2", "frame_kind": "ir_p15", "u_px": 80.0, "v_px": 90.0,
+                                "animal": "SF12", "confidence": "sure", "clicked_at": "2026-10-10T20:00:09Z"}], "segments": {}}
             ui = ui_check(run / "identity_page", tmp / "chrome_profile", 0, seed)
             rec("browser: 3 markers, select 8 px off centre (no new), drag, Delete, right-click, undo, relabel, nudge + undo / redo, "
                 "constant marker size, reload persists, WISER hidden until reveal, flags exported, legacy migrated, "
-                "top-view orientation (8 options vs the Python reference, edge labels, stored, exported, persists)",
+                "top-view orientation (8 options vs the Python reference, edge labels, stored, exported, persists), "
+                "SF09 / SF10 fix (swapped once, not twice after reload, undo + persists, banner, legend SF09 black / SF10 blue, exported)",
                 ui["verdict"] == "PASS", str({k: v for k, v in ui["checks"].items() if not v}) + f" right-click native {ui.get('right_click_native_contextmenu')}")
         else:
             print("[SKIP] Chrome not found: browser UI check not run")
@@ -1307,6 +1477,7 @@ def main(argv=None) -> int:
     ap.add_argument("--ui-check", action="store_true", help="drive the run's page in headless Chrome (throwaway profile)")
     ap.add_argument("--profile", default=None, help="Chrome profile folder for --ui-check (default: a new temporary one)")
     ap.add_argument("--seg", type=int, default=1, help="segment index for --ui-check")
+    ap.add_argument("--prior-state", default=None, help="JSON of the state an earlier page version stored in --profile (SF09 / SF10 fix check)")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
@@ -1314,7 +1485,8 @@ def main(argv=None) -> int:
         ap.error("--run <inbox_p0 run dir> or --selftest")
     if args.ui_check:
         prof = Path(args.profile) if args.profile else Path(tempfile.mkdtemp(prefix="inbox_ui_"))
-        res = ui_check(Path(args.run) / "identity_page", prof, args.seg)
+        prior = json.loads(Path(args.prior_state).read_text(encoding="utf-8")) if args.prior_state else None
+        res = ui_check(Path(args.run) / "identity_page", prof, args.seg, prior_state=prior)
         print(json.dumps(res, indent=1, default=str))
         return 0 if res["verdict"] == "PASS" else 1
     chk = refresh_legend(Path(args.run)) if args.refresh_legend else build(Path(args.run), Path(args.closeups))
