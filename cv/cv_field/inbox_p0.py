@@ -1347,10 +1347,18 @@ def write_report(run: Path) -> Path:
               f"`{(run / 'identity_page' / 'index.html').as_posix()}` (open from disk; self-contained, no network). One entry per colour "
               f"segment ({len(segs)}): the colour frame at the segment middle and IR frames at +6 s / +15 s after OFF (full resolution, "
               "JPEG quality 95, upright as recorded), the WISER roster of the camera's house with the pre-flash minute positions drawn as a "
-              "top view (SE and SD bars, IMU shares), the identity legend and the six in-hand close-up clips. The user clicks heads, picks "
+              "top view (SE and SD bars, IMU shares), the identity legend (built from `wiser/configs/rat_identities_2026c.csv`: the user's "
+              "identifying colour per animal, 2026-10-10 — SF07 green, SF08 red, SF09 blue, SF10 black, SF11 white (looks grey), SF12 yellow; "
+              "the Notion coban / sticker shown for reference; the first days about 08-30 / 08-31 are uncertain; click markers take the "
+              "identifying colour) and the six in-hand close-up clips. The user clicks heads, picks "
               "SF07–SF12 / unknown and sure / likely, and answers \"pile composition complete?\"; localStorage autosave; Export CSV / JSON "
               "→ `cv/configs/inbox_identity_2026c/`; Import JSON. No identity is pre-filled. Each frame carries its lid segment and "
-              "correction B (recorded, not applied).\n",
+              "correction B (recorded, not applied). **Blind first** (plan amendment 8): per segment the WISER roster and arrangement "
+              "stay hidden until \"Save clicks & reveal WISER\"; the clicks saved then are the blind record (`before_reveal`, "
+              "`verdict_first`) the order test uses, later edits are recorded separately; clicks stored by the first page version "
+              "are flagged `legacy` (that version showed WISER, so they are not blind). Markers can be selected (within 12 screen px), "
+              "dragged, nudged, relabelled and deleted (Delete, right-click, × in the per-frame list) with undo / redo; all of it "
+              "checked in headless Chrome (`inbox_identity_page.py --ui-check`).\n",
               _md_table(rost),
               "\nClose-up clips: source `D:/Field2026_analysis_out/2026c/inhand_closeups/SF07.MOV … SF12.MOV` (read-only; every sha256 "
               "checked against that folder's `MANIFEST_sha256.csv` before transcoding; sources unchanged afterwards), transcoded once to "

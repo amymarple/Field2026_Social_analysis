@@ -152,5 +152,27 @@ outputs stay in the run (`colour_segments_prereg_thr.csv`, `colour_log_rows_prer
 `colour_threshold_prereg.json`; `colour_threshold.json` → `prereg_floor_1e-4`). One isolated I-frame lies near a planned
 slot (CH07 09-11 13:02:09, c = 0.36, 2.1 min after the un-noted 13:00 slot): IR under the amended rule, listed in the report.
 
+**Amendment 7 (2026-10-10, after results; the user's correction) — identifying colours.** The colour that identifies each rat
+(authoritative for the cohort except the first, "messy" days ≈ 08-30 / 08-31): SF07 green, SF08 red, SF09 blue, SF10 black,
+SF11 white (looks grey), SF12 yellow. It differs from Notion's coban column for SF09 (Notion pink/black/brown; blue = the
+sticker), SF10 (Notion blue → yellow from 08-31; black is not in Notion) and SF12 (Notion yellow → blue from 08-31; yellow =
+the pre-08-31 coban and the 09-09 incident log); the user's statement wins. Added as columns `id_colour` / `id_colour_note` to
+`wiser/configs/rat_identities_2026c.csv` (no existing column changed; `make_imu_video_review.py` and
+`make_wiser_event_review.py`, which parse `coband_color`, load it unchanged and their self-tests pass). The click page's legend
+is built from that CSV (identifying colour first and bold, Notion coban / sticker for reference; click markers take the
+identifying colour); re-rendered at the same path, no video decoded, localStorage key unchanged.
+
+**Amendment 8 (2026-10-10, after results; the user's bug report and the session's recommendation) — click editing and blind
+first.** The user: markers could not be deleted or were hard to select / move. The page now selects a marker clicked within
+12 screen px (never adds one there), drags, nudges (Shift / Alt + arrows = 1 / 10 image px), relabels (1–6 = SF07–SF12,
+0 = unknown, c = sure / likely, or the list's dropdowns), deletes (Delete / Backspace, right-click, × in a per-frame list),
+with undo / redo (Ctrl+Z / Ctrl+Y); markers have a constant screen size with the id inside. **Blind first:** per segment the
+WISER roster and top view are hidden until "Save clicks & reveal WISER" (per segment, cannot be undone); the clicks saved then
+get `before_reveal: true` and a frozen `verdict_first`, and the pre-registered ≥ 4-of-5 order test uses those; later edits are
+recorded separately (`edited_after_reveal`, `deleted_after_reveal`, `before_reveal: false` for new clicks); `revealed_at` per
+segment. Clicks stored by the first page version become `before_reveal: true, legacy: true` on first load — that version
+showed the WISER panel, so legacy clicks are not blind; the later step must treat them accordingly. Checked in headless Chrome
+on the synthetic self-test page and on the real page (throwaway profiles).
+
 **Status (2026-10-10): phase 0 DONE** — A, B, C run; report `results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`;
 change log `change_log/2026-10-10-inbox-ch0708-p0.md`. The pre-registered use of the user's clicks waits for the clicks.
