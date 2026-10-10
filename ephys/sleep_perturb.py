@@ -1439,6 +1439,190 @@ def runH(a) -> None:
     print("written", rd / "ephys_spikes_sleep_explore_H_2026c.md", flush=True)
 
 
+# ------------------------------------------------------------------ part W: the long-wake memory term (plan §14, Amendment 6)
+DOC_W = r"""Part W of the sleep-behaviour explore (plan §14, Amendment 6, written before results; the last behaviour-level term
+before the LFP stage, after the Fable plateau audit): a long-wake memory — does it absorb the night ramp (#6b) and the
+evening-round first-REM delay (#60)?
+
+Usage:  python ephys/sleep_perturb.py runW [--scorings final pass2med] [--reps 100] [--workers 6]
+
+Definitions:
+  LW         at a NREM bout: the length (s) of the last WAKE bout >= 420 s in the record if no REM has occurred since it
+             ended, else 0; unchanged over unknown runs (sleep_sim.lw_feature). Terms: l_lw = ln(1 + LW) and l_lw x dark,
+             linear (z-scored on the training data) on all three logits of B-full (stay / REM / WAKE).
+  W1         forward-chained held-out log-loss (sleep_model.run_folds; folds 1.., as Step B): B-full + {l_lw, l_lw x dark}
+             vs B-full (and B-full + l_lw alone); Delta % with a fold bootstrap CI; animals better. Pass = CI < 0 and >= 5/6
+             on both scorings. Full-data standardised coefficients reported (REM vs stay, WAKE vs stay).
+  W2         sleep_sim with both terms (a forced wake >= 420 s sets LW, a REM bout resets it):
+             (i)  part H's conditional simulation from the first NREM after the house entry (entry times from part H's
+                  house_entries.csv), base fitted with the post-round 3 h masked, without and with part P's arousal A
+                  (cross-fitted); evening L_N' (NREM clock) inside the simulated 95 % range on both scorings;
+             (ii) the morning stays inside;
+             (iii) Step E's checks (full-data fit, 100 replicates, Step E tolerances) >= 13/14 per scoring.
+"""
+
+
+def runW(a) -> None:
+    import json
+    import sleep_sim
+    from joblib import Parallel, delayed
+    from _common import git_commit, write_json
+    from output_paths import report_dir, run_dir
+    from sleep_model import PASS2MED, STATES, build_data, cmp, design, records_for, run_folds, tables, to_arrays, variant_specs
+    from sleep_quant import md_table
+    from sleep_schedule import N, R
+    from sleep_schedule_phase3 import km_median
+    from sleep_sim import build_model, lw_feature, metrics, simulate_records
+    from sleep_stability import gaps_table
+    from sklearn.linear_model import LogisticRegression
+    out = run_dir("sleep_explore_W", "2026c")
+    rd = report_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    t0 = time.time()
+    gaps = gaps_table()
+    hrun = Path(json.load(open(rd / "run_manifest_sleep_explore_H_2026c.json"))["run_dir"])
+    HE = pd.read_csv(hrun / "house_entries.csv", parse_dates=["record_start"])
+    tH_by = {(r.animal, pd.Timestamp(r.record_start)): r.tH_s for r in HE.itertuples() if np.isfinite(r.tH_s)}
+    W1, COEF, H3, EC = [], [], [], []
+    spec_lw = {"L1": True, "hist": KEY, "extra": ("l_lw", "l_lw_dark")}
+    for lab in a.scorings:
+        recs = records_for(STATES if lab == "final" else PASS2MED)
+        RI = round_info(recs, gaps)
+        # ---------------- W1
+        steps = build_data(recs, {KEY: variant_specs()[KEY]})
+        D = to_arrays(steps)
+        lw = np.log1p(lw_feature(recs, steps))
+        D["l_lw"], D["l_lw_dark"] = lw, lw * D["dark"]
+        specs = {"B": dict(SPEC), "B+lw": {"L1": True, "hist": KEY, "extra": ("l_lw",)}, "B+lw+lw_dark": spec_lw}
+        res = run_folds(D, specs, a.workers)
+        F, FA = tables(res, {k: ("fixed", k) for k in specs})
+        for hi in ("B+lw+lw_dark", "B+lw"):
+            W1.append({"scores": lab, **cmp(F, FA, "B", hi, "all NREM steps")})
+        levels = sorted(set(D["animal"]))
+        idx = np.arange(len(D["y"]))
+        X, _ = design(D, idx, spec_lw, None, levels)
+        m = LogisticRegression(C=1e4, max_iter=3000).fit(X, D["y"])
+        end = X.shape[1] - (len(levels) - 1)
+        cls = list(m.classes_)
+        for j, name in ((end - 2, "l_lw"), (end - 1, "l_lw_dark")):
+            row = {"scores": lab, "term": name, "share_steps_lw_gt0": float((lw > 0).mean())}
+            for c, cn in ((1, "REM_vs_stay"), (2, "WAKE_vs_stay")):
+                row[cn] = float(m.coef_[cls.index(c), j] - m.coef_[cls.index(0), j]) if (c in cls and 0 in cls) else np.nan
+            COEF.append(row)
+        print(f"[{lab}] W1 {time.time() - t0:.0f} s: {W1[-2]}", flush=True)
+        # ---------------- W2 (i) / (ii): part H's conditional simulation with the term
+        sleep_sim.EXTRA_LW = True
+        try:
+            T = step_table(recs, RI)
+            rs = dict(zip(RI.record_id, RI.kind))
+            byrid = {rc["record_id"]: rc for rc in recs}
+            tH = {r.record_id: tH_by.get((r.animal, byrid[r.record_id]["start"])) for r in RI.itertuples()}
+            tH = {k: v for k, v in tH.items() if v is not None}
+            masked = []
+            for rc in recs:
+                st_ = rc["state"].copy()
+                if rc["record_id"] in rs:
+                    st_[:POST_S] = 0
+                masked.append({**rc, "state": st_})
+            M = build_model(masked)
+            DT = T["D"]
+            lwT = np.log1p(lw_feature(recs, T["steps"]))
+            DT["l_lw"], DT["l_lw_dark"] = lwT, lwT * DT["dark"]
+            pr = np.flatnonzero(T["post"])
+            Xg, _ = design(DT, pr, spec_lw, M["stN"], M["levels"])
+            Pg = np.full((len(pr), 3), 1e-12)
+            Pg[:, M["mN"].classes_] = M["mN"].predict_proba(Xg)
+            Pg /= Pg.sum(1, keepdims=True)
+            yg, sg, hg = DT["y"][pr].astype(int), T["s"][pr], T["half"][pr]
+            par = {h: fit_arousal(Pg[hg != h, 2], sg[hg != h], yg[hg != h])[0] for h in (0, 1)}
+            rrecs, tNp = [], {}
+            for rc in recs:
+                r_ = rc["record_id"]
+                if r_ in tH:
+                    nb = next((a_ for s_, a_, b_ in bouts(rc["state"]) if s_ == N and a_ >= int(tH[r_])), None)
+                    if nb is not None:
+                        rrecs.append(rc)
+                        tNp[r_] = int(nb)
+            AR = {r.record_id: (float(par[r.half]["a"]), float(par[r.half]["tau_s"])) for r in RI.itertuples() if r.record_id in tNp}
+            cnd = {**M, "inputs": [inputs_cond(rc, M["levels"], tNp[rc["record_id"]]) for rc in rrecs]}
+
+            def lat(recs_):
+                rows = []
+                for rc in recs_:
+                    r_ = rc["record_id"]
+                    tn = tNp[r_]
+                    st_ = rc["state"]
+                    tr = next((a_ for s_, a_, b_ in bouts(st_) if s_ == R and a_ >= tn), None)
+                    end_ = tr if tr is not None else len(st_)
+                    rows.append({"kind": rs[r_], "Ls": end_ - tn, "LN": int((st_[tn:end_] == N).sum()), "ev": int(tr is not None)})
+                return pd.DataFrame(rows)
+
+            obs = lat(rrecs)
+            simulate_records(rrecs[:1], cnd, 0)
+            sims = Parallel(n_jobs=a.workers, backend="loky")(delayed(_rep_H)(r, rrecs, cnd, AR) for r in range(a.reps))
+            for kind in ("morning", "evening"):
+                o = obs[obs.kind == kind]
+                for vi, var in enumerate(("conditional, base + LW", "conditional, base + LW + A")):
+                    for stat, col in (("Ls'_KM_median_min", "Ls"), ("LN'_KM_median_min", "LN")):
+                        ov = km_median(o[col].to_numpy(float), o.ev.to_numpy()) / 60
+                        sv = []
+                        for s_ in sims:
+                            q = lat(s_[vi])
+                            q = q[q.kind == kind]
+                            sv.append(km_median(q[col].to_numpy(float), q.ev.to_numpy()) / 60)
+                        lo_, hi_ = np.nanpercentile(sv, [2.5, 97.5])
+                        H3.append({"scores": lab, "kind": kind, "variant": var, "stat": stat, "observed": ov, "sim_mean": float(np.nanmean(sv)),
+                                   "sim_2.5%": lo_, "sim_97.5%": hi_, "side": "above" if ov > hi_ else ("below" if ov < lo_ else "inside"), "rounds": len(o)})
+            print(f"[{lab}] W2 (i)/(ii) {time.time() - t0:.0f} s", flush=True)
+            # ---------------- W2 (iii): Step E's checks, full-data fit with the term
+            Mf = build_model(recs)
+            obs_E = metrics(recs)
+            simulate_records(recs[:1], Mf, 0)
+            E = pd.DataFrame(Parallel(n_jobs=a.workers, backend="loky")(delayed(sleep_sim._rep_job)(r, recs, Mf) for r in range(a.reps)))
+            tol = dict(E_TOL, **{k: 0.25 for k in obs_E if k.startswith("lat_med_")})
+            for k, tl in tol.items():
+                ov = obs_E.get(k, np.nan)
+                sv = E[k].to_numpy(dtype=float) if k in E else np.array([np.nan])
+                if not np.isfinite(ov) or not np.isfinite(sv).any():
+                    continue
+                mean = float(np.nanmean(sv))
+                EC.append({"scores": lab, "metric": k, "observed": ov, "sim_mean": mean, "rel_diff": mean / ov - 1, "tolerance": tl,
+                           "pass": bool(abs(mean / ov - 1) <= tl)})
+            print(f"[{lab}] W2 (iii) {time.time() - t0:.0f} s", flush=True)
+        finally:
+            sleep_sim.EXTRA_LW = False
+    W1, COEF, H3, EC = pd.DataFrame(W1), pd.DataFrame(COEF), pd.DataFrame(H3), pd.DataFrame(EC)
+    v = []
+    for lab in a.scorings:
+        w = W1[(W1.scores == lab) & (W1.comparison == "B+lw+lw_dark vs B")].iloc[0]
+        v.append({"scores": lab, "part": "W1", "pass": bool(w.get("holds", False)),
+                  "numbers": f"Delta {w.delta_pct:+.3f} % [{w.ci_lo_pct:+.3f}, {w.ci_hi_pct:+.3f}], {int(w.animals_better)}/{int(w.animals)}, folds {int(w.folds_better)}/{int(w.folds)}"})
+        q = H3[(H3.scores == lab) & (H3.stat == "LN'_KM_median_min")]
+        ev, mo = q[q.kind == "evening"], q[q.kind == "morning"]
+        v.append({"scores": lab, "part": "W2 (i) evening L_N' inside", "pass": bool((ev.side == "inside").all()),
+                  "numbers": "; ".join(f"{r.variant}: obs {r.observed:.1f} vs {r['sim_2.5%']:.1f}-{r['sim_97.5%']:.1f} ({r.side})" for _, r in ev.iterrows())})
+        v.append({"scores": lab, "part": "W2 (ii) morning L_N' inside", "pass": bool((mo.side == "inside").all()),
+                  "numbers": "; ".join(f"{r.variant}: obs {r.observed:.1f} vs {r['sim_2.5%']:.1f}-{r['sim_97.5%']:.1f} ({r.side})" for _, r in mo.iterrows())})
+        e = EC[EC.scores == lab]
+        v.append({"scores": lab, "part": "W2 (iii) Step E checks", "pass": bool(e["pass"].sum() >= len(e) - 1), "numbers": f"{int(e['pass'].sum())}/{len(e)}"})
+    V = pd.DataFrame(v)
+    for name, Tb in (("w1", W1), ("coef", COEF), ("h3", H3), ("echecks", EC), ("verdicts", V)):
+        Tb.to_csv(rd / f"ephys_spikes_sleep_explore_W_{name}_2026c.csv", index=False)
+    L_ = ["# Sleep-behaviour explore — W: the long-wake memory term (cohort 2026c)", "",
+          "Plan [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../implementation_plan/2026-10-08-sleep-behaviour-explore.md) "
+          f"§14 Amendment 6 (rules written before results). Driver `ephys/sleep_perturb.py runW` (commit {gc}); bulk `{out}`; {a.reps} replicates; "
+          f"runtime {(time.time() - t0) / 60:.0f} min. **Technical ledger.**", "",
+          "## Definitions", "", "```", DOC_W.strip(), "```", "",
+          "## Verdicts", "", *md_table(V), "",
+          "## W1: held-out comparison", "", *md_table(W1.round(4)), "", "Full-data standardised coefficients:", "", *md_table(COEF.round(4)), "",
+          "## W2 (i) / (ii): the first REM after the house entry, simulated with the term", "", *md_table(H3.round(2)), "",
+          "## W2 (iii): Step E's checks with the term", "", *md_table(EC.round(4)), ""]
+    (rd / "ephys_spikes_sleep_explore_W_2026c.md").write_text("\n".join(L_) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_sleep_explore_W_2026c.json", {"run_dir": str(out), "git_commit": gc, "reps": a.reps, "scorings": a.scorings})
+    print(V.to_string(index=False), flush=True)
+    print("written", rd / "ephys_spikes_sleep_explore_W_2026c.md", flush=True)
+
+
 # ------------------------------------------------------------------ selftest
 def selftest() -> None:
     t0 = time.time()
@@ -1534,12 +1718,18 @@ def selftest() -> None:
     bm = bout_metrics(C_, 0, 100)
     assert abs(bm["still_share"] - 0.5) < 1e-9 and abs(bm["max_disp_in"] - 99) < 1e-9 and bm["house_share"] == 0
     print(f"PASS part H: synthetic house entry at {th_:.0f} s (truth 300 s); bout metrics", flush=True)
+    # 8. part W: the long-wake memory feature on a toy record
+    from sleep_sim import lw_feature
+    st_w = np.array([3] * 50 + [1] * 500 + [3] * 100 + [1] * 20 + [3] * 60 + [5] * 30 + [3] * 40, np.int8)
+    lwv_ = lw_feature([{"record_id": 1, "state": st_w}], pd.DataFrame({"record_id": [1, 1, 1, 1], "bout_start": [0, 550, 670, 760]}))
+    assert list(lwv_) == [0.0, 500.0, 500.0, 0.0], lwv_
+    print("PASS part W: the long-wake memory is set by a wake >= 420 s, kept over short wakes, reset by REM", flush=True)
     print(f"selftest PASS ({time.time() - t0:.0f} s)", flush=True)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run", "runT", "runL", "runH"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "runT", "runL", "runH", "runW"])
     ap.add_argument("--scorings", nargs="+", default=["final", "pass2med"], choices=["final", "pass2med"])
     ap.add_argument("--reps", type=int, default=100)
     ap.add_argument("--boot", type=int, default=2000)
@@ -1557,6 +1747,8 @@ def main() -> None:
         runL(a)
     elif a.cmd == "runH":
         runH(a)
+    elif a.cmd == "runW":
+        runW(a)
     else:
         ap.print_help()
 

@@ -34,6 +34,9 @@
   claims #59–#61.
 - **Amendment 5 (§13), part H DONE 2026-10-10:** [H report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_H_2026c.md);
   claims #62–#63, #60 strengthened (evening NREM clock above on both scorings with the entry clock).
+- **Amendment 6 (§14), part W DONE 2026-10-10:** [W report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_W_2026c.md);
+  W1 fails on both scorings (#64), #60 stays (pass2med) → **the behaviour stage is closed; next: the LFP stage**
+  ([2026-10-10-sleep-lfp-stage.md](2026-10-10-sleep-lfp-stage.md)).
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;

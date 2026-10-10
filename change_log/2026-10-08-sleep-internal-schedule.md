@@ -514,3 +514,20 @@ at 305 s for a truth of 300 s; bout metrics); run 9 min. House entry = the first
 - First REM after the first NREM in the house: morning reproduced on both scorings; evening above on the NREM clock on
   both (#60 strengthened).
 
+## Sleep-behaviour explore, Amendment 6 — part W, the long-wake memory term; the behaviour stage closes (2026-10-10)
+
+After the Fable plateau audit ([docs/methods/sleep_plateau_audit_2026-10-10.md](../docs/methods/sleep_plateau_audit_2026-10-10.md):
+GO to the LFP stage after one cheap behaviour term). Plan §14, committed (0ee77a0) before results.
+
+**Code.**
+- `ephys/sleep_sim.py`: `EXTRA_LW` (`--lw`) adds ln(1 + last long wake) and × dark to the NREM rules, and `lw_feature`.
+  The kernel's linear block now loops over the table's columns. Without the switch the output is byte-identical (sha256
+  fingerprint unchanged). The selftest passes with and without it (tables reproduce the fit to 4e-7).
+- `ephys/sleep_perturb.py runW`: run 16 min.
+
+**Results** (#64; #6b, #60 updated):
+- W1 fails on both scorings (−0.016 % / −0.031 %); the night direction is as #6b, but there is no held-out gain.
+- W2: FINAL's evening latency inside with the term, pass2med's still above; morning and Step E unchanged.
+- → #60 goes to the LFP stage. The LFP-stage plan `implementation_plan/2026-10-10-sleep-lfp-stage.md` was written the
+  same day: site proposal → L2(c) the opening field NREM → L1 P vs depth → L2(a) #60, L2(b) theta.
+

@@ -1,0 +1,5 @@
+scores,comparison,subset,n_steps,n_rem,delta_pct,ci_lo_pct,ci_hi_pct,folds_better,folds,animals_better,animals,holds
+final,B+lw+lw_dark vs B,all NREM steps,122735,2544,-0.01615429474192607,-0.1617213553501299,0.09325220419548418,11,15,3,6,False
+final,B+lw vs B,all NREM steps,122735,2544,0.06075248707241743,-0.10745428851963612,0.1965725462607957,8,15,0,6,False
+pass2med,B+lw+lw_dark vs B,all NREM steps,123304,2666,-0.03133213243610887,-0.11286331167015827,0.035383374855621985,11,15,5,6,False
+pass2med,B+lw vs B,all NREM steps,123304,2666,0.011577616434910119,-0.04750083113526688,0.055348421924816614,9,15,2,6,False

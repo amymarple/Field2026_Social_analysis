@@ -1,0 +1,17 @@
+scores,kind,variant,stat,observed,sim_mean,sim_2.5%,sim_97.5%,side,rounds
+final,morning,"conditional, base + LW",Ls'_KM_median_min,15.0,16.749499999999998,13.372916666666667,19.741666666666664,inside,50
+final,morning,"conditional, base + LW",LN'_KM_median_min,11.833333333333334,13.736333333333333,11.39125,16.164583333333333,inside,50
+final,morning,"conditional, base + LW + A",Ls'_KM_median_min,15.0,17.277333333333335,13.987916666666667,20.671666666666663,inside,50
+final,morning,"conditional, base + LW + A",LN'_KM_median_min,11.833333333333334,13.816333333333334,11.038333333333334,16.250416666666663,inside,50
+final,evening,"conditional, base + LW",Ls'_KM_median_min,58.13333333333333,49.181000000000004,22.615833333333335,95.53624999999998,inside,44
+final,evening,"conditional, base + LW",LN'_KM_median_min,22.916666666666668,18.011,13.137916666666667,23.401666666666667,inside,44
+final,evening,"conditional, base + LW + A",Ls'_KM_median_min,58.13333333333333,54.064833333333326,25.37875,121.71999999999993,inside,44
+final,evening,"conditional, base + LW + A",LN'_KM_median_min,22.916666666666668,18.168666666666667,13.173333333333332,23.83416666666667,inside,44
+pass2med,morning,"conditional, base + LW",Ls'_KM_median_min,15.433333333333334,13.208999999999998,10.864166666666666,16.016666666666666,inside,50
+pass2med,morning,"conditional, base + LW",LN'_KM_median_min,11.766666666666667,10.952499999999997,9.216666666666667,12.936666666666666,inside,50
+pass2med,morning,"conditional, base + LW + A",Ls'_KM_median_min,15.433333333333334,13.641333333333332,11.029166666666667,16.597499999999997,inside,50
+pass2med,morning,"conditional, base + LW + A",LN'_KM_median_min,11.766666666666667,10.887,8.9325,12.744583333333333,inside,50
+pass2med,evening,"conditional, base + LW",Ls'_KM_median_min,73.78333333333333,30.004666666666672,14.549583333333334,62.421666666666624,above,44
+pass2med,evening,"conditional, base + LW",LN'_KM_median_min,24.05,13.780166666666664,9.912916666666666,17.335833333333333,above,44
+pass2med,evening,"conditional, base + LW + A",Ls'_KM_median_min,73.78333333333333,33.27683333333333,15.492083333333333,72.03041666666664,above,44
+pass2med,evening,"conditional, base + LW + A",LN'_KM_median_min,24.05,14.202333333333335,10.079166666666666,19.596249999999998,above,44

@@ -61,6 +61,31 @@ PGRID = np.linspace(0.0, np.log1p(1440.0), 3000)
 TGRID = np.linspace(0.0, np.log1p(4 * 86400.0), 3000)
 H19 = False                                   # post hoc: + spline of ln(1 + wall s since the last REM) (Step B H19)
 LIN_N = ["T_day", "has_anchor", "dark", "l_dprev", "prev_rem", "prev_unk", "fW10"]
+EXTRA_LW = False                              # part W: + ln(1 + last wake >= 420 s, carried to the first REM), x dark
+LW_MIN = 420
+
+
+def lin_names() -> list[str]:
+    return LIN_N + (["l_lw", "l_lw_dark"] if EXTRA_LW else [])
+
+
+def lw_feature(recs: list[dict], steps: pd.DataFrame) -> np.ndarray:
+    """Per step: the length (s) of the last WAKE bout >= LW_MIN in the record if no REM has occurred since it ended, else
+    0 (unchanged over unknown runs), taken at the start of the step's NREM bout (sleep_perturb.py part W)."""
+    byrid = {rc["record_id"]: rc for rc in recs}
+    out = np.zeros(len(steps))
+    bs = steps.bout_start.to_numpy()
+    for rid, idx in steps.groupby("record_id").indices.items():
+        lw, at = 0.0, {}
+        for s, a, b in bouts(byrid[rid]["state"]):
+            if s == N:
+                at[a] = lw
+            elif s == W and (b - a) >= LW_MIN:
+                lw = float(b - a)
+            elif s == R:
+                lw = 0.0
+        out[idx] = [at[x] for x in bs[idx]]
+    return out
 
 
 # ------------------------------------------------------------------ fitted rules -> tables
@@ -70,9 +95,13 @@ def fit_nrem(recs: list[dict]):
     from sleep_model import build_data, design, to_arrays, variant_specs
     steps = build_data(recs, {KEY: variant_specs()[KEY]})
     D = to_arrays(steps)
+    if EXTRA_LW:
+        lw = np.log1p(lw_feature(recs, steps))
+        D["l_lw"], D["l_lw_dark"] = lw, lw * D["dark"]
     idx = np.arange(len(D["y"]))
     levels = sorted(set(D["animal"]))
-    spec = {"L1": True, "hist": KEY, **({"extra": ("l_tsince_t",)} if H19 else {})}
+    extras = (("l_tsince_t",) if H19 else ()) + (("l_lw", "l_lw_dark") if EXTRA_LW else ())
+    spec = {"L1": True, "hist": KEY, **({"extra": extras} if extras else {})}
     X, st = design(D, idx, spec, None, levels)
     m = LogisticRegression(C=1e4, max_iter=5000).fit(X, D["y"])
     return m, st, levels, D, X
@@ -148,13 +177,14 @@ def tables_nrem(m, st, levels) -> dict:
         o += spl_t.shape[1]
     harm = C[:, o:o + 4]
     o += 4
-    lin = np.zeros((3, len(LIN_N)))
+    names = lin_names()
+    lin = np.zeros((3, len(names)))
     b = b.copy()
-    for k, v in enumerate(LIN_N):
+    for k, v in enumerate(names):
         beta = C[:, o + k]
         lin[:, k] = beta / st["sd"][v]
         b -= beta * st["mu"][v] / st["sd"][v]
-    o += len(LIN_N)
+    o += len(names)
     an = np.zeros((3, len(levels)))
     an[:, 1:] = C[:, o:o + len(levels) - 1]
     assert o + len(levels) - 1 == C.shape[1]
@@ -239,6 +269,8 @@ def _sim_core():
         cur = 3
         last_rem_end = 0
         eta = np.zeros(3)
+        xl = np.zeros(nlin.shape[1])
+        lwv = 0.0
         while t < L:
             nxt = f_start[fi] if fi < nf else L
             if t >= nxt:                                   # forced block
@@ -252,6 +284,8 @@ def _sim_core():
                         P = 0.0
                     elif tau_w < 1e18:
                         P = P * np.exp(-d / tau_w)
+                    if d >= 420:                           # part W: a forced long wake sets the memory
+                        lwv = np.log1p(d)
                 prev_type = ty
                 prev_len = d
                 t = e
@@ -286,7 +320,16 @@ def _sim_core():
                     sod = (sod0 + ts) % 86400
                     h = sod / 3600.0
                     a1 = 2 * np.pi * h / 24
-                    x_lin = (tday0 + ts / 86400.0, anchor, float(dark[ts]), ldp, prem, punk, fW10)
+                    xl[0] = tday0 + ts / 86400.0
+                    xl[1] = anchor
+                    xl[2] = float(dark[ts])
+                    xl[3] = ldp
+                    xl[4] = prem
+                    xl[5] = punk
+                    xl[6] = fW10
+                    if xl.shape[0] > 7:
+                        xl[7] = lwv
+                        xl[8] = lwv * float(dark[ts])
                     jj = j if j < nfel.shape[0] else nfel.shape[0] - 1
                     lpv = np.log1p(P0 + 10.0 * j / 60.0)
                     ltv = np.log1p(ts - last_rem_end) * anchor
@@ -295,8 +338,8 @@ def _sim_core():
                         if use_t > 0.0:
                             v += lp_interp(nfT[:, c], ltv, TG_STEP)
                         v += nharm[c, 0] * np.sin(a1) + nharm[c, 1] * np.cos(a1) + nharm[c, 2] * np.sin(2 * a1) + nharm[c, 3] * np.cos(2 * a1)
-                        for k in range(7):
-                            v += nlin[c, k] * x_lin[k]
+                        for k in range(xl.shape[0]):
+                            v += nlin[c, k] * xl[k]
                         eta[c] = v
                     if ar_a != 0.0:                        # perturbation arousal (sleep_perturb): NREM -> WAKE only
                         eta[2] += ar_a * np.exp(-ts / ar_tau)
@@ -367,6 +410,7 @@ def _sim_core():
                 else:
                     P = P * np.exp(-r / kappa)
                 anchor = 1.0
+                lwv = 0.0
                 last_rem_end = e
                 prev_type = 5
                 prev_len = r
@@ -620,7 +664,7 @@ def selftest() -> None:
         eta[:, c] = (TN["b"][c] + TN["an"][c, [levN.index(x) for x in D["animal"][idx]]] + TN["fel"][el, c]
                      + np.interp(D[f"lP_{KEY}"][idx], PGRID, TN["fP"][:, c])
                      + TN["harm"][c, 0] * D["sin1"][idx] + TN["harm"][c, 1] * D["cos1"][idx] + TN["harm"][c, 2] * D["sin2"][idx] + TN["harm"][c, 3] * D["cos2"][idx]
-                     + sum(TN["lin"][c, k] * D[v][idx] for k, v in enumerate(LIN_N))
+                     + sum(TN["lin"][c, k] * D[v][idx] for k, v in enumerate(lin_names()))
                      + (np.interp(D["l_tsince_t"][idx], TGRID, TN["fT"][:, c]) if H19 else 0.0))
     p = np.exp(eta - eta.max(1, keepdims=True))
     p /= p.sum(1, keepdims=True)
@@ -667,10 +711,12 @@ def main() -> None:
     ap.add_argument("--reps", type=int, default=100)
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--h19", action="store_true", help="post hoc: add the wall-clock time since REM spline (Step B H19)")
+    ap.add_argument("--lw", action="store_true", help="part W: + the long-wake memory term (selftest / stepE)")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
-    global H19
+    global H19, EXTRA_LW
     H19 = a.h19
+    EXTRA_LW = a.lw
     if a.selftest:
         selftest()
     elif a.cmd == "stepE":

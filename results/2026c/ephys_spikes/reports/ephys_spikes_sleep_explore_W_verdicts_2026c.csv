@@ -1,0 +1,9 @@
+scores,part,pass,numbers
+final,W1,False,"Delta -0.016 % [-0.162, +0.093], 3/6, folds 11/15"
+final,W2 (i) evening L_N' inside,True,"conditional, base + LW: obs 22.9 vs 13.1-23.4 (inside); conditional, base + LW + A: obs 22.9 vs 13.2-23.8 (inside)"
+final,W2 (ii) morning L_N' inside,True,"conditional, base + LW: obs 11.8 vs 11.4-16.2 (inside); conditional, base + LW + A: obs 11.8 vs 11.0-16.3 (inside)"
+final,W2 (iii) Step E checks,True,13/14
+pass2med,W1,False,"Delta -0.031 % [-0.113, +0.035], 5/6, folds 11/15"
+pass2med,W2 (i) evening L_N' inside,False,"conditional, base + LW: obs 24.1 vs 9.9-17.3 (above); conditional, base + LW + A: obs 24.1 vs 10.1-19.6 (above)"
+pass2med,W2 (ii) morning L_N' inside,True,"conditional, base + LW: obs 11.8 vs 9.2-12.9 (inside); conditional, base + LW + A: obs 11.8 vs 8.9-12.7 (inside)"
+pass2med,W2 (iii) Step E checks,True,14/14
