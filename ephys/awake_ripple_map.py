@@ -485,7 +485,19 @@ def pick_items(run: Path, a, rng: np.random.Generator) -> pd.DataFrame:
     return P
 
 
-def render_ripple(it, a, png: Path, cfg: dict) -> None:
+def regress_out(x: np.ndarray, ref: np.ndarray, fit_mask: np.ndarray, fs: float = 1250.0, hp: float = 80.0) -> tuple[np.ndarray, float]:
+    """x minus beta * ref, both high-passed at `hp` Hz, beta fitted by least squares on fit_mask (the candidate's own
+    +-0.25 s are left out, so a local ripple does not enter the fit). Removes the common-mode (EMG) part above hp only,
+    so the sharp wave and theta are untouched."""
+    from scipy import signal
+    sos = signal.butter(3, hp, btype="highpass", fs=fs, output="sos")
+    xh, rh = signal.sosfiltfilt(sos, x), signal.sosfiltfilt(sos, ref)
+    den = float(np.dot(rh[fit_mask], rh[fit_mask]))
+    beta = float(np.dot(xh[fit_mask], rh[fit_mask]) / den) if den > 0 else 0.0
+    return x - beta * rh, beta
+
+
+def render_ripple(it, a, png: Path, cfg: dict, denoise: bool = False) -> None:
     """One blind panel: +-2 s raw stack, +-0.5 s raw and 100-250 Hz, +-2 s spectrogram, theta (the detector's
     theta/delta with its x_theta threshold, + the radiatum 6-10 Hz trace) and the LFP-EMG with its x_emg_lfp threshold
     (the user, 2026-10-10: awake false positives are EMG noise and gamma riding on theta)."""
@@ -519,6 +531,11 @@ def render_ripple(it, a, png: Path, cfg: dict) -> None:
     X = np.asarray(mm[c0c:int((it.peak_s + PAD) * FS), allc], np.float64)
     t_all = (np.arange(X.shape[0]) + c0c) / FS - it.peak_s
     col = {c: X[:, k] for k, c in enumerate(allc)}
+    raw_rc = col[rc].copy()
+    if denoise:                                                        # the user, 2026-10-10: EMG makes awake panels unreadable
+        fit = np.abs(t_all) >= 0.25
+        for c in show[:-1]:
+            col[c], _ = regress_out(col[c], col[nc], fit)
     w2 = (t_all >= -2.0) & (t_all <= 2.0)
     w05 = (t_all >= -0.5) & (t_all <= 0.5)
     uv = 0.195
@@ -536,7 +553,8 @@ def render_ripple(it, a, png: Path, cfg: dict) -> None:
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_yticks([])
     ax.set_xlim(-2, 2)
-    ax.set_title("raw LFP, ± 2 s (same-shank sites top -> bottom, then the noise site)", fontsize=9)
+    ax.set_title(("DENOISED (the noise site's > 80 Hz part regressed out of each CA1 site; noise site itself raw, grey), ± 2 s"
+                  if denoise else "raw LFP, ± 2 s (same-shank sites top -> bottom, then the noise site)"), fontsize=9)
     # (2) raw zoom, (3) ripple band zoom
     xr = col[rc] * uv
     ax = fig.add_subplot(gs[1])
@@ -544,14 +562,18 @@ def render_ripple(it, a, png: Path, cfg: dict) -> None:
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
-    ax.set_title("ripple site, raw, ± 0.5 s", fontsize=9)
+    ax.set_title("ripple site, denoised, ± 0.5 s" if denoise else "ripple site, raw, ± 0.5 s", fontsize=9)
     sos = signal.butter(3, (100, 250), btype="bandpass", fs=FS, output="sos")
     ax = fig.add_subplot(gs[2])
-    ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple")
+    if denoise:
+        ax.plot(t_all[w05], signal.sosfiltfilt(sos, raw_rc * uv)[w05], lw=0.6, color="0.75", label="raw")
+    ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple", label="denoised" if denoise else None)
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
-    ax.set_title("ripple site, 100-250 Hz, ± 0.5 s", fontsize=9)
+    if denoise:
+        ax.legend(fontsize=7, loc="upper left", ncol=2)
+    ax.set_title("ripple site, 100-250 Hz, ± 0.5 s" + (" (grey = before denoising)" if denoise else ""), fontsize=9)
     # (4) spectrogram 20-250 Hz, +-2 s, each frequency relative to its median over the +-6 s context
     ax = fig.add_subplot(gs[3])
     f, t, Sx = signal.spectrogram(xr, fs=FS, window="hann", nperseg=125, noverlap=113, scaling="density")
@@ -600,7 +622,7 @@ def render_ripple(it, a, png: Path, cfg: dict) -> None:
 
 
 def rerender(a):
-    """Re-draw the same blind items (same key, same ids) with the current panel layout."""
+    """Re-draw the same blind items (same key, same ids) with the current panel layout (--denoise: the EMG-regressed version)."""
     import yaml
     from joblib import Parallel, delayed
     man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
@@ -609,8 +631,9 @@ def rerender(a):
     out = Path(a.review_out) if a.review_out else run / "review"
     (out / "img").mkdir(parents=True, exist_ok=True)
     cfg = yaml.safe_load(open(HERE / "configs/swr_channels_2026c.yaml"))
-    Parallel(n_jobs=a.workers, backend="loky")(delayed(render_ripple)(it, a, out / "img" / f"{it.rid}.png", cfg) for it in P.itertuples())
-    print(f"re-rendered {len(P)} items -> {out / 'img'}")
+    Parallel(n_jobs=a.workers, backend="loky")(delayed(render_ripple)(it, a, out / "img" / f"{it.rid}.png", cfg, a.denoise)
+                                                for it in P.itertuples())
+    print(f"re-rendered {len(P)} items -> {out / 'img'} (denoise={a.denoise})")
 
 
 def review(a):
@@ -660,6 +683,7 @@ def main():
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--run", default=None)
     ap.add_argument("--review-out", default=None, help="review: folder for the panels (default <run>/review)")
+    ap.add_argument("--denoise", action="store_true", help="rerender: regress the noise site's > 80 Hz part out of the CA1 sites")
     ap.add_argument("--lfp-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/lfp")
     ap.add_argument("--night-run", default=None, help="night_sleep_wiser run (zones_smoothed_*.csv.gz); default from its manifest")
     ap.add_argument("--swr-root", default=SWR_ROOT)

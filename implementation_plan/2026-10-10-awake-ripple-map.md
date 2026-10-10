@@ -312,6 +312,61 @@ large, and the 1-D curve is fine). Option 3 is not done.
   - the house stratum the same for ring 0;
   - a stratum below that is dropped or restricted (a RipMax_z cut chosen here, confirmed on a second sample).
 
+## Amendment 4 — after reader HC's answers, 2026-10-10 (before the second reader is merged; before any map)
+
+**What reader HC said** (the user, 2026-10-10):
+- "Unsure" was mostly EMG: the panels cannot be judged without denoising.
+- "Not a ripple" was almost always theta at that moment.
+
+**Preliminary precision, HC only** (`ephys/configs/awake_ripple_review_2026c/reader_HC_2026-10-10.csv`):
+
+| set | ripple / not / unsure | precision |
+|---|---|---:|
+| NREM | 30 / 0 / 0 | 1.00 |
+| aSWR house | 36 / 2 / 2 | 0.95 |
+| aSWR field | 24 / 6 / 10 | 0.80 |
+
+Both strata pass the 0.7 gate. Final only after the second reader (the user's mentor, scoring the same page).
+
+**Denoised reader (a second page, the same 140 items and key).**
+- `awake_ripple_map.py rerender --denoise`. For each CA1 site $x$ and the cortical noise site $r$, both high-passed at 80 Hz:
+  $x' = x - \hat\beta\, r_{hp}$, with $\hat\beta = \sum x_{hp} r_{hp} / \sum r_{hp}^2$ fitted on $|t| \ge 0.25$ s only (the
+  candidate never enters the fit). Below 80 Hz nothing changes, so the sharp wave and theta are kept.
+- Effect (`review_denoise_effect.csv`, ratio of 100–250 Hz RMS after / before, over 0.25–2 s from the candidate):
+  - field items 0.59–0.75 by call, NREM 0.96, overall median 0.81;
+  - candidate-to-background contrast in the field rises from 1.1–1.4 to 1.4–1.9.
+- Page: https://claude.ai/artifact/UEwwMBv697HCny8mRhYZnz (private; answers in its db `reads/<id>`). The first page
+  (https://claude.ai/artifact/WMxCByZiKjfcxA5ZxLugpK) stays unchanged while the second reader scores.
+- **Use.** A reader may read both pages. The denoised reading is a second, separate reading: it changes the unsure share,
+  and so the precision, and is reported as its own row, never merged into the raw reading.
+
+**Theta context (exploratory, chosen on these same items: hypothesis only).**
+- HC's ripple vs not-a-ripple calls on aSWR, separated by the ripple-site theta/delta (`swr_emg.theta_delta_log`, relative
+  to the session x_theta threshold):
+
+  | window | AUC |
+  |---|---:|
+  | mean over ± 0.5 s (≈ the detector's window) | 0.57 |
+  | mean over ± 2 s | 0.74 |
+  | max over ± 2 s | 0.74 |
+
+  So the "not" calls sit in a theta context wider than the detector looks at.
+- Pass rates on HC's calls (`review_theta_features_HC.csv`): requiring the ± 2 s mean ≤ threshold − 2 log units raises
+  the field precision from 0.80 to 0.94 but keeps only 23 / 40 field items (house 25 / 40, 0.96). The cut values were seen
+  on these data, so they are not used as fitted.
+- **Pre-registered sensitivity (fixed now, before any map):** *theta-quiet aSWR* = an aSWR whose ripple-site theta/delta,
+  averaged over ± 2 s, is at or below the session's **NREM median** of the same ± 2 s average. The NREM median is a level
+  chosen from NREM physiology, not from these calls.
+- **How the maps use it.** Every map and 1-D profile is computed for aSWR (primary) and for theta-quiet aSWR. A place
+  difference is reported only where both agree. It is checked against the second reader and the denoised reading
+  (precision with and without the rule); if it fails there, it stays a sensitivity and nothing else changes.
+
+**Still open from HC's reading.**
+- **House "random quiet moments".** 13 / 28 house negatives were called ripple. These are possible detector misses at home.
+  - If the second reader agrees, the house rate is a lower bound, which favours house > field only conservatively.
+  - The field would also need checking for misses: 30 field random moments in a second sample.
+- **SF09 field: 1 / 3 / 4.** Report SF09's field rows separately; drop them if the second reader agrees.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
