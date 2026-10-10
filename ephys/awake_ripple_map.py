@@ -655,6 +655,8 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
         ax.plot(t_all[w2], y / sc / 1.8 - 1.2 * k, lw=0.55, color="tab:red" if c == rc else ("tab:gray" if k == len(show) - 1 else "k"))
         ax.text(-2.0, -1.2 * k + 0.35, lab, fontsize=8)
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    if getattr(a, "mark_ms", 0):
+        ax.axvspan(-a.mark_ms / 1000, a.mark_ms / 1000, color="tab:blue", alpha=0.10, lw=0)
     ax.set_yticks([])
     ax.set_xlim(-2, 2)
     ax.set_title({"regress": "DENOISED (the noise site's > 80 Hz part regressed out of each CA1 site; noise site itself raw, grey), ± 2 s",
@@ -666,6 +668,8 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
     ax = fig.add_subplot(gs[1])
     ax.plot(t_all[w05], xr[w05] - np.median(xr[w05]), lw=0.7, color="tab:red")
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    if getattr(a, "mark_ms", 0):
+        ax.axvspan(-a.mark_ms / 1000, a.mark_ms / 1000, color="tab:blue", alpha=0.10, lw=0)
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
     ax.set_title("ripple site, denoised, ± 0.5 s" if cleaned else "ripple site, raw, ± 0.5 s", fontsize=9)
@@ -675,6 +679,8 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
         ax.plot(t_all[w05], signal.sosfiltfilt(sos, raw_rc * uv)[w05], lw=0.6, color="0.75", label="raw")
     ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple", label="denoised" if cleaned else None)
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    if getattr(a, "mark_ms", 0):
+        ax.axvspan(-a.mark_ms / 1000, a.mark_ms / 1000, color="tab:blue", alpha=0.10, lw=0)
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
     if cleaned:
@@ -736,7 +742,7 @@ def rerender(a):
     from joblib import Parallel, delayed
     man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
     run = Path(a.run or man["run_dir"])
-    P = pd.read_csv(run / "review_key_SEALED.csv")
+    P = pd.read_csv(a.key if getattr(a, "key", None) else run / "review_key_SEALED.csv")
     out = Path(a.review_out) if a.review_out else run / "review"
     (out / "img").mkdir(parents=True, exist_ok=True)
     cfg = yaml.safe_load(open(HERE / "configs/swr_channels_2026c.yaml"))
@@ -800,6 +806,8 @@ def main():
     ap.add_argument("--ica-dir", default=None, help="emgica / rerender --denoise ica: folder of the cleaned windows (default <run>/emg_ica)")
     ap.add_argument("--ica-half-s", type=float, default=450.0, help="emgica: half length of the chunk cleaned around each item (s)")
     ap.add_argument("--ica-lower-hz", type=float, default=30.0, help="emgica: EMG removed above this frequency (Chen 2023: 20-30 Hz)")
+    ap.add_argument("--key", default=None, help="rerender: the item key (default <run>/review_key_SEALED.csv)")
+    ap.add_argument("--mark-ms", type=float, default=0.0, help="rerender: shade +-this many ms around the line in panels 1-3")
     ap.add_argument("--ica-seeds", type=int, nargs="+", default=[0],
                     help="emgica: FastICA seeds; with --ica-own-shank-only an item counts as cleaned when the toolbox's rule holds "
                          "for a majority of them")

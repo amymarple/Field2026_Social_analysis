@@ -581,6 +581,49 @@ Exported to `ephys/configs/awake_ripple_review_2026c/reader_HC_emgica_v2_2026-10
 - Add MUA as the objective co-criterion.
 - Wait for the second reader (raw page) before the gate is final.
 - Ask the readers what a "ripple" at a random moment referred to (at the line, or near it).
+- Checked: only 4 / 30 random moments have any detector candidate (even an excluded one) within 0.5 s. So the "ripple"
+  calls at random moments are not explained by excluded candidates.
+
+## Amendment 5 — a strict blind re-read by HC (the user offered, 2026-10-10; fixed before the page is built)
+
+**Items.**
+- The 111 cleaned items (EMG-ICA v2), re-rendered with **new ids (T###)** and a **new random order**. No old id appears in
+  any panel.
+- Plus **30 fresh random quiet moments**: the same draw rule (a non-locomotor, detectable wake second with no kept event
+  within [−2, +3) s), a new seed, ≥ 10 s from every old item. Only those the EMG-ICA v2 rule cleans (≥ 2 of 3 seeds),
+  drawn until 30.
+- Panels are as on the cleaned page, plus a light band marking ± 50 ms around the line in panels 1–3.
+
+**Rule shown to the reader.** "Ripple" only when all of these hold:
+1. a burst of ≥ 3 cycles at 100–250 Hz centred within ± 50 ms of the line (panel 3);
+2. clearly larger than every other burst in the ± 0.5 s view;
+3. on the ripple site and its neighbours, not on the grey noise site;
+4. not part of a train repeating with theta.
+
+Otherwise "not a ripple"; "unsure" only when the panel is unreadable.
+
+**Analysis (fixed now).**
+- Per set, the strict call rate $p_s$ (ripple / all answered; unsure counted as not).
+- **Sensitivity anchor** $s$ = $p$ on the NREM SWRs. **False-call anchor** $\alpha$ = $p$ on the random moments: fresh
+  and old pooled; fresh alone as a check.
+- Estimated true-ripple share of a set: $\hat\pi = (p - \alpha) / (s - \alpha)$, clipped to [0, 1], with a bootstrap
+  over items.
+- Reported for aSWR field and aSWR house.
+- **The gate becomes:** $\hat\pi \ge 0.7$ in each stratum and $s - \alpha \ge 0.4$, i.e. the reading discriminates. If
+  $s - \alpha < 0.4$, the human reading cannot gate and the decision falls to the MUA co-criterion (detected events vs
+  random moments, pre-registered as the burst share at ≥ 2).
+- Also reported:
+  - strict vs the earlier cleaned reading per item;
+  - the MUA ratio by strict call;
+  - the 29 non-cleanable items (raw page only) and SF09, separately.
+
+**Built (2026-10-10).**
+- 141 panels: the 111 cleaned items plus 30 fresh random moments. The fresh ones are the first 30 of 60 draws that the
+  rule cleaned (46 / 60 were cleaned; none from SF09).
+- By set: field 30, house 32, NREM 24, random old 25, random fresh 30.
+- Key `strict/review_key_strict_SEALED.csv` (T### → source item); windows in `strict/emg_ica/`; the draw scripts sit in
+  `strict/`.
+- Page https://claude.ai/artifact/ERbLn5wQSmZX4M2JB361jT (private; answers at `reads/<id>`).
 
 ## Output
 
