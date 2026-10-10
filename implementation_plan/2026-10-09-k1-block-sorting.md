@@ -36,6 +36,15 @@ Kilosort4.
      (`initialize/optimizePeaks.m`), which are the handling minutes. The lab's sessions also start right after
      plugging in.
    - The pilot sorts were made with the 20-min trim; the whole-vs-part comparison does not depend on it.
+   - The sleep session's answer (2026-10-10):
+     - The sleep pipeline uses no sorted units, so this choice changes no sleep result.
+     - Its recovery windows run from the post-round record start: 0–1 h, 1–3 h, 0–6 h, until the first NREM / REM,
+       and 1 or 3 h of payback (`ephys/sleep_stability.py`, `sleep_perturb.py`, `sleep_explore_d.py`). It also uses
+       the 3 h before a round.
+     - Record Start is pressed 3–17 min before the rat is back in the house, so the first minutes of a block are still
+       the round. Their recovery clock may move to the WISER house re-entry; `handling_until` should then follow it.
+     - Units tracked across a round are not needed now, only for future neural recovery work (cross-block matching).
+       Never across a probe move.
 5. **Cut contact-failure periods** out of blocks, and disconnect failing shanks per block (`connected = 0`). See
    "Per-block exclusions".
 6. **Copy to the server's local `/workdir`** before sorting (user: OK). Blocks are built there.
