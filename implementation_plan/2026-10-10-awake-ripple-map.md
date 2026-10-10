@@ -541,6 +541,47 @@ separate reading; never merged with the raw or regression pages.
 - SF09's field items are judged on the raw page only. SF09 needs a verified within-shank order before this method can
   clean it.
 
+### Addendum 4d — reader HC on the cleaned page (2026-10-10; 111 / 111 answered; the user: "the removal works quite well")
+
+Exported to `ephys/configs/awake_ripple_review_2026c/reader_HC_emgica_v2_2026-10-10.{json,csv}`.
+
+**Calls, ripple / not / unsure (precision):**
+
+| set | raw page, all 140 | raw page, the 111 shown | cleaned page, 111 |
+|---|---|---|---|
+| NREM SWR | 30/0/0 (1.00) | 24/0/0 (1.00) | 23/1/0 (0.96) |
+| aSWR field | 24/6/10 (0.80) | 23/2/5 (0.92) | 30/0/0 (1.00) |
+| aSWR house | 36/2/2 (0.95) | 31/1/0 (0.97) | 31/1/0 (0.97) |
+| random quiet moment | 13/8/9 (0.62) | 12/5/8 | 18/7/0 |
+
+- **Unsure resolved.** All 13 unsure became decided: 9 ripple, 4 not. Raw → cleaned changes on the 111: 87 ripple kept,
+  6 not → ripple, 3 ripple → not.
+- **Selection.** The 29 items not shown (21 SF09) held most of the field "not" / "unsure" calls: 1/4/5 of the 10 field
+  items left out. So the field 1.00 covers SF07, SF08, SF10 and SF12 only, not the field as a whole.
+- **Specificity problem.** On the cleaned page HC called **18 / 25 random quiet moments "ripple"** (12 / 25 on the raw
+  page). These are moments with no detected event within ± 2 s. They lack the evidence that the detected events carry:
+
+  | | median raw MUA, pyramidal ratio | share with a burst ≥ 2 | ripple-band contrast at the line |
+  |---|---:|---:|---:|
+  | random moments called "ripple" | 1.06 | 28 % | 0.89 |
+  | detected events called ripple | 2.4–3.2 | 52–68 % (NREM 52 %) | 1.9–2.3 |
+
+  So the cleaned panels (or the reading habit) make a ripple call likely wherever there is ripple-band activity. The
+  reader's "ripple" is not specific there, and precision on the detected events is inflated by it.
+- **Reading.**
+  - The pre-registered gate (precision ≥ 0.7) passes on both pages.
+  - But the cleaned-page precision is not evidence by itself, because the negatives are also called "ripple" 72 % of the
+    time.
+  - The independent support is the MUA: detected awake events carry a spike burst as often as NREM SWRs (field 60 %,
+    house 68 %, NREM 52 %); random moments do not (14–28 %).
+
+**Proposal (not adopted; the user decides).**
+- Use the reader together with the negatives: report the call rate at detected events against the call rate at random
+  moments, a likelihood ratio, rather than precision alone.
+- Add MUA as the objective co-criterion.
+- Wait for the second reader (raw page) before the gate is final.
+- Ask the readers what a "ripple" at a random moment referred to (at the line, or near it).
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
