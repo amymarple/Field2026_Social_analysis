@@ -220,7 +220,12 @@ Hotspots are interpreted only after the paddock resources are on the map.
 **Addendum — the field record (recording-inquiry, 2026-10-10).**
 - **Food and water:** no cohort-3 record gives feeder or water positions, how food was given, or refill times. Only the
   cohort-2 reset plan names "feeders, water stations". The two water towers are outside the paddock.
-  - This is a records gap. The positions are asked from the user before any hotspot is read.
+  - **The user, 2026-10-10: the food was in the houses.** So the house bins are home, food site and huddle at once. The
+    T3 house-vs-field comparison cannot separate home from food. It is read as "at the home / feeding site", not as
+    "home" or "reward" alone.
+  - Water: not stated yet.
+- **Landmarks:** pole, wall and house positions come from the "Camera_motion_calibration" session (the user's referral),
+  as reference marks only.
 - **Handling masks to add:**
   - the **09-01 ≈ 00:34 midnight round** (all six stopped / restarted; a catch is likely). It is missing from
     `cv/configs/cohort3_handling_windows.json` and `cohort3_lid_events.json`; mask ± 30 min.
