@@ -603,13 +603,22 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
         fit = np.abs(t_all) >= 0.25
         for c in show[:-1]:
             col[c], _ = regress_out(col[c], col[nc], fit)
-    elif denoise == "ica":                                             # Chen 2023 EMG_removing (ephys/emg_ica.py), all sites
+    ica_note = ""
+    cleaned = denoise == "regress"
+    if denoise == "ica":                                               # Chen 2023 EMG_removing (ephys/emg_ica.py)
         z = np.load(Path(a.ica_dir) / f"{it.rid}.npz")
         assert int(z["w0"]) == c0c and z["X"].shape[0] == X.shape[0], f"{it.rid}: ICA window mismatch"
+        info = json.loads((Path(a.ica_dir) / f"{it.rid}.json").read_text())["shanks"]
+        own = next(si for si, (_, g) in enumerate(sh) if any(c == rc for c, _ in g))
+        cleaned = bool(info[own].get("removed", False))
         zc = list(z["cols"])
         for c in allc:
-            if c in zc:
+            if c in zc and c != nc:                                    # the noise site stays raw: the reference (the user, 10-10)
                 col[c] = z["X"][:, zc.index(c)].astype(np.float64)
+        ica_note = (f"EMG-ICA: the flat (muscle) component removed above 30 Hz on this shank (flatness {info[own]['flat_max']:.0f}); "
+                    "noise site RAW (grey) = the reference, ± 2 s" if cleaned else
+                    "EMG-ICA: NOT CLEANED on this shank (no single flat component found, toolbox criteria not met) - "
+                    "all traces RAW, ± 2 s")
     w2 = (t_all >= -2.0) & (t_all <= 2.0)
     w05 = (t_all >= -0.5) & (t_all <= 0.5)
     uv = 0.195
@@ -628,8 +637,9 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
     ax.set_yticks([])
     ax.set_xlim(-2, 2)
     ax.set_title({"regress": "DENOISED (the noise site's > 80 Hz part regressed out of each CA1 site; noise site itself raw, grey), ± 2 s",
-                  "ica": "EMG-ICA DENOISED (per shank, the flat ICA component removed above 30 Hz, all sites incl. the noise site), ± 2 s"}
-                 .get(denoise, "raw LFP, ± 2 s (same-shank sites top -> bottom, then the noise site)"), fontsize=9)
+                  "ica": ica_note}
+                 .get(denoise, "raw LFP, ± 2 s (same-shank sites top -> bottom, then the noise site)"), fontsize=9,
+                 color="tab:red" if (denoise == "ica" and not cleaned) else "k")
     # (2) raw zoom, (3) ripple band zoom
     xr = col[rc] * uv
     ax = fig.add_subplot(gs[1])
@@ -637,18 +647,18 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
-    ax.set_title("ripple site, denoised, ± 0.5 s" if denoise != "none" else "ripple site, raw, ± 0.5 s", fontsize=9)
+    ax.set_title("ripple site, denoised, ± 0.5 s" if cleaned else "ripple site, raw, ± 0.5 s", fontsize=9)
     sos = signal.butter(3, (100, 250), btype="bandpass", fs=FS, output="sos")
     ax = fig.add_subplot(gs[2])
-    if denoise != "none":
+    if cleaned:
         ax.plot(t_all[w05], signal.sosfiltfilt(sos, raw_rc * uv)[w05], lw=0.6, color="0.75", label="raw")
-    ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple", label="denoised" if denoise != "none" else None)
+    ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple", label="denoised" if cleaned else None)
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
-    if denoise != "none":
+    if cleaned:
         ax.legend(fontsize=7, loc="upper left", ncol=2)
-    ax.set_title("ripple site, 100-250 Hz, ± 0.5 s" + (" (grey = before denoising)" if denoise != "none" else ""), fontsize=9)
+    ax.set_title("ripple site, 100-250 Hz, ± 0.5 s" + (" (grey = before denoising)" if cleaned else ""), fontsize=9)
     # (4) spectrogram 20-250 Hz, +-2 s, each frequency relative to its median over the +-6 s context
     ax = fig.add_subplot(gs[3])
     f, t, Sx = signal.spectrogram(xr, fs=FS, window="hann", nperseg=125, noverlap=113, scaling="density")
