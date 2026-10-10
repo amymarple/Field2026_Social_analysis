@@ -79,6 +79,13 @@ KS1_TEXT_PATCHES = [
      "    if any(kcoords==j), aUgroups(j, :) = mean(aU(kcoords==j,:), 1); end  % field2026 patch: empty (all-dead) "
      "group gave NaN and disabled the shank confinement",
      "zeroOutKcoords: empty channel groups contribute 0, not NaN"),
+    # Template seeding (user, 2026-10-10). optimizePeaks walks uproj in time order and stops at 1e4 prototypes, so the
+    # initial templates come from roughly the first 5-15 min of a block (just after release). The peaks are shuffled
+    # once under fitTemplates' own rng(1), so the seeds come from the whole block. Still deterministic up to K1's GPU
+    # non-determinism.
+    ("fitTemplates.m", "WUinit = optimizePeaks(ops,uproj);",
+     "uproj = uproj(randperm(size(uproj,1)), :); WUinit = optimizePeaks(ops,uproj);  % field2026 patch: seed from the whole block",
+     "fitTemplates: seeding peaks shuffled (whole block, not the first minutes)"),
 ]
 GROW_HELPER = """function [st3, rez] = field2026_grow(st3, rez, irun, nNew, ops)
 % field2026 patch for fullMPMU.m (Field2026_Social_analysis, ephys/run_k1_block.py): make room for nNew more spikes
@@ -194,6 +201,7 @@ def selftest() -> None:
         s = (dst / "fullMPMU.m").read_text(encoding="utf-8")
         assert s.count("field2026 patch") == 5 and "cat(1, st3, STT)" not in s, "fullMPMU.m patch incomplete"
         assert "field2026 patch" in (dst / "mainLoop" / "zeroOutKcoords.m").read_text(encoding="utf-8"), "zeroOutKcoords patch missing"
+        assert "field2026 patch" in (dst / "fitTemplates.m").read_text(encoding="utf-8"), "fitTemplates seeding patch missing"
         assert (dst / "mainLoop" / "field2026_grow.m").exists()
         print(f"selftest: {len(applied)} patch items applied to a copy of {proot / 'sorter' / 'KiloSort1'}")
     cfg = k1_config(proot, whitening_range=64, keep_matlab_files=False)
@@ -327,8 +335,22 @@ def main() -> None:
             exclude_channels_0based=bad if p is not None else None, remove_existing_folder=True)
         st = np.load(folder / "spike_times.npy").ravel()
         cl = np.load(folder / "spike_clusters.npy").ravel()
+        # QC: templates with < 80 % of their energy on the peak shank. With criterionNoiseChannels 1e-5 this is the one
+        # template K1 leaves unconfined; it collects common-mode noise and can absorb real units (pilot audit 10-10).
+        cross = {}
+        try:
+            tm = np.load(folder / "templates.npy"); sh = np.load(folder / "channel_shanks.npy").ravel()
+            stt = np.load(folder / "spike_templates.npy").ravel()
+            if sh.size == tm.shape[2]:
+                e = (tm ** 2).sum(axis=1); pk = e.argmax(axis=1)
+                share = np.array([e[i, sh == sh[pk[i]]].sum() / max(e[i].sum(), 1e-12) for i in range(len(tm))])
+                nsp = np.bincount(stt, minlength=len(tm))
+                cross = {"cross_shank_templates_used": int(((share < 0.8) & (nsp > 0)).sum()),
+                         "cross_shank_spike_share": float(nsp[share < 0.8].sum() / max(stt.size, 1))}
+        except Exception as exc:   # QC must not fail the sort
+            cross = {"cross_shank_qc_error": str(exc)}
         results.append({"folder": str(folder), "elapsed_s": round(time.time() - t1, 1), "spikes": int(st.size),
-                        "clusters": int(np.unique(cl).size)})
+                        "clusters": int(np.unique(cl).size), **cross})
         print(f"[k1] {folder.name}: {st.size} spikes, {np.unique(cl).size} clusters, {time.time() - t1:.0f} s")
     n_samples = dat.stat().st_size // 2 // int(probe.get("n_channels", 64))
     write_json(out / "k1_run.json", {

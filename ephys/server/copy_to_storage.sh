@@ -25,6 +25,10 @@
 #                                                                                  (ephys/delta_auto.py: deltaWaves.events.mat,
 #                                                                                  csv, DEL.evt, summary, mua_nrem.npz)
 #          $LOGS/delta*.log                           -> $DST/delta/logs/
+#   sort_k1  $SRC/sort_k1/                          -> $DST/sort_k1/                Kilosort1 per block (ephys/run_k1_block.py):
+#                                                                                  <SFxx>/<block>/ chanMap, XML, k1_run.json,
+#                                                                                  kilosort1/ (Phy); never any .dat
+#          $LOGS/k1_*.log                             -> $DST/sort_k1/logs/
 #
 # Verification per part (written to $DST/<part>/VERIFY.txt; PASS only if all hold):
 #   V1 the destination holds exactly the expected relative paths, with identical byte sizes;
@@ -70,9 +74,10 @@ units() {        # one line per copy unit: <source dir>|<destination dir relativ
     swr)   echo "$SRC/swr||-" ;;
     emg_from_lfp) echo "$SRC/emg_from_lfp||-" ;;
     delta) echo "$SRC/delta||-" ;;
+    sort_k1) echo "$SRC/sort_k1||*.dat" ;;
   esac
 }
-log_glob() { case $1 in lfp) echo "make_lfp*.log" ;; sleep) echo "score_sleep*.log" ;; audio_levels) echo "audio_levels*.log" ;; swr) echo "swr*.log" ;; emg_from_lfp) echo "emg_from_lfp*.log" ;; delta) echo "delta*.log" ;; esac; }
+log_glob() { case $1 in lfp) echo "make_lfp*.log" ;; sleep) echo "score_sleep*.log" ;; audio_levels) echo "audio_levels*.log" ;; swr) echo "swr*.log" ;; emg_from_lfp) echo "emg_from_lfp*.log" ;; delta) echo "delta*.log" ;; sort_k1) echo "k1_*.log" ;; esac; }
 
 list_src() {     # expected destination-relative paths + sizes, sorted
   local part=$1 src rel ex
@@ -97,6 +102,7 @@ ls "$DST" > /dev/null || { say "storage not reachable: $DST"; exit 1; }
 say "start  commit $COMMIT  jobs $JOBS  parts: $PARTS"
 df -h "$SRC" "$DST" | sed 's/^/    /'
 for part in $PARTS; do
+  if [ -z "$(units "$part")" ]; then say "$part: unknown part - refusing (known: lfp sleep audio_levels swr emg_from_lfp delta sort_k1)"; ok_all=0; continue; fi
   D="$DST/$part"
   if [ -d "$D" ] && [ ! -e "$D/$MARK" ]; then
     if [ -e "$D/VERIFY.txt" ] && grep -q '^RESULT PASS' "$D/VERIFY.txt"; then

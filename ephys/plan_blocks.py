@@ -66,6 +66,10 @@ LFP_STEPS = {   # LFP-found regime steps without a probe advance (SWR session, c
 }
 TIER_FROM = {"SF11": ("2026-09-02 19:08:52", 2), "SF12": ("2026-09-08 07:26:00", 3)}
 DEEPER = {"SF10": ("2026-09-10 21:00:00", "2026-09-11 19:23:00")}
+# Recordings kept although they come before the group's first long recording (documented exceptions).
+LEAD_KEEP = {("SF07", "2_20260907_085247.979"):
+             "weak-cell recording in the field (WISER: tag in house_2 08:50-09:05); the cell was changed ~09:08-09:15, "
+             "and the next long recording starts 09:15:12; user 2026-10-10: keep battery-end small files"}
 SHANK_FLAGS = {"SF12_shank1_degraded": [0], "SF12_contact_failing": [0, 3]}   # 0-based group index in the XML order
 
 
@@ -122,6 +126,7 @@ def main() -> None:
             k = next((i for i, r in enumerate(b) if r.duration_s >= LONG_S), None)
             if k is None:
                 dropped_lead.extend(b); continue
+            k = next((i for i, r in enumerate(b[:k]) if (animal, r.session) in LEAD_KEEP), k)
             dropped_lead.extend(b[:k]); trimmed_blocks.append(b[k:])
         blocks = trimmed_blocks
         for r in dropped_lead:
