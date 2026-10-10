@@ -1055,6 +1055,390 @@ def runL(a) -> None:
     print("written", rd / "ephys_spikes_sleep_explore_L_2026c.md", flush=True)
 
 
+# ------------------------------------------------------------------ part H: the house-entry clock (plan §13, Amendment 5)
+DOC_H = r"""Part H of the sleep-behaviour explore (plan §13, Amendment 5, written before results): a post-round recording starts at
+the rat's release into the paddock (field operator, 2026-10-10); the rat walks into its house on its own minutes later.
+Part H anchors a second clock at the WISER house entry and asks what the ~2 min of NREM that opens half the records is.
+
+Usage:  python ephys/sleep_perturb.py runH [--scorings final pass2med] [--reps 100] [--workers 8]
+
+Definitions (rounds, records, scorings, bases as parts S / P / L; s = seconds since the post-round record start):
+  house entry t_H   start of the first WISER house visit overlapping [t0, t0 + 60 min): default tracks (V3 / B2; fixes
+                    flagged m_silence / m_off_animal / m_tag_validity dropped, m_handling kept), houses re-centred on the
+                    cohort-3 rest clusters (house_1 (417.7, 716.9), house_2 (621.2, 732.6), the wiser_rois.json rectangles
+                    moved), semimarkov_decisions.hysteretic_visits (14-in buffer, 5-s bins, enter 10 s, exit 30 s);
+                    t_H = max(visit start - t0, 0) (a visit already running at t0 gives 0, flagged). No visit or no fixes
+                    -> no anchor.
+  H1   S's held-out perturbation-blind steps (pb_rem, pb_wake), anchored rounds, s < 3 h: "field, before entry" (s < t_H),
+       "after entry 0-1 h", "after entry 1-3 h" (entry clock s - t_H); O/E = sum [y = k] / sum p_k, block-bootstrap CI.
+  H2   post-entry steps (t_H <= s < 3 h): part P's one-phase arousal with the release clock s vs the entry clock s - t_H,
+       base = B-full trained without the post-round 3 h, cross-fitted by date parity; Delta held-out log-loss % (entry -
+       release), block-bootstrap CI. "Follows the entry" = CI < 0 on both scorings; "follows release" = CI > 0 on both.
+  H3   t_N' = the first NREM bout start at or after t_H; conditional simulation with every observed bout before t_N'
+       forced (part P's generative base, without and with A on the release clock); L_s' = t_R - t_N' and L_N' (NREM
+       clock), KM medians, observed vs 100 replicates, morning / evening; reproduced = inside the 95 % range. Also the
+       observed t_H and t_N' - t_H (KM medians).
+  H4   records whose first bout is NREM: over the opening bout, head IMU (imu_seconds_cache; of the usable seconds: share
+       still, share locomoting, mean VeDBA_1s) and WISER (share of seconds in a house, maximum displacement from the first
+       position, inches) vs (a) matched NREM bouts of the same animal (length within +-50 %, in a house = >= 50 % of the
+       bout's positioned seconds in a house, not in the 3 h after a round) and (b) field WAKE bouts >= 60 s. Rule:
+       "scorer-edge artefact likely" = still share >= 0.2 lower AND VeDBA >= 1.5x the matched NREM (medians); "settling"
+       = still share within 0.1; otherwise unresolved.
+"""
+HOUSES_C3 = {"house_1": (417.7, 716.9), "house_2": (621.2, 732.6)}
+ENTRY_WIN_S = 3600
+
+
+def _wiser_src() -> None:
+    p = str(Path(__file__).resolve().parents[1] / "wiser" / "src")
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+
+class _Houses:
+    def active_rois(self, night):
+        return ["house_1", "house_2"]
+
+    def resource_type(self, r):
+        return "refuge"
+
+
+def house_rois() -> list[dict]:
+    import json
+    rois = json.loads((Path(__file__).resolve().parents[1] / "wiser/configs/wiser_rois.json").read_text(encoding="utf-8"))
+    H = [dict(r) for r in rois["rois"] if r["name"] in ("house_1", "house_2")]
+    for r in H:
+        r["x"], r["y"] = HOUSES_C3[r["name"]]
+    return H
+
+
+def fixes_for(an: str) -> pd.DataFrame:
+    _wiser_src()
+    from default_tracks import list_default_tracks, load_default_track
+    idx = list_default_tracks("2026c")
+    labs = [l for l in idx.label.unique() if l == an or str(l).startswith(an + "_")]
+    parts = []
+    for lab in labs:
+        for d in idx[idx.label == lab].date:
+            df = load_default_track(lab, d)
+            bad = np.zeros(len(df), bool)
+            for c in ("m_silence", "m_off_animal", "m_tag_validity"):
+                if c in df:
+                    bad |= df[c].fillna(0).astype(bool).to_numpy()
+            df = df[~bad]
+            parts.append(pd.DataFrame({"datetime": pd.to_datetime(df.t_ms, unit="ms", utc=True).dt.tz_convert("America/New_York").dt.tz_localize(None),
+                                       "x": df.x.to_numpy(), "y": df.y.to_numpy(), "shortid": an}))
+    if not parts:
+        return pd.DataFrame(columns=["datetime", "x", "y", "shortid"])
+    return pd.concat(parts, ignore_index=True).sort_values("datetime").drop_duplicates("datetime").reset_index(drop=True)
+
+
+def house_entry(F: pd.DataFrame, t0: pd.Timestamp, H: list[dict]) -> tuple[float | None, bool]:
+    _wiser_src()
+    from semimarkov_decisions import hysteretic_visits
+    g = F[(F.datetime >= t0 - pd.Timedelta(seconds=60)) & (F.datetime < t0 + pd.Timedelta(seconds=ENTRY_WIN_S + 120))]
+    if len(g) < 20:
+        return None, False
+    v = hysteretic_visits(g.assign(night="w"), {"rois": H}, _Houses(), buffer_in=14.0, bin_s=5.0, enter_s=10.0, exit_s=30.0)
+    if not len(v):
+        return None, False
+    v = v.assign(t_start=pd.to_datetime(v.t_start), t_end=pd.to_datetime(v.t_end)).sort_values("t_start")
+    v = v[(v.t_end > t0) & (v.t_start < t0 + pd.Timedelta(seconds=ENTRY_WIN_S))]
+    if not len(v):
+        return None, False
+    ts = v.t_start.iloc[0]
+    return max((ts - t0).total_seconds(), 0.0), bool(ts < t0)
+
+
+def per_second_context(rc: dict, F: pd.DataFrame, IMU: pd.DataFrame, H: list[dict]) -> dict:
+    """Per record second: IMU usable / still / locomoting / VeDBA and WISER x, y, in-house (nearest fix within 5 s)."""
+    _wiser_src()
+    import wiser_analysis_utils as Wu
+    L = len(rc["state"])
+    tt = rc["start"] + pd.to_timedelta(np.arange(L), unit="s")
+    out = {"ok": np.zeros(L, bool), "still": np.zeros(L, bool), "loco": np.zeros(L, bool), "vedba": np.full(L, np.nan),
+           "x": np.full(L, np.nan), "y": np.full(L, np.nan), "house": np.zeros(L, bool), "pos": np.zeros(L, bool)}
+    if len(IMU):
+        sec_utc = ((tt + pd.Timedelta(hours=4)) - pd.Timestamp("1970-01-01")).total_seconds().astype(np.int64).to_numpy()
+        j = np.searchsorted(IMU.sec.to_numpy(), sec_utc)
+        jj = np.clip(j, 0, len(IMU) - 1)
+        hit = IMU.sec.to_numpy()[jj] == sec_utc
+        st = np.where(hit, IMU.state.to_numpy()[jj], 0)
+        out["ok"], out["still"], out["loco"] = st > 0, st == 1, st == 3
+        out["vedba"] = np.where(hit & (st > 0), IMU.vedba_1s.to_numpy()[jj], np.nan)
+    if len(F):
+        m = pd.merge_asof(pd.DataFrame({"datetime": tt}), F[["datetime", "x", "y"]], on="datetime", direction="nearest",
+                          tolerance=pd.Timedelta(seconds=5))
+        x, y = m.x.to_numpy(float), m.y.to_numpy(float)
+        pos = np.isfinite(x)
+        hs = np.zeros(L, bool)
+        for r in H:
+            _, inb = Wu._rect_membership(np.nan_to_num(x), np.nan_to_num(y), r, 14.0)
+            hs |= np.asarray(inb, bool)
+        out.update(x=x, y=y, pos=pos, house=hs & pos)
+    return out
+
+
+def bout_metrics(C: dict, a: int, b: int) -> dict:
+    ok = C["ok"][a:b]
+    pos = C["pos"][a:b]
+    r = {"len_s": b - a, "imu_ok_s": int(ok.sum()),
+         "still_share": float(C["still"][a:b][ok].mean()) if ok.any() else np.nan,
+         "loco_share": float(C["loco"][a:b][ok].mean()) if ok.any() else np.nan,
+         "vedba_mean": float(np.nanmean(C["vedba"][a:b])) if ok.any() else np.nan,
+         "pos_s": int(pos.sum()), "house_share": float(C["house"][a:b][pos].mean()) if pos.any() else np.nan, "max_disp_in": np.nan}
+    if pos.any():
+        x, y = C["x"][a:b][pos], C["y"][a:b][pos]
+        r["max_disp_in"] = float(np.max(np.hypot(x - x[0], y - y[0])))
+    return r
+
+
+def imu_for(an: str) -> pd.DataFrame:
+    d = OUT_ROOT_2026C / "imu_seconds_cache" / an
+    fs = sorted(d.glob("*.csv.gz")) if d.exists() else []
+    if not fs:
+        return pd.DataFrame(columns=["sec", "state", "vedba_1s"])
+    return pd.concat([pd.read_csv(f, usecols=["sec", "state", "vedba_1s"]) for f in fs], ignore_index=True).sort_values("sec").drop_duplicates("sec").reset_index(drop=True)
+
+
+OUT_ROOT_2026C = Path("D:/Field2026_analysis_out/2026c")
+
+
+def part_H(lab: str, recs: list[dict], RI: pd.DataFrame, T: dict, entries: dict, ctx_cache: dict, Fx: dict, IMUx: dict, Hr: list[dict],
+           reps: int, workers: int, boot: int) -> dict:
+    from joblib import Parallel, delayed
+    from sleep_schedule import N, R
+    from sleep_schedule_phase3 import km_median
+    from sleep_sim import build_model, simulate_records
+    from sleep_stability import OUTD, boot_blocks
+    rs = dict(zip(RI.record_id, RI.kind))
+    byrid = {rc["record_id"]: rc for rc in recs}
+    tH = {}
+    for r in RI.itertuples():
+        e = entries.get((r.animal, byrid[r.record_id]["start"]))
+        if e is not None and e[0] is not None:
+            tH[r.record_id] = e[0]
+    # ---- H1
+    Hs = pd.read_csv(OUTD / f"heldout_steps_{lab}.csv.gz")
+    Hs["round_kind"] = Hs.round_kind.fillna("")
+    Hs = Hs[(Hs.round_kind != "") & (Hs.s_since_rec_start < POST_S) & Hs.record_id.isin(list(tH))].copy()
+    Hs["sH"] = Hs.s_since_rec_start - Hs.record_id.map(tH)
+    Hs["cell"] = np.select([Hs.sH < 0, Hs.sH < 3600, Hs.sH < 3 * 3600], ["field, before entry", "after entry 0-1 h", "after entry 1-3 h"], "")
+    h1 = []
+    for c, g in Hs[Hs.cell != ""].groupby("cell"):
+        for tr, yc, pc in (("WAKE", 2, "pb_wake"), ("REM", 1, "pb_rem")):
+            e, lo, hi = boot_blocks(g, lambda q, yc=yc, pc=pc: (q.y == yc).sum() / q[pc].sum(), n=boot)
+            h1.append({"scores": lab, "cell": c, "transition": tr, "steps": len(g), "observed": int((g.y == yc).sum()), "expected": float(g[pc].sum()),
+                       "OE": e, "ci_lo": lo, "ci_hi": hi, "animals": g.animal.nunique()})
+    # ---- H2
+    D, s, post, half = T["D"], T["s"], T["post"], T["half"]
+    rid = T["steps"].record_id.to_numpy()
+    tHs = pd.Series(rid).map(tH).to_numpy(float)
+    sel = np.flatnonzero(post & np.isfinite(tHs) & (s >= np.nan_to_num(tHs, nan=1e12)))
+    m, st, lv = fit_base(D, ~post)
+    Pb = predict(D, sel, m, st, lv)
+    y, hp = D["y"][sel].astype(int), half[sel]
+    s_rel, s_ent = s[sel], s[sel] - tHs[sel]
+    PA_rel, par_rel = crossfit(Pb, s_rel, y, hp)
+    PA_ent, par_ent = crossfit(Pb, s_ent, y, hp)
+    df = pd.DataFrame({"block": D["block"][sel], "animal": D["animal"][sel], "nll_rel": nll(PA_rel, y), "nll_ent": nll(PA_ent, y), "nll_b": nll(Pb, y)})
+    est, lo, hi = boot_blocks(df, lambda q: 100 * (q.nll_ent.sum() - q.nll_rel.sum()) / q.nll_rel.sum(), n=boot)
+    pa = df.groupby("animal").apply(lambda q: (q.nll_ent - q.nll_rel).mean(), include_groups=False)
+    b_rel, _ = fit_arousal(Pb[:, 2], s_rel, y)
+    b_ent, _ = fit_arousal(Pb[:, 2], s_ent, y)
+    h2 = {"scores": lab, "steps": len(df), "wakes": int((y == 2).sum()), "rounds": len(set(rid[sel])), "delta_entry_minus_release_pct": est,
+          "ci_lo": lo, "ci_hi": hi, "animals_entry_better": int((pa < 0).sum()), "animals": len(pa),
+          "release_a": b_rel["a"], "release_tau_s": b_rel["tau_s"], "release_ll": b_rel["ll"], "entry_a": b_ent["a"], "entry_tau_s": b_ent["tau_s"], "entry_ll": b_ent["ll"]}
+    # ---- H3
+    masked = []
+    for rc in recs:
+        st_ = rc["state"].copy()
+        if rc["record_id"] in rs:
+            st_[:POST_S] = 0
+        masked.append({**rc, "state": st_})
+    M = build_model(masked)
+    pr = np.flatnonzero(post)
+    Pg = predict(D, pr, M["mN"], M["stN"], M["levels"])
+    yg, sg, hg = D["y"][pr].astype(int), s[pr], half[pr]
+    par = {h: fit_arousal(Pg[hg != h, 2], sg[hg != h], yg[hg != h])[0] for h in (0, 1)}
+    rrecs, tNp = [], {}
+    for rc in recs:
+        r_ = rc["record_id"]
+        if r_ in tH:
+            th = int(tH[r_])
+            st_ = rc["state"]
+            nb = next((a for s_, a, b in bouts(st_) if s_ == N and a >= th), None)
+            if nb is not None:
+                rrecs.append(rc)
+                tNp[r_] = int(nb)
+    AR = {r.record_id: (float(par[r.half]["a"]), float(par[r.half]["tau_s"])) for r in RI.itertuples() if r.record_id in tNp}
+    cnd = {**M, "inputs": [inputs_cond(rc, M["levels"], tNp[rc["record_id"]]) for rc in rrecs]}
+
+    def lat(recs_, rid_list=None):
+        rows = []
+        for rc in recs_:
+            r_ = rc["record_id"]
+            tn = tNp[r_]
+            st_ = rc["state"]
+            tr = next((a for s_, a, b in bouts(st_) if s_ == R and a >= tn), None)
+            end = tr if tr is not None else len(st_)
+            rows.append({"record_id": r_, "kind": rs[r_], "Ls": end - tn, "LN": int((st_[tn:end] == N).sum()), "ev": int(tr is not None),
+                         "tH": tH[r_], "onset_after_entry": tn - tH[r_]})
+        return pd.DataFrame(rows)
+
+    obs = lat(rrecs)
+    simulate_records(rrecs[:1], cnd, 0)
+    res = Parallel(n_jobs=workers, backend="loky")(delayed(_rep_H)(r, rrecs, cnd, AR) for r in range(reps))
+    h3 = []
+    for kind in ("morning", "evening"):
+        o = obs[obs.kind == kind]
+        h3.append({"scores": lab, "kind": kind, "variant": "observed", "stat": "tH_median_min", "observed": float(np.median(o.tH)) / 60, "rounds": len(o)})
+        h3.append({"scores": lab, "kind": kind, "variant": "observed", "stat": "onset_after_entry_median_min", "observed": float(np.median(o.onset_after_entry)) / 60, "rounds": len(o)})
+        for vi, var in enumerate(("conditional, base", "conditional, base + A")):
+            for stat, col in (("Ls'_KM_median_min", "Ls"), ("LN'_KM_median_min", "LN")):
+                ov = km_median(o[col].to_numpy(float), o.ev.to_numpy()) / 60
+                sv = []
+                for r in res:
+                    sr = lat(r[vi])
+                    sr = sr[sr.kind == kind]
+                    sv.append(km_median(sr[col].to_numpy(float), sr.ev.to_numpy()) / 60)
+                lo_, hi_ = np.nanpercentile(sv, [2.5, 97.5])
+                h3.append({"scores": lab, "kind": kind, "variant": var, "stat": stat, "observed": ov, "sim_mean": float(np.nanmean(sv)), "sim_2.5%": lo_,
+                           "sim_97.5%": hi_, "side": "above" if ov > hi_ else ("below" if ov < lo_ else "inside"), "rounds": len(o)})
+    # ---- H4
+    rows, ref = [], []
+    for rc in recs:
+        an = rc["animal"]
+        key = (rc["record_id"], lab)
+        C = ctx_cache.get((an, rc["start"]))
+        if C is None:
+            C = per_second_context(rc, Fx.get(an, pd.DataFrame()), IMUx.get(an, pd.DataFrame()), Hr)
+            ctx_cache[(an, rc["start"])] = C
+        bl = bouts(rc["state"])
+        is_round = rc["record_id"] in rs
+        for i, (s_, a, b) in enumerate(bl):
+            if is_round and a < POST_S:
+                if i == 0 and s_ == N:
+                    rows.append({"scores": lab, "animal": an, "record_id": rc["record_id"], "kind": rs[rc["record_id"]], "role": "opening NREM", **bout_metrics(C, a, b)})
+                continue
+            if s_ == N and 30 <= b - a <= 1800:
+                mtr = bout_metrics(C, a, b)
+                if np.isfinite(mtr["house_share"]) and mtr["house_share"] >= 0.5:
+                    ref.append({"scores": lab, "animal": an, "role": "NREM in a house", **mtr})
+            elif s_ == W and b - a >= 60:
+                mtr = bout_metrics(C, a, b)
+                if np.isfinite(mtr["house_share"]) and mtr["house_share"] < 0.5:
+                    ref.append({"scores": lab, "animal": an, "role": "field WAKE", **mtr})
+    O4, R4 = pd.DataFrame(rows), pd.DataFrame(ref)
+    match = []
+    for r in O4.itertuples():
+        pool = R4[(R4.animal == r.animal) & (R4.role == "NREM in a house") & (R4.len_s >= 0.5 * r.len_s) & (R4.len_s <= 1.5 * r.len_s)]
+        match.append({"m_still": pool.still_share.median(), "m_vedba": pool.vedba_mean.median(), "m_loco": pool.loco_share.median(),
+                      "m_disp": pool.max_disp_in.median(), "m_n": len(pool)})
+    O4 = pd.concat([O4.reset_index(drop=True), pd.DataFrame(match)], axis=1) if len(O4) else O4
+    return {"h1": pd.DataFrame(h1), "h2": h2, "h3": pd.DataFrame(h3), "h4_open": O4, "h4_ref": R4,
+            "n": {"scores": lab, "round_records": len(RI), "anchored": len(tH), "with_nrem_after_entry": len(tNp)}}
+
+
+def _rep_H(rep: int, rrecs: list[dict], cnd: dict, AR: dict) -> list:
+    from sleep_sim import simulate_records
+    return [simulate_records(rrecs, cnd, 90_000 + rep), simulate_records(rrecs, cnd, 90_000 + rep, arousal=AR)]
+
+
+def runH(a) -> None:
+    from _common import git_commit, write_json
+    from output_paths import report_dir, run_dir
+    from sleep_model import PASS2MED, STATES, records_for
+    from sleep_quant import md_table
+    from sleep_stability import gaps_table
+    out = run_dir("sleep_explore_H", "2026c")
+    rd = report_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    t0 = time.time()
+    gaps = gaps_table()
+    Hr = house_rois()
+    Fx, IMUx = {}, {}
+    entries, ctx_cache = {}, {}
+    H1, H2, H3, O4, R4, NN = [], [], [], [], [], []
+    for lab in a.scorings:
+        recs = records_for(STATES if lab == "final" else PASS2MED)
+        RI = round_info(recs, gaps)
+        byrid = {rc["record_id"]: rc for rc in recs}
+        for r in RI.itertuples():
+            k = (r.animal, byrid[r.record_id]["start"])
+            if k in entries:
+                continue
+            if r.animal not in Fx:
+                Fx[r.animal] = fixes_for(r.animal)
+                IMUx[r.animal] = imu_for(r.animal)
+            entries[k] = house_entry(Fx[r.animal], k[1], Hr)
+        T = step_table(recs, RI)
+        for an in {rc["animal"] for rc in recs}:
+            if an not in Fx:
+                Fx[an], IMUx[an] = fixes_for(an), imu_for(an)
+        res = part_H(lab, recs, RI, T, entries, ctx_cache, Fx, IMUx, Hr, a.reps, a.workers, a.boot)
+        H1.append(res["h1"])
+        H2.append(res["h2"])
+        H3.append(res["h3"])
+        O4.append(res["h4_open"])
+        R4.append(res["h4_ref"])
+        NN.append(res["n"])
+        print(f"[{lab}] part H {time.time() - t0:.0f} s: {res['n']}", flush=True)
+    H1, H3, O4, R4 = (pd.concat(x, ignore_index=True) for x in (H1, H3, O4, R4))
+    H2, NN = pd.DataFrame(H2), pd.DataFrame(NN)
+    E = pd.DataFrame([{"animal": k[0], "record_start": k[1], "tH_s": v[0], "in_house_at_start": v[1]} for k, v in entries.items()])
+    E.to_csv(out / "house_entries.csv", index=False)
+    R4.to_csv(out / "h4_reference_bouts.csv.gz", index=False)
+    # H4 summary
+    S4 = []
+    for lab in a.scorings:
+        o = O4[O4.scores == lab]
+        r = R4[R4.scores == lab]
+        row = {"scores": lab, "opening_bouts": len(o), "open_still": o.still_share.median(), "open_loco": o.loco_share.median(), "open_vedba": o.vedba_mean.median(),
+               "open_house_share": o.house_share.median(), "open_disp_in": o.max_disp_in.median(), "open_len_s": o.len_s.median(),
+               "matched_still": o.m_still.median(), "matched_loco": o.m_loco.median(), "matched_vedba": o.m_vedba.median(), "matched_disp_in": o.m_disp.median(),
+               "fieldwake_still": r[r.role == "field WAKE"].still_share.median(), "fieldwake_vedba": r[r.role == "field WAKE"].vedba_mean.median(),
+               "fieldwake_disp_in": r[r.role == "field WAKE"].max_disp_in.median()}
+        dstill = row["open_still"] - row["matched_still"]
+        rv = row["open_vedba"] / row["matched_vedba"] if row["matched_vedba"] else np.nan
+        row["still_diff"], row["vedba_ratio"] = dstill, rv
+        row["reading"] = ("scorer-edge artefact likely" if (dstill <= -0.2 and rv >= 1.5) else ("settling" if abs(dstill) <= 0.1 else "unresolved"))
+        S4.append(row)
+    S4 = pd.DataFrame(S4)
+    v = []
+    for lab in a.scorings:
+        h2 = H2[H2.scores == lab].iloc[0]
+        v.append({"scores": lab, "part": "H2", "verdict": "entry better" if h2.ci_hi < 0 else ("release better" if h2.ci_lo > 0 else "unresolved"),
+                  "numbers": f"Delta (entry - release) {h2.delta_entry_minus_release_pct:+.3f} % [{h2.ci_lo:+.3f}, {h2.ci_hi:+.3f}], entry better {h2.animals_entry_better}/{h2.animals}"})
+        q = H3[(H3.scores == lab) & (H3.variant != "observed")]
+        v.append({"scores": lab, "part": "H3", "verdict": "reproduced" if (q[q.stat.str.startswith("Ls")].side == "inside").all() else "not reproduced",
+                  "numbers": "; ".join(f"{r.kind} {r.variant} {r.stat} obs {r.observed:.1f} vs {r['sim_2.5%']:.1f}-{r['sim_97.5%']:.1f} ({r.side})" for _, r in q.iterrows())})
+        s4 = S4[S4.scores == lab].iloc[0]
+        v.append({"scores": lab, "part": "H4", "verdict": s4.reading, "numbers": f"still share opening {s4.open_still:.2f} vs matched NREM {s4.matched_still:.2f} "
+                  f"(field WAKE {s4.fieldwake_still:.2f}); VeDBA ratio {s4.vedba_ratio:.2f}; opening bout in a house {s4.open_house_share:.2f}"})
+    V = pd.DataFrame(v)
+    for name, Tb in (("counts", NN), ("h1", H1), ("h2", H2), ("h3", H3), ("h4_opening", O4), ("h4_summary", S4), ("verdicts", V)):
+        Tb.to_csv(rd / f"ephys_spikes_sleep_explore_H_{name}_2026c.csv", index=False)
+    Es = E.assign(tH_min=E.tH_s / 60)
+    L_ = ["# Sleep-behaviour explore — H: the house-entry clock after the battery rounds (cohort 2026c)", "",
+          "Plan [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../implementation_plan/2026-10-08-sleep-behaviour-explore.md) "
+          f"§13 Amendment 5 (rules written before results). Driver `ephys/sleep_perturb.py runH` (commit {gc}); bulk `{out}`; {a.reps} replicates; "
+          f"runtime {(time.time() - t0) / 60:.0f} min. **Technical ledger.**", "",
+          "## Definitions", "", "```", DOC_H.strip(), "```", "",
+          "## Verdicts", "", *md_table(V), "",
+          "## House entries", "", *md_table(NN), "",
+          f"t_H (min) over the distinct post-round starts: median {Es.tH_min.median():.1f}, IQR {Es.tH_min.quantile(0.25):.1f}-{Es.tH_min.quantile(0.75):.1f}, "
+          f"none within 60 min {int(Es.tH_s.isna().sum())} of {len(Es)}, a visit already running at the start {int(Es.in_house_at_start.sum())}.", "",
+          "## H1: field before entry vs after entry (held-out, perturbation-blind)", "", *md_table(H1.round(4)), "",
+          "## H2: which clock carries the arousal", "", *md_table(H2.round(4)), "",
+          "## H3: the first REM after the house entry", "", *md_table(H3.round(2)), "",
+          "## H4: the opening NREM (medians)", "", *md_table(S4.round(3)), ""]
+    (rd / "ephys_spikes_sleep_explore_H_2026c.md").write_text("\n".join(L_) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_sleep_explore_H_2026c.json", {"run_dir": str(out), "git_commit": gc, "reps": a.reps, "scorings": a.scorings})
+    print(V.to_string(index=False), flush=True)
+    print("written", rd / "ephys_spikes_sleep_explore_H_2026c.md", flush=True)
+
+
 # ------------------------------------------------------------------ selftest
 def selftest() -> None:
     t0 = time.time()
@@ -1135,12 +1519,27 @@ def selftest() -> None:
     simc = simulate_records([rc], {**M, "inputs": [Ic]}, 0)[0]["state"]
     assert np.array_equal(simc[:tN], rc["state"][:tN]) and (tN >= len(simc) or simc[tN] == N_), "conditional prefix"
     print(f"PASS part L: onset split on a toy record; the conditional simulation keeps the observed {tN} s before the first NREM and starts in NREM", flush=True)
+    # 7. part H: house entry on a synthetic track; bout metrics
+    Hr = house_rois()
+    t0_ = pd.Timestamp("2026-09-05 09:00:00")
+    tt_ = t0_ + pd.to_timedelta(np.arange(0, 900, 0.5), unit="s")
+    hx, hy = HOUSES_C3["house_2"]
+    x_ = np.where(np.arange(len(tt_)) < 600, hx - 120.0, hx)              # field until 300 s, then inside house_2
+    y_ = np.full(len(tt_), hy) + rng.normal(0, 3, len(tt_))
+    F_ = pd.DataFrame({"datetime": tt_, "x": x_ + rng.normal(0, 3, len(tt_)), "y": y_, "shortid": "SFxx"})
+    th_, pre_ = house_entry(F_, t0_, Hr)
+    assert th_ is not None and 290 <= th_ <= 330 and not pre_, (th_, pre_)
+    C_ = {"ok": np.ones(100, bool), "still": np.r_[np.ones(50, bool), np.zeros(50, bool)], "loco": np.zeros(100, bool), "vedba": np.ones(100),
+          "x": np.arange(100.0), "y": np.zeros(100), "house": np.zeros(100, bool), "pos": np.ones(100, bool)}
+    bm = bout_metrics(C_, 0, 100)
+    assert abs(bm["still_share"] - 0.5) < 1e-9 and abs(bm["max_disp_in"] - 99) < 1e-9 and bm["house_share"] == 0
+    print(f"PASS part H: synthetic house entry at {th_:.0f} s (truth 300 s); bout metrics", flush=True)
     print(f"selftest PASS ({time.time() - t0:.0f} s)", flush=True)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["run", "runT", "runL"])
+    ap.add_argument("cmd", nargs="?", choices=["run", "runT", "runL", "runH"])
     ap.add_argument("--scorings", nargs="+", default=["final", "pass2med"], choices=["final", "pass2med"])
     ap.add_argument("--reps", type=int, default=100)
     ap.add_argument("--boot", type=int, default=2000)
@@ -1156,6 +1555,8 @@ def main() -> None:
         runT(a)
     elif a.cmd == "runL":
         runL(a)
+    elif a.cmd == "runH":
+        runH(a)
     else:
         ap.print_help()
 

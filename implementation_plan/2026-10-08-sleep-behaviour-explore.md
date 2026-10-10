@@ -31,7 +31,9 @@
 - **Amendment 4 (§12), part L DONE 2026-10-09:** [L report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_L_2026c.md)
   + a post-hoc subset; half the post-round records open with ~2 min scored NREM after release, and the delay sits
   mostly in those records (#59; record start = release into the paddock, corrected 2026-10-10);
-  claims #59–#61. Proposed next: re-anchor the post-round clocks at the WISER house return.
+  claims #59–#61.
+- **Amendment 5 (§13), part H DONE 2026-10-10:** [H report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_H_2026c.md);
+  claims #62–#63, #60 strengthened (evening NREM clock above on both scorings with the entry clock).
 
 **Builds on:**
 - the internal-schedule plan [2026-10-07-sleep-internal-schedule.md](2026-10-07-sleep-internal-schedule.md) (Phases 0–6;

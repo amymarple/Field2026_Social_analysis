@@ -498,3 +498,19 @@ bouts before $t_N$ forced. Check 2: held-out REM / WAKE O/E before vs after the 
 - Check 2: no first-entry REM gap; the waking excess sits before the first REM (WAKE O/E ~1.5; #61).
 - Proposed next: re-anchor S2 / P / L at the WISER house return.
 
+## Sleep-behaviour explore, Amendment 5 — part H, the house-entry clock (2026-10-10; the user: "做")
+
+Plan §13, committed (9d7e5d3) before results. `ephys/sleep_perturb.py runH` (selftest 25 s: a synthetic house entry
+at 305 s for a truth of 300 s; bout metrics); run 9 min. House entry = the first WISER house visit after release
+(default tracks, cohort-3 re-centred houses, `hysteretic_visits`); validated against the field record (09-05: SF07
+16.7 min, SF09 2.7 min — exact).
+
+**Results** (#62, #63; #57–#60 updated):
+- All 94 rounds anchored; entry median 5.3 min after release (morning 7.2, evening 1.6).
+- The opening NREM (half the rounds) = the rat motionless in the field (IMU still 99–100 %, as house NREM; WISER at
+  jitter level, not in a house) → "settling", not a scorer artefact; sleep vs awake immobility needs video / LFP (#62).
+- WAKE O/E: field before entry 1.7×, first hour in the house 1.3×, 1–3 h after entry 0.84 / 0.87 (CIs < 1) (#63).
+- Release vs entry clock for the arousal: unresolved.
+- First REM after the first NREM in the house: morning reproduced on both scorings; evening above on the NREM clock on
+  both (#60 strengthened).
+
