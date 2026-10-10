@@ -673,6 +673,57 @@ Otherwise "not a ripple"; "unsure" only when the panel is unreadable.
 - Theta-quiet aSWR stays the pre-registered sensitivity.
 - The second reader (raw page) is a cross-check (κ) when she finishes.
 
+## Amendment 6 — Phase 2, fixed before any map (2026-10-10; the user: "SF09 用，标注上就可以。做地图吧")
+
+**Animals.**
+- All six get descriptive maps. Every map and table carries its animal's note:
+  - SF09: field not validated (EMG-ICA could not clean its shank; raw reading 1 / 3 / 4);
+  - SF08: strict field reading 4 / 8;
+  - SF11: houses only (0.01 h of field time);
+  - SF07: field descriptive (35 field events).
+- **Inference screen (48-in grid):** ≥ 300 field aSWR and ≥ 10 field bins with ≥ 60 s. It replaces the 24-in screen of
+  Phase 0.
+
+**Places.**
+- Field bins: 48 in on the WISER frame, anchored at the P0 position of pole A0. No cropping.
+- house_1 / house_2: the membership zones, each its own place.
+- Seconds of unknown zone are left out.
+- 1-D rings: house = ring 0. Field distance to the nearest rest-cluster centre ((417.7, 716.9), (621.2, 732.6)) in rings
+  0–24, 24–48, 48–96, 96–144, 144–192 and > 192 in. A ring's centre is the mean distance of its seconds.
+
+**Bout.** A maximal run of consecutive non-locomotor detectable wake seconds within a record.
+
+**Null (primary): the bout swap.**
+- Strata: night × probe block × duration class (log classes of ratio 1.25) × clock-hour class.
+- Within each stratum, the bouts' event sequences are permuted. An event's offset is rescaled to the recipient's length
+  (keeping counts and relative timing).
+- 1000 permutations.
+- Bouts alone in their stratum keep their own events. The share of bouts that can swap is reported.
+
+**Statistics, per animal, with the same functions on the observed and permuted events.**
+- **T1:** Skaggs spatial information of the field map within each block (bins ≥ 60 s), combined across blocks as the
+  occupancy-weighted mean. Effect = observed − null median; p one-sided.
+- **T2:** leave-one-night-out r. Night n's field rates against the other nights', over bins ≥ 60 s in both, if ≥ 3 such
+  bins; the mean over nights weighted by bins. p one-sided.
+- **T3:** the house vs field Mantel–Haenszel rate ratio over blocks. p two-sided.
+- **1-D:** per ring, O / E against the block's field rate. The slope of log((O + 0.5) / E) on log ring-centre distance
+  over the field rings, weighted by occupancy minutes. p two-sided.
+- Holm across the animals in inference, separately for T1, T2, T3 and the slope.
+- **Bout-level Poisson GLM** (description): units are bout pieces split at house / field.
+  - Model: events ~ house + log bout length + clock harmonics + night + block, offset log piece length, cluster SE by
+    night.
+  - A field-only fit with log distance.
+
+**Sensitivities, same pipeline.**
+- Leave out:
+  - qc_i1 seconds;
+  - anchors ≤ 6;
+  - BLE passes ± 15 min;
+  - rain nights 09-03 and 09-09;
+  - SF08 before 09-06 19:43.
+- Theta-quiet aSWR (Amendment 4): a second pass that needs the ± 2 s theta / delta series per session.
+- Descriptive maps show events / min per bin (≥ 60 s); unsmoothed; houses drawn as circles; landmarks as reference marks.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.

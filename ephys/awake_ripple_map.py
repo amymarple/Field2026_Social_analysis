@@ -796,7 +796,9 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0", "review", "rerender", "emgica"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "review", "rerender", "emgica", "phase2"])
+    ap.add_argument("--perms", type=int, default=1000, help="phase2: bout swaps for the primary tests")
+    ap.add_argument("--sens-perms", type=int, default=500, help="phase2: bout swaps per sensitivity")
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--run", default=None)
     ap.add_argument("--review-out", default=None, help="review: folder for the panels (default <run>/review)")
@@ -837,6 +839,9 @@ def main():
         rerender(a)
     elif a.cmd == "emgica":
         emgica(a)
+    elif a.cmd == "phase2":
+        import awake_ripple_phase2
+        awake_ripple_phase2.run(a)
 
 
 if __name__ == "__main__":
