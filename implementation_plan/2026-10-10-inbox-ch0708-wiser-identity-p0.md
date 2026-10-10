@@ -174,5 +174,18 @@ segment. Clicks stored by the first page version become `before_reveal: true, le
 showed the WISER panel, so legacy clicks are not blind; the later step must treat them accordingly. Checked in headless Chrome
 on the synthetic self-test page and on the real page (throwaway profiles).
 
+**Amendment 9 (2026-10-10, after results; display only) — top-view orientation.** The user: "before the rotation I thought
+it was right, after the rotation not quite". The top view had been drawn in the house frame (along = ridge ≈ paddock +y to
+the right, across ≈ −x up), a ~90° rotation of the paddock map, and the in-box image has its own unknown orientation, so
+side-by-side views can look rotated or mirrored and the left-right order flips. (The user had suspected SF09 / SF10 swapped
+in WISER; the session's head-IMU vs raw-WISER-speed cross-correlation has a dominant diagonal on 09-06 and 09-08, so WISER
+identity stands; identities and `id_colour` are unchanged, the user decides after the oriented view.) The top view is now drawn
+in paddock directions with an orientation control **per house** (applies to all its segments): 4 rotations × mirror; default
+= WISER / paddock orientation (+x right, +y up); edges labelled "toward x = 0 wall / x = 480 wall / y = 0 (row A) / y = 240
+(row C)"; the nearest pole drawn (house_1 B1, house_2 B3); house body outline and ridge kept. Visible only after the reveal.
+Stored per house with a timestamp and exported as `orientation_by_house: {house: {rot_deg, mirror, chosen_at}}`. It is a
+display setting, **not a fit and not the pre-registered camera ↔ WISER mapping** (still fitted from the blind clicks); the
+user's chosen orientation may serve as an independent prior / check for that fit.
+
 **Status (2026-10-10): phase 0 DONE** — A, B, C run; report `results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`;
 change log `change_log/2026-10-10-inbox-ch0708-p0.md`. The pre-registered use of the user's clicks waits for the clicks.

@@ -1358,7 +1358,12 @@ def write_report(run: Path) -> Path:
               "`verdict_first`) the order test uses, later edits are recorded separately; clicks stored by the first page version "
               "are flagged `legacy` (that version showed WISER, so they are not blind). Markers can be selected (within 12 screen px), "
               "dragged, nudged, relabelled and deleted (Delete, right-click, × in the per-frame list) with undo / redo; all of it "
-              "checked in headless Chrome (`inbox_identity_page.py --ui-check`).\n",
+              "checked in headless Chrome (`inbox_identity_page.py --ui-check`). **Top-view orientation** (plan amendment 9): after "
+              "the reveal the WISER top view is drawn in paddock directions (default = WISER / paddock orientation, +x right, +y up; "
+              "edges labelled with the paddock walls, the nearest pole B1 / B3 drawn) and can be rotated (0 / 90 / 180 / 270°) and "
+              "mirrored per house; the choice is stored with a timestamp and exported as `orientation_by_house`. It is a display "
+              "setting only — not a fit and not the pre-registered camera ↔ WISER mapping (fitted later from the blind clicks); "
+              "the user's chosen orientation may serve as an independent prior / check for that fit.\n",
               _md_table(rost),
               "\nClose-up clips: source `D:/Field2026_analysis_out/2026c/inhand_closeups/SF07.MOV … SF12.MOV` (read-only; every sha256 "
               "checked against that folder's `MANIFEST_sha256.csv` before transcoding; sources unchanged afterwards), transcoded once to "

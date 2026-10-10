@@ -32,7 +32,10 @@ legacy clicks were not made blind.**
 ## What the files contain
 
 JSON: `page_version`, `state_version` (2), `run` (the run folder the page belongs to), `exported_at`, `legend_source`,
-`legacy_migrated_at`, `clicks` (one object per click, including blind clicks deleted after the reveal), `segments` (one object
+`legacy_migrated_at`, `orientation_by_house` (`{house: {rot_deg, mirror, chosen_at}}` = the top-view orientation the user
+chose after the reveal — 0 / 90 / 180 / 270° counter-clockwise from the WISER / paddock view, mirror = x flipped first;
+`default: true` if never chosen; a display setting, not a fit, possibly an independent prior / check for the later
+camera ↔ WISER fit), `orientation_note`, `clicks` (one object per click, including blind clicks deleted after the reveal), `segments` (one object
 per colour segment: `complete` / `complete_first` = the answer to "pile composition complete?" now / at the reveal — `yes`,
 `no` or empty —, `note`, `revealed_at`, `saved_at`, counts `n_clicks`, `n_before_reveal`, `n_after_reveal`, `n_legacy`,
 `n_deleted_after_reveal`).

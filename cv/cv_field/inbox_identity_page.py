@@ -96,9 +96,33 @@ def legend_from_csv(path: Path = IDENTITY_CSV) -> list[dict]:
     return rows
 
 
+# Top-view orientation references (paddock inches, origin pole A0): the nearest pole of each house, measured foot positions
+# (rev g, CAMERA_GEOMETRY_2026c.md section 4b). house_1 sits by B1, house_2 by B3.
+HOUSE_POLES = {"house_1": {"name": "B1", "xy": [131.2, 125.2]}, "house_2": {"name": "B3", "xy": [357.3, 119.5]}}
+ORIENT_NOTE = ("display only: the top view can be rotated (0 / 90 / 180 / 270 deg) and mirrored per house; default = WISER / paddock "
+               "orientation (+x right, +y up). Not a fit and not the pre-registered camera <-> WISER mapping (fitted later from the "
+               "blind clicks); the chosen orientation is exported as orientation_by_house and may serve as an independent prior / check")
+
+
 def legend_meta(path: Path = IDENTITY_CSV) -> dict:
+    poses = ip.house_poses()
+    refs = {h: {"centre": list(poses[h]["centre"]), "ridge_deg": float(poses[h]["ridge_deg"]), "pole": HOUSE_POLES[h]} for h in ip.HOUSES}
     return {"legend_source": LEGEND_SOURCE, "legend_uncertain": LEGEND_UNCERTAIN, "legend_csv": "wiser/configs/" + Path(path).name,
-            "legend_csv_sha256": ip.sha256(Path(path)), "unknown_css": UNKNOWN_CSS}
+            "legend_csv_sha256": ip.sha256(Path(path)), "unknown_css": UNKNOWN_CSS, "house_refs": refs, "orientation_note": ORIENT_NOTE}
+
+
+def orient_view(dx: float, dy: float, rot_deg: int, mirror: bool) -> tuple[float, float]:
+    """Paddock offset (dx, dy) -> top-view coordinates (a right, b up): mirror flips x, then a counter-clockwise rotation by
+    rot_deg (multiples of 90). The page's JS (viewXY) does the same; the browser check compares the two."""
+    x = -dx if mirror else dx
+    c, s = round(np.cos(np.radians(rot_deg))), round(np.sin(np.radians(rot_deg)))
+    return x * c - dy * s, x * s + dy * c
+
+
+def house_to_paddock(along: float, across: float, ridge_deg: float) -> tuple[float, float]:
+    """House frame (along, across) -> paddock offset from the house centre (inverse of inbox_p0.to_house_frame)."""
+    p = np.radians(ridge_deg)
+    return along * np.cos(p) - across * np.sin(p), along * np.sin(p) + across * np.cos(p)
 
 
 # ----------------------------------------------------------------------------------------------- frames
@@ -532,16 +556,30 @@ function renderBelow(){
   const b2 = document.getElementById('breveal2'); if (b2) b2.onclick = reveal;
 }
 function select(id){ selId = id; hidePop(); refresh(); }
+// ---------------------------------------------------------------- top-view orientation (display only; per house; default = paddock)
+const ORIENTS = [[0, false], [90, false], [180, false], [270, false], [0, true], [90, true], [180, true], [270, true]];
+function orientName(r, m){ return (r === 0 && !m) ? 'WISER / paddock: +x right, +y up (default)' : (m ? 'mirrored (x flipped), ' : '') + (r ? 'rotated ' + r + '° counter-clockwise' : 'not rotated'); }
+function orientOf(house){ const o = (state.orientation_by_house || {})[house]; return o ? {rot: +o.rot_deg, mirror: !!o.mirror, chosen_at: o.chosen_at} : {rot: 0, mirror: false, chosen_at: null}; }
+function setOrient(house, rot, mirror){ state.orientation_by_house = state.orientation_by_house || {}; state.orientation_by_house[house] = {rot_deg: rot, mirror: mirror, chosen_at: now()}; save(); renderSide(); }
+function viewXY(dx, dy, o){ const x = o.mirror ? -dx : dx, t = o.rot * Math.PI / 180, c = Math.round(Math.cos(t)), s = Math.round(Math.sin(t)); return [x * c - dy * s, x * s + dy * c]; }
+function houseToPad(al, ac, phi){ const p = phi * Math.PI / 180; return [al * Math.cos(p) - ac * Math.sin(p), al * Math.sin(p) + ac * Math.cos(p)]; }
+function sideOf(v){ return Math.abs(v[0]) > Math.abs(v[1]) ? (v[0] > 0 ? 'right' : 'left') : (v[1] > 0 ? 'top' : 'bottom'); }
 function wiserPanel(w){
+  const o = orientOf(w.house), phi = w.pose.ridge_deg;
+  const sel = '<select id="orient-sel" data-house="' + esc(w.house) + '">' + ORIENTS.map(q => '<option value="' + q[0] + '|' + (q[1] ? 1 : 0) + '"' +
+    (q[0] === o.rot && q[1] === o.mirror ? ' selected' : '') + '>' + esc(orientName(q[0], q[1])) + '</option>').join('') + '</select>';
   return '<h2>WISER at the flash (' + esc(w.house) + ')</h2><p>Roster (tagged animals in this house at the segment middle): <b>' + (w.roster.length ? esc(w.roster.join(', ')) : 'none') + '</b>' +
     (w.sf11_note ? '<br><span class="warn">' + esc(w.sf11_note) + '</span>' : '') +
     (w.other_house.length ? '<br>other house: ' + esc(w.other_house.join(', ')) : '') + (w.out.length ? '<br>outside: ' + esc(w.out.join(', ')) : '') +
-    (w.untracked.length ? '<br>untracked: ' + esc(w.untracked.join(', ')) : '') + '</p>' + topView(w) +
-    '<p class="mut">Top view of the house in the house frame (inches; the camera image may be rotated or mirrored relative to it - that mapping is what your clicks will fit). Mean of ' + esc(w.window) +
-    '; thick bar = +-1 SE of the mean, thin = +-1 SD of the fixes. The WISER tag sits on the head.</p>' +
-    '<table><tr><th>animal</th><th>along</th><th>across</th><th>SE</th><th>n fixes</th><th>IMU still / active / loco</th></tr>' +
-    w.positions.map(p => '<tr><td>' + esc(p.animal) + '</td><td>' + num(p.along_in) + '</td><td>' + num(p.across_in) + '</td><td>' + num(p.along_se_in, 2) + ', ' + num(p.across_se_in, 2) +
-      '</td><td>' + esc(p.n_fix) + '</td><td>' + num(p.still_share, 2) + ' / ' + num(p.active_share, 2) + ' / ' + num(p.loco_share, 2) + '</td></tr>').join('') + '</table>';
+    (w.untracked.length ? '<br>untracked: ' + esc(w.untracked.join(', ')) : '') + '</p>' +
+    '<p>Top-view orientation for <b>' + esc(w.house) + '</b> (all its segments): ' + sel + '<br><span class="mut">Display only — not a fit and not the camera ↔ WISER mapping (that is fitted later from your blind clicks). ' +
+    (o.chosen_at ? 'Chosen ' + esc(o.chosen_at) + '.' : 'Default (not chosen yet).') + '</span></p>' + topView(w) +
+    '<p class="mut">WISER top view of the house in paddock directions (inches from the house centre), turned as chosen above; the edge labels name the paddock walls, the square is the nearest pole. Mean of ' + esc(w.window) +
+    '; bars along and across the ridge: thick = +-1 SE of the mean, thin = +-1 SD of the fixes. The WISER tag sits on the head.</p>' +
+    '<table><tr><th>animal</th><th>dx, dy (paddock)</th><th>along, across (ridge)</th><th>SE</th><th>n fixes</th><th>IMU still / active / loco</th></tr>' +
+    w.positions.map(p => { const d = (p.along_in === null || p.along_in === undefined) ? null : houseToPad(p.along_in, p.across_in, phi);
+      return '<tr><td>' + esc(p.animal) + '</td><td>' + (d ? num(d[0]) + ', ' + num(d[1]) : '-') + '</td><td>' + num(p.along_in) + ', ' + num(p.across_in) + '</td><td>' + num(p.along_se_in, 2) + ', ' + num(p.across_se_in, 2) +
+      '</td><td>' + esc(p.n_fix) + '</td><td>' + num(p.still_share, 2) + ' / ' + num(p.active_share, 2) + ' / ' + num(p.loco_share, 2) + '</td></tr>'; }).join('') + '</table>';
 }
 function renderSide(){
   const s = seg(), f = frame(), rev = revealed(s.segment_id);
@@ -566,27 +604,41 @@ function renderSide(){
   h += '<h2>In-hand close-up clips (phone)</h2><p class="mut">SF07, SF08, SF09, SF10, SF12 filmed 2026-09-10 07:54-08:19 (AM round); SF11 filmed 2026-08-30 (its implant came off early, so an earlier clip is used).</p>' + DATA.closeups.map(c => c.dst ? '<details><summary>' + esc(c.animal) + '</summary><video controls preload="none" src="' + esc(c.dst) + '"></video></details>' : '<p class="warn">' + esc(c.animal) + ': ' + esc(c.error) + '</p>').join('');
   document.getElementById('side').innerHTML = h;
   const b = document.getElementById('breveal'); if (b) b.onclick = reveal;
+  const os = document.getElementById('orient-sel');
+  if (os) os.onchange = () => { const q = os.value.split('|'); setOrient(os.dataset.house, +q[0], q[1] === '1'); };
 }
 function num(v, d){ return (v === null || v === undefined || v === '') ? '-' : Number(v).toFixed(d === undefined ? 1 : d); }
 function topView(w){
-  const L = w.body_in[0], Wd = w.body_in[1], P = 40, S = 9, cx = P + 20 * S, cy = P + 14 * S;
-  const X = a => cx + a * S, Y = c => cy - c * S;
-  let s = '<svg viewBox="0 0 ' + (2 * cx) + ' ' + (2 * cy) + '" width="100%" style="max-width:360px;background:var(--card);border:1px solid var(--line)">' +
-    '<rect x="' + X(-L / 2) + '" y="' + Y(Wd / 2) + '" width="' + L * S + '" height="' + Wd * S + '" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>' +
-    '<line x1="' + X(-L / 2 - 4) + '" y1="' + cy + '" x2="' + X(L / 2 + 4) + '" y2="' + cy + '" stroke="currentColor" opacity=".25"/>' +
-    '<text x="' + X(L / 2 + 1) + '" y="' + (cy - 6) + '" font-size="11" fill="currentColor">+along</text>' +
-    '<text x="' + (cx + 4) + '" y="' + Y(Wd / 2 + 3) + '" font-size="11" fill="currentColor">+across</text>';
+  const o = orientOf(w.house), phi = w.pose.ridge_deg, C = w.pose.centre, L = w.body_in[0], Wd = w.body_in[1];
+  const S = 7.5, half = 24, P = 30, cx = P + half * S, cy = P + half * S, size = 2 * cx;
+  const V = (dx, dy) => { const ab = viewXY(dx, dy, o); return [cx + ab[0] * S, cy - ab[1] * S]; };
+  const H = (al, ac) => { const d = houseToPad(al, ac, phi); return V(d[0], d[1]); };
+  const pt = q => q[0].toFixed(2) + ',' + q[1].toFixed(2);
+  const line = (a, b, col, wd, op) => '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '" stroke="' + col + '" stroke-width="' + wd + '"' + (op ? ' opacity="' + op + '"' : '') + '/>';
+  let s = '<svg id="topview" viewBox="0 0 ' + size + ' ' + size + '" width="100%" style="max-width:360px;background:var(--card);border:1px solid var(--line)" data-house="' + esc(w.house) +
+    '" data-cx="' + cx + '" data-cy="' + cy + '" data-scale="' + S + '" data-rot="' + o.rot + '" data-mirror="' + (o.mirror ? 1 : 0) + '">';
+  s += '<polygon points="' + [[-L / 2, -Wd / 2], [L / 2, -Wd / 2], [L / 2, Wd / 2], [-L / 2, Wd / 2]].map(q => pt(H(q[0], q[1]))).join(' ') + '" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>';
+  const r0 = H(-L / 2 - 3, 0), r1 = H(L / 2 + 3, 0);
+  s += line(r0, r1, 'currentColor', 1, '.35') + '<text x="' + (r1[0] + 3) + '" y="' + (r1[1] - 3) + '" font-size="10" fill="currentColor" opacity=".7">ridge</text>';
+  const LBL = [[[1, 0], 'toward x = 480 wall'], [[-1, 0], 'toward x = 0 wall'], [[0, 1], 'toward y = 240 (row C)'], [[0, -1], 'toward y = 0 (row A)']];
+  LBL.forEach(q => { const sd = sideOf(viewXY(q[0][0], q[0][1], o));
+    const at = {right: [size - 9, cy, 90], left: [9, cy, -90], top: [cx, 13, 0], bottom: [cx, size - 5, 0]}[sd];
+    s += '<text class="edge" data-side="' + sd + '" x="' + at[0] + '" y="' + at[1] + '" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor"' +
+         (at[2] ? ' transform="rotate(' + at[2] + ' ' + at[0] + ' ' + at[1] + ')"' : '') + '>' + esc(q[1]) + '</text>'; });
+  const ref = ((DATA.meta.house_refs || {})[w.house] || {}).pole;
+  if (ref) { const q = V(ref.xy[0] - C[0], ref.xy[1] - C[1]);
+    s += '<rect class="pole" data-pole="' + esc(ref.name) + '" data-x="' + q[0] + '" data-y="' + q[1] + '" x="' + (q[0] - 4) + '" y="' + (q[1] - 4) + '" width="8" height="8" fill="currentColor"/>' +
+         '<text x="' + (q[0] + 7) + '" y="' + (q[1] + 4) + '" font-size="11" fill="currentColor">pole ' + esc(ref.name) + '</text>'; }
   w.positions.forEach(p => {
     if (p.along_in === undefined || p.along_in === null) return;
-    const col = COLS[p.animal] || '#888', x = X(p.along_in), y = Y(p.across_in);
-    const sdA = (p.sd_along_raw_in || 0) * S, sdC = (p.sd_across_raw_in || 0) * S, seA = Math.max((p.along_se_in || 0) * S, 1.5), seC = Math.max((p.across_se_in || 0) * S, 1.5);
-    s += '<line x1="' + (x - sdA) + '" y1="' + y + '" x2="' + (x + sdA) + '" y2="' + y + '" stroke="' + col + '" stroke-width="1" opacity=".6"/>' +
-         '<line x1="' + x + '" y1="' + (y - sdC) + '" x2="' + x + '" y2="' + (y + sdC) + '" stroke="' + col + '" stroke-width="1" opacity=".6"/>' +
-         '<line x1="' + (x - seA) + '" y1="' + y + '" x2="' + (x + seA) + '" y2="' + y + '" stroke="' + col + '" stroke-width="4"/>' +
-         '<line x1="' + x + '" y1="' + (y - seC) + '" x2="' + x + '" y2="' + (y + seC) + '" stroke="' + col + '" stroke-width="4"/>' +
-         '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + col + '" stroke="' + halo(col) + '"/><text x="' + (x + 6) + '" y="' + (y - 6) + '" font-size="12" font-weight="700" fill="' + col + '" stroke="' + halo(col) + '" stroke-width=".5" paint-order="stroke">' + esc(p.animal) + '</text>';
+    const col = COLS[p.animal] || '#888', m = H(p.along_in, p.across_in);
+    const sdA = p.sd_along_raw_in || 0, sdC = p.sd_across_raw_in || 0, seA = Math.max(p.along_se_in || 0, 0.25), seC = Math.max(p.across_se_in || 0, 0.25);
+    s += line(H(p.along_in - sdA, p.across_in), H(p.along_in + sdA, p.across_in), col, 1, '.6') + line(H(p.along_in, p.across_in - sdC), H(p.along_in, p.across_in + sdC), col, 1, '.6') +
+         line(H(p.along_in - seA, p.across_in), H(p.along_in + seA, p.across_in), col, 4) + line(H(p.along_in, p.across_in - seC), H(p.along_in, p.across_in + seC), col, 4) +
+         '<circle class="pos" data-animal="' + esc(p.animal) + '" cx="' + m[0] + '" cy="' + m[1] + '" r="4" fill="' + col + '" stroke="' + halo(col) + '"/>' +
+         '<text x="' + (m[0] + 6) + '" y="' + (m[1] - 6) + '" font-size="12" font-weight="700" fill="' + col + '" stroke="' + halo(col) + '" stroke-width=".5" paint-order="stroke">' + esc(p.animal) + '</text>';
   });
-  return s + '</svg><p class="mut">+along = toward ' + esc(w.pose.ridge_deg) + ' deg in the paddock (about +y, the y = 240 wall); +across = 90 deg counter-clockwise from it (about -x). House body ' + num(L) + ' x ' + num(Wd) + ' in (dashed).</p>';
+  return s + '</svg><p class="mut">Orientation: ' + esc(orientName(o.rot, o.mirror)) + '. House body ' + num(L) + ' x ' + num(Wd) + ' in (dashed), ridge at ' + esc(phi) + ' deg in the paddock.</p>';
 }
 function refresh(){ drawPoints(); renderBelow(); renderSel(); renderList(); }
 function show(refit){
@@ -682,8 +734,11 @@ function segRows(){ return SEGS.map(s => { const ss = state.segments[s.segment_i
     note: ss.note || '', revealed_at: ss.revealed_at || '', saved_at: ss.saved_at || '', n_clicks: all.filter(live).length,
     n_before_reveal: all.filter(c => c.before_reveal && ss.revealed_at).length, n_after_reveal: all.filter(c => !c.before_reveal).length,
     n_legacy: all.filter(c => c.legacy).length, n_deleted_after_reveal: all.filter(c => c.deleted_after_reveal).length}; }); }
+function orientExport(){ const o = {}; Array.from(new Set(SEGS.map(s => s.house))).sort().forEach(h => { const q = (state.orientation_by_house || {})[h];
+  o[h] = q ? {rot_deg: +q.rot_deg, mirror: !!q.mirror, chosen_at: q.chosen_at} : {rot_deg: 0, mirror: false, chosen_at: null, default: true}; }); return o; }
 function payload(){ return {page_version: DATA.meta.page_version, state_version: STATE_VERSION, run: DATA.meta.run, exported_at: now(), save_into: DATA.meta.export_dir,
-  legend_source: DATA.meta.legend_source, legacy_migrated_at: state.legacy_migrated_at || '', clicks: state.clicks, segments: segRows()}; }
+  legend_source: DATA.meta.legend_source, legacy_migrated_at: state.legacy_migrated_at || '', orientation_by_house: orientExport(),
+  orientation_note: DATA.meta.orientation_note || '', clicks: state.clicks, segments: segRows()}; }
 function exportJSON(){ download('inbox_identity_2026c_' + stamp() + '.json', JSON.stringify(payload(), null, 1), 'application/json'); }
 function csvq(v){ v = (v === null || v === undefined) ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
 const CSV_COLS = ['record','click_id','segment_id','camera','house','frame_kind','frame_file','frame_idx','frame_time','u_px','v_px','animal','confidence',
@@ -704,14 +759,16 @@ function importJSON(ev){
   const f = ev.target.files[0]; if (!f) return; const r = new FileReader();
   r.onload = () => { try { const o = JSON.parse(r.result); if (!o.clicks) throw new Error('no clicks in file');
       if (!confirm('Replace the current clicks (' + state.clicks.length + ') with the ' + o.clicks.length + ' clicks in ' + f.name + '?')) return;
-      const st = {clicks: o.clicks, segments: {}, legacy_migrated_at: o.legacy_migrated_at || undefined};
+      const st = {clicks: o.clicks, segments: {}, legacy_migrated_at: o.legacy_migrated_at || undefined, orientation_by_house: {}};
+      Object.entries(o.orientation_by_house || {}).forEach(([h, q]) => { if (q && q.chosen_at) st.orientation_by_house[h] = {rot_deg: +q.rot_deg, mirror: !!q.mirror, chosen_at: q.chosen_at}; });
       (o.segments || []).forEach(s => { st.segments[s.segment_id] = {complete: s.complete || '', complete_first: s.complete_first || '', note: s.note || '',
         revealed_at: s.revealed_at || '', saved_at: s.saved_at || '', n_saved_before_reveal: s.n_before_reveal}; if (!s.revealed_at) delete st.segments[s.segment_id].revealed_at; });
       migrate(st); state = st; undoStack = []; redoStack = []; selId = null; save(); show(); } catch (e) { alert('Import failed: ' + e.message); } };
   r.readAsText(f); ev.target.value = '';
 }
 window.__inbox = {view: () => ({s: view.s, tx: view.tx, ty: view.ty}), selected: () => selId, state: () => JSON.parse(JSON.stringify(state)),
-                  undo: () => undoStack.length, redo: () => redoStack.length, legacyMigrated: () => legacyMigrated, R: R_SCREEN};   // read-only, for the checks
+                  undo: () => undoStack.length, redo: () => redoStack.length, legacyMigrated: () => legacyMigrated, R: R_SCREEN,
+                  viewXY: (dx, dy, rot, mirror) => viewXY(dx, dy, {rot: rot, mirror: mirror})};   // read-only, for the checks
 load(); setup(); show();
 })();
 """
@@ -905,6 +962,7 @@ def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | 
         okk["legacy_migrated"] = (len(legacy) >= 1 and all(k["before_reveal"] for k in legacy)) if (seed_legacy or legacy) else True
         go(seg_index)
         side = c.ev("document.getElementById('side').innerText")
+        okk["orientation_hidden_before_reveal"] = c.ev("!document.getElementById('orient-sel') && !document.getElementById('topview')")
         okk["wiser_hidden_before_reveal"] = ("Roster" not in side and "Save clicks & reveal WISER" in side and "Identity legend" in side
                                              and "close-up clips" in side and c.ev("!document.getElementById('wiser-panel')"))
         n0 = len(mine(st()))
@@ -996,6 +1054,55 @@ def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | 
         s3 = st()
         okk["reveal_shows_wiser"] = "Roster" in c.ev("document.getElementById('side').innerText") and bool(s3["segments"][sid].get("revealed_at"))
         okk["saved_before_reveal_frozen"] = all(k["before_reveal"] and k.get("verdict_first", {}).get("animal") == k["animal"] for k in mine(s3))
+
+        # top-view orientation (display only, per house): 8 options vs the Python reference on known points, edge labels
+        house = sg["house"]
+        refs = data["meta"]["house_refs"][house]
+        phi, C0, pole = refs["ridge_deg"], refs["centre"], refs["pole"]
+        posd = [q for q in sg["wiser"]["positions"] if q.get("along_in") is not None]
+
+        def topview():
+            return c.ev("(() => { const v = document.getElementById('topview'); if (!v) return null;"
+                        " const r = v.querySelector('rect.pole'); const cs = Array.from(v.querySelectorAll('circle.pos'));"
+                        " return {cx: +v.dataset.cx, cy: +v.dataset.cy, S: +v.dataset.scale, rot: +v.dataset.rot, mirror: v.dataset.mirror === '1',"
+                        " pole: r ? [+r.dataset.x, +r.dataset.y] : null, pos: Object.fromEntries(cs.map(e => [e.dataset.animal, [+e.getAttribute('cx'), +e.getAttribute('cy')]])),"
+                        " edges: Object.fromEntries(Array.from(v.querySelectorAll('text.edge')).map(e => [e.dataset.side, e.textContent])),"
+                        " sel: (document.getElementById('orient-sel') || {}).value}; })()")
+
+        def expect(tv, dx, dy, rot, mir):
+            a, b = orient_view(dx, dy, rot, mir)
+            return tv["cx"] + a * tv["S"], tv["cy"] - b * tv["S"]
+
+        def setsel(v):
+            c.ev("(() => { const e = document.getElementById('orient-sel'); e.value = " + json.dumps(v) + "; e.dispatchEvent(new Event('change')); })(); 1")
+            time.sleep(0.2)
+
+        tv0 = topview()
+        okk["orientation_default_paddock"] = tv0 is not None and tv0["rot"] == 0 and not tv0["mirror"] and tv0["sel"] == "0|0" and \
+            tv0["edges"] == {"right": "toward x = 480 wall", "left": "toward x = 0 wall", "top": "toward y = 240 (row C)", "bottom": "toward y = 0 (row A)"}
+        errs, labs = [], []
+        wall = {(1, 0): "toward x = 480 wall", (-1, 0): "toward x = 0 wall", (0, 1): "toward y = 240 (row C)", (0, -1): "toward y = 0 (row A)"}
+        for rot in (0, 90, 180, 270):
+            for mir in (False, True):
+                setsel(f"{rot}|{int(mir)}")
+                tv = topview()
+                ex = expect(tv, pole["xy"][0] - C0[0], pole["xy"][1] - C0[1], rot, mir)
+                errs.append(max(abs(ex[0] - tv["pole"][0]), abs(ex[1] - tv["pole"][1])))
+                for q in posd:
+                    dx, dy = house_to_paddock(q["along_in"], q["across_in"], phi)
+                    ex = expect(tv, dx, dy, rot, mir)
+                    errs.append(max(abs(ex[0] - tv["pos"][q["animal"]][0]), abs(ex[1] - tv["pos"][q["animal"]][1])))
+                want = {}
+                for v, name in wall.items():
+                    a, b = orient_view(v[0], v[1], rot, mir)
+                    want["right" if a > 0.5 else "left" if a < -0.5 else "top" if b > 0.5 else "bottom"] = name
+                labs.append(tv["edges"] == want and tv["rot"] == rot and tv["mirror"] == mir)
+        res["orientation_max_err_px"] = round(max(errs), 4)
+        res["orientation_points_checked"] = len(errs)
+        okk["orientation_8_options_transform"] = max(errs) < 0.05 and all(labs) and len(labs) == 8
+        setsel("90|1")                      # leave a non-default choice for the persistence / export checks
+        okk["orientation_stored"] = (st().get("orientation_by_house", {}).get(house, {}).get("rot_deg") == 90
+                                     and st()["orientation_by_house"][house]["mirror"] is True and bool(st()["orientation_by_house"][house]["chosen_at"]))
         # after the reveal: add D, relabel C (edited after the reveal), delete A (kept, flagged)
         xd, yd = scr(0.5 * W, 0.25 * H)
         before = {k["click_id"] for k in mine(st())}
@@ -1027,10 +1134,18 @@ def ui_check(page: Path, profile: Path, seg_index: int = 0, seed_legacy: dict | 
                                and crow[ids["A"]]["deleted_after_reveal"] == "true"
                                and all(crow[k]["legacy"] == "true" and crow[k]["before_reveal"] == "true" for k in ex if ex[k].get("legacy"))
                                and len(crow) == len(js["clicks"]) and sum(r["record"] == "segment" for r in rows) == len(data["segments"]))
-        res["export"] = {"n_clicks": len(js["clicks"]), "n_legacy": sum(bool(k.get("legacy")) for k in js["clicks"]), "segment": sgx}
+        ob = js.get("orientation_by_house", {})
+        okk["orientation_exported"] = (ob.get(house, {}).get("rot_deg") == 90 and ob[house].get("mirror") is True and bool(ob[house].get("chosen_at"))
+                                       and set(ob) == {q["house"] for q in data["segments"]})
+        res["export"] = {"n_clicks": len(js["clicks"]), "n_legacy": sum(bool(k.get("legacy")) for k in js["clicks"]), "segment": sgx,
+                         "orientation_by_house": ob}
         reload()
         go(seg_index)
         okk["reveal_persists"] = "Roster" in c.ev("document.getElementById('side').innerText")
+        tv = topview()
+        ex = expect(tv, pole["xy"][0] - C0[0], pole["xy"][1] - C0[1], 90, True)
+        okk["orientation_persists_after_reload"] = (tv["sel"] == "90|1" and tv["rot"] == 90 and tv["mirror"]
+                                                    and max(abs(ex[0] - tv["pole"][0]), abs(ex[1] - tv["pole"][1])) < 0.05)
     finally:
         if c is not None:
             c.close()
@@ -1161,13 +1276,20 @@ def selftest() -> int:
         except ValueError:
             raised = True
         rec("legend refuses a CSV without id_colour", raised)
+        # orientation reference maths (display only): paddock default, rotation counter-clockwise, mirror flips x; house frame inverse
+        hf = ip.to_house_frame([[342.4 + 3.0, 117.7 - 5.0]], {"centre": (342.4, 117.7), "ridge_deg": 92.0})[0]
+        rec("orientation maths: (1, 0) -> (1, 0) / (0, 1) at 90 / (-1, 0) mirrored; house_to_paddock inverts to_house_frame",
+            orient_view(1, 0, 0, False) == (1, 0) and orient_view(1, 0, 90, False) == (0, 1) and orient_view(1, 0, 0, True) == (-1, 0)
+            and orient_view(0, 1, 270, True) == (1, 0) and np.allclose(house_to_paddock(hf[0], hf[1], 92.0), (3.0, -5.0))
+            and set(data["meta"]["house_refs"]) == {"house_1", "house_2"} and data["meta"]["house_refs"]["house_2"]["pole"]["name"] == "B3")
         # the click page driven in headless Chrome: select / move / delete / undo / relabel / nudge, persistence, blind reveal, export
         if CHROME.exists():
             seed = {"clicks": [{"segment_id": s0["segment_id"], "camera": "CH07", "house": "house_2", "frame_kind": "ir_p06", "u_px": 50.0, "v_px": 60.0,
                                 "animal": "SF10", "confidence": "sure", "clicked_at": "2026-10-10T20:00:00Z"}], "segments": {}}
             ui = ui_check(run / "identity_page", tmp / "chrome_profile", 0, seed)
             rec("browser: 3 markers, select 8 px off centre (no new), drag, Delete, right-click, undo, relabel, nudge + undo / redo, "
-                "constant marker size, reload persists, WISER hidden until reveal, flags exported, legacy migrated",
+                "constant marker size, reload persists, WISER hidden until reveal, flags exported, legacy migrated, "
+                "top-view orientation (8 options vs the Python reference, edge labels, stored, exported, persists)",
                 ui["verdict"] == "PASS", str({k: v for k, v in ui["checks"].items() if not v}) + f" right-click native {ui.get('right_click_native_contextmenu')}")
         else:
             print("[SKIP] Chrome not found: browser UI check not run")
