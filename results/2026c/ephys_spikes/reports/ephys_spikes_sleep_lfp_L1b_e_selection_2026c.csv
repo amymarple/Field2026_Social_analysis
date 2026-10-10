@@ -1,0 +1,3 @@
+scores,subset,steps,delta_mse_pct,ci_lo_pct,ci_hi_pct,pooled_P_slope,animals_same_sign,animals,per_animal_slopes,fut_cov_main_median,fut_cov_main_mean,share_main_entirely_nrem
+final,future window entirely NREM,61553,-7.613882886965031,-13.40490480838755,-2.9102270931235905,-0.09256149176079341,4,6,SF07 -0.162; SF08 +0.002; SF09 -0.098; SF10 +0.003; SF11 -0.040; SF12 -0.029,1.0,0.9021724992166115,0.562310434736338
+pass2med,future window entirely NREM,65112,0.22379565674864277,-0.47598931488949986,1.0797758133845143,-0.028089103709476426,4,6,SF07 -0.082; SF08 +0.015; SF09 -0.032; SF10 +0.003; SF11 -0.045; SF12 -0.052,1.0,0.9032569500331795,0.5677580583675716

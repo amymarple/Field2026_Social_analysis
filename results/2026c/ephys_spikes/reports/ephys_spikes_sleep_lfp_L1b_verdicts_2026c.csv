@@ -1,0 +1,7 @@
+variant,term,pass,nap_rem_entries,animals_with_nap_rem,numbers
+all naps,nap x P,False,175,6,"REM log-loss +0.080 % [-0.034, +0.208], 1/6"
+all naps,nap x depth,False,175,6,"REM log-loss -0.138 % [-0.529, +0.118], 3/6"
+all naps,nap main effect,False,175,6,"REM log-loss +0.165 % [-0.013, +0.519], 1/6"
+strict naps,nap x P,False,94,6,"REM log-loss -0.076 % [-0.401, +0.096], 4/6"
+strict naps,nap x depth,False,94,6,"REM log-loss -0.110 % [-0.392, +0.055], 3/6"
+strict naps,nap main effect,False,94,6,"REM log-loss +0.117 % [-0.061, +0.474], 3/6"

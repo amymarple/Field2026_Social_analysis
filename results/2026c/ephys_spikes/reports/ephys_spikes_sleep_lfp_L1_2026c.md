@@ -31,7 +31,7 @@ Depth here is the scorer's raw slow-wave slope (imu_fixch), 30–150 s before ea
   - REM-vs-stay dark coefficient: −0.689 → −0.712 (FINAL), −0.697 → −0.648 (pass2med).
   - Depth × dark: +0.006 % / −0.005 %.
   - The night gate (#14b) is not depth.
-- **(e) Depth as the outcome (#68).**
+- **(e) Depth as the outcome (#68; downgraded to Candidate by L1b's selection check — see the [L1b report](ephys_spikes_sleep_lfp_L1b_2026c.md)).**
   - Adding the P spline to clock + wake history + elapsed time improves held-out prediction of depth 30–150 s ahead:
     MSE −3.35 % [−5.12, −1.64] (FINAL), −0.95 % [−1.65, −0.17] (pass2med).
   - The slope is negative (−0.12 / −0.08 per unit ln(1 + P)), 6/6 animals.

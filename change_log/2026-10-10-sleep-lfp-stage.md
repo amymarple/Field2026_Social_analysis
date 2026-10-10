@@ -27,3 +27,15 @@ identical forward-chained steps; Δ held-out log-loss %, total / REM / WAKE.
 - The night gate is not depth: the dark coefficient is unchanged, and depth × dark gives no gain (#67).
 - The count predicts the coming depth: MSE −3.4 % / −1.0 %, slope negative, 6/6 (#68).
 
+## 2026-10-10 — revision 2: L1b (naps vs main sleep) and the rule-(e) selection check
+
+Plan §8, committed (87541f7) before results. `ephys/sleep_lfp.py L1b` (labels from the SWR session's night_sleep_wiser;
+selftest adds the continuing-NREM window test). Run 9 min.
+
+- Naps vs main sleep, REM entry, FINAL:
+  - nap × P +0.08 %, nap × depth −0.14 %, nap main effect +0.17 %, all CIs covering 0;
+  - 175 nap REM entries (94 strict), 6/6 → #69 (no difference detected; naps are all dark).
+- Rule (e) on future windows entirely NREM: FINAL MSE −7.6 % but the sign holds in only 4/6; pass2med +0.2 % → #68
+  goes down to Candidate (partly composition).
+- Wording (main session, after astra's review): #65 and #67 scoped to this depth measure and window.
+

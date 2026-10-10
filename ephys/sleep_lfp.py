@@ -281,6 +281,164 @@ def L1(a) -> None:
     print("written", rd / "ephys_spikes_sleep_lfp_L1_2026c.md", flush=True)
 
 
+# ------------------------------------------------------------------ L1b (plan revision 2)
+NAPS_CSV = "results/2026c/ephys_spikes/reports/ephys_spikes_night_naps_2026c.csv"
+NSW_RUN = Path("D:/Field2026_analysis_out/2026c/night_sleep_wiser_20261009_1051")
+
+
+def prep_scoring(lab: str, ctx: dict) -> dict:
+    from rem_ripple_model import block_tables, record_arrays
+    from sleep_model import PASS2MED, build_data, records_for, variant_specs
+    from sleep_schedule import REVIEW, STATES, included_sessions
+    root = STATES if lab == "final" else PASS2MED
+    recs = records_for(root)
+    starts = {(r.animal, r.session): r.start for r in included_sessions(REVIEW, root).itertuples()}
+    steps = build_data(recs, {KEY: variant_specs()[KEY]})
+    arrs = {rc["record_id"]: record_arrays(rc, starts, ctx["Q"], ctx["settle"], ctx["cache"], ctx["codes"]) for rc in recs}
+    BT = block_tables(recs, arrs)
+    F = step_features(steps, recs, arrs, BT)
+    byrid = {rc["record_id"]: rc for rc in recs}
+    cont, cov = np.zeros(len(steps), bool), np.full(len(steps), np.nan)
+    for rid, g in steps.groupby("record_id"):
+        st = byrid[rid]["state"]
+        n = len(st)
+        cN = np.r_[0, np.cumsum(st == N_STATE)]
+        tt = (g.bout_start.to_numpy() + g.elapsed.to_numpy()).astype(np.int64)
+        e1 = np.minimum(tt + FUT[1], n)
+        cont[steps.index.get_indexer(g.index)] = (tt + FUT[1] <= n) & ((cN[e1] - cN[tt]) == FUT[1])
+        a0, a1 = np.minimum(tt + FUT[0], n), np.minimum(tt + FUT[1], n)
+        cov[steps.index.get_indexer(g.index)] = (cN[a1] - cN[a0]) / (FUT[1] - FUT[0])
+    F["cont_nrem"], F["fut_cov"] = cont, cov
+    return {"recs": recs, "steps": steps, "F": F}
+
+
+def label_steps(steps: pd.DataFrame, strict_only: bool = False) -> np.ndarray:
+    """0 = main sleep, 1 = nap, -1 = neither (step start floored to the second)."""
+    naps = pd.read_csv(REPO / NAPS_CSV, parse_dates=["start", "end"])
+    if strict_only:
+        naps = naps[naps.strict.astype(bool)]
+    lab = np.full(len(steps), -1)
+    ts = pd.to_datetime(steps.t).dt.floor("1s")
+    for an, g in steps.groupby("animal"):
+        idx = steps.index.get_indexer(g.index)
+        tv = ts.iloc[idx].to_numpy()
+        f = NSW_RUN / f"seconds_{an}.csv.gz"
+        if f.exists():
+            s = pd.read_csv(f, usecols=["t", "tau_h"], parse_dates=["t"])
+            main = np.unique(s.t[s.tau_h.notna()].dt.floor("1s").to_numpy())
+            lab[idx[np.isin(tv, main)]] = 0
+        nn = naps[naps.animal == an].sort_values("start")
+        if len(nn):
+            st0, en0 = nn.start.dt.floor("1s").to_numpy(), nn.end.dt.floor("1s").to_numpy()
+            j = np.searchsorted(st0, tv, side="right") - 1
+            ok = j >= 0
+            inn = np.zeros(len(tv), bool)
+            inn[ok] = tv[ok] < en0[j[ok]]
+            lab[idx[inn]] = 1
+    return lab
+
+
+def L1b(a) -> None:
+    import swr_temperature as stp
+    from _common import git_commit, write_json
+    from output_paths import out_root, report_dir, run_dir
+    from rem_ripple_model import SLEEP_ROOT
+    from sklearn.linear_model import LogisticRegression
+    from sleep_model import design
+    from sleep_quant import md_table
+    from sleep_schedule import REVIEW
+    out = run_dir("sleep_lfp_L1b", "2026c")
+    rd = report_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    t0 = time.time()
+    tiers = ["validated", "good", "check", "low_contrast"]
+    q = stp.sessions(rd / "ephys_spikes_swr_quality_2026c.csv", REVIEW, tiers)
+    Q = {(r.animal, r.session): {"use_until_t": r.use_until_t, "block_from": r.block_from} for r in q.itertuples()}
+    ctx = {"Q": Q, "codes": {k: i for i, k in enumerate(sorted({(r.animal, r.block_from) for r in q.itertuples()}))},
+           "settle": stp.settle_windows(REPO / "cohorts/2026c.yaml"),
+           "cache": load_sw(Q, Path(SLEEP_ROOT), out_root() / "2026c" / "sleep_lfp_inputs" / "sw_imu_fixch.pkl")}
+    CMP, COEF, CNT, SEL = [], [], [], []
+    for lab in a.scorings:
+        S = prep_scoring(lab, ctx)
+        steps, F = S["steps"], S["F"]
+        print(f"[{lab}] prepared {time.time() - t0:.0f} s", flush=True)
+        # ---- rule (e) on fixed continuing-NREM windows
+        mfin = np.isfinite(F.dep.to_numpy())
+        De = arrays_for(steps, F, mfin & F.cont_nrem.to_numpy())
+        oc = ols_outcome(De)
+        cov_main = F.fut_cov.to_numpy()[mfin & np.isfinite(F.dep_fut.to_numpy())]
+        SEL.append({"scores": lab, "subset": "future window entirely NREM", **oc,
+                    "fut_cov_main_median": float(np.median(cov_main)), "fut_cov_main_mean": float(np.mean(cov_main)),
+                    "share_main_entirely_nrem": float(np.mean(cov_main >= 1.0))})
+        print(f"[{lab}] (e) selection check {time.time() - t0:.0f} s", flush=True)
+        if lab != "final":
+            continue
+        # ---- L1b: naps vs main sleep (FINAL labels)
+        for variant, strict in (("all naps", False), ("strict naps", True)):
+            labl = label_steps(steps, strict_only=strict)
+            m = mfin & (labl >= 0)
+            D = arrays_for(steps, F, m)
+            D["nap"] = (labl[m] == 1).astype(float)
+            lp = D[f"lP_{KEY}"]
+            D["nap_lP"] = D["nap"] * (lp - lp.mean()) / lp.std()
+            D["nap_dep"] = D["nap"] * D["dep"]
+            for g, nm in ((1, "nap"), (0, "main")):
+                sel = D["nap"] == g
+                for an in sorted(set(D["animal"])):
+                    mm = sel & (D["animal"] == an)
+                    CNT.append({"variant": variant, "label": nm, "animal": an, "steps": int(mm.sum()), "rem_entries": int((D["y"][mm] == 1).sum())})
+            specs = {"B+dep": {**B, "extra": ("dep",)}, "M0": {**B, "extra": ("dep", "nap")},
+                     "M0+napP": {**B, "extra": ("dep", "nap", "nap_lP")}, "M0+napD": {**B, "extra": ("dep", "nap", "nap_dep")},
+                     "M0+both": {**B, "extra": ("dep", "nap", "nap_lP", "nap_dep")}}
+            CMP.append(run_compare(D, specs, [("B+dep", "M0"), ("M0", "M0+napP"), ("M0", "M0+napD"), ("M0", "M0+both")],
+                                   a.workers, variant, lab))
+            idx = np.arange(len(D["y"]))
+            levels = sorted(set(D["animal"]))
+            sp = specs["M0+both"]
+            X, st = design(D, idx, sp, None, levels)
+            mdl = LogisticRegression(C=1e4, max_iter=3000).fit(X, D["y"])
+            cl = list(mdl.classes_)
+            n_spl = sum(st[k].n_features_out_ for k in st if k.startswith("spl_"))
+            lin = ["T_day", "has_anchor", "dark", "l_dprev", "prev_rem", "prev_unk", "fW10", "dep", "nap", "nap_lP", "nap_dep"]
+            for j, nm in enumerate(lin):
+                if nm in ("dep", "nap", "nap_lP", "nap_dep"):
+                    col = n_spl + 4 + j
+                    COEF.append({"variant": variant, "term": nm, "REM_vs_stay_per_unit": float(mdl.coef_[cl.index(1), col] - mdl.coef_[cl.index(0), col]) / st["sd"][nm],
+                                 "WAKE_vs_stay_per_unit": float(mdl.coef_[cl.index(2), col] - mdl.coef_[cl.index(0), col]) / st["sd"][nm]})
+            print(f"[{lab}] L1b {variant} {time.time() - t0:.0f} s", flush=True)
+    CMP, COEF, CNT, SEL = (pd.concat(CMP, ignore_index=True), pd.DataFrame(COEF), pd.DataFrame(CNT), pd.DataFrame(SEL))
+    v = []
+    for variant in ("all naps", "strict naps"):
+        c = CMP[(CMP.subset == variant) & (CMP.metric == "rem")]
+        cn = CNT[(CNT.variant == variant) & (CNT.label == "nap")]
+        n_an = int((cn.rem_entries > 0).sum())
+        for comp, name in (("M0+napP vs M0", "nap x P"), ("M0+napD vs M0", "nap x depth"), ("M0 vs B+dep", "nap main effect")):
+            r = c[c.comparison == comp].iloc[0]
+            ok = bool(r.ci_hi_pct < 0 and r.animals_better >= n_an - 1)
+            v.append({"variant": variant, "term": name, "pass": ok, "nap_rem_entries": int(cn.rem_entries.sum()), "animals_with_nap_rem": n_an,
+                      "numbers": f"REM log-loss {r.delta_pct:+.3f} % [{r.ci_lo_pct:+.3f}, {r.ci_hi_pct:+.3f}], {int(r.animals_better)}/{int(r.animals)}"})
+    V = pd.DataFrame(v)
+    for name, T in (("compare", CMP), ("coef", COEF), ("counts", CNT), ("e_selection", SEL), ("verdicts", V)):
+        T.to_csv(rd / f"ephys_spikes_sleep_lfp_L1b_{name}_2026c.csv", index=False)
+    cs = CNT.groupby(["variant", "label"])[["steps", "rem_entries"]].sum().reset_index()
+    L_ = ["# Sleep LFP stage — L1b: naps vs main sleep (P and depth), and the rule-(e) selection check (cohort 2026c)", "",
+          "Plan [implementation_plan/2026-10-10-sleep-lfp-stage.md](../../../../implementation_plan/2026-10-10-sleep-lfp-stage.md) §8 "
+          f"revision 2 (rules written before results). Driver `ephys/sleep_lfp.py L1b` (commit {gc}); bulk `{out}`; runtime "
+          f"{(time.time() - t0) / 60:.0f} min. **Technical ledger.** Labels from the SWR session's night_sleep_wiser (FINAL only); "
+          "outcome = REM entry (the labels look into the future, so WAKE differs by construction); naps are all dark, so a "
+          "difference reads 'label or light'.", "",
+          "## Verdicts (REM entry)", "", *md_table(V), "",
+          "## Steps and REM entries per label", "", *md_table(cs), "", *md_table(CNT), "",
+          "## Held-out comparisons (total, REM, WAKE)", "", *md_table(CMP.round(4)), "",
+          "## Full-data coefficients (M0 + both; per unit)", "", *md_table(COEF.round(4)), "",
+          "## Rule (e) on future windows entirely NREM (selection check)", "", *md_table(SEL.round(4)), ""]
+    (rd / "ephys_spikes_sleep_lfp_L1b_2026c.md").write_text("\n".join(L_) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_sleep_lfp_L1b_2026c.json", {"run_dir": str(out), "git_commit": gc, "scorings": a.scorings})
+    print(V.to_string(index=False), flush=True)
+    print(SEL.round(3).to_string(index=False), flush=True)
+    print("written", rd / "ephys_spikes_sleep_lfp_L1b_2026c.md", flush=True)
+
+
 def selftest() -> None:
     t0 = time.time()
     # window means on a toy depth series
@@ -312,12 +470,20 @@ def selftest() -> None:
         r = ols_outcome(D)
         assert (r["ci_hi_pct"] < 0) == expect, r
         print(f"PASS rule (e) with P effect {eff}: Delta MSE {r['delta_mse_pct']:+.2f} % [{r['ci_lo_pct']:+.2f}, {r['ci_hi_pct']:+.2f}]", flush=True)
+    # L1b: the continuing-NREM test of the future window on a toy record
+    st_ = np.array([3] * 200 + [1] * 10 + [3] * 200, np.int8)
+    cN = np.r_[0, np.cumsum(st_ == N_STATE)]
+    tt = np.array([0, 50, 100])
+    e1 = np.minimum(tt + FUT[1], len(st_))
+    cont = (tt + FUT[1] <= len(st_)) & ((cN[e1] - cN[tt]) == FUT[1])
+    assert list(cont) == [True, True, False], cont
+    print("PASS L1b continuing-NREM window test", flush=True)
     print(f"selftest PASS ({time.time() - t0:.0f} s)", flush=True)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["L1"])
+    ap.add_argument("cmd", nargs="?", choices=["L1", "L1b"])
     ap.add_argument("--scorings", nargs="+", default=["final", "pass2med"], choices=["final", "pass2med"])
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--selftest", action="store_true")
@@ -326,6 +492,8 @@ def main() -> None:
         selftest()
     elif a.cmd == "L1":
         L1(a)
+    elif a.cmd == "L1b":
+        L1b(a)
     else:
         ap.print_help()
 

@@ -1,0 +1,25 @@
+variant,label,animal,steps,rem_entries
+all naps,nap,SF07,2583,26
+all naps,nap,SF08,2779,15
+all naps,nap,SF09,4119,37
+all naps,nap,SF10,4436,35
+all naps,nap,SF11,2195,33
+all naps,nap,SF12,3761,29
+all naps,main,SF07,17096,393
+all naps,main,SF08,18869,368
+all naps,main,SF09,18813,346
+all naps,main,SF10,16655,384
+all naps,main,SF11,6336,145
+all naps,main,SF12,14206,273
+strict naps,nap,SF07,1184,10
+strict naps,nap,SF08,1826,9
+strict naps,nap,SF09,2698,18
+strict naps,nap,SF10,3094,28
+strict naps,nap,SF11,479,5
+strict naps,nap,SF12,2909,24
+strict naps,main,SF07,17096,393
+strict naps,main,SF08,18869,368
+strict naps,main,SF09,18813,346
+strict naps,main,SF10,16655,384
+strict naps,main,SF11,6336,145
+strict naps,main,SF12,14206,273
