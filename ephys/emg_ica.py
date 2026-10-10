@@ -182,8 +182,11 @@ def emg_cluster(x5: np.ndarray, hp: float = 100.0, fs: float = FS, lwinms: float
 
 
 def emg_rm_long(x: np.ndarray, pos: np.ndarray, emg_thrd: np.ndarray, fs: float = FS, lower: float = 30.0,
-                hp: float = 100.0, down_sample: int = 3, n_ic: int | None = None, seed: int = 0) -> tuple[np.ndarray, dict]:
-    """EMG_rm_long.m, cmp_method 'hw'. x: samples x sites of one shank (wide band). Returns (cleaned x, info)."""
+                hp: float = 100.0, down_sample: int = 3, n_ic: int | None = None, seed: int = 0,
+                always_rm: bool = False) -> tuple[np.ndarray, dict]:
+    """EMG_rm_long.m, cmp_method 'hw'. x: samples x sites of one shank (wide band). Returns (cleaned x, info).
+    always_rm = the toolbox's own switch of that name: remove the flattest component even when its acceptance rule
+    (exactly one component > 10 and one > 50) is not met; info['removed_by'] says which applied."""
     nt, nch = x.shape
     if not n_ic:
         n_ic = int(max(np.fix(0.7 * nch), min(10, nch)))
@@ -195,7 +198,7 @@ def emg_rm_long(x: np.ndarray, pos: np.ndarray, emg_thrd: np.ndarray, fs: float 
     xc = x - mx
     wx, ar = whiten(xc)
     included = np.arange(nt)
-    info = dict(n_selected=int(sel.sum()), removed=False, flatness=None, emg_comp=None, ar=ar.tolist())
+    info = dict(n_selected=int(sel.sum()), removed=False, removed_by=None, flatness=None, emg_comp=None, ar=ar.tolist())
     if sel.sum() < 10 * fs:
         return x.copy(), info
     thr, thr_low = 50.0, 10.0
@@ -223,6 +226,8 @@ def emg_rm_long(x: np.ndarray, pos: np.ndarray, emg_thrd: np.ndarray, fs: float 
         if (np.sum(flatness(Ah, pos) > thr_low) < 2) and (np.sum(fl > thr) > 0):
             remove = True
     fl = flatness(A, pos)
+    info["flat_first_stage"] = sorted(flatness(Ah, pos).round(1).tolist())[-3:]     # the gate: < 2 of these > 10
+    info["thr_final"] = thr
     comp = int(np.argmax(fl))
     As, Ws = A[:, comp], W[comp]
     emg = xc @ Ws
@@ -230,7 +235,8 @@ def emg_rm_long(x: np.ndarray, pos: np.ndarray, emg_thrd: np.ndarray, fs: float 
         emg = butfilter(emg, 4, lower / (fs / 2), "high")
     info.update(flatness=fl.tolist(), emg_comp=comp, flat_max=float(fl[comp]),
                 n_flat_gt10=int(np.sum(fl > thr_low)), As=As.tolist())
-    if not remove:
+    info["criteria_met"] = bool(remove)
+    if not (remove or always_rm):
         return x.copy(), info
     med = np.median(np.abs(emg))
     sc = np.flatnonzero(emg[:-1] * emg[1:] < 0)
@@ -248,7 +254,7 @@ def emg_rm_long(x: np.ndarray, pos: np.ndarray, emg_thrd: np.ndarray, fs: float 
     if (nt - last) > 1250:
         last = int(np.flatnonzero(emg <= med * 1e-2)[-1]) + 1
     emg[last:] = 0
-    info.update(removed=True, emg_rms=float(np.sqrt(np.mean(emg ** 2))))
+    info.update(removed=True, removed_by="criteria" if remove else "always_rm", emg_rms=float(np.sqrt(np.mean(emg ** 2))))
     return xc - np.outer(emg, As) + mx, info
 
 
@@ -258,7 +264,7 @@ def cluster_sites(n: int) -> list[int]:
 
 
 def clean_chunk(X: np.ndarray, shanks: list[list[int]], fs: float = FS, lower: float = 30.0,
-                seed: int = 0) -> tuple[np.ndarray, list[dict]]:
+                seed: int = 0, always_rm: bool = False) -> tuple[np.ndarray, list[dict]]:
     """Clean one chunk (samples x all channels) shank by shank. `shanks`: per shank the live columns in depth order."""
     Xc = X.astype(np.float64, copy=True)
     infos = []
@@ -269,7 +275,9 @@ def clean_chunk(X: np.ndarray, shanks: list[list[int]], fs: float = FS, lower: f
         pos = np.arange(len(cols), dtype=np.float64)
         cs = [cols[i] for i in cluster_sites(len(cols))]
         thrd, heavy = emg_cluster(Xc[:, cs], fs=fs, seed=seed)
-        y, info = emg_rm_long(Xc[:, cols], pos, thrd, fs=fs, lower=lower, seed=seed)
+        # numOfIC as EMG_rm_main passes it: max(0.8 n, min(16, n)) = n for n <= 16 (not EMG_rm_long's own 0.7 n default)
+        n_ic = int(np.ceil(max(0.8 * len(cols), min(16, len(cols)))))
+        y, info = emg_rm_long(Xc[:, cols], pos, thrd, fs=fs, lower=lower, seed=seed, n_ic=n_ic, always_rm=always_rm)
         Xc[:, cols] = y
         info.update(shank=si, heavy_frac=float(heavy.mean()), thrd_frac=float(thrd.mean()))
         infos.append(info)

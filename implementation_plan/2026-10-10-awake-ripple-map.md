@@ -480,6 +480,67 @@ Medians, field aSWR / NREM:
 https://claude.ai/artifact/UfxAaVKfaYGysubMUskEWr (private; same items and key; answers in its db `reads/<id>`). A third,
 separate reading; never merged with the raw or regression pages.
 
+### Addendum 4c — uncleaned panels, Codex review, port check (2026-10-10, before the EMG-ICA reading counts)
+
+**What the user saw.**
+- In v1 of the page, 34 / 140 panels had nothing removed on the ripple's shank, yet were titled "denoised".
+- In these the noise site's shank had been cleaned while the ripple's shank had not, so the noise trace looked cleaner
+  than CA1.
+- The user: labelling an uncleaned panel would mislead; wait until all are cleaned; ask Codex if there is a problem.
+
+**Codex (thread 01a112d6, text review)**:
+- Do not use `always_rm` as the fallback. Keep uncertain items flagged.
+- Hide the acceptance status from readers. A "not cleaned" title is a cue.
+- Report accepted and forced items separately.
+- Check the port against the original, including seed and retry stability.
+- Explain why flatness 45 failed when the retries lower the threshold to 30.
+
+**What was checked.**
+- **The trace.** Flatness 45 fails at the first-stage gate: the high-pass ICA has ≥ 2 components > 10 ("no typical EMG").
+  - The decision is **seed-dependent** near the thresholds: R007 is accepted with 1 of 3 seeds.
+  - R017 is rejected with every seed (two first-stage components > 10).
+  - R018 is rejected with every seed (flatness 13, a non-affine gradient).
+- **Forced removal (`always_rm`) is harmful.** On those 34 it removes 37 % of the NREM SWRs' own ripple band (candidate
+  kept 0.63, against 0.98 under the rule). Kept for the record in `emg_ica/`; never shown.
+- **Port error found and fixed.**
+  - `EMG_rm_main` passes `numOfIC = max(0.8 n, min(16, n))`, which is n for n ≤ 16.
+  - The port had used `EMG_rm_long`'s own default (0.7 n), i.e. 11 instead of 16 components in the first stage.
+- **Port vs the MATLAB original** (R2021b, toolbox 0ee8f0d; `matlab_check/` in the run; same EMG_thrd fed to both,
+  seeds 0–2):
+  - EMG_thrd itself agrees on 99 % of samples (the pair order is random).
+  - R002 (SF07, 16 sites): the same decision for every seed; removed loading |cos| = 1.000; removed signal r 0.99–1.00.
+  - R018: both reject.
+  - R007: seed-dependent in both (MATLAB accepts with 1 of 3 seeds, the port with 0 of 3; the same flatness range 45–62).
+  - So the port reproduces the original; the instability belongs to the method.
+
+**v2 rule (fixed before any v2 reading):**
+- Clean only the ripple's own shank. The noise site stays raw as the reference, panel 6 shows the raw LFP-EMG, and theta
+  is below 30 Hz.
+- Run three seeds (0, 1, 2). An item is **cleaned** when the toolbox's rule holds for ≥ 2 of 3; the output is that of the
+  first accepting seed.
+- Items that are not cleaned are left off the EMG-ICA page (judged on the raw page only) and reported separately (SF09
+  above all).
+- Output: `emg_ica_v2/`. v1 (`emg_ica/`, with the numOfIC error) is kept for the record.
+- The readings to compare per item: raw page first (done by HC), then the cleaned page; record where judgments change.
+
+**v2 result** (`emg_ica_v2/emg_ica_items.csv`, `page_items_accepted.json`):
+- 111 / 140 cleaned.
+  - Seeds agree on 107 accepted and 27 rejected; 6 borderline.
+  - Not cleaned: SF09 21 / 25; every other animal 1–2.
+- Shown by set: NREM 24, field 30, house 32, random 25.
+- Cleaned items, medians:
+
+  | set | background ratio | candidate kept | contrast, raw → ICA |
+  |---|---:|---:|---|
+  | NREM SWRs | 0.84 | 0.97 | 2.05 → 2.08 |
+  | aSWR field | 0.62 | 0.89 | 1.44 → 1.92 |
+  | aSWR house | 0.79 | 0.95 | 1.76 → 2.33 |
+
+- **Page v4** of https://claude.ai/artifact/UfxAaVKfaYGysubMUskEWr shows the 111 items only, saving to `reads_v2/<id>`.
+  The 26 answers the user gave on the earlier versions stay in `reads/` and are not used (wrong panels).
+- SF09's field items are judged on the raw page only. SF09 needs a verified within-shank order before this method can
+  clean it.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.

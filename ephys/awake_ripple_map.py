@@ -518,7 +518,25 @@ def emgica_item(it, a, cfg: dict, out: Path) -> dict:
     c0 = max(int((it.peak_s - a.ica_half_s) * FS), 0)
     c1 = min(int((it.peak_s + a.ica_half_s) * FS), len(mm))
     X = np.asarray(mm[c0:c1], np.float64)
-    Xc, infos = emg_ica.clean_chunk(X, shanks, fs=FS, lower=a.ica_lower_hz, seed=0)
+    own = next(si for si, s in enumerate(shanks) if rc in s)
+    seeds = list(a.ica_seeds)
+    if a.ica_own_shank_only:
+        # only the ripple's shank is shown cleaned (noise site raw, LFP-EMG panel raw, theta < 30 Hz untouched); the toolbox's
+        # acceptance is seed-dependent near its thresholds (also in the MATLAB original, 2026-10-10) -> accept only when it
+        # holds for a majority of the seeds, and keep the output of the first accepting seed
+        runs = []
+        for s in seeds:
+            Xs, inf = emg_ica.clean_chunk(X, [shanks[own]], fs=FS, lower=a.ica_lower_hz, seed=s, always_rm=False)
+            runs.append((s, Xs, inf[0]))
+        met = [s for s, _, inf in runs if inf.get("criteria_met")]
+        accepted = len(met) >= len(seeds) // 2 + 1
+        s_use, Xc, inf_own = next(r for r in runs if r[0] == met[0]) if accepted else (seeds[0], X.copy(), runs[0][2])
+        inf_own = dict(inf_own, shank=own, removed=accepted, removed_by="criteria_majority" if accepted else None,
+                       seeds=seeds, seeds_met=met, seed_used=s_use if accepted else None)
+        infos = [dict(shank=si, skipped="not processed (own shank only)") for si in range(len(shanks))]
+        infos[own] = inf_own
+    else:
+        Xc, infos = emg_ica.clean_chunk(X, shanks, fs=FS, lower=a.ica_lower_hz, seed=seeds[0], always_rm=a.ica_always_rm)
     w0, w1 = max(int((it.peak_s - 6.0) * FS), 0), int((it.peak_s + 6.0) * FS)
     cols = sorted(c for s in shanks for c in s)
     win = Xc[w0 - c0:w1 - c0][:, cols]
@@ -532,15 +550,16 @@ def emgica_item(it, a, cfg: dict, out: Path) -> dict:
     rr, cr = signal.sosfiltfilt(sos, raw), signal.sosfiltfilt(sos, cln)
     bg, pk = (np.abs(t) >= 0.25) & (np.abs(t) <= 2), np.abs(t) <= 0.025
     en = signal.sosfiltfilt(esos, X[w0 - c0:w1 - c0, nc])
-    own = next(si for si, s in enumerate(shanks) if rc in s)
     inf = infos[own]
     return dict(rid=it.rid, bg=float(np.sqrt(np.mean(cr[bg] ** 2) / np.mean(rr[bg] ** 2))),
                 pk=float(np.sqrt(np.mean(cr[pk] ** 2) / np.mean(rr[pk] ** 2))),
                 con=float(np.sqrt(np.mean(cr[pk] ** 2) / np.mean(cr[bg] ** 2))),
                 con_raw=float(np.sqrt(np.mean(rr[pk] ** 2) / np.mean(rr[bg] ** 2))),
                 emg_r=float(np.corrcoef(signal.sosfiltfilt(esos, cln)[bg], en[bg])[0, 1]),
-                own_removed=bool(inf.get("removed", False)), own_flat_max=inf.get("flat_max"),
+                own_removed=bool(inf.get("removed", False)), own_removed_by=inf.get("removed_by"),
+                own_criteria_met=inf.get("criteria_met"), own_flat_max=inf.get("flat_max"),
                 own_n_flat_gt10=inf.get("n_flat_gt10"), own_thrd_frac=inf.get("thrd_frac"),
+                own_seeds_met=" ".join(map(str, inf.get("seeds_met", []))) if "seeds_met" in inf else None,
                 n_shanks_removed=int(sum(bool(i.get("removed", False)) for i in infos)), n_shanks=len(shanks),
                 chunk_s=round((c1 - c0) / FS, 1))
 
@@ -555,7 +574,9 @@ def emgica(a):
     out = Path(a.ica_dir) if a.ica_dir else run / "emg_ica"
     out.mkdir(parents=True, exist_ok=True)
     cfg = yaml.safe_load(open(HERE / "configs/swr_channels_2026c.yaml"))
-    todo = [it for it in P.itertuples() if not (out / f"{it.rid}.npz").exists()]
+    done = pd.read_csv(out / "emg_ica_items.csv") if (out / "emg_ica_items.csv").exists() else pd.DataFrame(columns=["rid", "own_removed"])
+    redo = set(done.rid[~done.own_removed.astype(bool)]) if a.ica_always_rm else set()   # only items the criteria left uncleaned
+    todo = [it for it in P.itertuples() if not (out / f"{it.rid}.npz").exists() or it.rid in redo]
     rows = Parallel(n_jobs=a.workers, backend="loky")(delayed(emgica_item)(it, a, cfg, out) for it in todo)
     old = pd.read_csv(out / "emg_ica_items.csv") if (out / "emg_ica_items.csv").exists() else pd.DataFrame()
     D = pd.concat([old, pd.DataFrame(rows)]).drop_duplicates("rid", keep="last")
@@ -615,7 +636,7 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
         for c in allc:
             if c in zc and c != nc:                                    # the noise site stays raw: the reference (the user, 10-10)
                 col[c] = z["X"][:, zc.index(c)].astype(np.float64)
-        ica_note = (f"EMG-ICA: the flat (muscle) component removed above 30 Hz on this shank (flatness {info[own]['flat_max']:.0f}); "
+        ica_note = ("EMG-ICA: the flattest (muscle) component removed above 30 Hz on this shank; "
                     "noise site RAW (grey) = the reference, ± 2 s" if cleaned else
                     "EMG-ICA: NOT CLEANED on this shank (no single flat component found, toolbox criteria not met) - "
                     "all traces RAW, ± 2 s")
@@ -779,6 +800,13 @@ def main():
     ap.add_argument("--ica-dir", default=None, help="emgica / rerender --denoise ica: folder of the cleaned windows (default <run>/emg_ica)")
     ap.add_argument("--ica-half-s", type=float, default=450.0, help="emgica: half length of the chunk cleaned around each item (s)")
     ap.add_argument("--ica-lower-hz", type=float, default=30.0, help="emgica: EMG removed above this frequency (Chen 2023: 20-30 Hz)")
+    ap.add_argument("--ica-seeds", type=int, nargs="+", default=[0],
+                    help="emgica: FastICA seeds; with --ica-own-shank-only an item counts as cleaned when the toolbox's rule holds "
+                         "for a majority of them")
+    ap.add_argument("--ica-own-shank-only", action="store_true", help="emgica: clean only the ripple's own shank")
+    ap.add_argument("--ica-always-rm", action="store_true",
+                    help="emgica: the toolbox's always_rm switch - where its acceptance rule fails, remove the flattest component "
+                         "anyway (re-runs only the items left uncleaned)")
     ap.add_argument("--lfp-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/lfp")
     ap.add_argument("--night-run", default=None, help="night_sleep_wiser run (zones_smoothed_*.csv.gz); default from its manifest")
     ap.add_argument("--swr-root", default=SWR_ROOT)
