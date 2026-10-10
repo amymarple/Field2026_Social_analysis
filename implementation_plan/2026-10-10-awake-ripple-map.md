@@ -276,6 +276,42 @@ Hotspots are interpreted only after the paddock resources are on the map.
 Whichever is chosen, the Phase 1 validity check runs first, stratified as in Amendment 1. House vs field stays the first
 question (food is in the houses).
 
+## Amendment 3 — the user's choice, 2026-10-10 (before any map)
+
+The user chose **both** of the following ("粗格子可以毕竟场地大。一维曲线可以" — the coarse grid is fine since the field is
+large, and the 1-D curve is fine). Option 3 is not done.
+
+**Coarse map (display + description).**
+- Bins of 48 in on the WISER frame, anchored at the P0 position of pole A0: a 10 × 5 grid over the paddock. Each house is
+  its own bin (membership overrides the grid).
+- Occupancy ≥ 60 s per bin.
+- Rate = aSWR / non-locomotor detectable wake minutes.
+- Shown per animal, with the landmark config (`ephys/configs/paddock_landmarks_wiser_2026c.json`) as reference marks.
+- T1 / T2 (bout-swap null, Holm) are computed on this grid.
+
+**1-D profile (primary place statistic).**
+- Distance from the 1-s position to the nearest house rest-cluster centre (the centres the membership uses).
+- Rings:
+  - ring 0 = inside a house (membership);
+  - field rings 0–24, 24–48, 48–96, 96–144, 144–192 and > 192 in.
+- Rate per ring per animal.
+- **Statistic:** the slope of log(rate + 0.5 / ring minutes) on log ring-centre distance over the field rings, weighted
+  by occupancy. Its null is the bout swap (Amendment 1), within night and block.
+- **House vs field:** the ring-0 rate against the pooled field rate, per animal, with the same null. It is read as
+  "home / feeding site vs field", since food was in the houses.
+
+**Phase 1, now concrete** (the Amendment 2 definition):
+- **Items:** 80 aSWR (40 field, 40 house), stratified by animal and amplitude tertile, with the field oversampled; 30 NREM
+  kept SWRs; 30 random non-locomotor detectable wake moments with no event within ± 2 s.
+- **Panels:**
+  - ± 2 s raw LFP of the ripple site, its two neighbours above and below on the shank, and the noise site;
+  - ± 0.5 s raw and 100–250 Hz of the ripple site.
+- **Choices:** ripple / not a ripple / unsure. A blind online page, like the short-bout reader.
+- **Gate:**
+  - the field-stratum aSWR precision (ripple / (ripple + not)) must be ≥ 0.7 for the field rings and map;
+  - the house stratum the same for ring 0;
+  - a stratum below that is dropped or restricted (a RipMax_z cut chosen here, confirmed on a second sample).
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
