@@ -149,6 +149,74 @@ Rule: an animal enters Phase 2 with ≥ 300 qSWR in the field and ≥ 20 bins wi
 - **Interpretation:** a held-out or shuffle-based effect is place dependence, not replay content. Awake ripples are
   known to rise at reward and novel places, so the paddock's resources must be on the map before any reading.
 
+## Amendment 1 — after the Codex (astra) text audit, 2026-10-10 (before any map; supersedes the sections above where they differ)
+
+The reviewer's verdict: Phase 0–1 may proceed. Before Phase 2, fix the validation gate, the match between events and
+denominator, and the shuffle. Adopted:
+
+**1. Unit.**
+- The **night** is the primary replicate unit; nap-delimited trials stay as a supplement; excursions are description.
+- The pooled maps use all eligible time: a trial < 10 min is not dropped from them, only from the per-trial analyses.
+- Stability: across nights first (night-to-night and leave-one-night-out); odd vs even trials second.
+
+**2. Phase 1 validation.**
+- The 120 items are a **pilot**, and the 60 qSWR are stratified by animal × probe block × house / field × amplitude
+  tertile.
+- The NREM positives measure the reader, not the detector's recall. Random negatives do not estimate misses. Neither is
+  reported as a detector property.
+- If a RipMax_z (or other) threshold is chosen on the pilot, it is confirmed on a **second, independent sample** before
+  any map.
+- Items show the neighbouring channels' raw traces too, to tell a local oscillation from a common-mode artefact.
+- Precision is reported per stratum, not only overall.
+
+**3. Null model.**
+- **Primary:** swap the event sequences between whole quiet bouts, keeping each bout's internal timing. Swaps happen
+  within the same night and probe block, between bouts of similar duration (± 25 %) and time of night (± 1 h).
+- **Sensitivity:** the circular shift along the quiet-wake timeline.
+- The exchangeability assumption is stated: under H0 a bout's events depend on its duration and time of night, not its
+  place.
+
+**4. Events and denominator.**
+- Events get exactly the denominator's masks (handling, lid, position, SWR coverage).
+- Seconds in which detection is impossible are removed from the occupancy. Those are seconds with LFP-EMG above the
+  `x_emg_lfp` threshold, or theta above the `x_theta` threshold, per second, from the same per-session thresholds.
+- Per place, the share of candidates rejected by each flag is reported.
+- Block: compare places **within** an animal × probe block first, then combine. Dividing by the block mean does not
+  remove "different blocks visit different places".
+- Smoothing never fills bins without occupancy.
+
+**5. Controls added.**
+- Elapsed time within the quiet bout (ripples rise with stillness duration) and time of night enter the bout-swap
+  matching, plus a bout-level regression: events ~ place + log bout duration + clock harmonics + night.
+- Low-quality localisation sensitivity: anchors_used ≤ 6; qc_i1.
+- The paddock edge from the P0 map is a reference line only. No data is cropped by it.
+
+**6. Rules.**
+- 300 qSWR / 20 bins is a feasibility screen for inference only. Descriptive maps are shown for every animal.
+- The "n − 1 of n" answer to Q1 is dropped. Per animal: is there spatial structure, its effect size (spatial information
+  above the null median), and does it repeat across nights.
+- Holm correction across animals (T1, T2) and across pairs (R1–R3).
+
+**7. Relations between animals.**
+- R1 is reported with each animal's own cross-night stability.
+- R2:
+  - 14 in is supported for still pairs (B2 still-pair distance p95 3.1 in, WISER session 2026-10-10). Moving pairs are
+    not measured, so R2 is restricted to both-still seconds.
+  - A partner without a position is unknown, not "far".
+- R3:
+  - tested only in jointly valid quiet-wake time, with the overlap recomputed after each shift;
+  - the shifts keep each animal's local event-rate changes (shifts of 2–20 min within a night);
+  - the cross-logger timing error (pc_time fits) is checked before any ± 0.5 s claim. The BLE PC-time path is a
+    10–100 ms-class coordinate, so ± 0.5 s is feasible; ± 5 s is the primary window.
+
+**8. What a map can mean.** A hotspot can come from:
+- a place-related artefact (Phase 1 per stratum);
+- detectability (point 4);
+- dwelling behaviour (the bout-duration control);
+- missing positions (sensitivity).
+
+Hotspots are interpreted only after the paddock resources are on the map.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
