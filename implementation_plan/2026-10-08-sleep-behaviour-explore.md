@@ -605,3 +605,36 @@ perturbation-blind B-full `pb_rem` / `pb_wake`):
 - Reading: post-round "before" REM O/E with CI < 1 and "after" not below 1, on both scorings → the gap is at the first
   entry (the sleep-start phase). Both calibrated while the simulation still delays → re-check the simulator (short-wake
   sampling, history updates).
+
+## 13. Amendment 5 (2026-10-10; the user: "做") — part H, the house-entry clock; written before these results
+
+**Why.** A post-round recording starts at the rat's release into the paddock (the field operator, 2026-10-10); the rat
+walks into its house on its own minutes later (2.7–16.7 min on 09-05), and half the records open with ~2 min scored
+NREM (#59). Every post-round clock so far starts at release. Part H anchors a second clock at the house entry, which
+separates field behaviour after release from sleep in the house, and asks what the opening NREM is.
+
+**Definitions** (rounds, records, scorings, bases as parts S / P / L; driver `ephys/sleep_perturb.py runH`):
+- **House entry $t_H$:** the start of the first WISER house visit at or after the record start, within 60 min: default
+  tracks (V3 / B2; fixes flagged m_silence, m_off_animal or m_tag_validity dropped; m_handling kept, since after its own
+  release the rat moves on its own), houses re-centred on the cohort-3 rest clusters (house_1 (417.7, 716.9), house_2
+  (621.2, 732.6), as `night_sleep_wiser.HOUSES_C3`), `hysteretic_visits` (14-in buffer, 5-s bins, enter 10 s, exit
+  30 s). No visit within 60 min, or no WISER (SF11 after 09-07) → no anchor; counts reported.
+- **H1, field vs house** (description): S's held-out perturbation-blind steps (`pb_rem`, `pb_wake`) split into
+  "field, before entry" ($s < t_H$) and "house, after entry" in 0–1 h and 1–3 h of the entry clock, truncated at the
+  3 h after release (the blind window). WAKE and REM O/E, block-bootstrap CIs.
+- **H2, which clock carries the arousal:** on the post-entry steps (anchored rounds, $t_H \le s < 3$ h), part P's
+  one-phase arousal fitted with the release clock $s$ vs the entry clock $s - t_H$, same base (B-full trained without
+  post-round 3 h), cross-fitted by date parity. Δ held-out log-loss (entry − release), block-bootstrap CI.
+  "Follows the house entry" = CI < 0 on both scorings; "follows release" = CI > 0 on both; else unresolved (the two
+  clocks differ by minutes against τ_A of 20–40 min, so low power is expected).
+- **H3, first REM after entry:** $t_{N'}$ = first NREM bout start at or after $t_H$; conditional simulation with every
+  observed bout before $t_{N'}$ forced (part P's generative base, without and with A). $L_{s'} = t_R - t_{N'}$ and
+  $L_{N'}$ (NREM clock), observed vs 100 replicates, morning / evening; reproduced = inside the 95 % range. Also
+  reported: $t_H$ and $t_{N'} - t_H$ (onset after entry), KM medians.
+- **H4, the opening NREM** (description, records whose first bout is NREM): over the opening bout, the head IMU
+  (`imu_seconds_cache`: share of seconds `still`, mean VeDBA_1s, share `locomoting`) and WISER (zone, maximum
+  displacement from the bout's first position), against matched NREM bouts of the same animal (length within ±50 %,
+  in a house, outside the 3 h after rounds) and field WAKE bouts (positive reference).
+  - "scorer-edge artefact likely" = still share ≥ 0.2 lower AND VeDBA ≥ 1.5× the matched NREM;
+  - "settling" = still share within 0.1 of the matched NREM;
+  - otherwise unresolved. Video stays the user's check.
