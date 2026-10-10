@@ -1,5 +1,5 @@
 #!/bin/bash
-# Delta waves (cortical DOWN states) for every SF07 / SF11 session on BioHPC cbsuruiz01 (ephys/delta_auto.py: exact port of
+# Delta waves (cortical DOWN states) for every SF07-SF12 session on BioHPC cbsuruiz01 (ephys/delta_auto.py: exact port of
 # the lab's detect_delta_waves.m on the configured top column + per-event DOWN-state check with raw multi-unit
 # crossings), from the storage LFP + raw WILD cards; animals in parallel; then the verified copy to storage
 # 3rd_rat/analysis/delta/ (run_then_store.sh, PART=delta).
@@ -29,7 +29,7 @@ echo "start $(date -Is)  repo $(cat ../.git_commit 2>/dev/null || echo unknown) 
 "$PY" delta_detect.py --selftest || exit 1
 cp "$REPO/ephys/configs/delta_channels_2026c.yaml" "$OUT/delta_channels_2026c.yaml"
 cat > "$OUT/README_delta.txt" <<TXT
-Delta waves (cortical DOWN states), cohort 3 (2026c), SF07 and SF11, one folder per session: <SFxx>/<session>/
+Delta waves (cortical DOWN states), cohort 3 (2026c), SF07-SF12, one folder per session: <SFxx>/<session>/
   <session>.deltaWaves.events.mat  the lab's struct (as detect_delta_waves.m writes it): timestamps [start stop] (s),
                                    peaks, amplitude (z peak - z end), amplitudeUnits, values [z start peak end],
                                    detectorinfo; plus verified (1 = multi-unit firing at the peak <= 0.5 x the -1..-0.4 s
@@ -43,11 +43,12 @@ Delta waves (cortical DOWN states), cohort 3 (2026c), SF07 and SF11, one folder 
                                    ephys/mua_nrem.py docstring)
 Method: ephys/delta_auto.py docstring. Detection = exact Python port of neurocode FindDeltaWaves.m + detect_delta_waves.m
 (NREM from the final 1-s states, CleanLFP [6 10], z peak-end > 3, no EMG gate), validated by replay on 9 lab sessions.
-Channels (delta_channels_2026c.yaml, copied here): SF07 col 55, SF11 col 11 (top, cortical sites; user 2026-10-08/09).
+Channels (delta_channels_2026c.yaml, copied here; top sites, user 2026-10-08/09/10): SF07 col 55, SF11 col 11 (run 2026-10-09);
+SF08 col 20, SF09 col 21, SF10 col 9, SF12 col 11 (run 2026-10-10).
 The DOWN-state check replaces verify_firing's sorted units (no sorting): spikes within +-50 ms of the peak vs -1..-0.4 s
 over the live sites with >= 1 Hz whose firing does not rise at the delta peaks; verified = ratio <= 0.5 (user 2026-10-09).
-SF07's top sites carry no units: its check uses the shank-1 spiking sites; 35-62 % of SF07 events verified vs 70-93 %
-on SF11 (local sessions). FM64 sessions (before the 09-01 evening round) have no MUA check (testable = 0).
+SF07's and SF12's top sites carry no units: their check uses deeper spiking sites (weaker); SF09 sits low (user: may not
+yield much); SF10's top sites have few units. Read results/2026c/ephys_spikes/reports/ephys_spikes_delta_sessions_2026c.md. FM64 sessions (before the 09-01 evening round) have no MUA check (testable = 0).
 Downstream: user 'noise' sleep sessions, SF11 valid_until 09-07 06:10 (after_use_until), probe-advance settle windows (info).
 Made by ephys/server/run_delta.sh, repo commit $(cat ../.git_commit 2>/dev/null || echo unknown), $(date -Is).
 TXT

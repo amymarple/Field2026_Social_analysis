@@ -12,3 +12,19 @@ SF07:   # top sites carry no units (raw MUA at noise level); delta events are ve
 SF11:   # top sites show the DOWN state themselves (raw MUA 10-35 % of baseline at the peak); col 11 consistent in all three blocks scanned
   - {valid_from: null, delta_col: 11, verify: mua,
      source: "delta scan 09-02 / 09-05 / 09-06: col 11 = shank 3 site 1, LFP-HF dip -1.48 / -1.37 / -1.47 z; verified 70-93 % of events"}
+# Added 2026-10-10 (user: "go for it process as you suggest"; per-animal top-site check on one local session each,
+# D:/Field2026_analysis_out/2026c/delta_scan_20261008/<animal>_<session>_cortex_check.json):
+SF08:   # shank 4 top cortical in BOTH probe blocks (raw MUA at the delta peak / baseline: col 20 0.06 before and after the 09-09
+        # advance); shank 3 top only after it (col 11: 0.30 at 1.1 Hz on 09-08, 0.12 at 7 Hz on 09-10) -> col 20, not the suggested 11
+  - {valid_from: null, delta_col: 20, verify: mua,
+     source: "cortex checks 5_20260908_071754.325 (pre-advance: col 20 MUA 11.2 Hz ratio 0.06, cols 27/18 0.09/0.11) and 6_20260910_082629.685 (post: col 20 16.6 Hz 0.06); col 20 = shank 4 site 1"}
+SF09:   # only cols 21 / 51 are cortical (MUA 0.15 / 0.17, ~24 Hz); the user: SF09 sits low, may not yield much
+  - {valid_from: null, delta_col: 21, verify: mua,
+     source: "cortex check 10_20260902_083015.335: col 21 (shank 1 site 1 in the final XML; one of the far-above sites 21/51/55) MUA 24.6 Hz ratio 0.15, HF dip -0.98"}
+SF10:   # shank 1 dead; shank 2 / 4 tops cortical but few units (MUA 1.4-4.9 Hz, ratio ~0.3)
+  - {valid_from: null, delta_col: 9, verify: mua,
+     source: "cortex check 9_20260902_083247.835: col 9 = shank 2 site 1, HF dip -0.71 (strongest), MUA 1.5 Hz ratio 0.29 (col 10 next to it 4.9 Hz, 0.29)"}
+SF12:   # like SF07: no units at the top sites; verification on the deep (hippocampal) spiking sites (session ratios 0.45-0.6);
+        # shank 3 chosen because shanks 2/3 stay clean while shanks 1/4 degrade (SF12_shank1_degraded 09-07, SF12_contact_failing 09-10)
+  - {valid_from: null, delta_col: 11, verify: mua,
+     source: "cortex check 11_20260902_083748.804: col 11 = shank 3 site 1, HF dip -0.19, top sites without units"}
