@@ -117,6 +117,8 @@ All values are paddock inches: origin pole A0, x along the 40-ft side.
   - The house poses in WISER: house_1 (411.7, 728.2), house_2 (619.5, 721.8).
   - Day-sleep rest clusters (SWR session, 10-10) lie 10–12 in from these, along the ridge, in opposite directions:
     rats resting at one end of each house.
+- **Copy in WISER coordinates:** `ephys/configs/paddock_landmarks_wiser_2026c.json` (SWR session, commit cca9ef3), used as
+  map reference marks only. Update it together with this section if P0 is ever replaced.
 - **The better transform is a direct anchor ↔ pole fit:** the boxes on the poles are the UWB anchors, but their WISER
   coordinates are still requested from the field PC (`field2026-sync/tasks/2026-09-28_lab-request-cohort3-weather-and-sync-logs.md`,
   item 4).
