@@ -236,6 +236,46 @@ Hotspots are interpreted only after the paddock resources are on the map.
   - Sensitivity: drop ± 15 min around each.
 - **No other refuge** is recorded. Nest material was present (09-08, 09-10), place not stated.
 
+## Amendment 2 — after Phase 0 (counts only), 2026-10-10; still before any map or rate
+
+**What Phase 0 showed, as counts.**
+- The pre-registered qSWR (IMU still, no theta / EMG / moving flag, theta- and EMG-detectable) leaves 0.01–0.24 h of field
+  time per animal over all nights, and 0–1 field bins ≥ 120 s.
+- Causes:
+  - 98 % of night wake fails the theta-or-EMG detectability rule;
+  - only 3 % of IMU-ok wake is IMU-still.
+- **The validation data already in hand argue against two of those exclusions on normal blocks.** In the user's GUI
+  clicks:
+  - moving-flagged events were ripples in 49 / 87;
+  - EMG-flagged events were ripples in 53 / 95;
+  - unflagged events were ripples in 388 / 662;
+  - theta-flagged events were ripples in only 7 / 40.
+  - That is why the production `excluded` drops REM + theta everywhere, and moving + EMG only on blocks without a
+    sharp-wave reversal (SF07, SF11, SF12 B3).
+
+**New primary definition** (qSWR stays as a sensitivity):
+- **Awake ripple (aSWR):** a production kept event (`excluded == False`) in a WAKE second.
+- **Its time:** non-locomotor wake = WAKE & head IMU ok & IMU state still or active (not locomoting), outside handling,
+  SWR-covered, with a position, and theta-detectable. On ripple-only blocks it must also be EMG-detectable.
+
+**Phase 0 under this definition** (counts, all nights):
+- non-locomotor detectable wake in the field: SF07 0.5 h, SF08 0.9, SF09 2.4, SF10 0.8, SF11 0.0, SF12 0.3;
+- aSWR in the field: 35 / 4,897 / 7,633 / 3,618 / 0 / 1,157;
+- aSWR in the houses: 1,276 / 12,231 / 17,333 / 15,847 / 300 / 7,568;
+- field bins ≥ 120 s (24 in): 2 / 7 / 15 / 4 / 0 / 1;
+- no animal passes the screen (≥ 300 events and ≥ 20 bins).
+- The binding limit: 93 % of night wake has theta above the session's NREM 95th percentile, i.e. the rats explore in
+  theta.
+
+**Options, for the user to choose** (no map has been drawn):
+1. A coarse 2-D map (48-in bins, or paddock regions: around each house, the mid-field, the walls, the far ends).
+2. A 1-D profile: awake-ripple rate vs distance to the nearest house, in 24-in rings. It needs distances only, which suits
+   the unverified frame.
+3. The 24-in map at a lower occupancy (≥ 30 s), with shrinkage toward the animal's mean and uncertainty shown.
+
+Whichever is chosen, the Phase 1 validity check runs first, stratified as in Amendment 1. House vs field stays the first
+question (food is in the houses).
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
