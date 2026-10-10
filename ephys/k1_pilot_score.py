@@ -43,9 +43,20 @@ ISI_S = 0.0015
 ISI_MAX = 0.01
 
 
-def load(phy: Path, offset: int):
+def load(phy: Path, offset: int, drop_cross_shank: bool = True):
+    """Spike times (block samples) and clusters. Spikes of templates with < 80 % of their energy on the peak shank
+    are dropped: with criterionNoiseChannels 1e-5 that is the single template K1 lets span all shanks, which collects
+    common-mode noise (it carries 12-56 % of the spikes and swings run to run)."""
     t = np.load(phy / "spike_times.npy").ravel().astype(np.int64) + offset
     c = np.load(phy / "spike_clusters.npy").ravel().astype(np.int64)
+    if drop_cross_shank and (phy / "templates.npy").exists() and (phy / "channel_shanks.npy").exists():
+        tm = np.load(phy / "templates.npy"); sh = np.load(phy / "channel_shanks.npy").ravel()
+        if sh.size == tm.shape[2]:
+            e = (tm ** 2).sum(axis=1); pk = e.argmax(axis=1)
+            share = np.array([e[i, sh == sh[pk[i]]].sum() / max(e[i].sum(), 1e-12) for i in range(len(tm))])
+            stt = np.load(phy / "spike_templates.npy").ravel()
+            keep = share[stt] >= 0.8
+            t, c = t[keep], c[keep]
     o = np.argsort(t, kind="stable")
     return t[o], c[o]
 
