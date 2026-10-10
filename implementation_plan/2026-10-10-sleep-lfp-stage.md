@@ -5,6 +5,15 @@
 Part W of the behaviour stage (§14 of [2026-10-08-sleep-behaviour-explore.md](2026-10-08-sleep-behaviour-explore.md))
 ran 10-10: the long-wake memory term adds no held-out gain (#64) and leaves pass2med's evening delay → **L2(a) runs**.
 
+**Revision 1 (2026-10-10, before any result; the user):**
+- "sw slope 就可以 … delta 不过是 up-down state": depth is the scorer's raw slow-wave slope, already computed. No new
+  depth site and no delta-wave density.
+- Reuse the existing products of the SWR, theta and delta sessions (no new feature code).
+- L2(c), the opening field NREM, is on hold until the manual video labels.
+- The site-proposal step is dropped.
+- The sleep scores are not recomputed. FINAL and pass2med states are used as they are. The lag and the 1-h control
+  only keep the predictor and the scored outcome apart (the depth metric is the scorer's own slow-wave axis).
+
 **Builds on:**
 - the behaviour-stage claims #32–#63 in the
   [claim audit](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_schedule_claim_audit_2026c.md), frozen as the
@@ -69,16 +78,21 @@ the depth normalisation and from fitting.
 
 ## 3. Definitions fixed now
 
-- **Depth site** (per animal × probe block, proposed before any outcome is computed, confirmed by the user):
-  - a site on a shank other than the shanks of the fixed `sw_channel` and of every session's own SW pick in the block,
-    not a bad channel;
-  - among those, the site with the largest NREM-vs-REM separation of the metric below in the block's reference session
-    (`swr_channels_2026c.yaml reference_session`), z over the session's scored NREM and REM seconds.
-  - Report the scorer-shank value as a sensitivity only.
-- **Depth metric** $d_t$ (per second): the scorer's slow-wave axis computed on the depth site — the negative broadband
-  (IRASA) slope 4–90 Hz, using the pipeline's own function. Sensitivity: 1–4 Hz relative power.
-  - $z$ within animal × probe block over NREM seconds (unstable windows excluded); per-night $z$ as a sensitivity.
-  - Sign: larger = deeper.
+- **Depth** $d_t$ (per second): the raw slow-wave slope `sw` of the fixed-channel rescore `imu_fixch`
+  (`Q:/…/3rd_rat/analysis/sleep/imu_fixch/<SFxx>/<s>/<s>.SleepScoreRaw.npz`, on its `t_clus` seconds). It is the
+  scorer's negative broadband (IRASA) slope on the per-animal `sw_channel` of `ephys/configs/sleep_channels_2026c.yaml`.
+  Larger = deeper.
+  - Sessions: the SWR quality guide (`results/2026c/ephys_spikes/reports/ephys_spikes_swr_quality_2026c.csv`), every
+    tier except `exclude`. Its `block_from` gives the probe block.
+  - Masked: before / after `use_until`, the probe-advance settle windows (`cohorts/2026c.yaml probe_moves`,
+    `swr_temperature.settle_windows`), and non-NREM seconds.
+  - Read with the SWR session's logic (`ephys/rem_ripple_model.py`: `record_arrays`, `block_tables`, `depth_z`).
+  - $z$ within animal × probe block over its NREM seconds.
+  - Circularity:
+    - pass2med derives from `imu_fixch`, so for pass2med the predictor is the scorer's own axis;
+    - FINAL uses per-session channel picks, so it is partly independent;
+    - hence the lags and the 1-h control below. A non-scorer site (e.g. the delta-wave channel) is a later sensitivity,
+      not a precondition.
 - **Past depth** at a 10-s NREM step starting at $t$: the mean $z$ over the NREM seconds in $[t-150, t-30)$ s; missing
   if < 60 NREM seconds there. Lag sensitivity: $[t-180, t-60)$ s.
   - Negative control: the same feature taken 1 h earlier in the record.
@@ -114,7 +128,7 @@ contributions), as astra asked.
 
 ## 5. L2 — the residuals
 
-- **(c) The opening field NREM — required, first** (cheap; claim #62's scorer-validity risk).
+- **(c) The opening field NREM — ON HOLD (the user, 2026-10-10) until the manual video labels;** then as written:
   - For each opening NREM bout (part H's list; the first 10 s after the logger start dropped), on the depth site and on
     a theta site that is not the scorer's:
     - the depth metric;
@@ -132,8 +146,14 @@ contributions), as astra asked.
     the house, before the first REM), beyond B-full (+ the part-W term if it held)?
   - Pass: Δ log-loss CI < 0 on those steps on both scorings, and the evening REM-entry O/E moves toward 1.
   - No generative use without a generated depth (astra).
-- **(b) Theta before the first REM** — coordinated with the short-REM-bouts plan
-  ([2026-10-09-short-rem-bouts.md](2026-10-09-short-rem-bouts.md)); its measures are reused, not duplicated.
+- **(b) Theta before the first REM** — reuses the theta session's per-second cache
+  (`D:/Field2026_analysis_out/2026c/theta_seconds/<SFxx>/<s>.theta_seconds.csv.gz`: `log_td`, `f_peak`, `peak_frac`;
+  site = the CA1 pyramidal-layer column, not the scorer's channel except SF10 in 19 sessions, which are flagged) and the
+  short-REM-bouts feature code ([2026-10-09-short-rem-bouts.md](2026-10-09-short-rem-bouts.md); cortical `sigma_ctx`
+  separates spindles).
+  - The last 2 s before a scored REM onset are dropped (the cache's 2-s window).
+  - REM-like theta = `log_td` above the session's NREM–REM midpoint AND `f_peak` < 10 Hz. Without the frequency test,
+    spindles (≥ 10 Hz) would pass.
   - In the 10 min before the first REM after evening rounds vs matched natural evening first REMs: the share of NREM
     seconds with REM-like theta / delta on a non-scorer theta site.
   - Pass: Δ CI excludes 0 on both scorings, ≥ n − 1 of n animals.
@@ -141,18 +161,16 @@ contributions), as astra asked.
 
 ## 6. Order, gates, outputs
 
-1. **Site proposal** (per animal × block, by the rule of §3) → the user confirms the depth and theta sites. Nothing else
-   runs before.
-2. **L2(c).**
-3. **L1.**
-4. **L2(a)** and **L2(b).**
+1. **L1** (now).
+2. **L2(a)**, which uses L1's depth feature, and **L2(b).**
+3. **L2(c)** after the manual video labels.
 
 In parallel, outside this stage: the generative long-wake model of the behaviour stage (its own plan, time-boxed).
 
 **Code and outputs:**
-- Driver `ephys/sleep_lfp.py` (new; `--selftest` on synthetic signals). Reads LFP from storage, read-only; all
-  development local.
-- Per-second depth / theta cache in `$OUT_ROOT/2026c/sleep_lfp_features/<SFxx>/<session>.npz`, written once and reused.
+- Driver `ephys/sleep_lfp.py` (new; `--selftest` on synthetic data). It reads the existing per-second products, from
+  storage read-only; all development local.
+- The depth per second is cached once in `$OUT_ROOT/2026c/sleep_lfp_inputs/sw_imu_fixch.pkl`.
 - Reports `results/2026c/ephys_spikes/reports/ephys_spikes_sleep_lfp_{L1,L2a,L2b,L2c}_2026c.md`.
 - A new "LFP stage" section in the claim audit.
 
