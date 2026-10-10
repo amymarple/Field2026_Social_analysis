@@ -71,6 +71,14 @@ KS1_TEXT_PATCHES = [
     ("fullMPMU.m", "[~, isort]      = sort(st3(:,1), 'ascend');",
      "st3 = st3(1:irun, :);  % field2026 patch: trim the preallocation\n[~, isort]      = sort(st3(:,1), 'ascend');",
      "trim st3 before sorting"),
+    # zeroOutKcoords.m averages each template's amplitude per channel group 1..max(kcoords). A group with no connected
+    # channel (a dead shank, e.g. SF10 shank 1, or SF12 shanks switched off per block) gives mean([]) = NaN, which
+    # makes every template's nEffective NaN, so no template is confined to its shank whatever criterionNoiseChannels
+    # is. An empty group now contributes 0.
+    ("mainLoop/zeroOutKcoords.m", "    aUgroups(j, :) = mean(aU(kcoords==j,:), 1);",
+     "    if any(kcoords==j), aUgroups(j, :) = mean(aU(kcoords==j,:), 1); end  % field2026 patch: empty (all-dead) "
+     "group gave NaN and disabled the shank confinement",
+     "zeroOutKcoords: empty channel groups contribute 0, not NaN"),
 ]
 GROW_HELPER = """function [st3, rez] = field2026_grow(st3, rez, irun, nNew, ops)
 % field2026 patch for fullMPMU.m (Field2026_Social_analysis, ephys/run_k1_block.py): make room for nNew more spikes
@@ -125,17 +133,19 @@ def prepare_patched_ks1(pipeline_root: Path, tools: Path, *, refresh: bool = Fal
     src = pipeline_root / "sorter" / "KiloSort1"
     dst = tools / (KS1_DIRNAME + ("_smallprealloc_TEST" if small_prealloc_test else ""))
     stamp = dst / ".field2026_ks1_stamp.json"
-    src_sig = hashlib.sha256((src / "fullMPMU.m").read_bytes()).hexdigest()
+    src_sig = hashlib.sha256((src / "fullMPMU.m").read_bytes() + (src / "mainLoop" / "zeroOutKcoords.m").read_bytes()).hexdigest()
+    patches = KS1_TEXT_PATCHES + (SMALL_PREALLOC_PATCHES if small_prealloc_test else [])
+    patch_sig = hashlib.sha256((repr(patches) + GROW_HELPER).encode("utf-8")).hexdigest()
     mex = sorted(p.name for p in (src / "CUDA").glob("*.mex*"))
     if dst.exists() and stamp.exists() and not refresh:
         st = json.loads(stamp.read_text())
-        if st.get("source_fullMPMU_sha256") == src_sig and st.get("mex") == mex:
+        if st.get("source_sha256") == src_sig and st.get("patch_sha256") == patch_sig and st.get("mex") == mex:
             return dst, st["applied"]
     if dst.exists():
         shutil.rmtree(dst)
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns(".git", "*.asv"))
     applied = []
-    for rel, old, new, why in KS1_TEXT_PATCHES + (SMALL_PREALLOC_PATCHES if small_prealloc_test else []):
+    for rel, old, new, why in patches:
         f = dst / rel
         s = f.read_bytes().decode("utf-8")
         n = s.count(old)
@@ -145,7 +155,7 @@ def prepare_patched_ks1(pipeline_root: Path, tools: Path, *, refresh: bool = Fal
         applied.append(f"{rel}: {why}")
     (dst / "mainLoop" / "field2026_grow.m").write_text(GROW_HELPER, encoding="utf-8")
     applied.append("mainLoop/field2026_grow.m: helper")
-    stamp.write_text(json.dumps({"source": str(src), "source_fullMPMU_sha256": src_sig, "mex": mex,
+    stamp.write_text(json.dumps({"source": str(src), "source_sha256": src_sig, "patch_sha256": patch_sig, "mex": mex,
                                  "applied": applied, "written_utc": utc_now_iso()}, indent=2))
     print(f"[k1] patched copy -> {dst} ({len(applied)} change(s); mex: {', '.join(mex) or 'NONE - compile first'})")
     return dst, applied
@@ -183,6 +193,7 @@ def selftest() -> None:
         dst, applied = prepare_patched_ks1(proot, Path(td), refresh=True)
         s = (dst / "fullMPMU.m").read_text(encoding="utf-8")
         assert s.count("field2026 patch") == 5 and "cat(1, st3, STT)" not in s, "fullMPMU.m patch incomplete"
+        assert "field2026 patch" in (dst / "mainLoop" / "zeroOutKcoords.m").read_text(encoding="utf-8"), "zeroOutKcoords patch missing"
         assert (dst / "mainLoop" / "field2026_grow.m").exists()
         print(f"selftest: {len(applied)} patch items applied to a copy of {proot / 'sorter' / 'KiloSort1'}")
     cfg = k1_config(proot, whitening_range=64, keep_matlab_files=False)
