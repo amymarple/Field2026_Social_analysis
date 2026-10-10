@@ -31,7 +31,7 @@ Kilosort4.
      therefore easy there, and joining across rounds is not needed.
 4. **Keep the handling minutes.** User, 2026-10-10, reversing the earlier trim: post-handling sleep recovery is
    studied, so the first ~20 min after a round stay in the sort. The block table flags them as `handling_until`
-   (block start + 20 min) for the analyses.
+   (block start + 20 min; renamed `post_release_until`) for the analyses.
    - Open point for the Fable pilot audit: K1 seeds its templates from the first ~1e4 isolated peaks of the file
      (`initialize/optimizePeaks.m`), which are the handling minutes. The lab's sessions also start right after
      plugging in.
@@ -41,8 +41,9 @@ Kilosort4.
      - Its recovery windows run from the post-round record start: 0–1 h, 1–3 h, 0–6 h, until the first NREM / REM,
        and 1 or 3 h of payback (`ephys/sleep_stability.py`, `sleep_perturb.py`, `sleep_explore_d.py`). It also uses
        the 3 h before a round.
-     - Record Start is pressed 3–17 min before the rat is back in the house, so the first minutes of a block are still
-       the round. Their recovery clock may move to the WISER house re-entry; `handling_until` should then follow it.
+     - Corrected by the user (field operator) the same day: Record Start = the release into the field (indoor tests are
+       separate sessions < 1 min). The 3–17 min to the WISER house re-entry is free behaviour in the paddock, not
+       handling. The flag is now `post_release_until` (block start + 20 min).
      - Units tracked across a round are not needed now, only for future neural recovery work (cross-block matching).
        Never across a probe move.
 5. **Cut contact-failure periods** out of blocks, and disconnect failing shanks per block (`connected = 0`). See

@@ -2,7 +2,7 @@
 
 Made by `ephys/plan_blocks.py` (plan `implementation_plan/2026-10-09-k1-block-sorting.md`).
 
-- Trim: first 0 min of every block (user 2026-10-10: keep the handling minutes; `handling_until` flags the first 20 min). Blocks shorter than 30 min are dropped. Clipped at the paddock end 2026-09-12 10:10:00 and at `valid_until`.
+- Trim: first 0 min of every block (user 2026-10-10: keep everything; the block start is the release into the field; `post_release_until` flags the first 20 min). Blocks shorter than 30 min are dropped. Clipped at the paddock end 2026-09-12 10:10:00 and at `valid_until`.
 - **135 blocks**, 1357 h (1243 h FM65 in 122 blocks, 115 h FM64 in 13 blocks), 12.5 TB.
 - Hours per block: median 11.1, maximum 14.9. 31 blocks join several files.
 - Tier 2 (SF11 out of CA1): 12 blocks; tier 3 (SF12 connector regime): 7. Blocks with disconnected shanks: 8; settle windows: 9.
