@@ -294,8 +294,16 @@ def main() -> None:
     for p in partitions:
         folder = out / ("kilosort1" if p is None else f"kilosort1_{p.name}")
         t1 = time.time()
+        part_cfg = cfg_path
+        if p is not None:
+            # lab KilosortConfiguration: nNeigh = nNeighPC = min(16, Nchan); with a fixed 16 the K1 final pass indexes
+            # past the channel count of a 12-15-channel shank ("Index ... must not exceed 15")
+            n_act = len(p.channels_0based)
+            pc = dict(cfg, nNeigh=min(int(cfg.get("nNeigh", 16)), n_act), nNeighPC=min(int(cfg.get("nNeighPC", 16)), n_act))
+            part_cfg = out / f"k1_config_used_{p.name}.yaml"
+            part_cfg.write_text(yaml.safe_dump(pc, sort_keys=False), encoding="utf-8")
         sr.execute_sorting_job(
-            sorter="kilosort", dat_path=dat, xml_path=xml, output_folder=folder, config_path=cfg_path,
+            sorter="kilosort", dat_path=dat, xml_path=xml, output_folder=folder, config_path=part_cfg,
             kilosort1_path=ks1_path, matlab_path=Path(a.matlab or default_matlab()), matlab_max_workers=None,
             chanmap_mat_path=chanmap, active_channels_0based=None if p is None else p.channels_0based,
             exclude_channels_0based=bad if p is not None else None, remove_existing_folder=True)

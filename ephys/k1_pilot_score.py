@@ -119,7 +119,7 @@ def main() -> None:
         for v, (lo, hi) in spans.items():
             phy = bpath / v / "kilosort1"
             if v == "whole_shank":
-                parts = sorted(bpath.glob(f"{v}/kilosort1_*"))
+                parts = sorted(p for p in bpath.glob(f"{v}/kilosort1_*") if (p / "spike_times.npy").exists())
                 if parts:   # per-shank folders: concatenate with cluster ids made unique
                     ts, cs = [], []
                     for i, p in enumerate(parts):
