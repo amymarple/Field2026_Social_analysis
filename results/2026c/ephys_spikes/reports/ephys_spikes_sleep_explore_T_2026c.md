@@ -4,7 +4,7 @@ Plan [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../imp
 
 ## Reading (main session, 2026-10-09; claim #58; #43, #56, #57 updated)
 
-> **Note (part L, 2026-10-09):** all post-round clocks here start at the recording start, 3–17 min before the rat is back in its house; the first-REM delay is mostly this offset (#59) — see the [L report](ephys_spikes_sleep_explore_L_2026c.md).
+> **Note (part L, 2026-10-09):** all post-round clocks here start at the recording start = the release into the paddock (corrected 2026-10-10); the rat enters its house on its own minutes later, and half the records open with ~2 min scored NREM; the first-REM delay sits mostly in those records (#59) — see the [L report](ephys_spikes_sleep_explore_L_2026c.md).
 
 **Question (plan §11):** is there a delayed calm phase of waking after a round, and does it — fitted on waking alone —
 produce the sleep recovered 1–6 h after the round?

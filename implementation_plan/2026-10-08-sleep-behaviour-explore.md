@@ -29,7 +29,8 @@
 - **Amendment 3 (§11), part T DONE 2026-10-09:** [T report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_T_2026c.md);
   T1 / T2 fail on both scorings (#58); FINAL's REM residual base-dependent, pass2med's debt slope robust (#43).
 - **Amendment 4 (§12), part L DONE 2026-10-09:** [L report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_explore_L_2026c.md)
-  + a post-hoc subset; the post-round recording starts before placement (#59), the delay is mostly this offset;
+  + a post-hoc subset; half the post-round records open with ~2 min scored NREM after release, and the delay sits
+  mostly in those records (#59; record start = release into the paddock, corrected 2026-10-10);
   claims #59–#61. Proposed next: re-anchor the post-round clocks at the WISER house return.
 
 **Builds on:**

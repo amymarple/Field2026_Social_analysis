@@ -1,6 +1,6 @@
 # Sleep-behaviour explore — L: where is the first-REM delay after the rounds? (cohort 2026c) — POST HOC subset: rounds whose record does not start in NREM
 
-**POST HOC (2026-10-09), not in the plan:** run after the pre-registered L showed that half of the post-round records open in NREM before the rat is returned to its house. Read with the main [L report](ephys_spikes_sleep_explore_L_2026c.md); check 2 here is identical to the main run (it does not use the subset).
+**POST HOC (2026-10-09), not in the plan:** run after the pre-registered L showed that half of the post-round records open in NREM (in the first minutes after release into the paddock; wording corrected 2026-10-10). Read with the main [L report](ephys_spikes_sleep_explore_L_2026c.md); check 2 here is identical to the main run (it does not use the subset).
 
 Plan [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../implementation_plan/2026-10-08-sleep-behaviour-explore.md) §12 Amendment 4 (rules written before results). Driver `ephys/sleep_perturb.py runL` (commit 901067b+dirty); bulk `D:\Field2026_analysis_out\2026c\sleep_explore_L_startawake_20261009_1713`; 100 replicates; runtime 4 min. **Technical ledger.**
 

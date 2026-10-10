@@ -7,19 +7,24 @@ Plan [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../imp
 **Question (plan §12):** where is the first-REM delay after the rounds (#57) — the onset wait, after sleep onset, or the
 first REM entry?
 
-**Short answer.** Mostly in how the post-round recording starts. The recording starts before the rat is back in its
-house, and half of the records open with ~2 min scored NREM. When the observed states up to sleep onset are kept, the
+**Short answer.** Mostly in how the post-round recordings start. A recording starts when the rat is released into the
+paddock, and half of them open with ~2 min scored NREM before the rat wakes, walks and later enters its house (corrected
+2026-10-10, see the first bullet). When the observed states up to sleep onset are kept, the
 model reproduces the latency after onset in the morning; in records that start awake it does so in the morning and the
 evening (post-hoc subset). What remains is an evening delay on the NREM clock on fixed thresholds (pass2med). The model
 does not mispredict the first REM entry specifically.
 
 - **The record start (field record + counts, #59).**
-  - Record Start is pressed outside the house before the rat is put back: 2.7–16.7 min before placement on 09-05; rats
-    loose in a tub on 09-10; after return "still moving and separated" for 10–25 min. Sources in claim #59.
+  - **Corrected 2026-10-10 (the user, field operator):** the formal recording starts when the rat is released into the
+    paddock (short indoor tests < 1 min are separate sessions). On 09-05 the rats then entered their houses on their own
+    2.7–16.7 min after their Start (WISER). The first minutes of a post-round record are free behaviour after release,
+    not handling. (The 2026-10-09 version read the field notes' "before placement" as "before the rat is put back into
+    its house"; that was wrong.)
   - 49 / 94 (FINAL) and 51 / 94 (pass2med) post-round records begin with an NREM bout (median 133 s, IQR 65–328), and
     the first 10 min hold a median 5 min of WAKE.
-  - That opening "NREM" falls in the minutes before placement: a still rat outside its house (scored by the head-IMU
-    EMG), or real dozing — the data cannot tell which.
+  - That opening "NREM" falls in the first minutes after release, before the rat enters its house. It is unexplained:
+    an edge effect of the scorer at the session start, or the rat settling or lying still in the field (head-IMU EMG).
+    Round records open in NREM more often than other records (52 % vs 20 % on FINAL, 54 % vs 31 % on pass2med).
   - The onset wait W0 therefore has a KM median of ~0 (morning) and 0.4–0.7 min (evening).
 - **L2 (pre-registered, all rounds):**
   - FINAL: the latency after onset is inside the conditional simulation for morning and evening, with and without the
@@ -31,7 +36,7 @@ does not mispredict the first REM entry specifically.
   - On pass2med the morning is inside (W1 at the edge without A); the evening latency after onset is above without A
     (203.9 vs ≤ 199.2 min) and inside with it.
   - The morning "later first awakening after onset" of the full set (T_wake ~3 min vs ≤ 1.5–2.8) is inside in the
-    subset. It came from the records that open in NREM before placement.
+    subset. It came from the records that open in NREM.
 - **What remains — the evening NREM clock (#60).**
   - After evening rounds the first REM needs more NREM than the model predicts on pass2med: L_N 24.3 min vs ≤ 16.1 / 17.2
     (all rounds), 26.2 vs ≤ 22.8 / 23.4 (subset), with and without the arousal.
@@ -45,11 +50,13 @@ does not mispredict the first REM entry specifically.
     before, 0.91 / 0.98 after.
   - After natural long wakes the first REM entry is below the model on FINAL (0.69 [0.49, 0.98]).
 - **What this changes:**
-  1. Every post-round clock so far (S2, S3, parts P / T, #44, #47, #56, #57) starts at the recording start, i.e. 3–17
-     min before the rat is back in its house. The "first-hour arousal" includes the end of handling and the return.
-  2. The first-REM delay of #57 is mostly this clock. The claim that "the delay is REM-side" is withdrawn.
-  3. A cleaner clock is the rat's return to its house (WISER house entry), available for the tagged animals. Re-anchoring
-     S2 / P / L at it is the proposed next step.
+  1. Every post-round clock so far (S2, S3, parts P / T, #44, #47, #56, #57) starts at the release into the paddock (the
+     recording start); the rat enters its house on its own minutes later (3–17 min on 09-05). The "first-hour arousal"
+     is post-release behaviour, including the walk into the house.
+  2. The first-REM delay of #57 sits mostly in the records that open with scored NREM: the simulation continues that NREM,
+     while the rat wakes and moves before it sleeps again. The claim that "the delay is REM-side" is withdrawn.
+  3. The house entry (WISER) marks a different event, "back in the house"; a clock anchored there separates field
+     behaviour after release from sleep in the house. Re-anchoring S2 / P / L at it is a proposed next step.
 
 ## Definitions
 

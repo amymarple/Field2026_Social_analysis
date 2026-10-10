@@ -4,7 +4,7 @@ Plan [implementation_plan/2026-10-08-sleep-behaviour-explore.md](../../../../imp
 
 ## Reading (main session, 2026-10-09; claims #56, #57; #47 corrected)
 
-> **Note (part L, 2026-10-09):** all post-round clocks here start at the recording start, 3–17 min before the rat is back in its house; the first-REM delay is mostly this offset (#59) — see the [L report](ephys_spikes_sleep_explore_L_2026c.md).
+> **Note (part L, 2026-10-09):** all post-round clocks here start at the recording start = the release into the paddock (corrected 2026-10-10); the rat enters its house on its own minutes later, and half the records open with ~2 min scored NREM; the first-REM delay sits mostly in those records (#59) — see the [L report](ephys_spikes_sleep_explore_L_2026c.md).
 
 **Question (plan §10):** the rounds are a systematic perturbation. Does a decaying arousal, fitted only on whether the
 rats woke, capture the acute waking excess (#44) and explain the later first REM (#47), with the REM rules untouched?

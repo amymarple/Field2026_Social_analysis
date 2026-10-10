@@ -487,9 +487,10 @@ after onset), $T_{wake}$ (onset to the first awakening, the user's "入睡到 aw
 bouts before $t_N$ forced. Check 2: held-out REM / WAKE O/E before vs after the first REM.
 
 **Results** (#59–#61; #44, #56, #57, #58 updated):
-- Half the post-round records open with ~2 min scored NREM; the field record (recording-inquiry) says Record Start is
-  pressed outside the house before placement (2.7–16.7 min before the return on 09-05) → every post-round clock includes
-  the end of the round (#59).
+- Half the post-round records open with ~2 min scored NREM (#59). **Corrected 2026-10-10 (the user, field operator):**
+  the formal recording starts at the release into the paddock; the rat enters its house on its own minutes later
+  (2.7–16.7 min on 09-05). The 2026-10-09 wording ("Record Start before placement → every clock includes the end of the
+  round") was wrong; the opening NREM is unexplained (scorer edge at the session start, or the rat settling in the field).
 - L2 (pre-registered): FINAL latency after onset reproduced (both kinds); pass2med not (base), mixed (with A). Post hoc,
   records that start awake: reproduced on both scorings except pass2med evening without A; the late first awakening
   disappears. #57's "REM-side" reading withdrawn.
