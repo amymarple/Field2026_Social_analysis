@@ -217,6 +217,20 @@ denominator, and the shuffle. Adopted:
 
 Hotspots are interpreted only after the paddock resources are on the map.
 
+**Addendum — the field record (recording-inquiry, 2026-10-10).**
+- **Food and water:** no cohort-3 record gives feeder or water positions, how food was given, or refill times. Only the
+  cohort-2 reset plan names "feeders, water stations". The two water towers are outside the paddock.
+  - This is a records gap. The positions are asked from the user before any hotspot is read.
+- **Handling masks to add:**
+  - the **09-01 ≈ 00:34 midnight round** (all six stopped / restarted; a catch is likely). It is missing from
+    `cv/configs/cohort3_handling_windows.json` and `cohort3_lid_events.json`; mask ± 30 min.
+  - the 08-31 11:00–18:00 troubleshooting window (already in the handling windows).
+- **Night BLE passes:** the operator may have been at the paddock edge:
+  - 09-03 00:16–00:25, 09-06 00:21–00:36, 09-06 23:43–23:57, 09-07 23:14–23:33, 09-09 03:17–03:27;
+  - knee passes 09-07 06:41–06:49, 09-10 06:04–06:12.
+  - Sensitivity: drop ± 15 min around each.
+- **No other refuge** is recorded. Nest material was present (09-08, 09-10), place not stated.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
