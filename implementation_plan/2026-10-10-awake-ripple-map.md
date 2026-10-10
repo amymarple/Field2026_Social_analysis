@@ -436,6 +436,50 @@ Medians, field aSWR / NREM:
   - and the noise-floor benchmark: the production detector run on per-state, per-zone coloured-noise surrogates.
 - Optional: rippl-AI as an independent second detector on the 140 items.
 
+### Addendum 4b — EMG removal by ICA (Weiwei Chen 2023, the user's reference), 2026-10-10
+
+**Source.**
+- Chen W. (2023), dissertation, LMU Munich (Sirota lab), chapter 5 "EMG Artifacts Removing" (`Ref/Chen_Weiwei.pdf`).
+- Toolbox https://github.com/YY535/EMG_removing, commit 0ee8f0d.
+
+**Method.**
+- EMG is volume-conducted from distant muscles, so along a shank its loading is flat or linear; a local event is a dipole.
+- Per shank:
+  1. high-EMG samples (`EMG_Cluster`);
+  2. FastICA on the > 100 Hz data of those samples, then on the AR(1)-whitened wide band;
+  3. the component with the highest flatness (1 / residual of an affine fit of its loading against depth) is removed
+     above 30 Hz.
+- It is removed only if exactly one component has flatness > 10 and one > 50 (with retries).
+
+**Port.** `ephys/emg_ica.py`, with `--selftest`:
+- synthetic: flatness 1457, residual EMG 1.4 %, ripple band kept 96 %;
+- GPU FastICA in the `cv` env;
+- the deviations are listed in its docstring.
+
+**Run.** `awake_ripple_map.py emgica`: the ± 7.5-min chunk around each item, all shanks →
+`<run>/emg_ica/<rid>.npz` + `emg_ica_items.csv`.
+
+**Result** (numbers only; 100–250 Hz at the ripple site).
+- The toolbox's criteria were met on the ripple's own shank in 106 / 140 items, 419 / 585 shanks. Elsewhere it removes
+  nothing.
+- Where it cleaned, medians against the single-site regression (Addendum 4a):
+
+  | set | background ratio (regression) | candidate kept | contrast, raw → ICA (regression) |
+  |---|---:|---:|---|
+  | aSWR field | 0.62 (0.73) | 0.90 | 1.44 → 1.91 (1.90) |
+  | aSWR house | 0.78 (0.84) | 0.92 | 1.76 → 2.32 (1.96) |
+  | NREM SWRs | 0.87 (0.96) | 0.98 | unchanged |
+
+  So it removes more background than the regression and keeps the NREM ripples.
+- HC's "not a ripple", field (n 6): the candidate is kept (0.97) and its contrast rises to 4.1. These are local events
+  rather than EMG, which matches the user (theta).
+- HC's "not a ripple", house (n 2): the candidate is mostly removed (0.35), i.e. flat EMG.
+- Contrast still does not separate HC's calls (AUC 0.46).
+
+**Page.** Panel 6 shows the LFP-EMG *before* cleaning (after cleaning the cross-shank measure is ~0 by design).
+https://claude.ai/artifact/UfxAaVKfaYGysubMUskEWr (private; same items and key; answers in its db `reads/<id>`). A third,
+separate reading; never merged with the raw or regression pages.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.

@@ -497,7 +497,73 @@ def regress_out(x: np.ndarray, ref: np.ndarray, fit_mask: np.ndarray, fs: float 
     return x - beta * rh, beta
 
 
-def render_ripple(it, a, png: Path, cfg: dict, denoise: bool = False) -> None:
+def emgica_item(it, a, cfg: dict, out: Path) -> dict:
+    """EMG removal by ICA (ephys/emg_ica.py = Chen 2023's EMG_removing, 'hw' path) on the chunk of +-ica_half_s around one
+    validity item, every shank separately; keeps the cleaned +-6 s window (all live sites) and the raw-vs-cleaned numbers
+    of the denoiser comparison (Addendum 4a)."""
+    from scipy import signal
+    import emg_ica
+    from swr_auto import channels_for
+    from swr_channel_scan import XML, shanks_from_xml
+    FS = 1250
+    ch = channels_for(cfg, it.animal, it.session)
+    rc, nc = int(ch["ripple_col"]), int(ch["noise_col"])
+    excl = set(ch.get("exclude_cols", []))
+    sh = shanks_from_xml(HERE / "configs/xml" / XML[it.animal])
+    shanks = [[c for c, sk in g if not sk and c not in excl] for _, g in sh]
+    lfp = Path(a.lfp_root) / it.animal / f"{it.session}.lfp"
+    nch = int(json.loads(Path(str(lfp) + ".json").read_text())["n_channels"])
+    mm = np.memmap(lfp, dtype=np.int16, mode="r")
+    mm = mm[: mm.size // nch * nch].reshape(-1, nch)
+    c0 = max(int((it.peak_s - a.ica_half_s) * FS), 0)
+    c1 = min(int((it.peak_s + a.ica_half_s) * FS), len(mm))
+    X = np.asarray(mm[c0:c1], np.float64)
+    Xc, infos = emg_ica.clean_chunk(X, shanks, fs=FS, lower=a.ica_lower_hz, seed=0)
+    w0, w1 = max(int((it.peak_s - 6.0) * FS), 0), int((it.peak_s + 6.0) * FS)
+    cols = sorted(c for s in shanks for c in s)
+    win = Xc[w0 - c0:w1 - c0][:, cols]
+    np.savez_compressed(out / f"{it.rid}.npz", w0=w0, cols=np.array(cols), X=win.astype(np.float32), chunk=np.array([c0, c1]))
+    (out / f"{it.rid}.json").write_text(json.dumps(dict(rid=it.rid, chunk_s=[c0 / FS, c1 / FS], shanks=infos)))
+    # numbers at the ripple site (as review_denoise_compare.csv): 100-250 Hz RMS after / before
+    t = (np.arange(w1 - w0) + w0) / FS - it.peak_s
+    raw, cln = X[w0 - c0:w1 - c0, rc], win[:, cols.index(rc)]
+    sos = signal.butter(3, (100, 250), btype="bandpass", fs=FS, output="sos")
+    esos = signal.butter(3, (300, 450), btype="bandpass", fs=FS, output="sos")
+    rr, cr = signal.sosfiltfilt(sos, raw), signal.sosfiltfilt(sos, cln)
+    bg, pk = (np.abs(t) >= 0.25) & (np.abs(t) <= 2), np.abs(t) <= 0.025
+    en = signal.sosfiltfilt(esos, X[w0 - c0:w1 - c0, nc])
+    own = next(si for si, s in enumerate(shanks) if rc in s)
+    inf = infos[own]
+    return dict(rid=it.rid, bg=float(np.sqrt(np.mean(cr[bg] ** 2) / np.mean(rr[bg] ** 2))),
+                pk=float(np.sqrt(np.mean(cr[pk] ** 2) / np.mean(rr[pk] ** 2))),
+                con=float(np.sqrt(np.mean(cr[pk] ** 2) / np.mean(cr[bg] ** 2))),
+                con_raw=float(np.sqrt(np.mean(rr[pk] ** 2) / np.mean(rr[bg] ** 2))),
+                emg_r=float(np.corrcoef(signal.sosfiltfilt(esos, cln)[bg], en[bg])[0, 1]),
+                own_removed=bool(inf.get("removed", False)), own_flat_max=inf.get("flat_max"),
+                own_n_flat_gt10=inf.get("n_flat_gt10"), own_thrd_frac=inf.get("thrd_frac"),
+                n_shanks_removed=int(sum(bool(i.get("removed", False)) for i in infos)), n_shanks=len(shanks),
+                chunk_s=round((c1 - c0) / FS, 1))
+
+
+def emgica(a):
+    """Run emgica_item on every validity item (GPU FastICA when the env's torch can run on this card)."""
+    import yaml
+    from joblib import Parallel, delayed
+    man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
+    run = Path(a.run or man["run_dir"])
+    P = pd.read_csv(run / "review_key_SEALED.csv")
+    out = Path(a.ica_dir) if a.ica_dir else run / "emg_ica"
+    out.mkdir(parents=True, exist_ok=True)
+    cfg = yaml.safe_load(open(HERE / "configs/swr_channels_2026c.yaml"))
+    todo = [it for it in P.itertuples() if not (out / f"{it.rid}.npz").exists()]
+    rows = Parallel(n_jobs=a.workers, backend="loky")(delayed(emgica_item)(it, a, cfg, out) for it in todo)
+    old = pd.read_csv(out / "emg_ica_items.csv") if (out / "emg_ica_items.csv").exists() else pd.DataFrame()
+    D = pd.concat([old, pd.DataFrame(rows)]).drop_duplicates("rid", keep="last")
+    D.to_csv(out / "emg_ica_items.csv", index=False)
+    print(f"EMG-ICA: {len(rows)} new items, {len(D)} in {out}")
+
+
+def render_ripple(it, a, png: Path, cfg: dict, denoise: str = "none") -> None:
     """One blind panel: +-2 s raw stack, +-0.5 s raw and 100-250 Hz, +-2 s spectrogram, theta (the detector's
     theta/delta with its x_theta threshold, + the radiatum 6-10 Hz trace) and the LFP-EMG with its x_emg_lfp threshold
     (the user, 2026-10-10: awake false positives are EMG noise and gamma riding on theta)."""
@@ -531,11 +597,19 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: bool = False) -> None:
     X = np.asarray(mm[c0c:int((it.peak_s + PAD) * FS), allc], np.float64)
     t_all = (np.arange(X.shape[0]) + c0c) / FS - it.peak_s
     col = {c: X[:, k] for k, c in enumerate(allc)}
+    rawcol = dict(col)
     raw_rc = col[rc].copy()
-    if denoise:                                                        # the user, 2026-10-10: EMG makes awake panels unreadable
+    if denoise == "regress":                                           # the user, 2026-10-10: EMG makes awake panels unreadable
         fit = np.abs(t_all) >= 0.25
         for c in show[:-1]:
             col[c], _ = regress_out(col[c], col[nc], fit)
+    elif denoise == "ica":                                             # Chen 2023 EMG_removing (ephys/emg_ica.py), all sites
+        z = np.load(Path(a.ica_dir) / f"{it.rid}.npz")
+        assert int(z["w0"]) == c0c and z["X"].shape[0] == X.shape[0], f"{it.rid}: ICA window mismatch"
+        zc = list(z["cols"])
+        for c in allc:
+            if c in zc:
+                col[c] = z["X"][:, zc.index(c)].astype(np.float64)
     w2 = (t_all >= -2.0) & (t_all <= 2.0)
     w05 = (t_all >= -0.5) & (t_all <= 0.5)
     uv = 0.195
@@ -553,8 +627,9 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: bool = False) -> None:
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_yticks([])
     ax.set_xlim(-2, 2)
-    ax.set_title(("DENOISED (the noise site's > 80 Hz part regressed out of each CA1 site; noise site itself raw, grey), ± 2 s"
-                  if denoise else "raw LFP, ± 2 s (same-shank sites top -> bottom, then the noise site)"), fontsize=9)
+    ax.set_title({"regress": "DENOISED (the noise site's > 80 Hz part regressed out of each CA1 site; noise site itself raw, grey), ± 2 s",
+                  "ica": "EMG-ICA DENOISED (per shank, the flat ICA component removed above 30 Hz, all sites incl. the noise site), ± 2 s"}
+                 .get(denoise, "raw LFP, ± 2 s (same-shank sites top -> bottom, then the noise site)"), fontsize=9)
     # (2) raw zoom, (3) ripple band zoom
     xr = col[rc] * uv
     ax = fig.add_subplot(gs[1])
@@ -562,18 +637,18 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: bool = False) -> None:
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
-    ax.set_title("ripple site, denoised, ± 0.5 s" if denoise else "ripple site, raw, ± 0.5 s", fontsize=9)
+    ax.set_title("ripple site, denoised, ± 0.5 s" if denoise != "none" else "ripple site, raw, ± 0.5 s", fontsize=9)
     sos = signal.butter(3, (100, 250), btype="bandpass", fs=FS, output="sos")
     ax = fig.add_subplot(gs[2])
-    if denoise:
+    if denoise != "none":
         ax.plot(t_all[w05], signal.sosfiltfilt(sos, raw_rc * uv)[w05], lw=0.6, color="0.75", label="raw")
-    ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple", label="denoised" if denoise else None)
+    ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple", label="denoised" if denoise != "none" else None)
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylabel("uV")
-    if denoise:
+    if denoise != "none":
         ax.legend(fontsize=7, loc="upper left", ncol=2)
-    ax.set_title("ripple site, 100-250 Hz, ± 0.5 s" + (" (grey = before denoising)" if denoise else ""), fontsize=9)
+    ax.set_title("ripple site, 100-250 Hz, ± 0.5 s" + (" (grey = before denoising)" if denoise != "none" else ""), fontsize=9)
     # (4) spectrogram 20-250 Hz, +-2 s, each frequency relative to its median over the +-6 s context
     ax = fig.add_subplot(gs[3])
     f, t, Sx = signal.spectrogram(xr, fs=FS, window="hann", nperseg=125, noverlap=113, scaling="density")
@@ -607,9 +682,11 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: bool = False) -> None:
     ax.set_title("theta", fontsize=9)
     # (6) LFP-EMG
     ax = fig.add_subplot(gs[5])
-    E = swr_emg.LfpEmg(np.column_stack([col[c] for c in emg_cols]))
+    src = rawcol if denoise == "ica" else col                         # after ICA the cross-shank measure is ~0 by design
+    E = swr_emg.LfpEmg(np.column_stack([src[c] for c in emg_cols]))
     idx = np.flatnonzero(w2)[::25]
-    ax.plot(t_all[idx], E.at(idx), color="k", lw=1.0, label="LFP-EMG (300-450 Hz cross-shank correlation)")
+    ax.plot(t_all[idx], E.at(idx), color="k", lw=1.0,
+            label="LFP-EMG (300-450 Hz cross-shank correlation)" + (", BEFORE cleaning = what the detector saw" if denoise == "ica" else ""))
     if thr.get("emg_lfp") is not None:
         ax.axhline(thr["emg_lfp"], color="k", lw=0.8, ls=":", label="x_emg_lfp threshold (session NREM 95th pct)")
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
@@ -622,7 +699,8 @@ def render_ripple(it, a, png: Path, cfg: dict, denoise: bool = False) -> None:
 
 
 def rerender(a):
-    """Re-draw the same blind items (same key, same ids) with the current panel layout (--denoise: the EMG-regressed version)."""
+    """Re-draw the same blind items (same key, same ids) with the current panel layout (--denoise / --denoise regress: the
+    noise site regressed out; --denoise ica: the EMG-ICA windows written by `emgica`)."""
     import yaml
     from joblib import Parallel, delayed
     man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
@@ -631,6 +709,8 @@ def rerender(a):
     out = Path(a.review_out) if a.review_out else run / "review"
     (out / "img").mkdir(parents=True, exist_ok=True)
     cfg = yaml.safe_load(open(HERE / "configs/swr_channels_2026c.yaml"))
+    if a.denoise == "ica" and not a.ica_dir:
+        a.ica_dir = str(run / "emg_ica")
     Parallel(n_jobs=a.workers, backend="loky")(delayed(render_ripple)(it, a, out / "img" / f"{it.rid}.png", cfg, a.denoise)
                                                 for it in P.itertuples())
     print(f"re-rendered {len(P)} items -> {out / 'img'} (denoise={a.denoise})")
@@ -679,11 +759,16 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0", "review", "rerender"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "review", "rerender", "emgica"])
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--run", default=None)
     ap.add_argument("--review-out", default=None, help="review: folder for the panels (default <run>/review)")
-    ap.add_argument("--denoise", action="store_true", help="rerender: regress the noise site's > 80 Hz part out of the CA1 sites")
+    ap.add_argument("--denoise", nargs="?", const="regress", default="none", choices=["none", "regress", "ica"],
+                    help="rerender: 'regress' (= bare --denoise) regresses the noise site's > 80 Hz part out of the CA1 sites; "
+                         "'ica' uses the EMG-ICA windows of `emgica`")
+    ap.add_argument("--ica-dir", default=None, help="emgica / rerender --denoise ica: folder of the cleaned windows (default <run>/emg_ica)")
+    ap.add_argument("--ica-half-s", type=float, default=450.0, help="emgica: half length of the chunk cleaned around each item (s)")
+    ap.add_argument("--ica-lower-hz", type=float, default=30.0, help="emgica: EMG removed above this frequency (Chen 2023: 20-30 Hz)")
     ap.add_argument("--lfp-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/lfp")
     ap.add_argument("--night-run", default=None, help="night_sleep_wiser run (zones_smoothed_*.csv.gz); default from its manifest")
     ap.add_argument("--swr-root", default=SWR_ROOT)
@@ -704,6 +789,8 @@ def main():
         review(a)
     elif a.cmd == "rerender":
         rerender(a)
+    elif a.cmd == "emgica":
+        emgica(a)
 
 
 if __name__ == "__main__":
