@@ -486,60 +486,131 @@ def pick_items(run: Path, a, rng: np.random.Generator) -> pd.DataFrame:
 
 
 def render_ripple(it, a, png: Path, cfg: dict) -> None:
+    """One blind panel: +-2 s raw stack, +-0.5 s raw and 100-250 Hz, +-2 s spectrogram, theta (the detector's
+    theta/delta with its x_theta threshold, + the radiatum 6-10 Hz trace) and the LFP-EMG with its x_emg_lfp threshold
+    (the user, 2026-10-10: awake false positives are EMG noise and gamma riding on theta)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from scipy import signal
+    import swr_emg
     from swr_auto import channels_for
     from swr_channel_scan import XML, shanks_from_xml
     ch = channels_for(cfg, it.animal, it.session)
-    sh = shanks_from_xml(HERE / "configs/xml" / XML[it.animal])
-    rc = int(ch["ripple_col"])
+    xml = HERE / "configs/xml" / XML[it.animal]
+    sh = shanks_from_xml(xml)
+    rc, swc, nc = int(ch["ripple_col"]), int(ch["sharpwave_col"]), int(ch["noise_col"])
     col_list = next(g for _, g in sh if any(c == rc for c, _ in g))
     cols = [c for c, sk in col_list]
     i = cols.index(rc)
-    neigh = [c for c in cols[max(0, i - 2):i + 3]]
-    show = neigh + [int(ch["noise_col"])]
+    show = cols[max(0, i - 2):i + 3] + [nc]
+    emg_cols = swr_emg.emg_channels(xml, skip=set(ch.get("exclude_cols", [])))
+    summ = Path(a.swr_root) / it.animal / it.session / f"{it.session}.swr_summary.json"
+    thr = json.loads(summ.read_text()).get("thresholds", {}) if summ.exists() else {}
     lfp = Path(a.lfp_root) / it.animal / f"{it.session}.lfp"
     nch = int(json.loads(Path(str(lfp) + ".json").read_text())["n_channels"])
     mm = np.memmap(lfp, dtype=np.int16, mode="r")
     mm = mm[: mm.size // nch * nch].reshape(-1, nch)
     FS = 1250
-    c0 = int((it.peak_s - 2.0) * FS)
-    x = np.asarray(mm[max(c0, 0):c0 + 4 * FS, show], np.float64) * 0.195
-    tt = np.arange(x.shape[0]) / FS - 2.0
-    sos = signal.butter(3, (100, 250), btype="bandpass", fs=FS, output="sos")
-    fig = plt.figure(figsize=(12, 8.2))
-    gs = fig.add_gridspec(3, 1, height_ratios=[3.2, 1.3, 1.3], hspace=0.45)
+    PAD = 6.0                                                          # context for the filters
+    c0 = int((it.peak_s - PAD) * FS)
+    c0c = max(c0, 0)
+    allc = sorted(set(show) | set(emg_cols) | {swc})
+    X = np.asarray(mm[c0c:int((it.peak_s + PAD) * FS), allc], np.float64)
+    t_all = (np.arange(X.shape[0]) + c0c) / FS - it.peak_s
+    col = {c: X[:, k] for k, c in enumerate(allc)}
+    w2 = (t_all >= -2.0) & (t_all <= 2.0)
+    w05 = (t_all >= -0.5) & (t_all <= 0.5)
+    uv = 0.195
+    fig = plt.figure(figsize=(12, 13.5))
+    gs = fig.add_gridspec(6, 1, height_ratios=[3.0, 1.1, 1.1, 1.7, 1.4, 1.0], hspace=0.55)
+    # (1) raw stack
     ax = fig.add_subplot(gs[0])
-    sc = np.percentile(np.abs(x - np.median(x, 0)), 99) or 1
+    Y = np.column_stack([col[c][w2] * uv for c in show])
+    sc = np.percentile(np.abs(Y - np.median(Y, 0)), 99) or 1
     for k, c in enumerate(show):
-        y = x[:, k] - np.median(x[:, k])
-        lab = ("ripple site" if c == rc else ("noise site (cortex, top)" if k == len(show) - 1 else f"neighbour col {c}"))
-        ax.plot(tt, y / sc / 1.8 - 1.2 * k, lw=0.55, color="tab:red" if c == rc else ("tab:gray" if k == len(show) - 1 else "k"))
+        y = Y[:, k] - np.median(Y[:, k])
+        lab = "ripple site" if c == rc else ("noise site (cortex, top)" if k == len(show) - 1 else f"neighbour col {c}")
+        ax.plot(t_all[w2], y / sc / 1.8 - 1.2 * k, lw=0.55, color="tab:red" if c == rc else ("tab:gray" if k == len(show) - 1 else "k"))
         ax.text(-2.0, -1.2 * k + 0.35, lab, fontsize=8)
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
     ax.set_yticks([])
     ax.set_xlim(-2, 2)
-    ax.set_xlabel("s from the candidate (± 2 s raw LFP; same-shank sites top -> bottom, then the noise site)", fontsize=9)
-    k = show.index(rc)
-    m = (tt >= -0.5) & (tt <= 0.5)
+    ax.set_title("raw LFP, ± 2 s (same-shank sites top -> bottom, then the noise site)", fontsize=9)
+    # (2) raw zoom, (3) ripple band zoom
+    xr = col[rc] * uv
     ax = fig.add_subplot(gs[1])
-    ax.plot(tt[m], x[m, k] - np.median(x[m, k]), lw=0.7, color="tab:red")
+    ax.plot(t_all[w05], xr[w05] - np.median(xr[w05]), lw=0.7, color="tab:red")
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
-    ax.set_ylabel("uV")
     ax.set_xlim(-0.5, 0.5)
+    ax.set_ylabel("uV")
     ax.set_title("ripple site, raw, ± 0.5 s", fontsize=9)
+    sos = signal.butter(3, (100, 250), btype="bandpass", fs=FS, output="sos")
     ax = fig.add_subplot(gs[2])
-    ax.plot(tt[m], signal.sosfiltfilt(sos, x[:, k])[m], lw=0.7, color="tab:purple")
+    ax.plot(t_all[w05], signal.sosfiltfilt(sos, xr)[w05], lw=0.7, color="tab:purple")
     ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
-    ax.set_ylabel("uV")
     ax.set_xlim(-0.5, 0.5)
+    ax.set_ylabel("uV")
     ax.set_title("ripple site, 100-250 Hz, ± 0.5 s", fontsize=9)
+    # (4) spectrogram 20-250 Hz, +-2 s, each frequency relative to its median over the +-6 s context
+    ax = fig.add_subplot(gs[3])
+    f, t, Sx = signal.spectrogram(xr, fs=FS, window="hann", nperseg=125, noverlap=113, scaling="density")
+    t = t + t_all[0]
+    m = (f >= 20) & (f <= 250)
+    Z = np.log(Sx[m] + 1e-12)
+    Z = Z - np.median(Z, axis=1, keepdims=True)
+    k = (t >= -2) & (t <= 2)
+    ax.pcolormesh(t[k], f[m], Z[:, k], shading="auto", cmap="magma", vmin=-1.0, vmax=3.0)
+    ax.axvline(0, color="c", lw=0.8, ls="--")
+    ax.set_ylabel("Hz")
+    ax.set_xlim(-2, 2)
+    ax.set_title("ripple site, 20-250 Hz power relative to its own ± 6 s median (a ripple = a brief bright blob above ~100 Hz; "
+                 "gamma on theta = bands repeating every ~0.12 s)", fontsize=8.5)
+    # (5) theta
+    ax = fig.add_subplot(gs[4])
+    td = swr_emg.theta_delta_log(col[rc])
+    ax.plot(t_all[w2], td[w2], color="tab:orange", lw=1.2, label="theta/delta (ripple site, the detector's measure)")
+    if thr.get("theta_delta_log") is not None:
+        ax.axhline(thr["theta_delta_log"], color="tab:orange", lw=0.8, ls=":", label="x_theta threshold (session NREM 95th pct)")
+    ax.set_ylabel("log ratio")
+    ax2 = ax.twinx()
+    sth = signal.butter(3, (6, 10), btype="bandpass", fs=FS, output="sos")
+    ax2.plot(t_all[w2], signal.sosfiltfilt(sth, col[swc] * uv)[w2], color="tab:green", lw=0.6, alpha=0.7, label="radiatum 6-10 Hz (uV)")
+    ax2.set_yticks([])
+    ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    ax.set_xlim(-2, 2)
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, fontsize=7, loc="upper left", ncol=3)
+    ax.set_title("theta", fontsize=9)
+    # (6) LFP-EMG
+    ax = fig.add_subplot(gs[5])
+    E = swr_emg.LfpEmg(np.column_stack([col[c] for c in emg_cols]))
+    idx = np.flatnonzero(w2)[::25]
+    ax.plot(t_all[idx], E.at(idx), color="k", lw=1.0, label="LFP-EMG (300-450 Hz cross-shank correlation)")
+    if thr.get("emg_lfp") is not None:
+        ax.axhline(thr["emg_lfp"], color="k", lw=0.8, ls=":", label="x_emg_lfp threshold (session NREM 95th pct)")
+    ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    ax.set_xlim(-2, 2)
+    ax.legend(fontsize=7, loc="upper left", ncol=2)
     ax.set_xlabel("s from the candidate", fontsize=9)
     fig.suptitle(f"{it.rid}", fontsize=13)
-    fig.savefig(png, dpi=90, bbox_inches="tight")
+    fig.savefig(png, dpi=85, bbox_inches="tight")
     plt.close(fig)
+
+
+def rerender(a):
+    """Re-draw the same blind items (same key, same ids) with the current panel layout."""
+    import yaml
+    from joblib import Parallel, delayed
+    man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
+    run = Path(a.run or man["run_dir"])
+    P = pd.read_csv(run / "review_key_SEALED.csv")
+    out = Path(a.review_out) if a.review_out else run / "review"
+    (out / "img").mkdir(parents=True, exist_ok=True)
+    cfg = yaml.safe_load(open(HERE / "configs/swr_channels_2026c.yaml"))
+    Parallel(n_jobs=a.workers, backend="loky")(delayed(render_ripple)(it, a, out / "img" / f"{it.rid}.png", cfg) for it in P.itertuples())
+    print(f"re-rendered {len(P)} items -> {out / 'img'}")
 
 
 def review(a):
@@ -585,7 +656,7 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0", "review"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "review", "rerender"])
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--run", default=None)
     ap.add_argument("--review-out", default=None, help="review: folder for the panels (default <run>/review)")
@@ -607,6 +678,8 @@ def main():
         phase0(a)
     elif a.cmd == "review":
         review(a)
+    elif a.cmd == "rerender":
+        rerender(a)
 
 
 if __name__ == "__main__":
