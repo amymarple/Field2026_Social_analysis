@@ -640,3 +640,35 @@ separates field behaviour after release from sleep in the house, and asks what t
   - "scorer-edge artefact likely" = still share ≥ 0.2 lower AND VeDBA ≥ 1.5× the matched NREM;
   - "settling" = still share within 0.1 of the matched NREM;
   - otherwise unresolved. Video stays the user's check.
+
+## 14. Amendment 6 (2026-10-10; the user: "行干吧", after the Fable plateau audit) — part W, the long-wake memory term; written before these results
+
+**Why.** The Fable plateau audit ([docs/methods/sleep_plateau_audit_2026-10-10.md](../docs/methods/sleep_plateau_audit_2026-10-10.md))
+recommends GO to the LFP stage after one cheap behaviour-level term: the count P forgets a wake within ~10 min and L1
+sees only the bout's own preceding wake, so the night ramp (#6b: longer night wakes push the first REM later) and the
+evening-round delay (#60) may be one general rule the model lacks. If this term absorbs #60, #60 needs no LFP test.
+
+**Definitions** (driver `ephys/sleep_perturb.py runW`; `sleep_sim.py` gains an optional `EXTRA_LW` switch, output
+unchanged without it):
+- $LW$ at a NREM bout = the length (s) of the last WAKE bout ≥ 420 s in the record, if no REM has occurred since that
+  wake ended, else 0; unchanged over unknown runs. Terms (linear, z-scored on the training data, on all three logits):
+  $\ell_{LW} = \ln(1 + LW)$ and $\ell_{LW} \times \text{dark}$.
+- In the simulator: a forced wake ≥ 420 s sets $LW$; a REM bout resets it to 0.
+
+**Tests (both scorings):**
+- **W1, held out.** B-full + {ℓ_LW, ℓ_LW × dark} vs B-full on the forward-chained folds (folds 1.., as Step B).
+  Pass = Δ log-loss CI < 0 and ≥ 5/6 rats better on both scorings. B-full + ℓ_LW alone is reported.
+- **W2, generative.** sleep_sim with both terms:
+  - (i) part H's evening conditional simulation (entry clock, base fitted with the post-round 3 h masked, without and
+    with part P's arousal A). Pass = the evening NREM-clock latency L_N' inside the simulated 95 % range on both
+    scorings.
+  - (ii) The morning stays inside.
+  - (iii) Step E's checks with a full-data fit ≥ 13/14 per scoring.
+
+**Reading:**
+
+| result | reading |
+|---|---|
+| W1 + W2 pass | #60 is a general night long-wake memory (#6b), not handling-specific; no LFP test for #60 |
+| W1 pass, W2 fail | the memory term is real, but #60 remains → LFP-2(a) |
+| W1 fail | no general long-wake memory in the transitions; #60 → LFP-2(a) |
