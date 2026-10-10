@@ -58,8 +58,10 @@ Kilosort4.
   `st3` with `cat` every batch and outgrows the 5e6-row `cProj` / `cProjPC` preallocation, so the final pass is
   quadratic in the spike count. In the SF12 day session, 2,935 of 5,357 s were final pass.
   - The patch preallocates and doubles; outputs must be identical.
-  - Validated locally: the same 30-min window is sorted with the original and the patched copy, and spike_times,
-    spike_clusters and amplitudes are compared byte for byte.
+  - Validation: a byte-for-byte comparison of full runs is impossible, because K1 on GPU is not run-to-run
+    deterministic (atomicAdd); two unpatched runs of the same 30-min window gave 82,708 vs 55,953 spikes. The
+    evidence is the deterministic MATLAB test `ephys/matlab/test_fullmpmu_patch.m`: the original vs the patched
+    accumulation on 1.26 M simulated spikes, PASS.
 - **`ephys/run_k1_block.py`** (new): runs K1 on one block through PreprocessPipeline `execute_sorting_job`:
   - lab config;
   - `criterionNoiseChannels` set by overriding the runner default;
@@ -111,6 +113,48 @@ Kilosort4.
   - lab settings with `whiteningRange` 32;
   - per-shank partitions.
 - **Concurrency:** all pilot sorts run together on both GPUs. This also tests the licence, I/O and concurrency.
+
+## Pilot outcome and the post-hoc amendment of the rule (2026-10-10)
+
+Sorted:
+- SF10 day, SF07 3-file night, SF09 09-06 night, SF08 09-09 night: whole twice, first 2/3, last 2/3.
+- SF10 also with whitening 32 and per shank.
+- SF12 heavy block once.
+
+Found and fixed:
+- `zeroOutKcoords.m`: an all-dead channel group disabled the shank confinement (test PASS).
+- Per-shank `nNeigh` = min(16, channels).
+- Nfilt is set by the lab formula, 8 x connected channels rounded down to 32. The runner had used 512 for every animal
+  in full-width mode.
+
+**The rule fixed before scoring fails** on SF10, SF07 and SF08 and passes on SF09. It is kept on the record as failed.
+
+The Fable audit (`D:/Field2026_analysis_out/2026c/k1_sort_strategy_20261009/AUDIT_FABLE_PILOT.md`) shows the failure
+is a span effect, not degradation of long blocks:
+- **Comparator:** r1-vs-r2 is the null for identical data, not for a change of the sorted span.
+- **Span effect:** on the same middle-third window and the same units, a part agrees with the whole at least as well
+  as with the other part, on all four blocks.
+- **No end effect:** hourly recovery is flat across 12 h, and does not concentrate by amplitude, shank or state.
+- **Rare clusters:** the reference set admitted clusters < 0.1 Hz, which never agree.
+
+**Amended rule (post hoc, documented as such):**
+- a paired same-window test;
+- the null is part-vs-part on the overlap, and a block passes if part-vs-whole >= that null - 0.05;
+- B's cross-shank template is kept, or a symmetric union is used;
+- reference units >= 0.1 Hz;
+- an hourly check;
+- an informative-baseline requirement.
+
+All four blocks pass. **Decision: sort whole blocks.** The 6-8 h overlapping sub-blocks are rejected: x1.63-1.68
+sorted hours, 149-249 extra seams, each a span change of the size the rule flagged.
+
+Open, the user's call:
+- **The single unconfined template.** criterionNoiseChannels 1e-5 leaves ceil(1e-5 x 512) = 1 template unconfined. It
+  collects common-mode noise and also absorbs real units: 18 of 40 SF09 r2 reference units have > 20 % of their
+  spikes in r1's template. Options: keep it as QC, or confine all templates with criterionNoiseChannels >= 1 (e.g.
+  100), tested on SF09 with 2 runs.
+- **Template seeding.** Optionally shuffle the order of the seeding peaks before `optimizePeaks` under the existing
+  rng(1). The seeding otherwise comes from the first 5-15 min after release. The lab accepts that.
 
 ## Production
 

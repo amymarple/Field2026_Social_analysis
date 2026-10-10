@@ -260,6 +260,12 @@ def main() -> None:
                                    probe_assignments=[{"type": layout, "groups": list(range(n_groups)), "x_offset": 0}],
                                    reject_channels=list(a.disconnect), xml_path=xml)
     cfg = k1_config(proot, whitening_range=a.whitening_range, keep_matlab_files=a.keep_matlab_files)
+    # Nfilt as the lab sets it: 8 x CONNECTED channels, rounded down to a multiple of 32 (KilosortConfiguration.m).
+    # The runner would otherwise compute it from its active-channel count, which is 64 in full-width mode
+    # (pilot audit 2026-10-10: every animal ran with 512 instead of 352-480).
+    from scipy.io import loadmat
+    n_conn = int((loadmat(str(chanmap), simplify_cells=True)["connected"] > 0).sum())
+    cfg["Nfilt"] = n_conn * 8 - (n_conn * 8) % 32
     cfg_path = out / "k1_config_used.yaml"
     cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
     if a.unpatched:
@@ -310,7 +316,8 @@ def main() -> None:
             # lab KilosortConfiguration: nNeigh = nNeighPC = min(16, Nchan); with a fixed 16 the K1 final pass indexes
             # past the channel count of a 12-15-channel shank ("Index ... must not exceed 15")
             n_act = len(p.channels_0based)
-            pc = dict(cfg, nNeigh=min(int(cfg.get("nNeigh", 16)), n_act), nNeighPC=min(int(cfg.get("nNeighPC", 16)), n_act))
+            pc = dict(cfg, nNeigh=min(int(cfg.get("nNeigh", 16)), n_act), nNeighPC=min(int(cfg.get("nNeighPC", 16)), n_act),
+                      Nfilt=n_act * 8 - (n_act * 8) % 32)
             part_cfg = out / f"k1_config_used_{p.name}.yaml"
             part_cfg.write_text(yaml.safe_dump(pc, sort_keys=False), encoding="utf-8")
         sr.execute_sorting_job(
