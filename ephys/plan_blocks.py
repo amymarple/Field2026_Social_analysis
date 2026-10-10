@@ -1,9 +1,15 @@
 """Block table for sorting cohort-3 ephys with Kilosort1 (plan implementation_plan/2026-10-09-k1-block-sorting.md).
 
 A block is the continuous recording of one logger between two handling events.
-- Joining: consecutive sessions are joined while the gap is < 5 min (file roll-overs and BLE Stop->Start splits).
-- Boundaries: a new block starts at any gap >= 5 min (battery round, auto-stop, outage), at a probe advance
-  (`ephys.probe_moves`) and at a firmware change.
+- Grouping: consecutive recordings form a group while the gap is < 15 min. A gap >= 15 min, a probe advance
+  (`ephys.probe_moves`) or a firmware change starts a new group. A battery round leaves a 40-66 min fleet gap, so
+  none hides inside a < 15 min gap.
+- Block start: the block starts at the group's first LONG recording (>= 30 min), the first long recording after a
+  battery change (user, 2026-10-10). Shorter pieces before it are dropped: indoor tests < 1 min, guard / Resync
+  stubs, weak-cell attempts.
+- Block tail: every recording after it is kept, however short (>= 10 s), including the battery-end fragments of
+  auto-stops and restarts (user, 2026-10-10).
+- Groups without a long recording are dropped.
 - Excluded sessions:
   - field-flagged sessions (home cage, test cards, zombie restarts, the SF12 09-11 open connector);
   - FM62;
@@ -48,7 +54,9 @@ from make_session_xml import load_probe  # noqa: E402
 
 FS = 20000
 PADDOCK_END = pd.Timestamp("2026-09-12 10:10:00")
-GAP_S = 300
+GAP_S = 900          # group split (s): a battery round leaves >= 40 min
+LONG_S = 1800        # a block starts at the first recording at least this long
+MIN_PIECE_S = 10     # recordings shorter than this are never kept
 SETTLE_H = 4
 LFP_STEPS = {   # LFP-found regime steps without a probe advance (SWR session, commit c47f8e5)
     "SF11": [("2026-09-02 19:08:52", "SF11 probe out of CA1 from the 09-02 evening round")],
@@ -79,7 +87,7 @@ def main() -> None:
     d["animal"] = d.animal.map(pad)
     d["start"] = pd.to_datetime(d.start_local)
     d["end"] = d.start + pd.to_timedelta(d.duration_s, unit="s")
-    keep = d.firmware.isin([64, 65]) & d.field_flag.isna() & (d.duration_s >= 300) & (d.start < PADDOCK_END)
+    keep = d.firmware.isin([64, 65]) & d.field_flag.isna() & (d.duration_s >= MIN_PIECE_S) & (d.start < PADDOCK_END)
     s = d[keep].sort_values(["animal", "start"]).copy()
 
     valid_until = {v["animal"]: pd.Timestamp(v["valid_until"]) for v in eph.get("valid_until", [])}
@@ -89,7 +97,7 @@ def main() -> None:
     qflags = eph.get("quality_flags", [])
     probe_cfg = PROJECT_ROOT / eph["probe_config"]
 
-    rows = []
+    rows, dropped_rows = [], []
     for animal, g in s.groupby("animal"):
         groups = load_probe(probe_cfg, animal)["groups"]
         end_lim = min(PADDOCK_END, valid_until.get(animal, PADDOCK_END))
@@ -108,6 +116,16 @@ def main() -> None:
             cur.append(r)
         if cur:
             blocks.append(cur)
+        dropped_lead = []
+        trimmed_blocks = []
+        for b in blocks:   # start at the first long recording; drop the pieces before it; keep the whole tail
+            k = next((i for i, r in enumerate(b) if r.duration_s >= LONG_S), None)
+            if k is None:
+                dropped_lead.extend(b); continue
+            dropped_lead.extend(b[:k]); trimmed_blocks.append(b[k:])
+        blocks = trimmed_blocks
+        for r in dropped_lead:
+            dropped_rows.append(dict(animal=animal, session=r.session, start=r.start, duration_s=r.duration_s))
         for b in blocks:
             t0 = b[0].start + pd.Timedelta(seconds=a.trim_min * 60)
             t1 = min(b[-1].end, end_lim)
@@ -157,6 +175,11 @@ def main() -> None:
              "", "| animal | blocks | hours | chains | FM64 blocks | max h |", "|---|---|---|---|---|---|"]
     for an, gg in bt.groupby("animal"):
         lines.append(f"| {an} | {len(gg)} | {gg.hours.sum():.1f} | {gg.chain.nunique()} | {gg.fm64.sum()} | {gg.hours.max():.1f} |")
+    dr = pd.DataFrame(dropped_rows)
+    dr.to_csv(rep / f"ephys_spikes_k1_blocks_dropped_{a.cohort}.csv", index=False)
+    lines += ["", f"Dropped pieces (before a group's first long recording, or in groups without one): {len(dr)} recordings, "
+              f"{dr.duration_s.sum() / 3600:.2f} h; {(dr.duration_s <= 60).sum()} of them <= 60 s "
+              f"(`ephys_spikes_k1_blocks_dropped_{a.cohort}.csv`)."]
     (rep / f"ephys_spikes_k1_blocks_{a.cohort}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     print(f"-> {csv}")
