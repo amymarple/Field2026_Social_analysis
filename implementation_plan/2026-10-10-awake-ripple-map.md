@@ -367,6 +367,75 @@ Both strata pass the 0.7 gate. Final only after the second reader (the user's me
   - The field would also need checking for misses: 30 field random moments in a second sample.
 - **SF09 field: 1 / 3 / 4.** Report SF09's field rows separately; drop them if the second reader agrees.
 
+### Addendum 4a — the denoised page looked the same (the user, 2026-10-10): state of the art, two numeric checks
+
+**Why it looked the same.**
+- Panels 1–2 are dominated by the < 80 Hz part, which the denoising leaves untouched by design.
+- The spectrogram is normalised per frequency to its own ± 6 s median, so a uniform drop of the EMG floor cancels out.
+- The LFP-EMG panel is computed from the raw sites.
+- Only panel 3 shows the change.
+
+**State of the art** (sources in the reply of 2026-10-10):
+- Liu et al. 2022, *Nat Commun* (the ripple consensus):
+  - artifacts are power increases on all sites, distant ones included;
+  - use a local derivation or CSD (the "difference of difference"), ICA, and exclusion of events that coincide with EMG on
+    the common average;
+  - a true event's spectrum has a narrow peak in the ripple band;
+  - compare SPW-R-unit histograms in wake and NREM;
+  - immobility.
+- van Schalkwijk & Helfrich 2026, *Nat Commun*: 77 % of awake MTL ripples sit inside the 1/f noise floor (23 % in NREM).
+  Benchmark every detector against matched coloured-noise surrogates per state.
+- Bénar et al. 2010: filtering a sharp transient makes a false ripple; require an isolated blob in the time-frequency plane.
+- Whitmore & Lin 2016: ICA removes reference and movement noise, which is 23–77 % of awake LFP variance.
+- De Clercq et al. 2006: BSS-CCA for muscle artefacts in EEG.
+- Navas-Olive et al. 2024 (rippl-AI): 1 / 3 / 8-channel ML detectors at 1250 Hz, robust to noise, public.
+
+**Check 1: denoisers** (`review_denoise_compare.csv`). All methods act on > 80 Hz only and are fitted outside ± 0.25 s.
+Medians, field aSWR / NREM:
+
+| method | background ratio, field | NREM peak kept | field contrast (raw 1.44) |
+|---|---:|---:|---:|
+| single cortical site (current) | 0.73 | 0.98 | 1.90 |
+| 8 ripple-poor sites | 0.57 | 0.93 | 2.06 |
+| same-shank ripple-poor site | 0.61 | 0.95 | 1.94 |
+| BSS-CCA | 0.97 | 0.99 | 1.47 (removes nothing at the CA1 site) |
+
+- More removal costs real NREM ripple amplitude.
+- No method's contrast separates HC's "ripple" from "not a ripple": AUC 0.44–0.55. HC's "not" calls are not about the
+  noise level, which matches the user's account (theta).
+
+**Check 2: raw MUA** (`review_mua_items.csv`; common median reference, 600–6000 Hz, −4.5 MAD; rate in ± 50 ms / rate at
+0.4–3 s).
+- Medians of the pyramidal-site ratio:
+
+  | set | median ratio |
+  |---|---:|
+  | NREM SWRs | 1.78 |
+  | aSWR field, called ripple | 1.85 |
+  | aSWR house, called ripple | 2.90 |
+  | random quiet moments | 0.16–0.60 |
+
+  So the aSWR candidates carry a hippocampal spike burst like NREM SWRs; the random moments do not.
+- Field "not a ripple" (n 6): the burst also appears on the other shanks (4.8) and the cortical sites (1.74). Field
+  "ripple" items have cortical 0.00, field "unsure" (n 10) 0.00 with pyramidal 4.0. So the "unsure" (EMG) items look like
+  local hippocampal events.
+- Exploratory, n 8 "not": the cortical ratio separates the calls with AUC 0.68, the log pyramidal / cortical ratio with
+  0.64. Per event, MUA is noisy: only 47 % of NREM SWRs reach a ratio ≥ 2.
+
+**Proposal (not run; the user decides):**
+- Reader v3 shows the consensus evidence instead of a cleaner trace:
+  - the 100–250 Hz band of the ripple site, a same-shank ripple-poor site, the other shanks' ripple sites and the cortical
+    site, on one µV scale;
+  - the event spectrum (± 50 ms) against its background at the ripple and cortical sites;
+  - the raw MUA raster of the ripple shank and the cortical sites;
+  - theta over ± 2 s (kept).
+- Automatic criteria, each pre-registered and validated against both readers and then a fresh sample:
+  - theta-quiet (above);
+  - local, not common: ripple-band and MUA rise on CA1, not on the cortical sites;
+  - a narrow event-spectrum peak;
+  - and the noise-floor benchmark: the production detector run on per-state, per-zone coloured-noise surrogates.
+- Optional: rippl-AI as an independent second detector on the 140 items.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
