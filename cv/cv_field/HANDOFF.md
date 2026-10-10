@@ -26,6 +26,7 @@ not CH01/CH02 09-01 and CH02 09-02); `select_label_round1.py` → pool `label_ro
 DINOv3, never re-grabbed) and the **label package `label_round1_20261006_2015`** (400 train frames with v5 prelabels and WISER sidecars, test set
 100 on 09-05, 20 overlap frames; the user copies it to Q: and verifies with `verify_manifest.py`) —
 `change_log/2026-10-06-wiser-label-loop.md`, data map section I.
+**2026-10-10: in-box CH07 / CH08 phase 0** (`inbox_p0.py`, `inbox_identity_page.py`; plan `implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md`) — 22 colour segments found numerically and matched to the colour log, WISER box events (09-05 check PASS), per-minute in-house positions, and the identity click page `D:\Field2026_analysis_out\2026c\cv_field_inbox_p0_20261010_1702\identity_page\index.html` waiting for the user's clicks (exports → `cv/configs/inbox_identity_2026c/`) — `change_log/2026-10-10-inbox-ch0708-p0.md`, data map section K.
 **2026-10-06: read [`CAMERA_GEOMETRY_2026c.md`](CAMERA_GEOMETRY_2026c.md) before using any cohort-3 pixel position** —
 how every camera moved (per day, per night, at lid events), house_1's 09-18 move, the landmark names / files and the
 occluder image regions, and the correction table (`frame_correction.Corrections`; nights for CH01–CH06, all day for CH07/CH08).

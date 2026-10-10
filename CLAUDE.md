@@ -398,6 +398,7 @@ DINOv3 1024 × 288 CLS; frame index from the fMP4 sample table; resumable, never
 **label package** `$OUT_ROOT/2026c/label_round1_<ts>/` (400 train frames with editable v5 txt only where v5 has a box,
 `prelabels_v5/`, WISER sidecars `wiser_sidecar/1`; test 100 on 09-05 — never a model, prelabel or sidecar; 20 overlap frames;
 `MANIFEST_sha256.csv` + `verify_manifest.py`) + report `results/2026c/cv_field/reports/cv_field_wiser_label_loop_round1_2026c.md`.
+**In-box CH07 / CH08 phase 0** (plan `2026-10-10-inbox-ch0708-wiser-identity-p0.md`, 10-10): `inbox_p0.py --run new` (cv env; I-frame chroma scan with one sequential prefetch reader — concurrent readers thrash the USB HDD — → 22 colour segments 09-09…09-11 matched to the colour log, thr 1.18 after amendment 6; WISER box events with the operator's house + 15 in / 6-s / 20-s rule, **09-05 check PASS**, `box_occupancy_1s.csv.gz`, `inhouse_minutes.csv.gz` in house-frame inches, camera ↔ house check) and `inbox_identity_page.py --run <run>` (click page, close-ups from `$OUT_ROOT/2026c/inhand_closeups/`) → `$OUT_ROOT/2026c/cv_field_inbox_p0_<ts>/` (`identity_page/index.html`), report `results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`; the user's clicks → `cv/configs/inbox_identity_2026c/`; data map section K.
 
 ### `thermal/` — cams `108_thermal` / `109_thermal` (1 fps, 1280×960 HEVC, white-hot, auto-gain); no results direction
 

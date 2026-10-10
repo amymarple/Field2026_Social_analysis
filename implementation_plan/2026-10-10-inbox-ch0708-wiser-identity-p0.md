@@ -1,7 +1,7 @@
 # In-box cameras CH07 / CH08, phase 0: colour segments, WISER box events, WISER in-house arrangement, identity click page
 
-Date: 2026-10-10. Status: **PLANNED** — approved by the user 2026-10-10 ("其余都可以": the four phase-0 items proposed in
-the session; the colour CH07/CH08 footage is on this PC; per-rat close-ups in `C:/Users/Cornell/Downloads/SF07.MOV`
+Date: 2026-10-10. Status: **DONE (phase 0), 2026-10-10** — amendments 1–6 at the end; the clicks step waits for the user. Approved by the user 2026-10-10 ("其余都可以": the four phase-0 items proposed in
+the session; the colour CH07/CH08 footage is on this PC; per-rat close-ups in `D:/Field2026_analysis_out/2026c/inhand_closeups/SF07.MOV` (amendment 5)
 … `SF12.MOV`; identity marks on the Notion cohort page). Pre-registered before any result; amendments dated and marked
 *before* or *after results*. Builds on the operator's own field design — `../Field_2026_Social_Recording/
 EXPERIMENT_ir_identity_color_sampling.md` (label sources 1–4, the pilot conclusion "track-then-assign") and
@@ -72,7 +72,7 @@ Per colour segment found in A (deduplicated by configuration: one entry per segm
   white-out), full resolution, upright as recorded (no rotation for the in-box cams);
 - panel: WISER roster of that house at the flash (tagged animals; "SF11 untagged after 09-07 06:10 — may be present"),
   each animal's minute-mean position drawn as a top view of the house (along / across ridge) with SE bars, IMU state;
-  the identity legend (table above) and links to the close-up clips (`Downloads/SF07.MOV` … transcoded once to H.264
+  the identity legend (table above) and links to the close-up clips (`$OUT/2026c/inhand_closeups/SF07.MOV` … (amendment 5) transcoded once to H.264
   MP4 into the run folder, originals untouched);
 - the user clicks each visible rat's head on the colour frame and picks its id (SF07–SF12 / unknown) with a
   confidence (sure / likely) and, optionally, the same rat on the IR frames; per segment a field "pile composition
@@ -94,7 +94,7 @@ flashes with ≥ 3 identified animals; until then trust WISER separations > 15 i
 - Run folder `$OUT/2026c/cv_field_inbox_p0_<ts>/`; report `results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`
   (+ pointer `run_manifest_inbox_p0_2026c.json`); change_log, both index READMEs, CLAUDE.md cv_field map, HANDOFF,
   data map (new section).
-- Read-only: `F:/3rd_rat`, the WISER caches, `Downloads/*.MOV`, the recording repo, Notion. No training, no labels made
+- Read-only: `F:/3rd_rat`, the WISER caches, `$OUT/2026c/inhand_closeups/*.MOV` (amendment 5), the recording repo, Notion. No training, no labels made
   by the machine, the agent never judges images. Before 09-11 19:40 only. CPU (+ video decode); no GPU needed.
 
 ## Later (not approved)
@@ -103,3 +103,54 @@ Phase 1: a CH07/CH08 box-labelling package for the undergrad's loop (frames stra
 IMU still/active × day/night × lid segment, entry/exit frames with known identity, IR frames next to colour flashes),
 with a house-roster panel instead of WISER circles; SAM3 tried as a pre-labeller on these close-up frames, scored on
 the user's labels.
+
+## Amendments
+
+**Amendment 1 (2026-10-10, before any B result) — fix rule for the box events.** The default tracks' `m_handling` mask
+covers every operator round (09-05: 08:40:00–09:49:59), i.e. exactly the moments of the 09-05 ground-truth events, so the
+plan's "no `m_*` flag" would delete the events B2 / B5 must check. Primary rule: `valid` ∧ ¬`m_off_animal` ∧
+¬`m_tag_validity`; `m_handling`, `m_silence` and `m_adc_lane` fixes are kept (`m_adc_lane` is a neural-logger electrical
+window with no bearing on the UWB tag) and each event carries `in_handling`. The literal rule is computed and reported as a
+sensitivity (box_events_sensitivity.csv.gz, check_0905_sensitivity.csv).
+
+**Amendment 2 (2026-10-10, before any B result) — the operator's parameters, made exact.** The operator's script
+(`wiser_box_transitions.py`, old `Field_2026_Social` repo) is not on this PC, so "6-s smoothing" and "20-s minimum dwell" are
+implemented as: per second s the share of fixes in [s − 3, s + 3) inside the dilated rectangle, in-house if ≥ 0.5, unknown
+without fixes; a change of state is accepted only when the new state lasts ≥ 20 s (shorter runs keep the old state); unknown
+stretches < 20 s are bridged, longer ones make the state unknown and a change across them is flagged with its length.
+Membership uses the default-track (x, y); the raw fixes are a sensitivity. Definitions in the report.
+
+**Amendment 3 (2026-10-10, before any result) — specification details.** A2 controls: per camera 3 days drawn from
+08-31 … 09-08 (full video days before the first colour insert) and 2 daylight hours 08–18 each (colour needs daylight),
+seed 20261010. A3 log matching: nearest row of the same date whose camera field names the camera, operator ON (else OFF,
+else the planned slot of an un-noted row) within ± 120 s of the segment interval; a round row without a time matches a
+segment inside the round window (− 5 / + 30 min); Δ is reported raw and + 35 s. B4: I-frames within ± 10 s of a colour
+segment are excluded from the energy; reported for all minutes and outside lid events (± 5 min); a circular-shift share is
+added as context. C: the pre-flash position window is [ON − 60 s, ON); the roster is read at the segment middle.
+
+**Amendment 4 (2026-10-10, after the first B3 table) — in-house fixes.** In the first in-house table 1.4 % of minute means lay
+> 30 in from the house centre: excursions shorter than the 20-s dwell keep the cleaned state but their fixes pulled the minute
+mean. In-house fixes are now those whose second has the house state AND that lie in the house's dilated rectangle; a
+descriptive column `in_body_footprint` (minute mean within the body rectangle + 3 in) is added. Box events and occupancy are
+unchanged. After the change 1.0 % of minute means remain > 30 in from the centre (animals inside the dilated rectangle but
+beside the house); 77 % of minutes have `in_body_footprint`.
+
+**Amendment 5 (2026-10-10, the user via the session) — close-up source.** The six in-hand clips are read from
+`D:/Field2026_analysis_out/2026c/inhand_closeups/SF07.MOV … SF12.MOV` (read-only; sha256 checked against its
+`MANIFEST_sha256.csv`; the folder was made for them at the user's request on 2026-10-10). SF07–SF10 and SF12 were filmed 2026-09-10 07:54–08:19; SF11 on
+2026-08-30 (its implant came off early); the files' `creation_time` tag is the transfer time.
+
+**Amendment 6 (2026-10-10, after the A results) — floor of the IR / colour threshold.** With the pre-registered floor 10⁻⁴
+the largest log-chroma gap over the 243 630 I-frames of 09-09 → 09-11 19:40 fell inside the IR cluster (0.00081 → 0.0114,
+1.15 decades; thr 0.0030): seven isolated IR I-frames carry rounding-level chroma 0.0008–0.53 (two of them on CH08 at
+23:00 and 23:39, when colour is impossible; decoded at full rate, their whole GOP carries it). The pre-registered threshold
+gave 28 colour runs, six of them single-I-frame 2-s runs on such frames, and 5 "colour" I-frames in the control hours
+(09-01 08:xx). The same largest-gap rule with the floor raised to 0.01 (2.4 decades below the lowest colour I-frame) gives
+thr = 1.18 (gap 0.53 → 2.61, 0.69 decades; next gap 0.65 decades): 22 segments, 0 colour I-frames in the controls, and every
+threshold in (0.53, 2.61) gives the identical classification because no I-frame lies in that interval. The pre-registered
+outputs stay in the run (`colour_segments_prereg_thr.csv`, `colour_log_rows_prereg_thr.csv`, `control_hours_prereg_thr.csv`,
+`colour_threshold_prereg.json`; `colour_threshold.json` → `prereg_floor_1e-4`). One isolated I-frame lies near a planned
+slot (CH07 09-11 13:02:09, c = 0.36, 2.1 min after the un-noted 13:00 slot): IR under the amended rule, listed in the report.
+
+**Status (2026-10-10): phase 0 DONE** — A, B, C run; report `results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`;
+change log `change_log/2026-10-10-inbox-ch0708-p0.md`. The pre-registered use of the user's clicks waits for the clicks.

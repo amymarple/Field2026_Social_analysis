@@ -172,6 +172,27 @@ data — all pass; no D:, F: or Q: access in any run (the audit saw only K:, scr
 `tools/verify_drive.py` resolved `K:` back to `H:` through `Path.resolve()`, harmless, not changed after the hand-over
 freeze).
 
+## K. In-box cameras CH07 / CH08, phase 0 (colour segments, WISER box events, in-house positions, identity click page)
+
+Plan `REPO/implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md` (approved 2026-10-10 "其余都可以";
+amendments 1–3 before results, 4 and 6 after results, 5 = the close-up source), change log
+`REPO/change_log/2026-10-10-inbox-ch0708-p0.md`. Builds on the operator's design in the recording repo
+(`EXPERIMENT_ir_identity_color_sampling.md`, `COLOUR_SAMPLING_LOG_cohort3.md`; read only). Run =
+`$OUT/2026c/cv_field_inbox_p0_20261010_1702/`.
+
+| What | Path | Status |
+|---|---|---|
+| Code | `REPO/cv/cv_field/inbox_p0.py` (`--selftest` 25 checks; phases `scan segments wiser inhouse camhouse report`), `REPO/cv/cv_field/inbox_identity_page.py` (`--selftest` 11 checks; `--run <run>`) | final |
+| I-frame scan (A) | `scan/CH07\|CH08/<video stem>.csv` (136 files 09-09 → 09-11 19:40: frame index, PTS, time, chroma, grey mean, frame-difference energy per I-frame), `scan_control/` (12 control hours), `scan_inventory.csv`, `scan_log.jsonl` (148 files, 265 227 I-frames, 0 errors) | final |
+| Colour segments (A) | `colour_threshold.json` (amended thr 1.18 + the pre-registered rule under `prereg_floor_1e-4` + the isolated low-chroma I-frames), `colour_segments.csv` (22: start / end at frame resolution, duration, chroma, frame indices, log row, Δ, lid event), `colour_log_rows.csv` (the log's empty "video" column), `control_hours.csv`; pre-registered-threshold copies `*_prereg_thr.csv`, `colour_threshold_prereg.json` | final |
+| Box events + occupancy (B) | `box_events.csv` (6 254; animal, house, enter / exit, time, flags), `box_events_sensitivity.csv.gz` (literal mask rule, raw fixes), `box_occupancy_1s.csv.gz` (per second 08-30 19:00 → 09-11 19:40: roster per house, out, untracked, `sf11_untagged`, `all_tracked`), `states_1s.npz` (cleaned state per animal and second), `check_0905.csv` (**PASS**), `check_0905_sensitivity.csv`, `wiser_summary.json` | final |
+| In-house positions (B3) | `inhouse_minutes.csv.gz` (67 134 animal-minutes: along / across the ridge in inches — track and raw means, SD, SE, n fixes, IMU still / active / loco shares, `in_body_footprint`), `inhouse_frames.json` (map + house poses used) | final |
+| Camera ↔ house (B4) | `camera_house_check.csv` (r, ρ, circular-shift share; all minutes and outside lid events), `camera_house_minutes.csv.gz` | final; reported, not decided |
+| **Click page (C)** | `identity_page/index.html` (open from disk; no network), `frames/<segment>_{colour_mid,ir_p06,ir_p15}.jpg` (66 full-resolution JPEG q95, ~106 MB), `closeups/SF07…SF12.mp4` (H.264, ~109 MB), `page_data.json` (per frame: file, frame index, time, chroma, lid segment + correction B; per segment: WISER roster + pre-flash positions), `page_check.json` (PASS) | final; waits for the user's clicks |
+| The user's exports | `REPO/cv/configs/inbox_identity_2026c/` (`README.md`: schema; files `inbox_identity_2026c_<ts>.json` / `.csv` saved by the user) | empty until the user clicks |
+| Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_inbox_p0_2026c.json` | final |
+| Inputs (read-only) | video `F:/3rd_rat/<date>/CH07\|CH08/` (scan 09-09 … 09-11; control hours on 09-01, 09-02, 09-06, 09-08); default WISER tracks `$OUT/2026c/wiser_default_tracks/` (via `REPO/wiser/src/default_tracks.py`); `REPO/wiser/configs/wiser_rois.json`; accepted map `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/mapping.json`; house poses (house_2 calibration (342.4, 117.7) in, 92.0°; `REPO/cv/configs/house1_cohort_pose_2026c.json`); `REPO/cv/configs/cohort3_lid_events.json`; `REPO/results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv`; in-hand close-ups `$OUT/2026c/inhand_closeups/SF07.MOV … SF12.MOV` (+ `MANIFEST_sha256.csv`, `README.md`: SF07–SF10 and SF12 filmed 2026-09-10 07:54–08:19, SF11 on 2026-08-30; `creation_time` = transfer time) | — |
+
 ## Rules an auditor should hold the work to
 
 The agent never judged images; every visual verdict is the user's. Machine boxes (YOLO, SAM3, WISER projections) are
