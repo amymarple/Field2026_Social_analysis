@@ -185,3 +185,36 @@ In parallel, outside this stage: the generative long-wake model of the behaviour
 - Pool SF11 after 09-07 06:10 or SF12 after 09-10 14:53:45; use SF11 ripples after 09-02.
 - Call the opening field NREM "sleep" or "freezing" before L2(c), and the user's review where available.
 - Gate this stage on the generative long-wake model.
+
+## 8. Revision 2 (2026-10-10, before these results; the user: "做交互项我想看看结果") — L1b: naps vs main sleep, and a selection check of rule (e)
+
+**Labels** (FINAL only; from the SWR session's `ephys/night_sleep_wiser.py`):
+- nap = a step inside a night nap $[\text{start}, \text{end})$ of `results/2026c/ephys_spikes/reports/ephys_spikes_night_naps_2026c.csv`
+  (235 naps; the 115 `strict` naps as a sensitivity);
+- main = a step whose second has `tau_h` defined in `night_sleep_wiser_20261009_1051/seconds_<SF>.csv.gz` (from the
+  main-sleep onset to the next long wake);
+- other steps are left out.
+
+**Outcome: REM entry only** (binary REM log-loss). The labels look into the future: every nap is followed by a long wake
+by construction, so the WAKE exit differs by construction (SWR session).
+
+**Models** on the labelled steps with a past depth (forward chaining, folds 1..):
+- M0 = B-full + dep + nap.
+- M0 + nap × ln(1 + P).
+- M0 + nap × dep.
+- M0 + both.
+
+Δ REM log-loss %, fold-bootstrap CI, animals better. Also reported: B-full + dep vs M0 (the nap main effect), the
+full-data REM-vs-stay coefficients of the interactions, and the REM entries per label and animal.
+
+**Reading:**
+- "P (or depth) predicts REM entry differently in naps and in the main sleep" = Δ CI < 0 and ≥ n − 1 of the n animals
+  with nap REM entries.
+- Naps are all dark, so a difference reads "label or light", never "label".
+- Otherwise "no difference detected": about 100 nap REM entries, low power.
+
+**Rule (e) selection check** (astra):
+- Repeat (e) on the steps whose $[t, t+150)$ s is entirely NREM, so the composition of the future window is fixed. Both
+  scorings.
+- Report the future-window NREM coverage of the main (e) set.
+
