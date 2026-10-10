@@ -393,6 +393,170 @@ def report0(out: Path, A: pd.DataFrame, C: pd.DataFrame, TR: pd.DataFrame) -> Pa
     return p
 
 
+# ------------------------------------------------------------------ Phase 1: the blind validity page (Amendment 3)
+REVIEW_PLAN = {"aswr_field": 40, "aswr_house": 40, "nrem": 30, "neg": 30}
+
+
+def event_catalogue(an: str, a) -> pd.DataFrame:
+    """Every kept event of the animal's covered sessions with its session, peak, local second, state and strength."""
+    import rem_ripple_model as rrm
+    q = pd.read_csv(a.quality)
+    q = q[(q.animal == an) & q.tier.isin(["validated", "good"])]
+    rv = pd.read_csv(a.review)[["animal", "session", "start_local"]]
+    q = q.merge(rv, on=["animal", "session"], how="left")
+    rows = []
+    for r in q.itertuples():
+        f = Path(a.swr_root) / an / r.session / f"{r.session}.swr_events.npz"
+        if not f.exists():
+            continue
+        with np.load(f, allow_pickle=True) as z:
+            k = ~z["excluded"].astype(bool)
+            t = pd.to_datetime(r.start_local) + pd.to_timedelta(z["peak_s"][k], unit="s")
+            rows.append(pd.DataFrame({"animal": an, "session": r.session, "block": r.block, "peak_s": z["peak_s"][k], "sec": sec_of(t),
+                                      "state": z["state"][k], "amplitude": z["amplitude"][k], "RipMax_z": z["RipMax_z"][k]}))
+    return pd.concat(rows, ignore_index=True)
+
+
+def pick_items(run: Path, a, rng: np.random.Generator) -> pd.DataFrame:
+    items = []
+    animals = ["SF07", "SF08", "SF09", "SF10", "SF11", "SF12"]
+    pools = {}
+    for an in animals:
+        S = pd.read_csv(run / f"seconds_{an}.csv.gz", usecols=["sec", "zone", "nonloco", "aswr", "night"])
+        E = event_catalogue(an, a)
+        E["tert"] = E.groupby("block").amplitude.transform(lambda x: pd.qcut(x, 3, labels=False, duplicates="drop"))
+        W_ = E[E.state == "WAKE"].merge(S[S.nonloco & (S.aswr > 0)][["sec", "zone", "night"]], on="sec")
+        pools[an] = {"field": W_[W_.zone == 3], "house": W_[W_.zone.isin([1, 2])], "nrem": E[E.state == "NREM"]}
+        quiet = S[S.nonloco].sec.to_numpy()
+        ev = np.sort(E.sec.to_numpy())
+        near = (np.searchsorted(ev, quiet + 3) - np.searchsorted(ev, quiet - 2)) > 0
+        cand = quiet[~near]
+        sess = E.groupby("session").sec.agg(["min", "max"]).reset_index()
+        pools[an]["neg"] = pd.DataFrame({"sec": cand})
+        pools[an]["sessions"] = sess
+
+    def round_robin(kind, n, by_tert=True):
+        take, k = [], 0
+        order = [an for an in animals if len(pools[an][kind])]
+        while len(take) < n and order:
+            an = order[k % len(order)]
+            P = pools[an][kind]
+            if by_tert and "tert" in P:
+                t = k // len(order) % 3
+                P2 = P[P.tert == t]
+                P = P2 if len(P2) else P
+            if len(P):
+                r = P.iloc[int(rng.integers(len(P)))]
+                take.append(dict(animal=an, kind=kind, session=r.session, peak_s=float(r.peak_s), zone=int(r.get("zone", 0)),
+                                 amplitude=float(r.amplitude), RipMax_z=float(r.RipMax_z), tert=int(r.tert) if pd.notna(r.tert) else -1))
+                pools[an][kind] = pools[an][kind].drop(r.name)
+            else:
+                order.remove(an)
+                continue
+            k += 1
+        return take
+
+    items += [dict(x, set="aSWR field") for x in round_robin("field", REVIEW_PLAN["aswr_field"])]
+    items += [dict(x, set="aSWR house") for x in round_robin("house", REVIEW_PLAN["aswr_house"])]
+    items += [dict(x, set="NREM SWR") for x in round_robin("nrem", REVIEW_PLAN["nrem"])]
+    # negatives: a random non-locomotor detectable second, mapped back to its session
+    neg = []
+    k = 0
+    while len(neg) < REVIEW_PLAN["neg"]:
+        an = animals[k % len(animals)]
+        k += 1
+        P = pools[an]["neg"]
+        if not len(P):
+            continue
+        s_ = int(P.sec.iloc[int(rng.integers(len(P)))])
+        ss = pools[an]["sessions"]
+        hit = ss[(ss["min"] <= s_) & (ss["max"] >= s_)]
+        if not len(hit):
+            continue
+        ses = hit.session.iloc[0]
+        rv = pd.read_csv(a.review)
+        st0 = pd.to_datetime(rv[(rv.animal == an) & (rv.session == ses)].start_local.iloc[0])
+        neg.append(dict(animal=an, kind="neg", session=ses, peak_s=float(s_ + 0.5 - (st0 - EPOCH).total_seconds()), zone=-1,
+                        amplitude=np.nan, RipMax_z=np.nan, tert=-1, set="random quiet moment"))
+    items += neg
+    P = pd.DataFrame(items)
+    P = P.iloc[rng.permutation(len(P))].reset_index(drop=True)
+    P["rid"] = [f"R{i + 1:03d}" for i in range(len(P))]
+    return P
+
+
+def render_ripple(it, a, png: Path, cfg: dict) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from scipy import signal
+    from swr_auto import channels_for
+    from swr_channel_scan import XML, shanks_from_xml
+    ch = channels_for(cfg, it.animal, it.session)
+    sh = shanks_from_xml(HERE / "configs/xml" / XML[it.animal])
+    rc = int(ch["ripple_col"])
+    col_list = next(g for _, g in sh if any(c == rc for c, _ in g))
+    cols = [c for c, sk in col_list]
+    i = cols.index(rc)
+    neigh = [c for c in cols[max(0, i - 2):i + 3]]
+    show = neigh + [int(ch["noise_col"])]
+    lfp = Path(a.lfp_root) / it.animal / f"{it.session}.lfp"
+    nch = int(json.loads(Path(str(lfp) + ".json").read_text())["n_channels"])
+    mm = np.memmap(lfp, dtype=np.int16, mode="r")
+    mm = mm[: mm.size // nch * nch].reshape(-1, nch)
+    FS = 1250
+    c0 = int((it.peak_s - 2.0) * FS)
+    x = np.asarray(mm[max(c0, 0):c0 + 4 * FS, show], np.float64) * 0.195
+    tt = np.arange(x.shape[0]) / FS - 2.0
+    sos = signal.butter(3, (100, 250), btype="bandpass", fs=FS, output="sos")
+    fig = plt.figure(figsize=(12, 8.2))
+    gs = fig.add_gridspec(3, 1, height_ratios=[3.2, 1.3, 1.3], hspace=0.45)
+    ax = fig.add_subplot(gs[0])
+    sc = np.percentile(np.abs(x - np.median(x, 0)), 99) or 1
+    for k, c in enumerate(show):
+        y = x[:, k] - np.median(x[:, k])
+        lab = ("ripple site" if c == rc else ("noise site (cortex, top)" if k == len(show) - 1 else f"neighbour col {c}"))
+        ax.plot(tt, y / sc / 1.8 - 1.2 * k, lw=0.55, color="tab:red" if c == rc else ("tab:gray" if k == len(show) - 1 else "k"))
+        ax.text(-2.0, -1.2 * k + 0.35, lab, fontsize=8)
+    ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    ax.set_yticks([])
+    ax.set_xlim(-2, 2)
+    ax.set_xlabel("s from the candidate (± 2 s raw LFP; same-shank sites top -> bottom, then the noise site)", fontsize=9)
+    k = show.index(rc)
+    m = (tt >= -0.5) & (tt <= 0.5)
+    ax = fig.add_subplot(gs[1])
+    ax.plot(tt[m], x[m, k] - np.median(x[m, k]), lw=0.7, color="tab:red")
+    ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    ax.set_ylabel("uV")
+    ax.set_xlim(-0.5, 0.5)
+    ax.set_title("ripple site, raw, ± 0.5 s", fontsize=9)
+    ax = fig.add_subplot(gs[2])
+    ax.plot(tt[m], signal.sosfiltfilt(sos, x[:, k])[m], lw=0.7, color="tab:purple")
+    ax.axvline(0, color="tab:blue", lw=0.8, ls="--")
+    ax.set_ylabel("uV")
+    ax.set_xlim(-0.5, 0.5)
+    ax.set_title("ripple site, 100-250 Hz, ± 0.5 s", fontsize=9)
+    ax.set_xlabel("s from the candidate", fontsize=9)
+    fig.suptitle(f"{it.rid}", fontsize=13)
+    fig.savefig(png, dpi=90, bbox_inches="tight")
+    plt.close(fig)
+
+
+def review(a):
+    import yaml
+    from joblib import Parallel, delayed
+    man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
+    run = Path(a.run or man["run_dir"])
+    P = pick_items(run, a, np.random.default_rng(11))
+    out = Path(a.review_out) if a.review_out else run / "review"
+    (out / "img").mkdir(parents=True, exist_ok=True)
+    cfg = yaml.safe_load(open(HERE / "configs/swr_channels_2026c.yaml"))
+    Parallel(n_jobs=a.workers, backend="loky")(delayed(render_ripple)(it, a, out / "img" / f"{it.rid}.png", cfg) for it in P.itertuples())
+    P.to_csv(run / "review_key_SEALED.csv", index=False)
+    print(P.groupby(["set", "animal"]).size().unstack(fill_value=0).to_string())
+    print(f"{len(P)} items -> {out / 'img'}; key {run / 'review_key_SEALED.csv'}")
+
+
 def selftest():
     ok = True
     s = segments_between(10, [(3, 5), (8, 9)])
@@ -421,9 +585,11 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "review"])
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--run", default=None)
+    ap.add_argument("--review-out", default=None, help="review: folder for the panels (default <run>/review)")
+    ap.add_argument("--lfp-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/lfp")
     ap.add_argument("--night-run", default=None, help="night_sleep_wiser run (zones_smoothed_*.csv.gz); default from its manifest")
     ap.add_argument("--swr-root", default=SWR_ROOT)
     ap.add_argument("--sleep-root", default="Q:/hc997/SocialFieldRat2026/3rd_rat/analysis/sleep/imu_fixch")
@@ -439,6 +605,8 @@ def main():
         a.night_run = json.loads((report_dir(COHORT) / f"run_manifest_night_sleep_wiser_{COHORT}.json").read_text())["run_dir"]
     if a.cmd == "phase0":
         phase0(a)
+    elif a.cmd == "review":
+        review(a)
 
 
 if __name__ == "__main__":
