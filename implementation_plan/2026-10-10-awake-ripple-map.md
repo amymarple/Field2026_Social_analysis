@@ -625,6 +625,54 @@ Otherwise "not a ripple"; "unsure" only when the panel is unreadable.
   `strict/`.
 - Page https://claude.ai/artifact/ERbLn5wQSmZX4M2JB361jT (private; answers at `reads/<id>`).
 
+**Result** (HC, 141 / 141; `ephys/configs/awake_ripple_review_2026c/reader_HC_strict_2026-10-10.{json,csv}`).
+- The user: "unsure" and "not" mean almost the same here, i.e. no ripple seen. So unsure counts as not, as fixed above.
+
+  | set | ripple / not / unsure | p |
+  |---|---|---:|
+  | NREM SWR | 21 / 0 / 3 | 0.88 = s |
+  | aSWR field | 25 / 0 / 5 | 0.83 |
+  | aSWR house | 29 / 0 / 3 | 0.91 |
+  | random, fresh | 5 / 3 / 22 | 0.17 |
+  | random, old | 5 / 2 / 18 | 0.20 |
+
+- **Discrimination.** s − α = 0.88 − 0.18 = 0.69 ≥ 0.4, so the strict reading discriminates. The fresh controls alone
+  give α 0.17, i.e. no memory effect.
+- **Estimated true-ripple share** (bootstrap 95 %):
+  - field π̂ = 0.94 [0.69, 1.00];
+  - house π̂ = 1.00 [0.83, 1.00].
+- **Gate: PASS for both strata** (point estimates ≥ 0.7). The field interval reaches 0.69.
+- **Reader and MUA now agree** (old items):
+
+  | strict call | median MUA pyramidal ratio | share with a burst ≥ 2 |
+  |---|---:|---:|
+  | field, ripple | 3.20 | 68 % |
+  | field, unsure | 0.40 | 20 % |
+  | house, ripple | 3.22 | 66 % |
+  | random, ripple (n 5) | 2.99 | 60 % |
+  | random, unsure | 0.00 | 17 % |
+
+  The 5 random moments called ripple carry a spike burst, so they are probably ripples the detector missed (a recall
+  question, not precision).
+- Per animal, field: SF07 8/8, SF10 7/7, SF12 6/7, **SF08 4/8**.
+  - SF09 is not covered: it cannot be cleaned, and on the raw page it reads 1 / 3 / 4.
+- Cleaned page → strict, the same 111: 79 ripple kept; 22 ripple → unsure; 7 not → unsure. So the strict rule moved the
+  borderline calls out, as intended.
+
+**The user's display point: "maybe the LFP gain is too small".**
+- Panel 3 is autoscaled to its own ± 0.5 s maximum. A panel without a ripple therefore shows its noise at full height,
+  and a real one does not stand out by absolute size.
+- Panel 1 is scaled for the slow waves, so ripples are barely visible there.
+- For any later reading: a fixed µV scale per animal (e.g. set by its NREM SWR median ripple amplitude) for panel 3, plus
+  a 100–250 Hz stack of the sites on that scale. Not needed for this gate.
+
+**Consequence for Phase 2 (proposal):**
+- aSWR valid in the houses, all cleanable animals.
+- In the field, valid for SF07, SF10 and SF12. SF08 is flagged (half doubtful). SF09's field is dropped (no reading or
+  cleaning supports it).
+- Theta-quiet aSWR stays the pre-registered sensitivity.
+- The second reader (raw page) is a cross-check (κ) when she finishes.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.
