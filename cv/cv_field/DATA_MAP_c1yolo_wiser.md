@@ -193,6 +193,30 @@ amendments 1–3 before results, 4 and 6 after results, 5 = the close-up source)
 | Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_inbox_p0_2026c.json` | final |
 | Inputs (read-only) | video `F:/3rd_rat/<date>/CH07\|CH08/` (scan 09-09 … 09-11; control hours on 09-01, 09-02, 09-06, 09-08); default WISER tracks `$OUT/2026c/wiser_default_tracks/` (via `REPO/wiser/src/default_tracks.py`); `REPO/wiser/configs/wiser_rois.json`; accepted map `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211/mapping.json`; house poses (house_2 calibration (342.4, 117.7) in, 92.0°; `REPO/cv/configs/house1_cohort_pose_2026c.json`); `REPO/cv/configs/cohort3_lid_events.json`; `REPO/results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv`; in-hand close-ups `$OUT/2026c/inhand_closeups/SF07.MOV … SF12.MOV` (+ `MANIFEST_sha256.csv`, `README.md`: SF07–SF10 and SF12 filmed 2026-09-10 07:54–08:19, SF11 on 2026-08-30; `creation_time` = transfer time) | — |
 
+## L. In-box CH07: SAM 3 text / point prompts and a frozen DINOv3 identity probe (2026-10-11)
+
+- **Plan:** `REPO/implementation_plan/2026-10-11-inbox-sam3-dinov3-test.md`, approved by the user 2026-10-11.
+  - Amendment 1 = the Codex review *Yolo_identity*.
+  - Amendments 2–3 were written before any T1–T3 result; a disclosure note followed after results.
+- **Change log:** `REPO/change_log/2026-10-11-inbox-sam3-dino.md`.
+- **Run:** `$OUT/2026c/cv_field_inbox_sam3_dino_20261010_2320/`.
+- **Truth:** the user's blind clicks (`before_reveal`, `first_*`) in
+  `REPO/cv/configs/inbox_identity_2026c/inbox_identity_2026c_20261010_220725.csv`.
+- **Frames:** the phase-0 identity page frames (section K).
+
+| What | Path | Status |
+|---|---|---|
+| Code | `REPO/cv/cv_field/inbox_sam3_dino_test.py` (`--selftest` 34 checks in base Python; the cv env skips the logistic checks — scipy L-BFGS-B crashes there). GPU phases `data t1gpu t2gpu dino` in the cv env; `score review report` in base Python | final |
+| Inputs and groups | `frames.csv` (58 frames: 38 IR, 20 colour), `heads.csv` (284 blind heads, pile size, group, split), `groups.csv` (20 primary groups + `group_alt`), `group_pairs.csv` (join rule per consecutive pair: roster, IMU still shares), `data.json` (hashes, dropped frames) | final |
+| Raw SAM 3 outputs | `sam3_t1/whole/<frame>.npz`, `sam3_t1/tiled/<frame>.npz` (every mask with score ≥ 0.01 for 4 prompts, row-major RLE in bbox crops + bbox, area, score, prompt, tile), `sam3_t2/<frame>.npz` (point-prompt masks: variant pos / neg, head index, `click_id`, predicted IoU score); `timing_t1.csv`, `timing_t2.csv` | final (cache; reuse, do not recompute) |
+| T1 scores | `t1_frame_metrics.csv.gz` (per variant × prompt × τ × frame), `t1_sweep.csv` (pooled per variant × prompt × τ × domain × split), `t1_head_detail.csv.gz`, `t1_by_pile_test_ir.csv`, `t1_result.json` (choice, test CIs, `group_alt` CIs) | final |
+| T2 scores | `t2_heads.csv`, `t2_pair_iou.csv`, `t2_summary.csv`, `t2_by_pile_test.csv`, `t2_result.json` | final |
+| T3 | `t3_units.csv` (named blind clicks, house-frame position, position-matched partner frame), `t3_embeddings.npz` (DINOv3 ViT-B/16 CLS + mean-patch for head / head-masked / position-matched crops at 4 in and 16 in), `t3_results.csv`, `t3_predictions.csv.gz`, `t3_decisions.csv` (amended rule), `t3_confusion.csv`, `t3_shuffled.csv`, `t3_group_alt.json`, `t3_result.json` | final |
+| **Blind mask review page (for the user)** | `mask_review/index.html` + `mask_review/items/` (40 masks M01–M40; method, score and head point hidden), `mask_review_page_check.json` (headless Chrome PASS), `mask_review_meta.json`; **hidden key `mask_key.csv` in the run root — not linked from the page, do not show it to the reviewer** | final; waits for the user |
+| The user's review exports | `REPO/cv/configs/inbox_sam3_mask_review_2026c/` (`README.md`: schema; files `inbox_sam3_mask_review_2026c_<ts>.json` / `.csv`) | empty until the user reviews |
+| Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_inbox_sam3_dino_2026c.json` | final |
+| Inputs (read-only) | phase-0 run `$OUT/2026c/cv_field_inbox_p0_20261010_1702/` (`identity_page/frames`, `page_data.json`, `box_occupancy_1s.csv.gz`); clicks run `$OUT/2026c/cv_field_inbox_clicks_20261010_2227/` (`fit_points_primary.csv`, `fit_summary.csv`: 74.8 px/in); `$OUT/2026c/imu_seconds_cache/`; SAM 3 `sam3.pt` (section B); DINOv3 `~/.cache/torch/hub/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth` + local hub repo `~/.cache/torch/hub/facebookresearch_dinov3_main` | — |
+
 ## Rules an auditor should hold the work to
 
 The agent never judged images; every visual verdict is the user's. Machine boxes (YOLO, SAM3, WISER projections) are

@@ -1,6 +1,6 @@
 # In-box CH07: SAM 3 detection, SAM 3 point-prompt boxes, and a DINOv3 identity probe, scored on the user's head clicks
 
-Date: 2026-10-11. Status: **PLANNED** — approved by the user 2026-10-11 ("sam3/dino3 上吧 写完之后让astra audit一下 记得用
+Date: 2026-10-11. Status: **DONE 2026-10-11** (T1–T3 run; the blind mask review awaits the user; [change log](../change_log/2026-10-11-inbox-sam3-dino.md), report `results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md`) — was PLANNED, approved by the user 2026-10-11 ("sam3/dino3 上吧 写完之后让astra audit一下 记得用
 long evan rat 或者 with colorful implant (rectangular) 之类的"); to be text-audited by the Codex session astra before it
 runs; amendments dated and marked before / after results. Context: `2026-10-11-identity-tracking-strategy.md` (§9 Fable
 audit: SAM 3 as a point-prompt proposal labeller after a small test; frozen DINOv3 + linear probe before any trained
@@ -117,3 +117,102 @@ reviewed it — reply pasted by the user.) Adopted in full:
    comparisons are pre-named (T1: chosen prompt on test; T2: positive-point exclusivity; T3: CLS + logistic vs best
    control), the other prompts / variants are descriptive only; mask areas are reported in **pixels only** (one scale
    cannot convert piles at different heights).
+
+## Amendment 2 — 2026-10-11, before results: implementation details fixed by the agent in the driver
+
+Written into `cv/cv_field/inbox_sam3_dino_test.py` before any metric was computed. The only earlier GPU call was an API
+probe on one frame (load the models, one point prompt, two text prompts; no metric, nothing kept). Nothing here changes
+a rule of the plan or of amendment 1; it fixes what they left open.
+
+1. **Truth record.** The blind clicks are the clicks with `before_reveal` true, not legacy, and a `verdict_first`
+   (`first_*` in the CSV); position, animal and frame are taken from `first_*`. That gives 284 blind clicks; the 10 clicks
+   made after a reveal are not used. So two IR frames whose only clicks came after the reveal drop out: 09-10 14:16:13
+   `ir_p15` and 09-10 14:32:43 `ir_p15`. A blind click without an animal (2) counts as a head for T1 / T2 but is left
+   out of T3. Frames where one label occurs twice (09-11 09:54 `ir_p06` SF10 × 2, `ir_p15` SF07 × 2) are kept as
+   labelled; T3 also reports a sensitivity run without those clicks.
+2. **Still-episode groups.** The usable segments are ordered by start. Between consecutive segments the interval is
+   [last frame time of segment i, colour-frame time of segment i + 1].
+   - **Roster unchanged:** the `house_2` set in the phase-0 run's `box_occupancy_1s.csv.gz` is the same in every
+     second of that interval.
+   - **Still:** for every roster animal, the IMU still share = (seconds with `ok` and `still`) / (all seconds of the
+     interval) is ≥ 0.90. A missing or failed IMU second counts as not still.
+   - Two segments are joined when both hold; chains of joined segments form a group. The table also reports the
+     share computed over `ok` seconds only (descriptive).
+3. **T1 detection.**
+   - **Settings:** SAM 3 score floor 0.01, the predictor's own NMS (IoU 0.7). τ grid = {0.01, 0.02, 0.03, 0.05,
+     0.075, 0.10, 0.15, 0.20, …, 0.95}.
+   - **Head to mask:** a head goes to the covering mask with the highest score, then the smaller area.
+   - **Mask to head:** a mask chosen by several heads keeps the nearest of them (distance to the mask, then distance
+     to the mask centroid).
+   - **Counts:** TP = masks that keep a head. P = TP / n masks, R = TP / n heads, F1 = 2 TP / (n masks + n heads).
+   - **Head-point exclusivity X** = (heads kept by a mask that covers no other head) / n heads.
+   - **Mask classes:** merged = a mask covering ≥ 2 heads; empty = a mask covering none.
+   - **Choice:** ties go to the higher τ, then the lower prompt number.
+   - **Tiled sensitivity:** 2 × 2 tiles of 1344 × 1008 px at x {0, 1216}, y {0, 912} (overlap 128 × 96 px). Tile
+     masks are mapped to the frame. At each τ, among the masks ≥ τ in score order, a mask joins an already-kept
+     mask from another tile when their IoU is ≥ 0.5 (union, the higher score).
+4. **T2 point prompts.** Ultralytics 8.4.93 exposes point prompts for SAM 3: `SAM3Predictor`, the interactive predictor,
+   is a `SAM2Predictor` subclass with `points` / `labels`. So the SAM 2.1 fallback is not triggered.
+   - **Model build:** the model comes from `sam3.pt` with `imgsz` 1008. `build_interactive_sam3` is called with
+     `compile=None`, because the predictor passes `compile=False`, and the backbone's `is not None` check then calls
+     `torch.compile`, which fails without Triton.
+   - **Output:** `multimask_output` False, the default mask threshold.
+   - **Prompts:** positive = the head alone. Negative variant = the head (label 1) plus every other blind head of the
+     frame (label 0).
+5. **T3 identity probe.**
+   - **Crops:** side 299 px (4 in × 74.8 px/in) primary, 1197 px sensitivity, resized to 224 with INTER_AREA,
+     ImageNet normalisation.
+   - **Model:** DINOv3 ViT-B/16 from the local hub copy and the repo checkpoint. CLS = `x_norm_clstoken`, mean-patch
+     = the mean of `x_norm_patchtokens`.
+   - **Logistic regression:** StandardScaler + multinomial L2 logistic regression (lbfgs, `max_iter` 5000). C ∈
+     {0.001, 0.01, 0.1, 1, 10, 100} is chosen by an inner GroupKFold over the training groups (min(5, n groups)
+     folds, accuracy; ties go to the smaller C).
+   - **Nearest centroid:** cosine on L2-normalised embeddings, or Euclidean on standardised coordinates for the
+     position controls.
+   - **Head-masked control:** disc radius 112 px (1.5 in), filled with the crop's per-channel median.
+   - **Position-matched control:** for each click, one IR frame is drawn uniformly (seed 20261011) from the other
+     groups' IR frames.
+   - **House-frame position:** the clicks run's proper similarity, refitted on its `fit_points_primary.csv` (89
+     points).
+   - **Shuffled labels:** 20 global permutations, CLS + logistic regression, leave-one-group-out.
+   - **Best control:** the highest point accuracy among (a) u, v, (a) house frame, (b) head-masked and
+     (c) position-matched, under the same classifier (and the same embedding for (b), (c)).
+   - **Bootstrap:** 2 000 draws of groups with replacement (seed 20261011), percentile 95 % CI. For leave-one-day-out
+     the draws are over the 09-11 groups.
+   - **Verdict:** the amended rule is applied to the leave-one-group-out primary. Leave-one-day-out gets the same rule,
+     reported as the cross-day result.
+6. **Mask review.**
+   - **Sample:** 40 masks from the test-group IR frames: 14 T1 (chosen prompt and τ, whole frame), 13 T2 positive
+     and 13 T2 negative, with the T2 heads disjoint between the two variants.
+   - **Strata:** pile size of the mask's head, from single linkage of the frame's blind heads at 6 in = 449 px:
+     1, 2–3 and ≥ 4, plus "no head" for T1 masks that cover no head. Strata are filled round-robin with a seed; the
+     items are then shuffled.
+   - **Display:** each item shows the whole frame and a zoomed crop with the mask tinted (a toggle hides it). The
+     page never shows the method, the score or a head point.
+
+## Amendment 3 — 2026-10-11, before any T1–T3 result (only the grouping table had been computed)
+
+The primary join rule (amendment 2 item 2) joined **no** pair, so the 20 usable segments are 20 groups (dev = the 5
+earliest). Two kinds of split happen only because an IMU is missing, not because the measured animals moved:
+- **09-11 afternoon:** the pairs 14:09:55 → 14:17:58 → 14:43:45 are 8 and 25 min apart with the roster unchanged.
+  SF07–SF10 are still in ≥ 92 % of the seconds, but SF12's head IMU is never ok that afternoon.
+- **09-10 16:30:56 → 17:59:35:** no animal has an ok IMU second.
+
+Since the rule cannot verify stillness without an IMU, the primary grouping stays as pre-registered. A **sensitivity
+grouping** (`group_alt`) is added:
+- **Rule:** an animal with no ok IMU second in the interval is not counted. Every other roster animal must still be
+  still in ≥ 90 % of all the seconds, and at least one roster animal must have an IMU.
+- **What is re-run:** the T1 / T2 headline test CIs are recomputed with `group_alt` resampling. The T3 primary
+  (CLS + logistic, 4-in crop) and its controls are re-run leave-one-`group_alt`-out with the decision rule. The
+  dev / test split is unchanged.
+- **Status:** descriptive only; the pre-named primaries use the primary grouping.
+
+*Disclosure note (2026-10-11, written after results; it changes no rule).*
+- **Probe before amendment 2:** the API probe on one IR frame (09-10 12:27:03, IR + 6 s) showed raw SAM 3 scores of at
+  most 0.59 for "rat" and at most 0.021 for "Long Evans rat". No head point was matched and no metric was computed.
+- **Effect on the τ grid:** its low end (0.01, 0.02, 0.03) was set with that in view, so that a low-scoring prompt can
+  still be scored.
+- **Execution:** the first GPU job stopped after 8 frames when its session ended; it was resumed from the atomic
+  per-frame caches, and no frame was recomputed.
+- **Interpreter:** scipy's L-BFGS-B crashes natively in the cv env (Windows 0xc06d007f), so the score / review / report
+  phases ran in base Python, keeping the lbfgs solver.
