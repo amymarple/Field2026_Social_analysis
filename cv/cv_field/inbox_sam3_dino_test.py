@@ -37,6 +37,7 @@ because scipy's L-BFGS-B (sklearn's lbfgs) crashes natively in the cv env:
   <cv env python> cv/cv_field/inbox_sam3_dino_test.py --phases data t1gpu t2gpu dino          # new run folder
   python cv/cv_field/inbox_sam3_dino_test.py --run <dir> --phases score review report        # scores from the caches
   <cv env python> ... --run <dir> --phases sweep_gpu ; python ... --run <dir> --phases sweep report   # amendment 4 (exploratory)
+  python ... --run <dir> --phases gui        # interactive prompt explorer from the sweep caches (<run>/prompt_gui/index.html)
 Output: $FIELD2026_ANALYSIS_OUT_ROOT/2026c/cv_field_inbox_sam3_dino_<ts>/ + results/2026c/cv_field/reports/
         cv_field_inbox_sam3_dino_2026c.md + pointer run_manifest_inbox_sam3_dino_2026c.json.
 """
@@ -1920,6 +1921,365 @@ def sweep_page_check(page_dir: Path, n_frames: int) -> dict:
     return res
 
 
+# ============================================================================================ prompt GUI (user request, after amendment 4)
+GUI_TOPK = 60
+GUI_EPS_PX = 2.0                 # approxPolyDP epsilon at full resolution
+GUI_W, GUI_H = 1600, 1200        # display frame size (full 2560 x 1920)
+GUI_PAGE_VERSION = "inbox_sam3_prompt_gui_2026c_v1"
+GUI_EXPORT_DIR = REPO / "cv" / "configs" / "inbox_sam3_prompt_gui_2026c"
+
+
+def gui_units(M: dict, uv: np.ndarray, pi: int, tiled: bool, topk: int = GUI_TOPK) -> list[dict]:
+    """The top-k units of one prompt by score: whole = single masks; tiled = cross-tile clusters formed once over all cached
+    masks of the prompt (score order, mask IoU >= MERGE_IOU, the T1 rule at the cache floor). Per unit: score, area, the
+    blind heads it covers (<= 15 px; union over members), and its outer contours simplified with approxPolyDP."""
+    import cv2
+    idx = np.flatnonzero(M["prompt"] == pi)
+    if not len(idx):
+        return []
+    order = [int(k) for k in idx[np.argsort(-M["score"][idx], kind="stable")]]
+    clusters = tile_clusters(order, M["tile"], cross_tile_neighbours(M, idx)) if tiled else [[k] for k in order]
+    clusters = clusters[:topk]
+    out = []
+    for cl in clusters:
+        D = dist_matrix(uv, [M["crops"][k] for k in cl], [tuple(int(b) for b in M["bbox"][k]) for k in cl]) if len(uv) else np.zeros((0, len(cl)))
+        cov = [int(i) for i in np.flatnonzero((D.min(1) if D.size else np.zeros(0)) <= COVER_PX)]
+        area = int(M["area"][cl[0]]) if len(cl) == 1 else union_area([M["crops"][k] for k in cl], [tuple(int(b) for b in M["bbox"][k]) for k in cl])
+        polys = []
+        for k in cl:
+            crop = M["crops"][k]
+            if crop.size == 0:
+                continue
+            cs, _ = cv2.findContours(crop.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            x0, y0 = int(M["bbox"][k][0]), int(M["bbox"][k][1])
+            for c in cs:
+                a = cv2.approxPolyDP(c, GUI_EPS_PX, True).reshape(-1, 2)
+                if len(a) < 3:
+                    continue
+                polys.append([int(v) for xy in a for v in (xy[0] + x0, xy[1] + y0)])
+        out.append({"s": round(float(M["score"][cl[0]]), 4), "a": area, "c": cov, "n": len(cl), "p": polys})
+    return out
+
+
+def phase_prompt_gui(run: Path, frames: pd.DataFrame, heads: pd.DataFrame, check: bool = True) -> dict:
+    """Self-contained GUI from the cached sweep masks (no SAM 3 run): <run>/prompt_gui/index.html + gui_data.js + frames/."""
+    import cv2
+    sd, gd = run / "prompt_sweep", run / "prompt_gui"
+    sel = pd.read_csv(sd / "sweep_frames.csv")
+    if gd.exists():
+        shutil.rmtree(gd)
+    (gd / "frames").mkdir(parents=True)
+    fpath = frames.set_index("frame_id")
+    data = {"page_version": GUI_PAGE_VERSION, "run": run.name, "prompts": SWEEP_PROMPTS, "full_w": IMG_W, "full_h": IMG_H,
+            "disp_w": GUI_W, "disp_h": GUI_H, "cover_px": COVER_PX, "topk": GUI_TOPK, "export_prefix": "inbox_sam3_prompt_gui_2026c_",
+            "frames": []}
+    blocks = [("ir", fid) for fid in sel.ir_frame] + [("colour", fid) for fid in sel.colour_frame if isinstance(fid, str)]
+    for fi, (dom, fid) in enumerate(blocks):
+        H = heads[heads.frame_id == fid].sort_values("click_id")
+        uv = H[["u", "v"]].to_numpy(float)
+        img = cv2.imread(fpath.at[fid, "path"], cv2.IMREAD_COLOR)
+        name = f"frames/{fid}.jpg"
+        cv2.imwrite(str(gd / name), cv2.resize(img, (GUI_W, GUI_H), interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 85])
+        fr = {"id": fid, "domain": dom, "time": str(fpath.at[fid, "frame_time"]), "img": name,
+              "heads": [[round(float(u), 1), round(float(v), 1)] for u, v in uv], "units": {}}
+        for var in ("whole", "tiled"):
+            M = sweep_masks(run, fid, var)
+            fr["units"][var] = [gui_units(M, uv, pi, var == "tiled") for pi in range(len(SWEEP_PROMPTS))]
+        data["frames"].append(fr)
+        print(f"  gui {fi + 1}/{len(blocks)} {fid}", flush=True)
+    js = "window.GUI_DATA = " + json.dumps(data, separators=(",", ":")) + ";\n"
+    (gd / "gui_data.js").write_text(js, encoding="utf-8")
+    (gd / "index.html").write_text(prompt_gui_html(run.name), encoding="utf-8")
+    size = {"gui_data_js_bytes": (gd / "gui_data.js").stat().st_size,
+            "frames_jpg_bytes": int(sum(p.stat().st_size for p in (gd / "frames").glob("*.jpg"))),
+            "index_html_bytes": (gd / "index.html").stat().st_size,
+            "n_units": int(sum(len(u) for f in data["frames"] for v in f["units"].values() for u in v)),
+            "n_polygon_points": int(sum(len(p) // 2 for f in data["frames"] for v in f["units"].values() for u in v for x in u for p in x["p"]))}
+    res = {"size": size, "n_frames": len(blocks)}
+    if check:
+        res["page_check"] = prompt_gui_check(gd, run)
+        write_json(gd / "page_check.json", res["page_check"])
+        print(f"prompt GUI check: {res['page_check']['verdict']}", flush=True)
+    write_json(gd / "gui_meta.json", res)
+    return res
+
+
+PROMPT_GUI_JS = r"""
+(function(){
+const D = window.GUI_DATA, P = D.prompts, K = D.disp_w / D.full_w;
+const KEY = D.page_version + '::' + D.run;
+const LMIN = Math.log10(0.005);
+const st = {dom: 'ir', fi: 0, pi: 0, variant: 'whole', grid: false, topk: 60, minScore: 0.005, fill: true, dots: true, hover: true,
+            view: null, mouse: null, drag: null};
+let notes = {};
+try { const t = localStorage.getItem(KEY); if (t) notes = JSON.parse(t).notes || {}; } catch (e) {}
+function saveNotes(){ try { localStorage.setItem(KEY, JSON.stringify({notes})); } catch (e) {} }
+const $ = id => document.getElementById(id);
+const frames = () => D.frames.filter(f => f.domain === st.dom);
+const frame = () => frames()[st.fi];
+const imgs = {};
+function img(f){ if (!imgs[f.img]) { const im = new Image(); im.onload = () => draw(); im.src = f.img; imgs[f.img] = im; } return imgs[f.img]; }
+function colour(r){ return 'hsl(' + ((r * 137.508) % 360).toFixed(1) + ',90%,55%)'; }
+function shown(pi){ const u = frame().units[st.variant][pi] || []; return u.slice(0, st.topk).filter(x => x.s >= st.minScore); }
+function counts(units, nh){
+  const cov = new Array(nh).fill(0), choice = new Array(nh).fill(-1);
+  units.forEach((u, j) => u.c.forEach(i => { cov[i]++; const c = choice[i];
+    if (c < 0 || u.s > units[c].s || (u.s === units[c].s && u.a < units[c].a)) choice[i] = j; }));
+  let excl = 0; for (let i = 0; i < nh; i++) if (choice[i] >= 0 && units[choice[i]].c.length === 1) excl++;
+  return {masks: units.length, heads: nh, covered: cov.filter(x => x > 0).length, excl: excl,
+          empty: units.filter(u => u.c.length === 0).length, merged: units.filter(u => u.c.length >= 2).length};
+}
+function capText(c){ return c.masks + ' masks · ' + c.covered + '/' + c.heads + ' heads covered · ' + c.excl + ' with an own exclusive mask · '
+  + c.empty + ' empty · ' + c.merged + ' merged'; }
+function paths(u){ return u.p.map(pl => { const p = new Path2D(); for (let i = 0; i < pl.length; i += 2) {
+  const x = pl[i] * K, y = pl[i + 1] * K; if (i === 0) p.moveTo(x, y); else p.lineTo(x, y); } p.closePath(); return p; }); }
+function render(ctx, w, h, view, pi, hoverPt){
+  const f = frame(), im = img(f), us = shown(pi);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, w, h);
+  ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
+  if (im.complete && im.naturalWidth) ctx.drawImage(im, 0, 0, D.disp_w, D.disp_h);
+  let hit = null;
+  us.forEach((u, r) => { const col = colour(r); const ps = paths(u);
+    ps.forEach(p => { if (st.fill) { ctx.globalAlpha = 0.33; ctx.fillStyle = col; ctx.fill(p); ctx.globalAlpha = 1; }
+      ctx.lineWidth = 2 / view.s; ctx.strokeStyle = col; ctx.stroke(p);
+      if (hoverPt && ctx.isPointInPath(p, hoverPt[0], hoverPt[1])) hit = {u, r}; }); });
+  if (st.dots) f.heads.forEach(hd => { ctx.beginPath(); ctx.arc(hd[0] * K, hd[1] * K, 5 / view.s, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2 / view.s; ctx.strokeStyle = '#000'; ctx.stroke(); });
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (hit && st.hover && hoverPt) { const t = 'score ' + hit.u.s.toFixed(3) + ' · rank ' + (hit.r + 1) + ' · ' + hit.u.c.length + ' head(s)' + (hit.u.n > 1 ? ' · ' + hit.u.n + ' tiles merged' : '');
+    ctx.font = '13px system-ui, sans-serif'; const tw = ctx.measureText(t).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(hoverPt[0] + 12, hoverPt[1] + 8, tw + 10, 20);
+    ctx.fillStyle = '#fff'; ctx.fillText(t, hoverPt[0] + 17, hoverPt[1] + 22); }
+  return us.length;
+}
+function fit(w, h){ const s = Math.min(w / D.disp_w, h / D.disp_h); return {s, ox: (w - D.disp_w * s) / 2, oy: (h - D.disp_h * s) / 2}; }
+let lastDrawn = 0;
+function draw(){
+  const f = frame(); if (!f) return;
+  $('fsel').value = String(st.fi); $('psel').value = String(st.pi);
+  $('title').textContent = (st.dom === 'ir' ? 'IR' : 'Colour') + ' frame ' + (st.fi + 1) + '/' + frames().length + ' · ' + f.id + ' · ' + f.time;
+  $('single').classList.toggle('hidden', st.grid); $('gridv').classList.toggle('hidden', !st.grid);
+  if (!st.grid) {
+    const cv = $('cv'), w = cv.clientWidth, h = cv.clientHeight; if (cv.width !== w) cv.width = w; if (cv.height !== h) cv.height = h;
+    if (!st.view) st.view = fit(w, h);
+    lastDrawn = render(cv.getContext('2d'), w, h, st.view, st.pi, st.mouse);
+    $('counts').textContent = capText(counts(shown(st.pi), f.heads.length));
+    $('ptitle').textContent = P[st.pi];
+  } else {
+    let tot = 0;
+    P.forEach((p, i) => { const c = document.getElementById('g' + i), w = c.clientWidth, h = c.clientHeight;
+      if (c.width !== w) c.width = w; if (c.height !== h) c.height = h;
+      tot += render(c.getContext('2d'), w, h, fit(w, h), i, null);
+      document.getElementById('gc' + i).textContent = capText(counts(shown(i), f.heads.length)); });
+    lastDrawn = tot; $('counts').textContent = 'grid: all prompts on this frame (click a panel to open it)';
+  }
+  const nk = f.id + '||' + P[st.pi]; $('note').value = (notes[nk] || {}).note || ''; $('notekey').textContent = 'note for ' + f.id + ' · ' + P[st.pi];
+  $('topkv').textContent = st.topk; $('minv').textContent = st.minScore.toFixed(3);
+  $('nnotes').textContent = Object.values(notes).filter(n => n.note).length + ' notes';
+}
+function setFrame(i){ const n = frames().length; st.fi = (i + n) % n; st.view = null; draw(); }
+function setPrompt(i){ st.pi = (i + P.length) % P.length; draw(); }
+function buildGrid(){ $('gridv').innerHTML = P.map((p, i) => '<figure class="gp" data-i="' + i + '"><canvas id="g' + i + '"></canvas><figcaption><b>' + p + '</b><br><span id="gc' + i + '"></span></figcaption></figure>').join('');
+  document.querySelectorAll('.gp').forEach(el => el.addEventListener('click', () => { st.pi = +el.dataset.i; st.grid = false; $('gridb').checked = false; draw(); })); }
+function init(){
+  $('fsel').innerHTML = frames().map((f, i) => '<option value="' + i + '">' + (i + 1) + ' · ' + f.id.replace('CH07_', '') + '</option>').join('');
+  $('psel').innerHTML = P.map((p, i) => '<option value="' + i + '">' + (i + 1) + ' · ' + p + '</option>').join('');
+}
+buildGrid(); init();
+$('fsel').addEventListener('change', e => setFrame(+e.target.value));
+$('psel').addEventListener('change', e => setPrompt(+e.target.value));
+document.querySelectorAll('input[name=dom]').forEach(r => r.addEventListener('change', e => { st.dom = e.target.value; st.fi = 0; st.view = null; init(); draw(); }));
+document.querySelectorAll('input[name=var]').forEach(r => r.addEventListener('change', e => { st.variant = e.target.value; draw(); }));
+$('topk').addEventListener('input', e => { st.topk = +e.target.value; draw(); });
+$('mins').addEventListener('input', e => { st.minScore = Math.pow(10, LMIN + (+e.target.value / 1000) * (0 - LMIN)); draw(); });
+$('fillb').addEventListener('change', e => { st.fill = e.target.checked; draw(); });
+$('dotsb').addEventListener('change', e => { st.dots = e.target.checked; draw(); });
+$('hovb').addEventListener('change', e => { st.hover = e.target.checked; draw(); });
+$('gridb').addEventListener('change', e => { st.grid = e.target.checked; draw(); });
+$('resetv').addEventListener('click', () => { st.view = null; draw(); });
+$('note').addEventListener('input', e => { const f = frame(), nk = f.id + '||' + P[st.pi];
+  notes[nk] = {frame_id: f.id, domain: f.domain, prompt: P[st.pi], note: e.target.value, updated_at: new Date().toISOString(),
+               view: st.variant + ', top-K ' + st.topk + ', min score ' + st.minScore.toFixed(3)}; saveNotes(); $('nnotes').textContent = Object.values(notes).filter(n => n.note).length + ' notes'; });
+const cv = $('cv');
+cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  const z = Math.exp(-e.deltaY * 0.0015), v = st.view, s2 = Math.min(Math.max(v.s * z, 0.05), 20);
+  v.ox = mx - (mx - v.ox) * s2 / v.s; v.oy = my - (my - v.oy) * s2 / v.s; v.s = s2; draw(); }, {passive: false});
+cv.addEventListener('mousedown', e => { st.drag = [e.clientX, e.clientY, st.view.ox, st.view.oy]; });
+window.addEventListener('mouseup', () => { st.drag = null; });
+cv.addEventListener('mousemove', e => { const r = cv.getBoundingClientRect(); st.mouse = [e.clientX - r.left, e.clientY - r.top];
+  if (st.drag) { st.view.ox = st.drag[2] + e.clientX - st.drag[0]; st.view.oy = st.drag[3] + e.clientY - st.drag[1]; } draw(); });
+cv.addEventListener('mouseleave', () => { st.mouse = null; draw(); });
+window.addEventListener('resize', () => { st.view = null; draw(); });
+document.addEventListener('keydown', e => { if (['TEXTAREA', 'INPUT', 'SELECT'].includes(e.target.tagName) && e.target.type !== 'range' && e.target.type !== 'checkbox' && e.target.type !== 'radio') return;
+  if (e.key === 'ArrowLeft') { setFrame(st.fi - 1); e.preventDefault(); } else if (e.key === 'ArrowRight') { setFrame(st.fi + 1); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { setPrompt(st.pi - 1); e.preventDefault(); } else if (e.key === 'ArrowDown') { setPrompt(st.pi + 1); e.preventDefault(); }
+  else if (e.key === 'g' || e.key === 'G') { st.grid = !st.grid; $('gridb').checked = st.grid; draw(); }
+  else if (e.key === 'v' || e.key === 'V') { st.variant = st.variant === 'whole' ? 'tiled' : 'whole'; document.querySelector('input[name=var][value=' + st.variant + ']').checked = true; draw(); } });
+function rows(){ return Object.values(notes).filter(n => n.note).sort((a, b) => (a.frame_id + a.prompt).localeCompare(b.frame_id + b.prompt)); }
+function csvCell(v){ v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function exportCSV(){ const cols = ['frame_id', 'domain', 'prompt', 'note', 'view', 'updated_at'];
+  return [cols.join(',')].concat(rows().map(r => cols.map(c => csvCell(r[c])).join(','))).join('\n') + '\n'; }
+function exportJSON(){ return {page_version: D.page_version, run: D.run, exported_at: new Date().toISOString(), prompts: P, notes: rows()}; }
+function stamp(){ const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+function download(name, text, type){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+$('ej').addEventListener('click', () => download(D.export_prefix + stamp() + '.json', JSON.stringify(exportJSON(), null, 2), 'application/json'));
+$('ec').addEventListener('click', () => download(D.export_prefix + stamp() + '.csv', exportCSV(), 'text/csv'));
+$('ij').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { (JSON.parse(t).notes || []).forEach(n => { notes[n.frame_id + '||' + n.prompt] = n; }); saveNotes(); draw(); }); });
+draw();
+window.__gui = {st, draw, setFrame, setPrompt, drawn: () => lastDrawn, counts: (pi) => counts(shown(pi), frame().heads.length), exportCSV, exportJSON, key: KEY,
+  setTopK: k => { st.topk = k; $('topk').value = k; draw(); }, setMinSlider: x => { $('mins').value = x; $('mins').dispatchEvent(new Event('input')); },
+  frameId: () => frame().id, imagesReady: () => Object.values(imgs).every(i => i.complete && i.naturalWidth > 0)};
+})();
+"""
+
+
+def prompt_gui_html(run_name: str) -> str:
+    import html as _html
+    css = PAGE_CSS + """
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;padding:10px 16px}
+@media (max-width:1000px){.wrap{grid-template-columns:minmax(0,1fr)}}
+#cv{width:100%;height:calc(100vh - 190px);min-height:420px;background:#111;border-radius:6px;cursor:grab;display:block}
+#gridv{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.gp canvas{width:100%;aspect-ratio:4/3;background:#111;border-radius:4px;display:block;cursor:pointer}.gp figcaption{font-size:12px}
+.side{display:flex;flex-direction:column;gap:8px;font-size:14px}.side label{display:flex;gap:6px;align-items:center}
+.side input[type=range]{width:100%}.side select{width:100%;font:inherit}.side textarea{min-height:110px}
+#counts{font-weight:600}#title{font-size:15px;font-weight:600;margin:0 0 6px}.kbd{color:var(--muted);font-size:12.5px}
+"""
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In-box prompt explorer</title><style>{css}</style></head><body>
+<header><h1>In-box CH07 — SAM 3 prompt explorer (exploratory)</h1>
+<p>SAM 3 text-prompt masks (top 60 by score per frame × prompt × variant, from the cached sweep) on 10 IR and 10 colour frames. White dots =
+your blind head clicks. The counts are mask ↔ click counts only (a mask covers a click within 15 px); nobody has judged these images. Notes
+are kept in this browser; Export to <code>cv/configs/inbox_sam3_prompt_gui_2026c/</code>.</p></header>
+<div class="wrap"><div><div id="title"></div>
+<div id="single"><canvas id="cv"></canvas><div id="ptitle" style="font-weight:600;margin-top:4px"></div></div>
+<div id="gridv" class="hidden"></div></div>
+<div class="side">
+<div><label><input type="radio" name="dom" value="ir" checked> IR</label><label><input type="radio" name="dom" value="colour"> colour</label></div>
+<label>frame <select id="fsel"></select></label><label>prompt <select id="psel"></select></label>
+<div><label><input type="radio" name="var" value="whole" checked> whole frame</label><label><input type="radio" name="var" value="tiled"> 2 × 2 tiles</label></div>
+<label><input type="checkbox" id="gridb"> grid: all 10 prompts</label>
+<div>top-K masks by score: <b id="topkv"></b><input type="range" id="topk" min="1" max="60" value="60"></div>
+<div>min score (log): <b id="minv"></b><input type="range" id="mins" min="0" max="1000" value="0"></div>
+<label><input type="checkbox" id="fillb" checked> fill masks (off = outline)</label>
+<label><input type="checkbox" id="dotsb" checked> show my head clicks</label>
+<label><input type="checkbox" id="hovb" checked> score label on hover</label>
+<button id="resetv" type="button">reset zoom</button>
+<div id="counts"></div>
+<div id="notekey" class="kbd"></div><textarea id="note" placeholder="your note for this frame × prompt"></textarea>
+<div class="bar"><span id="nnotes"></span><button id="ej" type="button">Export JSON</button><button id="ec" type="button">Export CSV</button>
+<label class="btn">Import JSON<input id="ij" type="file" accept=".json,application/json" class="hidden"></label></div>
+<div class="kbd">keys: ← / → frame · ↑ / ↓ prompt · G grid · V whole / tiles · wheel = zoom · drag = pan</div>
+<div class="kbd">run {_html.escape(run_name)}</div>
+</div></div>
+<script src="gui_data.js"></script>
+<script>{PROMPT_GUI_JS}</script></body></html>
+"""
+
+
+def prompt_gui_check(gd: Path, run: Path) -> dict:
+    """Headless Chrome (throwaway profile): loads; frame / prompt / variant switching; both sliders change the drawn count;
+    a note persists across a reload; the live counts equal the sweep's Python counts where the sets coincide."""
+    import inbox_identity_page as ipage
+    txt = (gd / "index.html").read_text(encoding="utf-8") + (gd / "gui_data.js").read_text(encoding="utf-8")[:0]
+    res = {"network_urls": re.findall(r"https?://[^\s\"'<>]+", (gd / "index.html").read_text(encoding="utf-8"))
+           + re.findall(r"https?://[^\s\"'<>]+", (gd / "gui_data.js").read_text(encoding="utf-8"))}
+    del txt
+    prof = Path(tempfile.mkdtemp(prefix="pgui_"))
+    p, wsu, bws = ipage._chrome((gd / "index.html").resolve().as_uri(), prof, ipage._free_port())
+    c = None
+    try:
+        c = ipage._CDP(wsu)
+        c.call("Runtime.enable")
+
+        def ready():
+            for _ in range(240):
+                try:
+                    if c.ev("!!window.__gui && window.__gui.imagesReady()"):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+                time.sleep(0.25)
+            return False
+
+        def key(k):
+            c.ev(f"document.dispatchEvent(new KeyboardEvent('keydown', {{key: '{k}', bubbles: true}}))")
+        res["loaded"] = ready()
+        s0 = c.ev("JSON.stringify([window.__gui.frameId(), window.__gui.st.pi, window.__gui.st.variant])")
+        key("ArrowRight")
+        f1 = c.ev("window.__gui.frameId()")
+        key("ArrowDown")
+        p1 = c.ev("window.__gui.st.pi")
+        key("v")
+        v1 = c.ev("window.__gui.st.variant")
+        res["switching"] = {"start": json.loads(s0), "after_right_frame": f1, "after_down_prompt": p1, "after_v_variant": v1,
+                            "ok": f1 != json.loads(s0)[0] and p1 == 1 and v1 == "tiled"}
+        key("v")
+        c.ev("window.__gui.setPrompt(0)")                                # "rat", whole: many masks
+        n60 = c.ev("window.__gui.drawn()")
+        c.ev("window.__gui.setTopK(5)")
+        n5 = c.ev("window.__gui.drawn()")
+        c.ev("window.__gui.setTopK(60)")
+        c.ev("window.__gui.setMinSlider(700)")
+        nmin = c.ev("window.__gui.drawn()")
+        c.ev("window.__gui.setMinSlider(0)")
+        res["sliders"] = {"topk60": n60, "topk5": n5, "min_slider_700": nmin, "min_score_700": c.ev("Math.pow(10, Math.log10(0.005) * (1 - 0.7))"),
+                          "ok": n5 == min(5, n60) and n60 > 5 and nmin < n60}
+        c.ev("document.getElementById('gridb').click()")
+        res["grid_panels"] = c.ev("document.querySelectorAll('#gridv canvas').length")
+        res["grid_drawn"] = c.ev("window.__gui.drawn()")
+        c.ev("document.getElementById('gridb').click()")
+        # live counts vs the sweep's Python counts (whole variant, tau 0.25, where <= 60 masks pass)
+        sm = pd.read_csv(run / "prompt_sweep" / "sweep_frame_metrics.csv")
+        sm = sm[(sm.variant == "whole") & (sm.tau == 0.25)]
+        tau_slider = 1000 * (np.log10(0.25) - np.log10(0.005)) / (0 - np.log10(0.005))
+        c.ev(f"document.getElementById('mins').value = {tau_slider:.6f}; document.getElementById('mins').dispatchEvent(new Event('input'))")
+        min_used = c.ev("window.__gui.st.minScore")
+        agree, tested = 0, 0
+        mism = []
+        for dom in ("ir", "colour"):
+            c.ev(f"document.querySelector('input[name=dom][value={dom}]').click()")
+            nfr = c.ev("window.GUI_DATA.frames.filter(f => f.domain === window.__gui.st.dom).length")
+            for fi in range(nfr):
+                c.ev(f"window.__gui.setFrame({fi})")
+                fid = c.ev("window.__gui.frameId()")
+                for pi, pk in enumerate(SWEEP_PROMPTS):
+                    r = sm[(sm.frame_id == fid) & (sm.prompt == pk)]
+                    if r.empty or int(r.n_masks.iloc[0]) > GUI_TOPK:
+                        continue
+                    js = c.ev(f"window.__gui.counts({pi})")
+                    r = r.iloc[0]
+                    py = {"masks": int(r.n_masks), "covered": int(r.n_heads - r.missed), "excl": int(r.excl), "empty": int(r["empty"]),
+                          "merged": int(r.merged)}
+                    tested += 1
+                    if all(js[k] == v for k, v in py.items()):
+                        agree += 1
+                    else:
+                        mism.append({"frame": fid, "prompt": pk, "js": js, "py": py})
+        res["counts_vs_python_whole_tau025"] = {"min_score_used": min_used, "tested": tested, "agree": agree, "mismatches": mism[:5]}
+        c.ev("document.querySelector('input[name=dom][value=ir]').click()")
+        c.ev("window.__gui.setFrame(2); window.__gui.setPrompt(3)")
+        c.ev("(() => { const t = document.getElementById('note'); t.value = 'check note'; t.dispatchEvent(new Event('input')); })()")
+        fid2 = c.ev("window.__gui.frameId()")
+        c.call("Page.reload")
+        time.sleep(1.5)
+        ready()
+        res["note_after_reload"] = c.ev(f"(JSON.parse(localStorage.getItem(window.__gui.key)).notes['{fid2}||{SWEEP_PROMPTS[3]}'] || {{}}).note")
+        res["export_csv_lines"] = c.ev("window.__gui.exportCSV().trim().split('\\n').length")
+        c.ev("localStorage.clear()")
+    finally:
+        if c:
+            c.close()
+        ipage._close_chrome(p, bws)
+        shutil.rmtree(prof, ignore_errors=True)
+    cv = res.get("counts_vs_python_whole_tau025", {})
+    res["verdict"] = "PASS" if (res.get("loaded") and res["switching"]["ok"] and res["sliders"]["ok"] and res.get("grid_panels") == len(SWEEP_PROMPTS)
+                                and res.get("note_after_reload") == "check note" and res.get("export_csv_lines") == 2
+                                and cv.get("tested", 0) > 0 and cv.get("agree") == cv.get("tested") and not res["network_urls"]) else "FAIL"
+    return res
+
+
 # ============================================================================================ report
 def f3(x, d=3):
     return "–" if x is None or (isinstance(x, float) and not np.isfinite(x)) else f"{x:.{d}f}"
@@ -2587,6 +2947,10 @@ def selftest() -> int:
             js.write_text(PAGE_JS, encoding="utf-8")
             r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True)
             rec("page script parses (node --check)", r.returncode == 0, r.stderr[-300:])
+            for nm, src in (("sweep", SWEEP_JS), ("prompt GUI", PROMPT_GUI_JS)):
+                js.write_text(src, encoding="utf-8")
+                r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True)
+                rec(f"{nm} page script parses (node --check)", r.returncode == 0, r.stderr[-300:])
     else:
         print("[SKIP] node not on PATH")
     # 11 truth loading from a synthetic export
@@ -2635,7 +2999,7 @@ def main(argv=None) -> int:
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--run", type=Path, help="existing run folder (resume / re-score)")
     ap.add_argument("--phases", nargs="+", default=["data", "t1gpu", "t2gpu", "dino", "score", "review", "report"],
-                    choices=["data", "t1gpu", "t2gpu", "dino", "score", "review", "sweep_gpu", "sweep", "report"],
+                    choices=["data", "t1gpu", "t2gpu", "dino", "score", "review", "sweep_gpu", "sweep", "gui", "report"],
                     help="sweep_gpu / sweep = the exploratory prompt sweep of amendment 4 (run on request, after t1gpu)")
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--no-page-check", action="store_true")
@@ -2716,6 +3080,10 @@ def main(argv=None) -> int:
         t0 = time.perf_counter()
         meta["sweep"] = {k: v for k, v in phase_sweep(run, frames, heads, check=not a.no_page_check).items() if k != "page_check"}
         done("sweep", t0)
+    if "gui" in a.phases:
+        t0 = time.perf_counter()
+        meta["prompt_gui"] = {k: v for k, v in phase_prompt_gui(run, frames, heads, check=not a.no_page_check).items() if k != "page_check"}
+        done("gui", t0)
     if "report" in a.phases:
         rp = write_report(run)
         print(f"report: {rp}")

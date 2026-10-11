@@ -145,3 +145,31 @@ The other configurations are descriptive:
 - **Tables:** `prompt_sweep/sweep_summary.csv` and `sweep_frame_metrics.csv`; the report has a section "Exploratory prompt
   sweep".
 - **The agent did not look at the panels.**
+
+## Addendum 2026-10-11 — interactive prompt explorer (user request: "未必不work，你做成gui我自己看一眼")
+
+The user wanted to judge the prompt sweep themselves ("it might work after all; make it a GUI and I'll take a look
+myself"), so the sweep now has an interactive explorer. It is descriptive only and changes no result.
+
+- **Code:** `inbox_sam3_dino_test.py --phases gui`, run in base Python from the cached sweep masks. **No SAM 3 run.**
+- **Page:** `D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320/prompt_gui/index.html`. It is
+  self-contained and works from file://; the data sits in `gui_data.js`, with no fetch and no network.
+- **Content:** the 10 IR + 10 colour sweep frames, downscaled to 1600 × 1200.
+  - Per frame × prompt × variant, the top 60 masks by score as polygons (approxPolyDP, ε 2 px at full resolution), each
+    with its score.
+  - Tiled = cross-tile clusters formed once over all cached masks. This can differ slightly from the per-τ merge of the
+    report's tiled counts.
+- **Controls:** IR / colour, frame ← / →, prompt ↑ / ↓, grid of all 10 prompts, whole / tiles, top-K slider 1–60, log
+  min-score slider 0.005–1, fill / outline, head dots, hover score, zoom and pan.
+- **Live counts:** masks shown, heads covered, heads with their own exclusive mask, empty, merged (the T1 rules).
+- **Notes:** one per frame × prompt, in localStorage, with Export CSV / JSON to `cv/configs/inbox_sam3_prompt_gui_2026c/`
+  (new folder with a `README.md`).
+- **Data size:** `gui_data.js` 13.1 MB (16 750 masks, 1.27 M polygon points), frames 7.7 MB, `index.html` 17 kB.
+- **Headless Chrome check: PASS** (`prompt_gui/page_check.json`):
+  - the page loads;
+  - ← / ↑ / V switch frame, prompt and variant;
+  - top-K 60 → 5 drawn masks; the min-score slider at 0.20 → 11 of 60;
+  - the grid shows 10 panels;
+  - a note survives a reload;
+  - the live counts equal the Python sweep counts in 200 / 200 frame × prompt cases (whole frame, min score 0.25);
+  - no network URL.
