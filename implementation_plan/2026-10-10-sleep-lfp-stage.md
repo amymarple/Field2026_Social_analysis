@@ -6,8 +6,10 @@ Part W of the behaviour stage (§14 of [2026-10-08-sleep-behaviour-explore.md](2
 ran 10-10: the long-wake memory term adds no held-out gain (#64) and leaves pass2med's evening delay → **L2(a) runs**.
 
 **L1 DONE 2026-10-10:** [L1 report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_lfp_L1_2026c.md) — claims #65–#68 (P is not a depth proxy; depth adds nothing beyond P on FINAL; the night gate is not depth; NREM shallower as the count rises). **L1b DONE 2026-10-10** ([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_lfp_L1b_2026c.md)): naps
-and main sleep follow the same count / depth rules (#69); #68 downgraded by the selection check. Next: L2(b) first (astra),
-then a targeted L2(a); L2(c) on hold.
+and main sleep follow the same count / depth rules (#69); #68 downgraded by the selection check. **L2(b) DONE 2026-10-10**
+([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_lfp_L2b_2026c.md)): the pre-registered share sat at its
+floor (uninformative); the NREM before the first post-round REM is theta-richer across the window, partly with head
+movement, not a late REM label (#70, Candidate). Next: a targeted L2(a); L2(c) on hold.
 
 **Revision 1 (2026-10-10, before any result; the user):**
 - "sw slope 就可以 … delta 不过是 up-down state": depth is the scorer's raw slow-wave slope, already computed. No new

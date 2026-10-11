@@ -39,3 +39,18 @@ selftest adds the continuing-NREM window test). Run 9 min.
   goes down to Candidate (partly composition).
 - Wording (main session, after astra's review): #65 and #67 scoped to this depth measure and window.
 
+## 2026-10-10 — revision 3: L2(b) (theta before the first REM, evening rounds vs natural evening wakes)
+
+Plan §9, committed (a9eb109) before results. `ephys/sleep_lfp.py L2b` (`record_series`, `theta_series`,
+`first_rem_events`; selftest adds the event rules). Inputs: the `load_sw` cache (th), the theta session's per-second
+cache (`theta_seconds`), part H's house entries. Run < 1 min.
+
+- Pre-registered pass: not met on either scoring, and uninformative — the REM-like th share is at its floor
+  (0.0–0.5 % of NREM seconds, near-structural: the scorer calls high-th seconds REM).
+- Secondary: z-th +0.19 / +0.25 SD before the first post-round REM; CA1 REM-like theta +4.7 / +3.2 points (5/5, 4/5).
+- Post hoc (after the first results): without the last 2 min +0.21 / +0.25 (5/6, 4/6); clock-matched 19–24 h
+  +0.17 / +0.29; CA1 on IMU-still seconds +1.8 / +2.0 points (about half of the excess is in head-moving seconds);
+  the final-minute rise is not larger.
+- → #70 (Candidate): a lighter, theta-richer, partly restless NREM before the first post-round REM, not a late REM
+  label; #60's evidence updated.
+

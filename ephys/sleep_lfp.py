@@ -439,6 +439,252 @@ def L1b(a) -> None:
     print("written", rd / "ephys_spikes_sleep_lfp_L1b_2026c.md", flush=True)
 
 
+# ------------------------------------------------------------------ L2b (plan revision 3)
+THETA_ROOT = Path("D:/Field2026_analysis_out/2026c/theta_seconds")
+LONG_W = 1800
+PRE_S = 600
+
+
+def record_series(rc: dict, starts: dict, Q: dict, settle: list, cache: dict, codes: dict, key: str = "th"):
+    """rem_ripple_model.record_arrays for one imu_fixch series over ALL states: coverage, block code, value per second."""
+    st = rc["state"]
+    n = len(st)
+    cov, blk, val = np.zeros(n, bool), np.full(n, -1, np.int32), np.full(n, np.nan, np.float32)
+    an, t0 = rc["animal"], rc["start"].value
+    offs = [int(round((starts[(an, s)] - rc["start"]).total_seconds())) for s in rc["sessions"]]
+    for s, o, e in zip(rc["sessions"], offs, offs[1:] + [n]):
+        q, z = Q.get((an, s)), cache.get((an, s))
+        if q is None or z is None:
+            continue
+        i = np.arange(max(o, 0), min(e, n))
+        tn = t0 + i.astype(np.int64) * 1_000_000_000
+        k = np.ones(len(i), bool)
+        if pd.notna(q["use_until_t"]):
+            k &= tn < q["use_until_t"].value
+        for a_, a0, a1 in settle:
+            if a_ == an:
+                k &= ~((tn >= a0.value) & (tn < a1.value))
+        cov[i[k]], blk[i[k]] = True, codes[(an, q["block_from"])]
+        if key in z:
+            ts = o + z["t_clus"]
+            okd = (ts >= max(o, 0)) & (ts < min(e, n))
+            val[ts[okd]] = z[key][okd]
+    val[~cov] = np.nan
+    return cov, blk, val
+
+
+def theta_series(rc: dict, starts: dict) -> dict:
+    """The theta session's per-second CA1 log_td / REM-like theta (theta_on & f_peak < 10 Hz), on the record's seconds."""
+    n = len(rc["state"])
+    td, rl, ok, still = np.full(n, np.nan), np.zeros(n, bool), np.zeros(n, bool), np.zeros(n, bool)
+    an = rc["animal"]
+    offs = [int(round((starts[(an, s)] - rc["start"]).total_seconds())) for s in rc["sessions"]]
+    for s, o in zip(rc["sessions"], offs):
+        f = THETA_ROOT / an / f"{s}.theta_seconds.csv.gz"
+        if not f.exists():
+            continue
+        d = pd.read_csv(f, usecols=["s", "log_td", "theta_on", "f_peak", "block_skip", "settle", "after_end", "imu_state"])
+        good = ~(d.block_skip.astype(bool) | d.settle.astype(bool) | d.after_end.astype(bool))
+        sec = o + d.s.to_numpy().astype(np.int64)
+        m = (sec >= 0) & (sec < n) & good.to_numpy()
+        td[sec[m]] = d.log_td.to_numpy()[m]
+        rl[sec[m]] = (d.theta_on.astype(bool) & (d.f_peak < 10)).to_numpy()[m]
+        ok[sec[m]] = True
+        still[sec[m]] = (d.imu_state == 1).to_numpy()[m]          # 1 = head IMU still (theta cache README)
+    return {"td": td, "rl": rl, "ok": ok, "still": still}
+
+
+def first_rem_events(rc: dict, kind_of_record: str | None, tH: float | None) -> list[dict]:
+    """R-evening (record after an evening round, from its house entry) and natural long-wake events (any clock)."""
+    from sleep_schedule import R as R_, W as W_
+    st = rc["state"]
+    bl = bouts_list(st)
+    out = []
+
+    def from_onset(t_from):
+        tn = next((a for s_, a, b in bl if s_ == N_STATE and a >= t_from), None)
+        if tn is None:
+            return None
+        for s_, a, b in bl:
+            if a < tn:
+                continue
+            if s_ == W_ and (b - a) >= LONG_W:
+                return None
+            if s_ == R_:
+                return tn, a
+        return None
+
+    if kind_of_record == "evening" and tH is not None:
+        r = from_onset(int(tH))
+        if r:
+            out.append({"kind": "R-evening", "tN": r[0], "tR": r[1]})
+    post_end = 3 * 3600 if kind_of_record is not None else 0
+    for s_, a, b in bl:
+        if s_ == W_ and (b - a) >= LONG_W and b >= post_end:
+            r = from_onset(b)
+            if r:
+                hh = (rc["start"] + pd.Timedelta(seconds=int(b))).hour
+                out.append({"kind": "N-any", "tN": r[0], "tR": r[1], "evening": 17 <= hh < 23})
+    return out
+
+
+def bouts_list(st: np.ndarray) -> list:
+    from sleep_cycles import bouts
+    return bouts(st)
+
+
+def L2b(a) -> None:
+    import json
+    import swr_temperature as stp
+    from _common import git_commit, write_json
+    from output_paths import out_root, report_dir, run_dir
+    from rem_ripple_model import SLEEP_ROOT
+    from sleep_model import PASS2MED, records_for
+    from sleep_quant import md_table
+    from sleep_schedule import R as R_, REVIEW, STATES, included_sessions
+    from sleep_stability import gaps_table
+    from sleep_perturb import round_info
+    out = run_dir("sleep_lfp_L2b", "2026c")
+    rd = report_dir("2026c", "ephys_spikes")
+    gc = git_commit()
+    t0 = time.time()
+    tiers = ["validated", "good", "check", "low_contrast"]
+    q = stp.sessions(rd / "ephys_spikes_swr_quality_2026c.csv", REVIEW, tiers)
+    Q = {(r.animal, r.session): {"use_until_t": r.use_until_t, "block_from": r.block_from} for r in q.itertuples()}
+    codes = {k: i for i, k in enumerate(sorted({(r.animal, r.block_from) for r in q.itertuples()}))}
+    settle = stp.settle_windows(REPO / "cohorts/2026c.yaml")
+    cache = load_sw(Q, Path(SLEEP_ROOT), out_root() / "2026c" / "sleep_lfp_inputs" / "sw_imu_fixch.pkl")
+    hrun = Path(json.load(open(rd / "run_manifest_sleep_explore_H_2026c.json"))["run_dir"])
+    HE = pd.read_csv(hrun / "house_entries.csv", parse_dates=["record_start"])
+    tH_by = {(r.animal, pd.Timestamp(r.record_start)): r.tH_s for r in HE.itertuples() if np.isfinite(r.tH_s)}
+    gaps = gaps_table()
+    EV, TRJ = [], []
+    for lab in a.scorings:
+        root = STATES if lab == "final" else PASS2MED
+        recs = records_for(root)
+        starts = {(r.animal, r.session): r.start for r in included_sessions(REVIEW, root).itertuples()}
+        RI = round_info(recs, gaps)
+        kind = dict(zip(RI.record_id, RI.kind))
+        ser = {rc["record_id"]: record_series(rc, starts, Q, settle, cache, codes) for rc in recs}
+        # block statistics of th: NREM mean / sd, REM 25th percentile
+        acc = {}
+        for rc in recs:
+            cov, blk, th = ser[rc["record_id"]]
+            for b in np.unique(blk[blk >= 0]):
+                m = (blk == b) & np.isfinite(th)
+                acc.setdefault(int(b), {"N": [], "R": []})
+                acc[int(b)]["N"].append(th[m & (rc["state"] == N_STATE)])
+                acc[int(b)]["R"].append(th[m & (rc["state"] == R_)])
+        bstat = {b: {"mu": float(np.mean(np.concatenate(v["N"]))), "sd": float(np.std(np.concatenate(v["N"]))),
+                     "r25": float(np.percentile(np.concatenate(v["R"]), 25)) if sum(len(x) for x in v["R"]) > 30 else np.nan}
+                 for b, v in acc.items() if sum(len(x) for x in v["N"]) > 300}
+        for rc in recs:
+            rid = rc["record_id"]
+            evs = first_rem_events(rc, kind.get(rid), tH_by.get((rc["animal"], rc["start"])))
+            if not evs:
+                continue
+            cov, blk, th = ser[rid]
+            TS = theta_series(rc, starts)
+            st = rc["state"]
+            for ev in evs:
+                a0, a1 = max(ev["tR"] - PRE_S, ev["tN"]), ev["tR"] - 2
+                if a1 <= a0:
+                    continue
+                sec = np.arange(a0, a1)
+                sec = sec[(st[sec] == N_STATE)]
+                bb = blk[sec]
+                good = np.isfinite(th[sec]) & np.isin(bb, list(bstat))
+                if good.sum() < 60:
+                    continue
+                s2, b2 = sec[good], bb[good]
+                mu = np.array([bstat[int(x)]["mu"] for x in b2])
+                sd = np.array([bstat[int(x)]["sd"] for x in b2])
+                r25 = np.array([bstat[int(x)]["r25"] for x in b2])
+                z = (th[s2] - mu) / sd
+                okc = TS["ok"][sec]
+                row = {"scores": lab, "animal": rc["animal"], "record_id": rid, "kind": ev["kind"], "evening": ev.get("evening", True),
+                       "t_R": rc["start"] + pd.Timedelta(seconds=int(ev["tR"])), "n_nrem_s": int(good.sum()),
+                       "z_th_mean": float(np.mean(z)), "remlike_th_share": float(np.nanmean(th[s2] >= r25)),
+                       "ca1_n": int(okc.sum()), "ca1_remlike_share": float(TS["rl"][sec][okc].mean()) if okc.sum() >= 60 else np.nan,
+                       "ca1_logtd_mean": float(np.nanmean(TS["td"][sec][okc])) if okc.sum() >= 60 else np.nan,
+                       # post hoc (2026-10-10, after the first results): IMU-still CA1 seconds; z-th without the last 2 min
+                       "ca1_remlike_share_still": float(TS["rl"][sec][okc & TS["still"][sec]].mean()) if (okc & TS["still"][sec]).sum() >= 60 else np.nan,
+                       "z_th_early": float(np.mean(z[s2 < ev["tR"] - 120])) if (s2 < ev["tR"] - 120).sum() >= 60 else np.nan}
+                EV.append(row)
+                for k_ in range(10):
+                    lo, hi = ev["tR"] - (k_ + 1) * 60, ev["tR"] - k_ * 60 - (2 if k_ == 0 else 0)
+                    ss = s2[(s2 >= lo) & (s2 < hi)]
+                    if len(ss) >= 15:
+                        zz = (th[ss] - np.array([bstat[int(x)]["mu"] for x in blk[ss]])) / np.array([bstat[int(x)]["sd"] for x in blk[ss]])
+                        TRJ.append({"scores": lab, "animal": rc["animal"], "kind": ev["kind"], "evening": ev.get("evening", True),
+                                    "min_before_REM": k_ + 1, "z_th": float(np.mean(zz))})
+        print(f"[{lab}] events {sum(1 for e in EV if e['scores'] == lab)}; {time.time() - t0:.0f} s", flush=True)
+    E, TJ = pd.DataFrame(EV), pd.DataFrame(TRJ)
+    E.to_csv(out / "events.csv", index=False)
+    rng = np.random.default_rng(0)
+    res = []
+    hour = E.t_R.dt.hour
+    for lab, (subset, hsel) in [(s_, h_) for s_ in a.scorings for h_ in (("all", None), ("posthoc: first REM 19-24 h", 19))]:
+        e = E[(E.scores == lab) & ((hour >= hsel) if hsel else True)]
+        R_ev = e[e.kind == "R-evening"]
+        N_ev = e[(e.kind == "N-any") & e.evening]
+        meas_list = ("remlike_th_share", "z_th_mean", "ca1_remlike_share", "ca1_logtd_mean", "z_th_early", "ca1_remlike_share_still")             if hsel is None else ("z_th_mean", "ca1_remlike_share")
+        for meas in meas_list:
+            for excl10 in ((False, True) if meas in ("ca1_remlike_share", "ca1_logtd_mean") and hsel is None else (False,)):
+                rr, nn = R_ev, N_ev
+                if excl10:
+                    rr, nn = rr[rr.animal != "SF10"], nn[nn.animal != "SF10"]
+                an = sorted(set(rr.dropna(subset=[meas]).animal) & set(nn.dropna(subset=[meas]).animal))
+                if not an:
+                    continue
+                d_an = {x: rr[rr.animal == x][meas].mean() - nn[nn.animal == x][meas].mean() for x in an}
+                est = float(np.mean(list(d_an.values())))
+                boots = []
+                for _ in range(2000):
+                    ds = []
+                    for x in an:
+                        r_ = rr[rr.animal == x][meas].dropna().to_numpy()
+                        n_ = nn[nn.animal == x][meas].dropna().to_numpy()
+                        ds.append(rng.choice(r_, len(r_)).mean() - rng.choice(n_, len(n_)).mean())
+                    boots.append(np.mean(ds))
+                lo, hi = np.percentile(boots, [2.5, 97.5])
+                tag = " (no SF10)" if excl10 else ""
+                if meas in ("z_th_early", "ca1_remlike_share_still"):
+                    tag += " [post hoc]"
+                res.append({"scores": lab, "subset": subset, "measure": meas + tag, "R_evening_events": int(rr[meas].notna().sum()),
+                            "N_evening_events": int(nn[meas].notna().sum()), "R_mean": float(rr[meas].mean()), "N_mean": float(nn[meas].mean()),
+                            "diff_mean_of_animals": est, "ci_lo": lo, "ci_hi": hi, "animals_pos": int(sum(v > 0 for v in d_an.values())),
+                            "animals": len(an), "per_animal": "; ".join(f"{x} {v:+.3f}" for x, v in d_an.items())})
+    RES = pd.DataFrame(res)
+    v = []
+    for lab in a.scorings:
+        r = RES[(RES.scores == lab) & (RES.subset == "all") & (RES.measure == "remlike_th_share")].iloc[0]
+        c = RES[(RES.scores == lab) & (RES.subset == "all") & (RES.measure == "ca1_remlike_share")]
+        c = c.iloc[0] if len(c) else None
+        ok = bool(r.ci_lo > 0 and r.animals_pos >= r.animals - 1)
+        v.append({"scores": lab, "pass": ok, "numbers": f"REM-like th share R {r.R_mean:.3f} vs N {r.N_mean:.3f}: diff {r.diff_mean_of_animals:+.3f} "
+                  f"[{r.ci_lo:+.3f}, {r.ci_hi:+.3f}], {int(r.animals_pos)}/{int(r.animals)} animals higher; CA1 REM-like diff "
+                  + (f"{c.diff_mean_of_animals:+.3f} [{c.ci_lo:+.3f}, {c.ci_hi:+.3f}]" if c is not None else "n/a")})
+    V = pd.DataFrame(v)
+    tj = TJ.assign(group=np.where(TJ.kind == "R-evening", "R-evening", np.where(TJ.evening, "N-evening", "N-other"))).groupby(
+        ["scores", "group", "min_before_REM"]).z_th.agg(["mean", "count"]).reset_index()
+    for name, T in (("results", RES), ("trajectory", tj), ("verdicts", V)):
+        T.to_csv(rd / f"ephys_spikes_sleep_lfp_L2b_{name}_2026c.csv", index=False)
+    L_ = ["# Sleep LFP stage — L2(b): REM-like theta before the first REM, evening rounds vs natural evening wakes (cohort 2026c)", "",
+          "Plan [implementation_plan/2026-10-10-sleep-lfp-stage.md](../../../../implementation_plan/2026-10-10-sleep-lfp-stage.md) §9 "
+          f"revision 3 (rules written before results). Driver `ephys/sleep_lfp.py L2b` (commit {gc}); bulk `{out}` (events.csv); runtime "
+          f"{(time.time() - t0) / 60:.0f} min. **Technical ledger.** th = the scorer's theta / delta axis (imu_fixch); CA1 = the theta "
+          "session's cache (theta_on & f_peak < 10 Hz). SF10's CA1 site is the scorer's theta channel in 19 of its sessions: CA1 rows "
+          "are also given without SF10.", "",
+          "## Verdicts", "", *md_table(V), "",
+          "## R-evening vs N-evening (mean of the per-animal differences; bootstrap within animals)", "", *md_table(RES.round(4)), "",
+          "## Trajectory: mean z-th per minute before the first REM", "", *md_table(tj.round(3)), ""]
+    (rd / "ephys_spikes_sleep_lfp_L2b_2026c.md").write_text("\n".join(L_) + "\n", encoding="utf-8")
+    write_json(rd / "run_manifest_sleep_lfp_L2b_2026c.json", {"run_dir": str(out), "git_commit": gc, "scorings": a.scorings})
+    print(V.to_string(index=False), flush=True)
+    print(RES.round(3).to_string(index=False), flush=True)
+
+
 def selftest() -> None:
     t0 = time.time()
     # window means on a toy depth series
@@ -478,12 +724,23 @@ def selftest() -> None:
     cont = (tt + FUT[1] <= len(st_)) & ((cN[e1] - cN[tt]) == FUT[1])
     assert list(cont) == [True, True, False], cont
     print("PASS L1b continuing-NREM window test", flush=True)
+    # L2b: first-REM events on a toy record
+    st3 = np.array([1] * 2000 + [3] * 300 + [1] * 20 + [3] * 400 + [5] * 60 + [3] * 100, np.int8)
+    rc3 = {"state": st3, "start": pd.Timestamp("2026-09-05 18:00:00")}
+    evs = first_rem_events(rc3, "evening", 100.0)
+    kinds = {e["kind"]: (e["tN"], e["tR"]) for e in evs}
+    assert kinds == {"R-evening": (2000, 2720)}, evs              # the 2000-s wake lies in the round record's first 3 h
+    ev2 = first_rem_events(rc3, None, None)                        # not a round record: the long wake counts
+    assert [(e["kind"], e["tN"], e["tR"], e["evening"]) for e in ev2] == [("N-any", 2000, 2720, True)], ev2
+    st4 = np.array([1] * 2000 + [3] * 300 + [1] * 1900 + [3] * 100 + [5] * 60, np.int8)
+    assert first_rem_events({"state": st4, "start": rc3["start"]}, None, None)[0]["tN"] == 4200   # a >= 30-min wake breaks the chain
+    print("PASS L2b first-REM events (R-evening from the house entry; natural long wake)", flush=True)
     print(f"selftest PASS ({time.time() - t0:.0f} s)", flush=True)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["L1", "L1b"])
+    ap.add_argument("cmd", nargs="?", choices=["L1", "L1b", "L2b"])
     ap.add_argument("--scorings", nargs="+", default=["final", "pass2med"], choices=["final", "pass2med"])
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--selftest", action="store_true")
@@ -494,6 +751,8 @@ def main() -> None:
         L1(a)
     elif a.cmd == "L1b":
         L1b(a)
+    elif a.cmd == "L2b":
+        L2b(a)
     else:
         ap.print_help()
 

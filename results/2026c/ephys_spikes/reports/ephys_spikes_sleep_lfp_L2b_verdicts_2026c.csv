@@ -1,0 +1,3 @@
+scores,pass,numbers
+final,False,"REM-like th share R 0.001 vs N 0.005: diff -0.003 [-0.007, +0.001], 1/6 animals higher; CA1 REM-like diff +0.047 [+0.013, +0.087]"
+pass2med,False,"REM-like th share R 0.001 vs N 0.000: diff +0.001 [-0.000, +0.004], 3/6 animals higher; CA1 REM-like diff +0.032 [+0.010, +0.058]"
