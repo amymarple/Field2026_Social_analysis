@@ -801,6 +801,90 @@ def nights_grid(a) -> Path:
     return fpath
 
 
+def per_night(a) -> Path:
+    """Awake ripples per night, the trials between home naps as the replicate (the user, 2026-10-10: "awake ripple
+    (between naps) per night 的图 用 mean sem"). Per trial (>= min_trial_min): field / house awake ripples, their quiet
+    minutes and the rate per quiet minute (only where that place has >= 1 quiet minute in the trial). Per night: mean +- SEM
+    over trials. Description only."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from _common import figure_dir, report_dir
+    man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
+    run_dir = Path(a.run or man["run_dir"])
+    rows = []
+    for an in ANIMALS:
+        S = pd.read_csv(run_dir / f"seconds_{an}.csv.gz", usecols=["sec", "night", "zone", "nonloco", "aswr", "trial"])
+        S = S[S.trial >= 0]
+        for tr, g in S.groupby("trial"):
+            if len(g) < a.min_trial_min * 60:
+                continue
+            q = g[g.nonloco.astype(bool)]
+            fq, hq = q[q.zone == 3], q[q.zone.isin([1, 2])]
+            fm, hm = len(fq) / 60, len(hq) / 60
+            rows.append(dict(animal=an, night=str(g.night.iloc[0]), trial=int(tr), start=pd.to_datetime(g.sec.iloc[0], unit="s"),
+                             minutes=len(g) / 60, field_quiet_min=fm, house_quiet_min=hm,
+                             field_aswr=int(fq.aswr.sum()), house_aswr=int(hq.aswr.sum()),
+                             field_rate=fq.aswr.sum() / fm if fm >= 1 else np.nan,
+                             house_rate=hq.aswr.sum() / hm if hm >= 1 else np.nan))
+    T = pd.DataFrame(rows)
+    # a night without detectable quiet time (coverage / theta) is missing, not zero
+    tot = T.groupby(["animal", "night"])[["field_quiet_min", "house_quiet_min"]].sum().sum(axis=1)
+    ok_n = set(tot[tot >= 1].index)
+    T = T[[(r.animal, r.night) in ok_n for r in T.itertuples()]].copy()
+
+    def msem(v):
+        v = v.dropna()
+        return pd.Series({"mean": v.mean() if len(v) else np.nan, "sem": v.std(ddof=1) / np.sqrt(len(v)) if len(v) > 1 else np.nan,
+                          "n": len(v)})
+
+    metrics = [("field_rate", "house_rate", "awake ripples / quiet min"), ("field_aswr", "house_aswr", "awake ripples per trial"),
+               ("field_quiet_min", "house_quiet_min", "quiet (non-locomotor) min per trial")]
+    nights = sorted(T.night.unique())
+    xi = {n: i for i, n in enumerate(nights)}
+    fig, axs = plt.subplots(len(metrics), len(ANIMALS), figsize=(3.1 * len(ANIMALS), 2.6 * len(metrics)), sharex=True, squeeze=False)
+    summ = []
+    for c, an in enumerate(ANIMALS):
+        g = T[T.animal == an]
+        for r, (fcol, hcol, lab) in enumerate(metrics):
+            ax = axs[r, c]
+            for col, colr, nm in ((fcol, "tab:red", "field"), (hcol, "tab:blue", "house")):
+                s = g.groupby("night")[col].apply(msem).unstack()
+                if not len(s):
+                    continue
+                s = s[s.n > 0]
+                x = np.array([xi[n] for n in s.index]) + (0.08 if nm == "house" else -0.08)
+                ax.errorbar(x, s["mean"], yerr=s["sem"], color=colr, marker="o", ms=3.5, lw=1, capsize=2, label=nm)
+                for n_, row in s.iterrows():
+                    summ.append(dict(animal=an, night=n_, metric=col, mean=row["mean"], sem=row["sem"], n_trials=int(row["n"])))
+                if r == 0:
+                    for xx, (n_, row) in zip(x, s.iterrows()):
+                        ax.text(xx, 0.02, f"{int(row.n)}", transform=ax.get_xaxis_transform(), fontsize=5.5, color=colr, ha="center")
+            if c == 0:
+                ax.set_ylabel(lab, fontsize=8)
+            if r == 0:
+                ax.set_title(an + (f"\n{NOTES[an]}" if an in NOTES else ""), fontsize=7.5)
+                if c == 0:
+                    ax.legend(fontsize=7, loc="upper left")
+            ax.set_ylim(bottom=0)
+            ax.tick_params(labelsize=7)
+    for ax in axs[-1]:
+        ax.set_xticks(range(len(nights)))
+        ax.set_xticklabels(nights, rotation=60, fontsize=6.5)
+    fig.suptitle("Awake ripples per night, trials between home naps as the replicate (mean +- SEM over a night's trials; small "
+                 "numbers = trials with >= 1 quiet min in that place; nights without detectable quiet time left out)", fontsize=10)
+    fig.tight_layout()
+    fpath = figure_dir(COHORT) / f"ephys_spikes_awake_ripple_per_night_{COHORT}.png"
+    fig.savefig(fpath, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    T.to_csv(run_dir / "phase2" / "per_night_trials.csv", index=False)
+    SM = pd.DataFrame(summ)
+    SM.to_csv(report_dir(COHORT) / f"ephys_spikes_awake_ripple_per_night_{COHORT}.csv", index=False)
+    print(SM[SM.metric.isin(["field_rate", "house_rate"])].pivot_table(index="night", columns=["metric", "animal"], values="mean").round(0).to_string())
+    print(f"figure {fpath}")
+    return fpath
+
+
 # ------------------------------------------------------------------ selftest
 def selftest() -> None:
     rng = np.random.default_rng(3)
