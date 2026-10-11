@@ -796,7 +796,10 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["phase0", "review", "rerender", "emgica", "phase2"])
+    ap.add_argument("cmd", nargs="?", choices=["phase0", "review", "rerender", "emgica", "phase2", "night"])
+    ap.add_argument("--animal", default="SF10", help="night: the animal")
+    ap.add_argument("--night", default="09-07", help="night: the night label (the evening's date, MM-DD)")
+    ap.add_argument("--min-trial-min", type=float, default=2.0, help="night: shortest trial drawn (min)")
     ap.add_argument("--perms", type=int, default=1000, help="phase2: bout swaps for the primary tests")
     ap.add_argument("--sens-perms", type=int, default=500, help="phase2: bout swaps per sensitivity")
     ap.add_argument("--workers", type=int, default=6)
@@ -842,6 +845,9 @@ def main():
     elif a.cmd == "phase2":
         import awake_ripple_phase2
         awake_ripple_phase2.run(a)
+    elif a.cmd == "night":
+        import awake_ripple_phase2
+        awake_ripple_phase2.night_trials(a)
 
 
 if __name__ == "__main__":
