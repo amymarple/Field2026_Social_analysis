@@ -80,9 +80,24 @@ metrics on labelled snippets, per-cue ablations (drop one cue at a time), error 
 
 ## 5. The user's first colour labels (filled in when the analysis lands)
 
-Pending: `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md` (composition agreement, colour → IR head
-displacement, the pre-registered house_2 fit and order test, WISER-assignment accuracy). Data = a browser snapshot of
-11 / 22 segments (not yet a formal export) → preliminary.
+Report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md` (commit e679650). **Preliminary**: a browser
+snapshot (11 / 22 segments, one labeller, house_2 / CH07 only); blind colour-frame clicks only (135 blind of 141).
+- **Composition:** clicked colour-frame set = WISER house_2 roster in 8 / 10 revealed segments, no extras; in the other
+  two every roster animal is clicked on some frame of the segment. SF11 never clicked.
+- **Colour → IR stability:** median head displacement 27 px (≈ 0.3 in) over < 30 s; **max 44 px when every animal's head
+  IMU stayed still** (n 36) vs median 52 / max 387 px when the IMU registered movement (n 24) → the operator's premise
+  (a still pile does not move across the switch) holds, and the IMU tells when it does not.
+- **Camera fit (house_2):** non-mirrored similarity, rotation 178° in the page's terms (the user's independent 180° by eye,
+  Δ −1.8°), 79.3 px / in; leave-one-flash-out RMS **5.96 in** (median 4.29 in); not a calibratable bias (per-flash offset
+  → 5.34 in, per-tag offset → 6.35 in).
+- **Pre-registered order test: NOT ACCEPTED** — exact along-box order 0 / 5 (Kendall τ median + 0.40); with pairs < 8 in
+  treated as ties 4 / 5 (25 / 28 such pairs ordered right) but that variant also fails under the sensitivity checks.
+- **WISER as an identity aid:** one-to-one assignment of clicked heads to WISER means 65 % correct (26 / 40; chance 20 %;
+  72 % with a free per-flash offset); by separation from the nearest other animal: < 4 in 70 %, 4–8 in 60 %, 8–15 in 50 %,
+  ≥ 15 in 4 / 4. Piled animals sit a median 5.7 in apart but only 2.0 in apart along the ridge.
+- **Reading:** WISER gives composition and places clearly separated animals; it does **not** resolve the arrangement
+  inside a pile. The arrangement layer must come from vision + continuity (+ IMU micro-events), as the audit predicted;
+  WISER stays a roster / door / separation prior.
 
 ## 6. Next steps if the strategy is accepted (each its own pre-registered plan)
 
