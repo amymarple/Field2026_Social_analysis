@@ -54,3 +54,17 @@ cache (`theta_seconds`), part H's house entries. Run < 1 min.
 - → #70 (Candidate): a lighter, theta-richer, partly restless NREM before the first post-round REM, not a late REM
   label; #60's evidence updated.
 
+## 2026-10-11 — revision 4: REM within sleep episodes (ramp check); L2(b) paused
+
+Plan §10, committed (73dc96a) before results; amendment 1 (§10.7, 21626d5) after the first run, before the amended
+results. New driver `ephys/sleep_ramp.py run [--episode-rule plain|nsw]` (selftest: episodes, nsw bridging,
+classes, locate, O/E calibration, ramp rule). ~7 min per rule (100 simulator replicates, 4 held-out comparisons).
+
+- L2(b) paused by the user; confounds listed in plan §10.1; #70 marked paused.
+- Pre-registered rule: main onsets matched night_sleep_wiser's MSO on 10/45 nights → amendment 1 (night_sleep_wiser
+  long wakes; pooled future-free natural class). Amended rule: 45/45.
+- Both rules: REM entry below the model in the first ~20 min after a long wake (O/E 0.3–0.4 at 0–10 min, ~0.7 at
+  10–20 min), above it at 20–30 min (1.3). The episode clock helps held out on FINAL (−0.48 %, 6/6), not on
+  pass2med (−0.29 %, CI crosses 0) → #71 Candidate, not a model term.
+- No ramp-down (#72). Naps start like main sleep and are short (#73, Candidate).
+

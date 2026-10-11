@@ -9,8 +9,11 @@ ran 10-10: the long-wake memory term adds no held-out gain (#64) and leaves pass
 and main sleep follow the same count / depth rules (#69); #68 downgraded by the selection check. **L2(b) DONE 2026-10-10**
 ([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_lfp_L2b_2026c.md)): the pre-registered share sat at its
 floor (uninformative); the NREM before the first post-round REM is theta-richer across the window, partly with head
-movement, not a late REM label (#70, Candidate; **paused by the user**, confounds in §10.1). Next: the REM ramp
-check (§10), then a targeted L2(a); L2(c) on hold.
+movement, not a late REM label (#70, Candidate; **paused by the user**, confounds in §10.1). **Ramp check DONE
+2026-10-11** ([nsw](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_ramp_nsw_2026c.md),
+[plain](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_ramp_2026c.md)): REM held back for ~20 min after a
+long wake, then a catch-up (#71, Candidate); no ramp-down (#72); naps start like main sleep (#73). Next: a targeted
+L2(a); L2(c) on hold.
 
 **Revision 1 (2026-10-10, before any result; the user):**
 - "sw slope 就可以 … delta 不过是 up-down state": depth is the scorer's raw slow-wave slope, already computed. No new

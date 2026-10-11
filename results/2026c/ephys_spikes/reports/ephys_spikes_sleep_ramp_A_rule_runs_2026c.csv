@@ -1,0 +1,2 @@
+cls,outcome,bins,direction,animals,passes,bins_min
+post-round,WAKE,"0,1",+,final 6/6; pass2med 6/6,True,0-10 + 10-20

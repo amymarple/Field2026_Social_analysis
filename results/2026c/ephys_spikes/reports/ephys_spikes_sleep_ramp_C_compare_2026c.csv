@@ -1,0 +1,13 @@
+scores,subset,comparison,metric,delta_pct,ci_lo_pct,ci_hi_pct,animals_better,animals,n_steps,holds
+final,natural (nap + main + day),B+episode clock vs B,total,-0.07100817410460543,-0.20356693497652617,0.13385668917838348,4,6,23782,False
+final,natural (nap + main + day),B+episode clock vs B,rem,-0.38330486596944785,-1.0611692993973352,0.5501912144757501,4,6,23782,False
+final,natural (nap + main + day),B+episode clock vs B,wake,0.014825379413040803,-0.057633977759749946,0.11882852988789841,2,6,23782,False
+final,natural + post-round,B+episode clock vs B,total,0.026775814455511977,-0.11393212665097359,0.1549648611263898,3,6,107704,False
+final,natural + post-round,B+episode clock vs B,rem,-0.060610673767493746,-0.2428995395602706,0.17344956387115862,5,6,107704,False
+final,natural + post-round,B+episode clock vs B,wake,0.0754854153852233,-0.11000009960157822,0.29201133486999703,1,6,107704,False
+pass2med,natural (nap + main + day),B+episode clock vs B,total,-0.11189981974813731,-0.2973962392988494,0.20973336604152765,4,6,24715,False
+pass2med,natural (nap + main + day),B+episode clock vs B,rem,-0.49443397873569056,-1.16117911294569,0.8626828329092197,3,6,24715,False
+pass2med,natural (nap + main + day),B+episode clock vs B,wake,0.02506927928835831,-0.1037244800138563,0.13752314884452133,3,6,24715,False
+pass2med,natural + post-round,B+episode clock vs B,total,-0.012185764741331465,-0.11439485251394267,0.08603078366147339,4,6,108662,False
+pass2med,natural + post-round,B+episode clock vs B,rem,-0.16535313513429406,-0.26637776939714386,-0.058594824829558446,4,6,108662,False
+pass2med,natural + post-round,B+episode clock vs B,wake,0.08034062986293404,-0.0752889999272282,0.2523159896301466,2,6,108662,False
