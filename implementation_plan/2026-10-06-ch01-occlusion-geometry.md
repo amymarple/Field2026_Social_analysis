@@ -3,7 +3,9 @@
 Date: 2026-10-06. Status: **DONE 2026-10-06, v2** (approved "行上吧" 2026-10-06; v2 run
 `$OUT/2026c/cv_field_ch01_occlusion_20261006_1555` (v1 `…_1445` superseded), report
 `results/2026c/cv_field/reports/cv_field_ch01_occlusion_2026c.md`; amendment 1 before results, 2 after results (descriptive),
-3 after results = v2; per-episode classes sealed). Pre-registered before any result;
+3 after results = v2; per-episode classes sealed). **Geometry vs user verdicts done 2026-10-10** for the 30 judged
+episodes; the 28 unjudged stay sealed. Occluded vs not: κ 0.63 with ambiguous excluded (n 12), bracketed 0.15–0.28 with
+ambiguous counted either way; occluder kind agrees in 8 of 9. Pre-registered before any result;
 amendments dated and marked *before* or *after results*. Data locations: `cv/cv_field/DATA_MAP_c1yolo_wiser.md`.
 
 ## Why

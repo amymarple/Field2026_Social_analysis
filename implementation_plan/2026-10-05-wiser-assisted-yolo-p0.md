@@ -2,7 +2,10 @@
 
 Date: 2026-10-05. Status: **DONE 2026-10-05** (approved "可以试试" 2026-10-05; run
 `$OUT/2026c/cv_field_wiser_assist_p0_20261005_2211`, report
-`results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`; amendment 1 before results, 2–3 after results). The
+`results/2026c/cv_field/reports/cv_field_wiser_assist_p0_2026c.md`; amendment 1 before results, 2–3 after results;
+**part B unsealed 2026-10-10** after the user's verdicts (both spots "object"; at spot 1, 0 of 31 on-minutes had an animal
+within 14 in; at spot 2, 1 of 18; tabulated as written, no added criterion; review export
+`cv/configs/c1yolo_review_2026c/…_20261007_1402.json`). The
 user agreed to having this written as a plan ("可以"). Pre-registered before any result; amendments dated and marked
 *before* or *after results*.
 Every data location involved is listed in [`cv/cv_field/DATA_MAP_c1yolo_wiser.md`](../cv/cv_field/DATA_MAP_c1yolo_wiser.md).

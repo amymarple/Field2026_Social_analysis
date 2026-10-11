@@ -63,6 +63,21 @@ no overlap): **4 clips in the +x hotspot cell, 8 elsewhere**; 807 s, 16 140 fram
 12, no unmatched PTS or packet errors; WISER pixels by Newton on `to_paddock` (round trip ≤ 0.98 in; 14-in circle through
 the local Jacobian); 17.3 min. The agent did not look at any frame; WISER circles are proposals, never boxes.
 
+## Addendum 2026-10-10 — part B unsealed after the user's verdicts; label-loop p
+
+The user's review GUI export: `cv/configs/c1yolo_review_2026c/cv-configs-c1yolo_review_2026c__review_anon_20261007_1402.json`
+(2026-10-07 14:02, sha256 `f6ad3fb9…`; committed with this addendum).
+- Fixed spots: both **object** (notes "Bluetooth_atenna", "grass"); the `fn_notes` text is empty.
+- `wiser_spots.csv`, opened only now, tabulated as the plan wrote it by the new `cv/cv_field/c1yolo_review_compare.py`
+  (`--selftest`; run `D:/Field2026_analysis_out/2026c/cv_field_c1yolo_review_compare_20261010_2213/`):
+  - spot 1: 31 minutes on, of which 0 had a tagged animal within 14 in, 0 within 30 in, 0 a still one; ρ undefined;
+  - spot 2: 18 minutes on, of which 1 within 14 in, 1 within 30 in, 0 still; ρ 0.10 (p 0.47).
+- Post hoc: this does not contradict "object"; it is consistent, not confirming.
+- Label-loop rule (plan `2026-10-06-wiser-label-loop.md` B4): p = 18 visible_missed / 30 judged = **0.60** → round 2
+  keeps **60** visible-suspected-miss frames per camera; round 1 was selected before the export and is unaffected.
+- $p=n_{\text{visible\_missed}}/(n_{\text{judged}}-n_{\text{unsure}})$ = the share of judged suspected misses the user
+  called real detector misses.
+
 ## Amendments
 
 1. *Before results* — implementation clarifications (frame per second, WISER interpolation ≤ 5-s gaps, mapping per

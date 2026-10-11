@@ -99,9 +99,41 @@ Descriptive diagnostics (amendment 3, after results; nothing is decided on them)
 
 Figures (made by the driver; the agent did not look at them): [`coarse_grid.png`](../figures/wiser_assist_p0/coarse_grid.png), [`lag_profile.png`](../figures/wiser_assist_p0/lag_profile.png), [`test_distances.png`](../figures/wiser_assist_p0/test_distances.png).
 
-## B. WISER presence at the fixed spots — sealed
+## B. WISER presence at the fixed spots — sealed until the user's verdicts; unsealed 2026-10-10 (below)
 
 **Sealed until the user's verdicts in `fixed_spots_review.csv` are in.** The table was written only to the run folder (`wiser_spots.csv`); no B number appears in this report, the run log, the run's other files or the agent's messages. Method (plan B): each spot's median pano centre (from `fixed_spots/fixed_spots.csv`) is mapped to paddock inches with `to_paddock` at the time of the spot's middle frame (z = 60 mm), then into the WISER frame by the inverse of the accepted map. Per minute of the hour: the spot is *on* if it has a box (conf ≥ 0.25) in ≥ 50 % of the minute's frames (the step-2 per-minute occupancy); per second, the distance from the spot to the nearest located tagged animal (all six, in or out of the houses) at second + L; the minute's distance is the median of those seconds; the minute's nearest animal is the most frequent per-second nearest one, with its share of `imu_state = still` seconds. Per spot: minutes on and off, of each those with the animal within 14 in and within 30 in, and with a *still* animal within 14 in (minute distance ≤ 14 in and still share ≥ 50 %); Spearman ρ between per-minute occupancy and the within-14-in indicator. A spot outside CH01's calibrated support gets NaN. **WISER can only add presence:** a minute with no tagged animal near a spot is not evidence that no rat is there (dropout, a failed tag, an untagged animal). The agreement table (user verdict vs WISER) is a separate later step, run only after the user's verdicts.
+
+### B, unsealed after the user's verdicts (2026-10-10)
+
+The user's verdicts came from the review GUI (`cv_field_c1yolo_review_gui_20261006_1614`): export
+`cv/configs/c1yolo_review_2026c/cv-configs-c1yolo_review_2026c__review_anon_20261007_1402.json`, exported 2026-10-07 14:02,
+sha256 `f6ad3fb9…`. **Both spots: object.** The user's notes: spot 1 "Bluetooth_atenna", spot 2 "grass". The
+"where are the consistent misses?" note (`fn_notes`) is empty. `wiser_spots.csv` was opened only after this export. The
+table below is computed by `cv/cv_field/c1yolo_review_compare.py --run` (run
+`D:/Field2026_analysis_out/2026c/cv_field_c1yolo_review_compare_20261010_2213/`), reporting the plan's quantities as
+written:
+
+| spot | user verdict | pano centre (px) | paddock (in) | minutes on | on: animal ≤ 14 in | on: ≤ 30 in | on: still animal ≤ 14 in | minutes off | off: ≤ 14 in | off: ≤ 30 in | off: still ≤ 14 in | Spearman ρ (p) |
+|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | object | 6481, 1149 | 397.8, 143.8 | 31 | 0 | 0 | 0 | 29 | 0 | 1 | 0 | n/a: no minute had an animal within 14 in |
+| 2 | object | 3287, 628 | 190.6, 192.5 | 18 | 1 | 1 | 0 | 42 | 0 | 3 | 0 | 0.10 (0.47) |
+
+The plan fixed no agreement criterion for this table, and none is added here.
+
+*Post hoc (interpretation, not pre-registered):* the WISER presence does not contradict the user's "object" verdicts.
+- At spot 1, no tagged animal came within 14 or 30 in during any of the 31 minutes with a box.
+- At spot 2, a tagged animal was within 14 in during 1 of 18 such minutes, never a still one, and box occupancy did not track animal presence (ρ 0.10).
+- This is consistent, not confirming: WISER cannot show the absence of an untagged animal or a WISER dropout.
+
+### Label-loop rule from the same review (plan `2026-10-06-wiser-label-loop.md`, B4)
+
+$$ p = \frac{n_{\text{visible\_missed}}}{n_{\text{judged}} - n_{\text{unsure}}} $$
+**Text:** the share of judged suspected-miss episodes that the user called a real detector miss. The judged episodes are
+the saved Step-2 verdicts; unsure answers and unsaved drafts are excluded. Range [0, 1].
+
+Result: 18 visible_missed / 30 judged (no unsure; 7 unsaved drafts excluded) → **p = 0.60**. The rule maps p ≥ 0.5 to
+**60 visible-suspected-miss frames per camera for round 2**, which is unchanged, so none moves to the WISER strata.
+Round 1 was selected before this export and is unaffected.
 
 ## C. Suspected YOLO misses (for the user's labelling; not a metric, never boxes)
 

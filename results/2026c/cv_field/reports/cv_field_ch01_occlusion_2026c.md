@@ -2,7 +2,7 @@
 
 Driver `cv/cv_field/ch01_occlusion.py`; plan `implementation_plan/2026-10-06-ch01-occlusion-geometry.md` (pre-registered, approved 2026-10-06 "行上吧"; amendment 1 before results; amendment 2 after results, descriptive; **amendment 3 after results = v2**: house_1 at its fitted cohort pose, CH01-labelled poles hide by CH01's own edge planes, the 7-in perturbations clamped to the paddock); run `D:/Field2026_analysis_out/2026c/cv_field_ch01_occlusion_20261006_1555`; v1 run `D:/Field2026_analysis_out/2026c/cv_field_ch01_occlusion_20261006_1445` (superseded, `SUPERSEDED.txt`); generated 2026-10-06 15:59; code `97bf06f20c061c806a7ee652c802625e584b97a9+dirty`; calibration `D:/Documents/GitHub/Field_2026_Social_Recording/calibration_qc` at recording-repo commit `20e6c9bf768a6f793248da712145f8d307d344f1` (the calibration files are byte-identical to phase 0's and v1's: True). Hour: CH01 2026-09-06 21:00–22:00, the phase-0 suspected misses. The agent did not look at any frame or figure. Geometry says *hidden*; it never makes a label — a hidden animal gets no box and a *clear* suspected miss is still only a proposal.
 
-**Blinding.** The user is filling `review_template.csv` of the phase-0 review clips. Per-episode and per-second classes are sealed in the run folder (`episodes.csv`, `seconds.csv.gz`); this report shows only pooled numbers over all episodes and the visibility mask. The phase-0 `wiser_spots.csv` stays unopened.
+**Blinding (2026-10-10 update):** the 30 episodes the user has judged are now compared with the geometry (section "Geometry vs the user's verdicts"); the 28 unjudged stay sealed. **Original note:** the user is filling `review_template.csv` of the phase-0 review clips. Per-episode and per-second classes are sealed in the run folder (`episodes.csv`, `seconds.csv.gz`); this report shows only pooled numbers over all episodes and the visibility mask. The phase-0 `wiser_spots.csv` stays unopened.
 
 ## Pooled result (v2)
 
@@ -45,6 +45,78 @@ Seconds by occluder (non-clear seconds):
 | pole_C1 | 0 | 0 | 0 | 0 | 38 |
 
 Visibility mask (v2): 18976 2-in cells in CH01's support; a rat is hidden (h ≥ 0.8) in 8.2 % and partly hidden in 4.2 %. Hidden share by object: house_1 2.6 %, house_2 2.3 %, pole_B2 1.8 %, pole_B1 0.8 %, pole_B3 0.7 %, pole_B4 0.0 %. Figure [`visibility_mask.png`](../figures/ch01_occlusion/visibility_mask.png); pooled classes [`class_shares.png`](../figures/ch01_occlusion/class_shares.png); array `visibility_mask.npz` in the run folder.
+
+## Geometry vs the user's verdicts (unsealed for the judged episodes, 2026-10-10)
+
+The plan's separate step: geometry class vs the user's clip verdicts. Verdicts come from the review GUI export
+`cv/configs/c1yolo_review_2026c/cv-configs-c1yolo_review_2026c__review_anon_20261007_1402.json` (2026-10-07 14:02, sha256
+`f6ad3fb9…`), saved verdicts only, joined on `episode_id`. The GUI's per-episode item `ep204` covers episode 204, which
+sat in two old clips. It was saved once (occluded, house) and maps to the single geometry row of episode 204.
+- **30 of 58 episodes judged:** visible_missed 18, occluded 9 (house 5, pole 3, other 1), box_present 3; no unsure,
+  no not_there_wiser_wrong.
+- 7 unsaved drafts excluded.
+- **The 28 unjudged episodes stay sealed**, because the user may continue reviewing.
+
+Computed by `cv/cv_field/c1yolo_review_compare.py --run` (run `D:/Field2026_analysis_out/2026c/cv_field_c1yolo_review_compare_20261010_2213/`,
+`occlusion_vs_user.csv` holds only the 30 judged rows). The mapping was fixed in that script before tabulating:
+- User side: occluded vs not (visible_missed + box_present).
+- Geometry side: hidden or partly = occluded, clear = not.
+- *Ambiguous* is excluded from the primary κ, with two bracketing variants.
+- Occluder kinds: house_1 / house_2 → house, pole_* → pole.
+
+**Confusion table (episodes; v2 classes):**
+
+| user verdict \ geometry | hidden | partly | clear | ambiguous | total |
+|---|---:|---:|---:|---:|---:|
+| visible_missed | 0 | 0 | 8 | 10 | 18 |
+| occluded | 0 | 1 | 1 | 7 | 9 |
+| box_present | 0 | 0 | 2 | 1 | 3 |
+| total | 0 | 1 | 11 | 18 | 30 |
+
+**Occluded vs not:**
+
+| variant | n | both occluded | user occ., geometry not | user not, geometry occ. | both not | agreement | Cohen's κ |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **primary: ambiguous excluded** | 12 | 1 | 1 | 0 | 10 | 91.7 % | **0.63** |
+| ambiguous counted as occluded | 30 | 8 | 1 | 11 | 10 | 60.0 % | 0.28 |
+| ambiguous counted as not occluded | 30 | 1 | 8 | 0 | 21 | 73.3 % | 0.15 |
+
+The primary κ rests on 12 episodes, only 2 of which the user called occluded, so it is fragile. 18 of the 30 judged
+episodes are geometrically ambiguous.
+
+$$ p_o=\frac{1}{n}\sum_i\mathbb 1[u_i=g_i],\qquad p_e=\sum_{c\in\{\text{occ},\text{not}\}}\hat P(u=c)\,\hat P(g=c),\qquad \kappa=\frac{p_o-p_e}{1-p_e} $$
+**Text:** $u_i$ = the user's call on episode $i$ (occluded or not) and $g_i$ = the geometry's call. Agreement $p_o$ is the
+share of episodes where the two agree. Cohen's κ is that agreement corrected for the agreement expected by chance from
+the two marginal rates. κ = 1 means perfect agreement, 0 means chance, and κ < 0 means worse than chance.
+
+**Occluder kind** (the 9 user-occluded episodes): user house 5 → geometry house 5; user pole 3 → geometry pole 3;
+user other 1 → geometry none (clear). The same kind holds in **8 of 9**. Geometry classes within those: the 5 house
+episodes are all ambiguous; of the 3 pole episodes, 1 is partly and 2 are ambiguous; the one "other" is clear. Its note
+reads "water tower", an object the geometry does not model.
+
+The user's notes on judged episodes:
+- ep206 (occluded, pole): "beginning was occluded(0-1) but further in it is missing"
+- ep24 (occluded, house): "the rats was go back and forth box actually was not that bad"
+- ep203 (occluded, house): "paritallyvisible"
+- ep251 (occluded, pole): "but paritally visible"
+- ep276 (occluded, other): "water tower"
+- ep297 (box_present): "and not_there_wiser"
+
+Grass is not modelled (the user named grass as an occluder in the review discussion). None of the 9 saved occluded
+verdicts chose grass; the user's "grass" note is on fixed spot 2, which the user judged an object.
+
+*Post hoc (descriptive, not pre-registered):* the geometry's *occluder* agrees with the user (8 of 9), but its
+pre-registered robustness rule rarely calls *hidden*. The rule requires h ≥ 0.8 at the nominal position and at all 8
+positions 7 in away, so 7 of the 9 user-occluded episodes land in *ambiguous*. At the nominal WISER position alone the
+episode-mean hidden share separates the verdicts:
+
+| verdict | median hidden share | mean hidden share |
+|---|---:|---:|
+| occluded | 0.97 | 0.77 |
+| visible_missed | 0.00 | 0.09 |
+| box_present | 0.00 | 0.33 |
+
+Any re-scoring with the nominal share would be a new, separately pre-registered criterion. Not done here.
 
 ## house_1 cohort pose (v2 fix 1)
 

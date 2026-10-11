@@ -34,6 +34,30 @@ house_1 6, B4 4, C1 4, B1 3, B0 2). Mask v2: a rat is hidden in 8.2 % of CH01's 
 (check); house_1 7.6 px CH01 / 3.8 px CH02 (fit residuals — the labels are now the fit data); label-plane poles 0.3–3.7 px
 (fit residuals); nothing flagged. The v1 capsules of the same poles were 3–58 px off (reference rows).
 
+## Addendum 2026-10-10 — geometry (v2) vs the user's clip verdicts
+
+Export `cv/configs/c1yolo_review_2026c/cv-configs-c1yolo_review_2026c__review_anon_20261007_1402.json`: 30 of 58 episodes
+judged (visible_missed 18, occluded 9 — house 5, pole 3, other 1 "water tower" —, box_present 3); 7 unsaved drafts
+excluded; the GUI item `ep204` was saved once and maps to geometry episode 204. `cv/cv_field/c1yolo_review_compare.py`
+(mapping fixed before tabulating: geometry hidden/partly = occluded, clear = not, ambiguous excluded from the primary κ
+with two bracketing variants; run `D:/Field2026_analysis_out/2026c/cv_field_c1yolo_review_compare_20261010_2213/`):
+
+| user \ geometry | hidden | partly | clear | ambiguous |
+|---|---:|---:|---:|---:|
+| visible_missed | 0 | 0 | 8 | 10 |
+| occluded | 0 | 1 | 1 | 7 |
+| box_present | 0 | 0 | 2 | 1 |
+
+- Occluded vs not: agreement 91.7 %, **κ 0.63** on the 12 non-ambiguous episodes (only 2 user-occluded, so fragile).
+  With ambiguous counted as occluded: 60.0 %, κ 0.28. With ambiguous counted as not: 73.3 %, κ 0.15.
+- Occluder kind among the 9 user-occluded episodes: house 5/5 and pole 3/3 agree; "other" (the water tower) is clear in
+  the geometry. Overall 8 of 9.
+- Grass, which the user mentioned, is not modelled; no saved verdict chose grass.
+- Post hoc only: the pre-registered robustness rule (± 7 in) pushes 7 of the 9 user-occluded episodes to *ambiguous*.
+  The nominal hidden share separates them: median 0.97 for occluded vs 0.00 for visible_missed and box_present.
+- The 28 unjudged episodes stay sealed.
+- $\kappa=(p_o-p_e)/(1-p_e)$ with $p_o$ = observed agreement and $p_e$ = chance agreement from the marginal rates.
+
 ## Why
 
 The user watched the phase-0 review clips: part of the suspected YOLO misses are animals hidden by a house or a pole.
