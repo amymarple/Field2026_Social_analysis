@@ -279,6 +279,12 @@ animals) plus H hours after it. Block-demeaned verified rate by hour:
 - **Without the post-round sleep,** delta is highest at night and lowest in the late afternoon, like the SWR rate.
 - **The afternoon decline survives every mask.**
 - Figures and CSVs: `…delta_rate_day_and_hour_mask{1,3}h_2026c.png`, `…delta_rate_by_hour_mask{1,3}h_2026c.csv`.
+- **Masked SWR vs masked delta.** SWRdetection re-ran its hour profile with the same mask (commit f0b7c47;
+  `swr_temperature` run folder `hour_profile_post_round_mask.csv`). The SWR profile is unchanged apart from 07–08 h
+  (Spearman 0.92 vs unmasked).
+  - Masked delta vs masked SWR (21 hours): Spearman 0.84, Pearson 0.85. No mask 0.65 / 0.72; + 1 h 0.73 / 0.74.
+  - Same shape (high at night, lowest in the late afternoon), different size: delta about ±5, SWR about ±18 events
+    per NREM min.
 
 ## Open (for the user)
 
