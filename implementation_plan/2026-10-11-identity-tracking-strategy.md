@@ -154,6 +154,27 @@ from a visible moment, and an honest "unresolved". Accepted changes (coordinator
   reshuffled. Needs the in-box detector (~100 labels) and the clicks; decides whether the arrangement layer exists
   before any re-ID is built.
 
+## 10. Text review by the Codex session "Yolo_identity" (2026-10-11, read-only, ≤ 500 characters per point)
+
+Thread `01a12853-ba1a-7c93-ab0a-82792f818e2d` (queued with the user's agreement; reply verbatim in its rollout).
+1. **Agrees with the architecture but not with WISER roster / count as a HARD constraint** — SF11 untagged, dropouts and
+   missed door events need tolerance; keep an unknown-identity slot and group nodes; re-anchor across lid segments; an ILP
+   optimum is not a trustworthy posterior. **Conflict with the Fable audit** (which proposed the roster count as a hard
+   count). Coordinator's resolution, for the user to confirm: hard only for "one animal, one place per frame"; the roster
+   enters as a strong soft term with an explicit "untagged / unknown" slot (always open after 09-07 06:10 for SF11);
+   posteriors from calibration, not from the ILP optimum.
+2. 150 single + 60 pile frames are fine for a pilot if they span independent episodes, before / after lid openings and
+   empty houses; `head` needs a keypoint head (not a box class); the pile class does not output a count — label the
+   count separately and allow "unknown"; define the single-vs-pile overlap rule so nothing is counted twice; a SAM box
+   that merges two rats is never a single-rat box; 20-frame test with manual fixes first.
+3. **First experiment = flash-to-flash propagation**, with: initialise at the first flash; **seal the end flash's
+   identities** (never inside the global solve); add **blind labels between flashes** to catch "swap then swap back";
+   stratify by reshuffle, entries / exits, lid openings; with / without IMU; a failure on a small sample only rejects the
+   current scheme.
+4. Further risks: DINO learning position / background; selection bias of flash and still samples; double-counting
+   correlated evidence; small short-term displacement ≠ long-term identity; CH07 results do not transfer to CH08; the
+   literature's 77 % is not this project's ceiling; correct flash endpoints ≠ correct throughout.
+
 ## 8. Questions for the SOTA audit
 
 1. Is tracklet-level evidence fusion (WISER + head IMU + IR re-ID + continuity) the right architecture against current
