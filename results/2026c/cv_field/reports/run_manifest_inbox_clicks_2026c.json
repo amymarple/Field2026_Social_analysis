@@ -1,0 +1,17 @@
+{
+  "run_dir": "D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2042",
+  "cohort": "2026c",
+  "direction": "cv_field",
+  "analysis": "inbox_clicks",
+  "driver": "cv/cv_field/inbox_click_analysis.py",
+  "report": "cv_field_inbox_clicks_2026c.md",
+  "plan": "implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md",
+  "git_commit": "53c13c12a6ffc181770df7f24179e8fae4df20a7+dirty",
+  "clicks": "cv/configs/inbox_identity_2026c/browser_snapshot_20261010T2017.json",
+  "clicks_sha256": "b37a94cb00ae732a75c811adab42e24b27daae3cdf410744ac3e569fc5f51b51",
+  "clicks_kind": "browser snapshot (not a formal export)",
+  "p0_run": "D:/Field2026_analysis_out/2026c/cv_field_inbox_p0_20261010_1702",
+  "verdict_order_test": "NOT ACCEPTED",
+  "verdict_order_test_tie": "ACCEPTED",
+  "preliminary": true
+}

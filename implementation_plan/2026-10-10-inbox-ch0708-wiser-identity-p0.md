@@ -1,6 +1,6 @@
 # In-box cameras CH07 / CH08, phase 0: colour segments, WISER box events, WISER in-house arrangement, identity click page
 
-Date: 2026-10-10. Status: **DONE (phase 0), 2026-10-10** — amendments 1–6 at the end; the clicks step waits for the user. Approved by the user 2026-10-10 ("其余都可以": the four phase-0 items proposed in
+Date: 2026-10-10. Status: **DONE (phase 0), 2026-10-10** — amendments 1–11 at the end; the clicks step ran 2026-10-11 on a browser snapshot (PRELIMINARY, status at the end). Approved by the user 2026-10-10 ("其余都可以": the four phase-0 items proposed in
 the session; the colour CH07/CH08 footage is on this PC; per-rat close-ups in `D:/Field2026_analysis_out/2026c/inhand_closeups/SF07.MOV` (amendment 5)
 … `SF12.MOV`; identity marks on the Notion cohort page). Pre-registered before any result; amendments dated and marked
 *before* or *after results*. Builds on the operator's own field design — `../Field_2026_Social_Recording/
@@ -201,3 +201,31 @@ offers a one-click undo; guarded by a stored flag `sf09_sf10_fix`; exported. The
 
 **Status (2026-10-10): phase 0 DONE** — A, B, C run; report `results/2026c/cv_field/reports/cv_field_inbox_p0_2026c.md`;
 change log `change_log/2026-10-10-inbox-ch0708-p0.md`. The pre-registered use of the user's clicks waits for the clicks.
+
+**Amendment 11 (2026-10-11, the click step; written before any fit, order or assignment result was computed — only the
+click table had been listed) — how the pre-registered use of the clicks is run.** Input: the browser snapshot
+`cv/configs/inbox_identity_2026c/browser_snapshot_20261010T2017.json` (the page's localStorage, not a formal export; 141
+clicks in 11 of 22 segments, all CH07 / house_2; no legacy click). *Blind record* = clicks with `before_reveal` true,
+`legacy` not true and a `verdict_first`, read from `verdict_first`; clicks added after the reveal and clicks of a segment not
+yet revealed are reported but used by none of the fit, the order test or the assignment. Each click → the lid-segment
+reference pixel by its `B_frame_to_ref`; display coordinates (p, q) = (u_ref, −v_ref) (image right, image up). WISER = the
+page's minute means (default-track mean of the in-house fixes over [ON − 60 s, ON)); raw-fix means and a window centred on
+the colour frame, [mid − 30 s, mid + 30 s), are sensitivities. **Fit:** least-squares 2-D similarity (p, q) → (along,
+across) in inches, both handednesses (proper = no mirror of the displayed image; improper = mirrored), on the blind
+colour-frame clicks of named animals that have a WISER mean; leave-one-flash-out (LOFO) residuals in inches and px; the
+handedness with the lower LOFO RMS is used downstream, the other is reported. The fitted rotation is converted to the
+page's orientation convention and compared with the user's display orientation (house_2: 180°, no mirror). **Order test:**
+a flash is eligible if ≥ 3 animals have both a blind named colour click and a WISER mean; the first 5 eligible flashes in
+time order; WISER order = by along-ridge mean; click order = by the along coordinate of the clicks mapped by the fit that
+leaves that flash out; exact match = identical permutation; ACCEPTED if ≥ 4 of 5. Tie version: pairs with
+|Δalong_WISER| < 8 in are not tested; the flash matches if every tested pair is concordant. Reported with it: Kendall τ per
+flash, all eligible flashes, a fixed-rotation map at the user's orientation (scale and offset fitted LOFO), and a reading in
+which a flash with ≥ 3 clicked animals but no WISER mean counts as a non-match. **Assignment (beyond the test):** per flash,
+Hungarian assignment on the Euclidean distance (in) between the LOFO-mapped clicks and the WISER means of the roster animals
+with a mean; accuracy per click against the user's colour IDs, by the clicked animal's WISER separation (distance to the
+nearest other roster animal's mean); chance = 1 / (number of candidates). **Colour → IR stability:** per animal clicked on
+the colour frame and on an IR frame of the same segment, the head displacement in px (and in inches at the fitted scale),
+with the time between the two frames and the head-IMU state over it (`imu_seconds_cache`). Driver
+`cv/cv_field/inbox_click_analysis.py`; report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md`.
+
+**Status (2026-10-11, after results): the click step, PRELIMINARY** — run on the browser snapshot `cv/configs/inbox_identity_2026c/browser_snapshot_20261010T2017.json` (not a formal export; 10 revealed segments, 8 in the fit). Fit: proper handedness, 79.3 px/in, page-equivalent rotation 178° vs the user's 180° (Δ −1.8°), LOFO RMS 5.96 in / 470 px. **Pre-registered order test: NOT ACCEPTED** (exact order 0 of the first 5 flashes, 0 of 8); tie version (pairs < 8 in not tested) 4 of 5; Kendall τ median +0.40. The arrangement layer is therefore not accepted; WISER separations stay trusted only above 15 in per fix / 8 in for 1-min means. Report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md`, change log `change_log/2026-10-11-inbox-clicks.md`. Re-run on the user's export when it exists.

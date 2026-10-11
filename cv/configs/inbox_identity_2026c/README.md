@@ -71,7 +71,9 @@ label: per click `animal_before_sf09_sf10_fix` and `relabelled_sf09_sf10: true` 
 `sf09_sf10_fix_undone_at`. The flag is stored, so the swap never runs twice; clicks made after the fix are untouched. A JSON
 export made before the fix gets the same one-time swap when it is imported.
 
-## What uses it (later, pre-registered, not run yet)
+## What uses it (pre-registered; first run 2026-10-11 on a browser snapshot)
+
+`cv/cv_field/inbox_click_analysis.py --clicks <this folder's newest export>` (plan amendment 11; report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md`). `browser_snapshot_20261010T2017.json` is a copy of the page's localStorage taken 2026-10-10 20:17 (not an export made with the page's Export button): same click / segment schema, no `exported_at`; the first, PRELIMINARY run used it.
 
 Per house: the image ↔ house-frame mapping (2-D similarity of the clicked heads, corrected to the lid-segment reference
 frame, vs the WISER minute means of the same animals) and the WISER bias, with leave-one-flash-out residuals. The
