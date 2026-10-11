@@ -863,7 +863,8 @@ def per_night(a) -> Path:
             if c == 0:
                 ax.set_ylabel(lab, fontsize=8)
             if r == 0:
-                ax.set_title(an + (f"\n{NOTES[an]}" if an in NOTES else ""), fontsize=7.5)
+                import textwrap
+                ax.set_title(an + (("\n" + "\n".join(textwrap.wrap(NOTES[an], 38))) if an in NOTES else ""), fontsize=7)
                 if c == 0:
                     ax.legend(fontsize=7, loc="upper left")
             ax.set_ylim(bottom=0)
