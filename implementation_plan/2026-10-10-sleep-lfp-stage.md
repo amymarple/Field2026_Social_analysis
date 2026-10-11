@@ -360,3 +360,19 @@ exclude a whole-episode time course.
   predicted hazard and REM share by $u$, per class, with episodes at risk.
 - Bulk `$OUT_ROOT/2026c/sleep_ramp_<ts>/`.
 
+
+### 10.7 Amendment 1 (2026-10-10, post hoc: after the first run, before the amended results)
+
+The first run (pre-registered rule) is kept and reported. Its result: no ramp residual (A) in any class; (C) does not
+hold; the nap REM-share shape is outside the simulator's band (B). Two problems found before reading it:
+- **The pre-registered consistency check failed.** Main onsets matched night_sleep_wiser's MSO on only 10 of 45 nights.
+  The plan meant to use night_sleep_wiser's naps / main sleep, but my rule needs one unbroken WAKE bout ≥ 30 min.
+  night_sleep_wiser merges wake runs across sleep interruptions < 120 s and ends the night window at sunrise + 2 h.
+  → `--episode-rule nsw` takes the long wakes from `night_sleep_wiser.long_wakes` and the window to sunrise + 2 h.
+- **Nap vs main uses the future.** Whether an episode is a nap depends on whether a later long wake follows, and naps
+  end in one by definition. Per-class WAKE O/E and end-proximal REM are therefore selection-affected.
+  → Both rules add the pooled class **natural** (nap + main + day), which uses no future information. The rules of §10.4
+  apply to it as to the other classes.
+
+Reading: a claim needs both rules to agree; the nsw run is the one aligned with the repo's definitions. (C) needs no
+change: the episode clock is causal and was already fitted on the pooled natural subset.
