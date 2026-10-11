@@ -11,19 +11,25 @@ statement below is the user's.
 1. **Never compare raw pixel positions across days or nights.** Every camera moved — by up to ~30 px a day on CH01/CH02,
    ~90 px over the first days on CH03, and up to 17 px within one night on CH02.
 2. **Go through the correction table**, with the detection's field-PC time (`frame_correction.py`, §6):
-   - `Corrections("2026c").to_paddock(cam, t, uv)` gives paddock inches for CH01–CH04 and CH06;
+   - `Corrections("2026c").to_paddock(cam, t, uv)` gives paddock inches for CH01–CH06 (CH05 through the recording
+     repo's cohort tie, `calibration_qc/cohort_tie.py`, since 2026-10-10; `info["model"]` says so);
    - `to_09_18(cam, t, uv)` gives reference-frame pixels for every camera.
    Always read `info["flag"]`.
-3. **The table covers nights only for CH01–CH06** (hourly 21:00 → 04:20, 14 nights). At a daytime time it silently
+3. **The table covers nights only for CH01–CH04** (hourly 21:00 → 04:20, 14 nights). At a daytime time it silently
    returns the nearest night sample. At 09-04 12:00 that is 30 px off on CH02. For a daytime frame run
    `landmark_track.py --times HH:MM --start D --end D --tag …`, which tracks that frame directly from the 09-18 reference
-   and writes the affine to `track_frames.csv`. The in-box CH07/CH08 are covered all day.
+   and writes the affine to `track_frames.csv`. The in-box CH07/CH08 are covered all day. **CH05/CH06 are covered all
+   day since 2026-10-10** (nights hourly from the 09-04 03:01 labels, 05:00 → 20:00 hourly + 10 min around every lid
+   event from the 09-04 12:00:02 labels, tag `ch0506_ref0904day_hourly`); they register on the roof, which is the lid,
+   so their lookup never interpolates across a lid event (outside the samples' segment it returns None).
 4. **house_1 (roof number 4, by pole B1) was moved on 09-18**, the calibration day; house_2 (roof 7, by B3) never moved.
    Anything placing house_1 from 09-18 imagery or from the calibration (`field_layout.json` shelter "left", the
    calibration's house fit) is its post-move position and is wrong for the cohort (08-30 → 09-12).
 5. **Poles, houses and the food box hide rats.** Their image regions in any frame come from the user's labels mapped
    through the correction (§5). CH05/CH06 hang from the crossbeam on top of pole B1/B3, so that pole moves with the
-   camera and is never a reference for them.
+   camera and is never a reference for them (the recording repo's house tie uses it only differentially: CH01/CH02 see
+   no lean change of B1/B3 between 09-04 and 09-18, so its image in CH05/CH06 moves only by the camera's turn on its
+   mount).
 
 ## 2. Cameras
 
@@ -36,8 +42,8 @@ frame is in inches: origin pole A0, x along the 40-ft side (0–480), y across (
 | CH02 | Duo 3 panorama, mid-field, (249, 160) in, 2.34 m | 7680 × 2160 | yes | nights → 09-18 | ≤ 3 px (13 / 14) |
 | CH03 | RLC-1212A, ~11 in from B1, (112, 128) in, 2.24 m, looks to x = 0 | 4512 × 2512 | yes | nights → 09-18 (via the 09-04 03:01 labels) | ~5–10 px (1–2 cm) |
 | CH04 | RLC-1212A, ~9 in from B3, (369, 123) in, 2.29 m, looks to x = 480 | 4512 × 2512 | yes | nights → 09-18 (via the 09-04 03:01 labels) | ~5–10 px |
-| CH05 | RLC-520A on the crossbeam of pole B1, over house_1, centre (139, 125, 91) in | 2560 × 1920 | yes | nights → the **09-04 03:01** frame (not tied to 09-18 yet) | held-out ~0.5 px |
-| CH06 | RLC-520A on the crossbeam of pole B3, over house_2, centre (346, 130, 91) in | 2560 × 1920 | yes | nights → 09-18 | ~1.8 px |
+| CH05 | RLC-520A on the crossbeam of pole B1, over house_1, centre (139, 125, 91) in | 2560 × 1920 | yes | all day, per lid segment → the **09-04 03:01** (night) / **09-04 12:00** (day) frame, each tied to the calibration by the recording repo's house tie (CH05 turned 2.2° since, ~9 cm on the ground; validated on CH06 at 5–7 mm median) | held-out ~0.5 px; night ↔ day through the two ties 5 mm median |
+| CH06 | RLC-520A on the crossbeam of pole B3, over house_2, centre (346, 130, 91) in | 2560 × 1920 | yes | all day, per lid segment → 09-18 | ~1.5–1.8 px; night ↔ day 3–6 mm |
 | CH07 | inside house_2 (in the lid) | 2560 × 1920 | no | all day, per lid-closed segment → the **09-04 12:00** frame | in-segment spread ~3 px |
 | CH08 | inside house_1 (in the lid) | 2560 × 1920 | no | all day, per lid-closed segment → the **09-04 12:00** frame | ~1 px |
 
