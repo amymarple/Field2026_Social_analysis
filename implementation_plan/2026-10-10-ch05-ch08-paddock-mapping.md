@@ -1,6 +1,6 @@
 # CH05-CH08 into the paddock frame (cohort 2026c)
 
-**Status: IN PROGRESS** (2026-10-10; the recording repo's calibration session, at the user's request: "现在我们来做05 06 07 08
+**Status: DONE** (2026-10-11; started 2026-10-10; the recording repo's calibration session, at the user's request: "现在我们来做05 06 07 08
 对画面的映射 … 按照我们之前的purpose 我们需要05 06 07 08 到最终2D paddock的映射我们之前做了CH01-04").
 
 ## Why

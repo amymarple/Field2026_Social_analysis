@@ -31,8 +31,9 @@ by its dusk date): the six parameters of A interpolated linearly between the two
 the same, but over the samples of t's lid-closed segment (never across a lid event) that share the nearest sample's
 reference frame (CH05 has two: 09-04 03:01 at night, 09-04 12:00 by day). CH07/CH08: the segment's median.
 Corrections.to_paddock(cam, t, uv, z_mm=60) -> paddock (x, y) through the release calibration (paddock_map.load()[cam]
-.to_paddock; for CH05 the cohort-tied camera of its reference frame), z = the assumed height of the point above the
-local ground (60 mm ~ a rat's back, per the calibration README).
+.to_paddock; for CH05 the cohort-tied camera of its reference frame; for the in-box CH07 / CH08 the recording repo's
+house-floor model of their 09-04 12:00 reference frame, 2026-10-11), z = the assumed height of the point above the
+local ground (60 mm ~ a rat's back, per the calibration README) - for CH07 / CH08 above the house floor (the bedding).
 Pixels are full-resolution UPRIGHT pixels (CH01/CH02: the 7680 x 2160 frame rotated upright, as grab_frames.py returns).
 Precision (user decisions 2026-10-02): CH01/CH02 <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px (~1-2 cm).
 The calibration's own error (76 mm median cross-camera, exploratory) is not reduced by this.
@@ -357,7 +358,7 @@ class Corrections:
 
     def camera_model(self, cam: str, target_frame: str):
         """the calibrated camera for a reference frame: the release camera for 09-18 targets, the recording repo's cohort
-        tie for a tied 09-04 frame (CH05), None otherwise (the in-box CH07/CH08 until their floor model exists)"""
+        tie for a tied 09-04 frame (CH05; the in-box CH07 / CH08 floor models), None otherwise"""
         if self._cams is None:
             import landmark_guides
             sys.path.insert(0, str(landmark_guides.calib_dir()))
@@ -375,8 +376,8 @@ class Corrections:
 
     def to_paddock(self, cam: str, t: datetime, uv, z_mm: float = 60.0, units: str = "in") -> tuple[np.ndarray | None, dict]:
         """Detection pixel(s) at field-PC time t -> paddock (x, y) via the reference-frame pixel and the release calibration:
-        CH01-CH04 and CH06 through their 09-18 frame, CH05 through the cohort tie of its 09-04 reference frame. The in-box
-        CH07/CH08 map to a user-labelled 09-04 frame with no paddock model yet -> None (use to_09_18 for those pixels)."""
+        CH01-CH04 and CH06 through their 09-18 frame, CH05 through the cohort tie of its 09-04 reference frame, CH07 / CH08
+        through the house-floor model of their 09-04 12:00 frame (z_mm above the floor; NaN outside the floor)."""
         p18, info = self.to_09_18(cam, t, uv)
         if p18 is None:
             return None, info

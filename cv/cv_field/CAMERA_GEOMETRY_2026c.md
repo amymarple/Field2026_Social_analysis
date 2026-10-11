@@ -11,8 +11,9 @@ statement below is the user's.
 1. **Never compare raw pixel positions across days or nights.** Every camera moved — by up to ~30 px a day on CH01/CH02,
    ~90 px over the first days on CH03, and up to 17 px within one night on CH02.
 2. **Go through the correction table**, with the detection's field-PC time (`frame_correction.py`, §6):
-   - `Corrections("2026c").to_paddock(cam, t, uv)` gives paddock inches for CH01–CH06 (CH05 through the recording
-     repo's cohort tie, `calibration_qc/cohort_tie.py`, since 2026-10-10; `info["model"]` says so);
+   - `Corrections("2026c").to_paddock(cam, t, uv)` gives paddock inches for CH01–CH08 (CH05 through the recording
+     repo's cohort tie, `calibration_qc/cohort_tie.py`, since 2026-10-10; the in-box CH07/CH08 through its house-floor
+     model, `calibration_qc/inbox_floor_fit.py`, since 2026-10-11, z above the house floor; `info["model"]` says so);
    - `to_09_18(cam, t, uv)` gives reference-frame pixels for every camera.
    Always read `info["flag"]`.
 3. **The table covers nights only for CH01–CH04** (hourly 21:00 → 04:20, 14 nights). At a daytime time it silently
@@ -44,8 +45,8 @@ frame is in inches: origin pole A0, x along the 40-ft side (0–480), y across (
 | CH04 | RLC-1212A, ~9 in from B3, (369, 123) in, 2.29 m, looks to x = 480 | 4512 × 2512 | yes | nights → 09-18 (via the 09-04 03:01 labels) | ~5–10 px |
 | CH05 | RLC-520A on the crossbeam of pole B1, over house_1, centre (139, 125, 91) in | 2560 × 1920 | yes | all day, per lid segment → the **09-04 03:01** (night) / **09-04 12:00** (day) frame, each tied to the calibration by the recording repo's house tie (CH05 turned 2.2° since, ~9 cm on the ground; validated on CH06 at 5–7 mm median) | held-out ~0.5 px; night ↔ day through the two ties 5 mm median |
 | CH06 | RLC-520A on the crossbeam of pole B3, over house_2, centre (346, 130, 91) in | 2560 × 1920 | yes | all day, per lid segment → 09-18 | ~1.5–1.8 px; night ↔ day 3–6 mm |
-| CH07 | inside house_2 (in the lid) | 2560 × 1920 | no | all day, per lid-closed segment → the **09-04 12:00** frame | in-segment spread ~3 px |
-| CH08 | inside house_1 (in the lid) | 2560 × 1920 | no | all day, per lid-closed segment → the **09-04 12:00** frame | ~1 px |
+| CH07 | inside house_2 (in the lid), 683 mm above the floor, 12° tilt | 2560 × 1920 | floor model 2026-10-11 (recording repo `inbox_floor_fit.py`) | all day, per lid-closed segment → the **09-04 12:00** frame | in-segment spread ~3 px |
+| CH08 | inside house_1 (in the lid), 679 mm above the floor, 12° tilt | 2560 × 1920 | floor model 2026-10-11 | all day, per lid-closed segment → the **09-04 12:00** frame | ~1 px |
 
 - **IR versus colour.** All cohort footage is IR, even by day. CH07/CH08 have deliberate colour inserts (recording repo
   `COLOUR_SAMPLING_LOG_cohort3.md`). On CH03/CH04 an IR ↔ colour switch alone shifts the image 10–18 px (calibration
@@ -78,7 +79,8 @@ frame is in inches: origin pole A0, x along the 40-ft side (0–480), y across (
   - While a lid is open the camera points elsewhere; those frames carry flag `lid`.
   - **Image orientation (user, 2026-10-10, visual check with the identity page's top-view control):** the CH07
     (house_2) image is the paddock map **rotated 180°, not mirrored** — image right points toward the x = 0 wall, image
-    up toward the y = 0 (row A) side. CH08 (house_1): not yet stated. A prior / check only; the pre-registered
+    up toward the y = 0 (row A) side. CH08 (house_1): the same (user, 2026-10-10 "also"; confirmed 2026-10-11 by WISER:
+    on 09-04 12:00 the video's pile of three at one end and lone rat at the other match SF07 / SF08 / SF12 vs SF10). A prior / check only; the pre-registered
     camera ↔ WISER mapping is still fitted from the blind clicks. Stored in `cv/configs/inbox_camera_orientation_2026c.json`.
 
 ## 4. house_1 moved on 09-18; house_2 never moved

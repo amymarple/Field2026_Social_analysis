@@ -39,9 +39,27 @@ the user's request (map CH05-CH08 into the 2-D paddock like CH01-CH04).
 A daytime CH05 / CH06 query now uses daytime samples of its own lid segment. Before, it silently returned the nearest
 night sample. Times inside a lid event carry flag `lid`.
 
-## Open
+## CH07 / CH08 (2026-10-11)
 
-CH07 / CH08: the floor model (recording repo `calibration_qc/inbox_floor_fit.py`) waits for the user's floor labels.
-The labels go on empty-house night frames of 09-03/04, chosen with this repo's `box_occupancy_1s.csv.gz`
-(page `F:\calibration\qc\inbox_floor\inbox_floor_night_0903.html`). Then `to_paddock` for CH07 / CH08 through their
-09-04 12:00 reference frame.
+- **Floor model**: recording repo `calibration_qc/inbox_floor_fit.py`, commit 0220388, report
+  `F:\calibration\qc\inbox_floor\INBOX_FLOOR_FIT.txt`.
+  - Labels: the user's floor corners and floor / wall edges on empty-house night frames of 09-03/04 (chosen with this
+    repo's `box_occupancy_1s.csv.gz`, every frame checked by eye), plus the user's 03:01 INNER_EDGES as wall joints.
+    Both are mapped to the 09-04 12:00 reference frame through this table.
+  - Model inputs: floor 60.0 x 43.2 cm (body minus 1/2-inch walls, user); lens fixed to the CH05 / CH06 RLC-520A
+    mean (a free lens is not identifiable on one plane).
+  - Fit: click residuals 1-3 mm median; leaving any one item out moves the map <= 10 mm (CH07) / 3 mm (CH08);
+    lens free vs fixed 11 / 6 mm median at head height.
+  - Cameras 683 / 679 mm above the floor, 11-12 deg tilt. 79.6 px / in at head height, vs the identity fit's
+    79.3 px / in (WISER <-> clicks, independent).
+- **Orientation check against WISER (09-04 12:00)**:
+  - CH08: the pile of three at along -7 in and the lone rat at +8 in, vs SF07 / SF08 / SF12 at -12 .. -16 and SF10
+    at +13.
+  - CH07: rats at along 0 / +9 in, vs WISER +5 / +12.
+  - Both images are therefore the paddock rotated 180 deg, not mirrored.
+- **`Corrections.to_paddock`**: maps CH07 / CH08 through it with no code change (cohort tie entries); z is above the
+  house floor, NaN outside the floor.
+- **Not covered**:
+  - The house poses' ridge angle (~2 deg, ~1 cm at the box ends).
+  - The 1/2-inch wall assumption (+-6 mm at the walls).
+  - The in-box segment corrections' own spread (~1-3 px, ~1 mm).
