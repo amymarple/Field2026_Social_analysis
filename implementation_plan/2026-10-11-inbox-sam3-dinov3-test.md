@@ -216,3 +216,32 @@ grouping** (`group_alt`) is added:
   per-frame caches, and no frame was recomputed.
 - **Interpreter:** scipy's L-BFGS-B crashes natively in the cv env (Windows 0xc06d007f), so the score / review / report
   phases ran in base Python, keeping the lbfgs solver.
+
+## Amendment 4 — 2026-10-11: exploratory prompt sweep, after results (user request)
+
+**Exploratory, after results (user request).** The user asked: "就试十个frame不同prompt比如 黑色条纹老鼠 Long Evans rat 找frame里面有老鼠的比如白天" ("just try ten frames with different prompts, e.g. black-striped rat, Long Evans rat; pick frames that have rats in them, e.g. daytime").
+
+- **Status:** descriptive only. No gate, no choice, no claim beyond these frames, and it changes no T1–T3 result.
+- **Frames.** The rule was fixed before running.
+  - Eligible = a usable segment with an IR frame (`ir_p06` / `ir_p15`) at 07:00–19:00 that holds ≥ 3 blind heads.
+  - Per day (09-10, 09-11): keep one segment per `group_alt` still episode (the middle one in time). Then take 5 segments
+    at evenly spaced positions (`round(linspace(0, n − 1, 5))`), giving 10 segments.
+  - The IR frame is `ir_p06` if eligible, else `ir_p15`. The colour mid-frames of the same 10 segments form a separate
+    descriptive block, never pooled with IR.
+- **Prompts** (image features once per frame or tile, then each prompt): "rat", "Long Evans rat", "hooded rat",
+  "black striped rat", "rat with a black stripe on its back", "black and white rat", "rat with a black head and a white
+  body", "rat with an implant on its head", "sleeping rats", "pile of rats".
+  - The first three are read from the T1 cache (the same model, settings and frames). The other seven are new, with the
+    T1 settings: score floor 0.01, imgsz 1008, NMS 0.7.
+  - One determinism check: "rat" is re-run on one whole frame and compared with the cache.
+- **Variants:** whole frame, and the T1 2 × 2 tiled variant with the same cross-tile merge.
+- **Metrics** per prompt × variant × domain, pooled over the 10 frames, using the T1 matching rules:
+  - head-point exclusivity X;
+  - heads missed (no kept mask within 15 px);
+  - merged masks (≥ 2 heads), empty masks (no head);
+  - masks vs heads.
+- **Thresholds:** reported at τ = 0.01 (the T1 dev-chosen τ) and at the fixed τ = 0.25.
+- **Page for the user:** `<run>/prompt_sweep/index.html`.
+  - Per frame, one panel per prompt × variant: mask outlines in distinct colours, the prompt shown, the blind head
+    clicks as small dots, and a τ switch (0.01 / 0.25).
+  - Headless load check. The agent never judges the images; the numbers are counts against the clicks.

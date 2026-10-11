@@ -119,3 +119,29 @@ The other configurations are descriptive:
 - T3 rests on one house, one labeller, 20 groups and one held-out day.
 - The logistic C chosen by inner CV varies 0.01–100 across folds.
 - The low end of the T1 τ grid was set after an API probe (disclosure note in the plan).
+
+## Addendum 2026-10-11 — exploratory prompt sweep (plan amendment 4; user request, after results)
+
+**Exploratory and descriptive only:** no gate, no choice, no claim beyond these frames, and no change to T1–T3.
+
+- **Code:** `inbox_sam3_dino_test.py` gained the phases `sweep_gpu` (cv env) and `sweep` (base Python).
+- **Frames:** 10 daytime IR frames (`ir_p06`, ≥ 3 blind heads), 5 per day on 09-10 and 09-11, one per still episode (rule
+  fixed before running), plus their 10 colour mid-frames as a separate block:
+  - 09-10: 07:14, 12:27, 14:02, 14:32, 17:59;
+  - 09-11: 09:28, 09:54, 14:17, 14:50, 18:28.
+- **Prompts:** 10 (3 reused from the T1 cache, 7 new). Whole frame and 2 × 2 tiles; T1 matching against the blind
+  clicks at τ = 0.01 and 0.25.
+- **Determinism:** re-running "rat" on one frame reproduced all 100 cached masks pixel-identically.
+- **IR, whole frame, τ = 0.01** (49 heads):
+  - "black striped rat" and "black and white rat" give X 88 %;
+  - "rat" 78 %; "rat with a black head and a white body" 73 %;
+  - but these come with 482–1 433 masks for 49 heads, mostly empty;
+  - "Long Evans rat" 8 %, "hooded rat" 24 %, "sleeping rats" 6 %.
+- **IR, τ = 0.25:** every prompt misses ≥ 46 of 49 heads, except "pile of rats" (9 missed, 14 merged masks).
+- **Colour** gives the same picture (separate tables in the report).
+- **Page for the user:** `D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320/prompt_sweep/index.html`.
+  It has mask outlines per prompt, click dots and a τ switch; the headless check passed (20 sections, 420 / 420 images at
+  both τ).
+- **Tables:** `prompt_sweep/sweep_summary.csv` and `sweep_frame_metrics.csv`; the report has a section "Exploratory prompt
+  sweep".
+- **The agent did not look at the panels.**

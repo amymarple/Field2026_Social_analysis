@@ -36,6 +36,7 @@ because scipy's L-BFGS-B (sklearn's lbfgs) crashes natively in the cv env:
   python cv/cv_field/inbox_sam3_dino_test.py --selftest                 # synthetic, no GPU, no field data
   <cv env python> cv/cv_field/inbox_sam3_dino_test.py --phases data t1gpu t2gpu dino          # new run folder
   python cv/cv_field/inbox_sam3_dino_test.py --run <dir> --phases score review report        # scores from the caches
+  <cv env python> ... --run <dir> --phases sweep_gpu ; python ... --run <dir> --phases sweep report   # amendment 4 (exploratory)
 Output: $FIELD2026_ANALYSIS_OUT_ROOT/2026c/cv_field_inbox_sam3_dino_<ts>/ + results/2026c/cv_field/reports/
         cv_field_inbox_sam3_dino_2026c.md + pointer run_manifest_inbox_sam3_dino_2026c.json.
 """
@@ -512,11 +513,12 @@ def cross_tile_neighbours(M: dict, idx: np.ndarray) -> dict:
     return nb
 
 
-def t1_frame_sweep(M: dict, heads_uv: np.ndarray, tiled: bool, taus=TAUS) -> list[dict]:
-    """All prompts x taus for one frame's cached masks -> count rows (+ per-head detail at every tau)."""
+def t1_frame_sweep(M: dict, heads_uv: np.ndarray, tiled: bool, taus=TAUS, pkeys=None) -> list[dict]:
+    """All prompts x taus for one frame's cached masks -> count rows (+ per-head detail at every tau). pkeys: prompt names in
+    the order of M['prompt'] indices (default the T1 prompts P1..P4)."""
     rows = []
     bb, sc, ar, pr = M["bbox"], M["score"], M["area"], M["prompt"]
-    for pi, pk in enumerate(PKEYS):
+    for pi, pk in enumerate(pkeys or PKEYS):
         idx = np.flatnonzero(pr == pi)
         D = dist_matrix(heads_uv, [M["crops"][k] for k in idx], bb[idx]) if len(idx) else np.zeros((len(heads_uv), 0))
         Dfull = {k: D[:, n] for n, k in enumerate(idx)}
@@ -543,8 +545,9 @@ def t1_frame_sweep(M: dict, heads_uv: np.ndarray, tiled: bool, taus=TAUS) -> lis
                 s_u, a_u, c_u, units, n_members = sc[keep], ar[keep], [cents[k] for k in keep], keep, [1] * len(keep)
             r = match_units(Du, np.asarray(s_u, float), np.asarray(a_u, float), c_u, heads_uv)
             rows.append({"prompt": pk, "tau": tau, "n_heads": r["n_heads"], "n_masks": r["n_masks"], "tp": r["tp"], "merged": r["merged"],
-                         "empty": r["empty"], "excl": r["excl"], "n_cross_tile_merges": int(sum(n_members) - len(n_members)),
-                         "_match": r, "_units": units, "_ncov": r["ncov"]})
+                         "empty": r["empty"], "excl": r["excl"], "missed": int((r["choice"] < 0).sum()),
+                         "n_cross_tile_merges": int(sum(n_members) - len(n_members)),
+                         "_match": r, "_units": units, "_ncov": r["ncov"], "_clusters": cl if tiled else [[k] for k in keep]})
     return rows
 
 
@@ -786,13 +789,14 @@ def build_interactive():
     return p
 
 
-def semantic_image(pred, img: np.ndarray) -> list[dict]:
-    """One image (frame or tile): features once, the four prompts on them -> mask records with prompt index and score."""
+def semantic_image(pred, img: np.ndarray, prompts: list | None = None) -> list[dict]:
+    """One image (frame or tile): features once, the prompts on them -> mask records with prompt index and score.
+    prompts: [(index, text)], default the T1 prompts P1..P4."""
     pred.set_image(img)
     assert list(pred.imgsz) == [1008, 1008], pred.imgsz
     out = []
-    for pi, pk in enumerate(PKEYS):
-        masks, boxes = pred.inference_features(pred.features, src_shape=img.shape[:2], text=[PROMPTS[pk]])
+    for pi, text in (prompts or [(i, PROMPTS[k]) for i, k in enumerate(PKEYS)]):
+        masks, boxes = pred.inference_features(pred.features, src_shape=img.shape[:2], text=[text])
         if masks is None or boxes.shape[0] == 0:
             continue
         sc = boxes[:, 4].float().cpu().numpy()
@@ -1632,6 +1636,290 @@ def phase_review(run: Path, frames: pd.DataFrame, heads: pd.DataFrame, check: bo
     return res
 
 
+# ============================================================================================ exploratory prompt sweep (amendment 4)
+SWEEP_PROMPTS = ["rat", "Long Evans rat", "hooded rat", "black striped rat", "rat with a black stripe on its back",
+                 "black and white rat", "rat with a black head and a white body", "rat with an implant on its head",
+                 "sleeping rats", "pile of rats"]
+SWEEP_FROM_T1 = {0: 0, 1: 1, 2: 3}        # sweep prompt index -> T1 cache prompt index (P1 rat, P2 Long Evans rat, P4 hooded rat)
+SWEEP_TAUS = (0.01, 0.25)                 # the T1 dev-chosen tau, and a fixed 0.25
+SWEEP_DAYS = ("2026-09-10", "2026-09-11")
+SWEEP_PER_DAY = 5
+SWEEP_COLOURS = [(255, 70, 70), (40, 200, 255), (60, 220, 60), (255, 80, 255), (0, 150, 255), (255, 255, 0), (40, 40, 255),
+                 (190, 130, 255), (130, 255, 190), (255, 190, 60), (210, 210, 210), (0, 110, 210)]     # BGR, cycled per mask
+SWEEP_PANEL_W, SWEEP_PANEL_H = 512, 384
+
+
+def select_sweep_frames(frames: pd.DataFrame, groups: pd.DataFrame) -> pd.DataFrame:
+    """Amendment 4: eligible = a usable segment with an IR frame at 07:00-19:00 holding >= 3 blind heads; per day one segment
+    per group_alt (the middle one in time), then SWEEP_PER_DAY at round(linspace(0, n - 1, k)); IR frame = ir_p06 if eligible
+    else ir_p15; the colour mid-frame of the same segment is the separate colour block."""
+    gm = groups.set_index("segment_id")
+    f = frames.copy()
+    f["t"] = pd.to_datetime(f.frame_time)
+    ir = f[(f.domain == "ir") & (f.n_heads >= 3) & (f.t.dt.hour >= 7) & (f.t.dt.hour < 19)]
+    rows = []
+    for day in SWEEP_DAYS:
+        segs = sorted(set(ir[ir.t.dt.strftime("%Y-%m-%d") == day].segment_id), key=lambda x: str(gm.at[x, "start"]))
+        by: dict = {}
+        for sid in segs:
+            by.setdefault(gm.at[sid, "group_alt"], []).append(sid)
+        reps = sorted((v[(len(v) - 1) // 2] for v in by.values()), key=lambda x: str(gm.at[x, "start"]))
+        idx = (np.round(np.linspace(0, len(reps) - 1, SWEEP_PER_DAY)).astype(int) if len(reps) > SWEEP_PER_DAY
+               else np.arange(len(reps)))
+        for i in idx:
+            sid = reps[int(i)]
+            irf = ir[ir.segment_id == sid].sort_values("frame_kind").iloc[0]
+            col = f[(f.segment_id == sid) & (f.domain == "colour")]
+            rows.append({"day": day, "segment_id": sid, "group": gm.at[sid, "group"], "group_alt": gm.at[sid, "group_alt"],
+                         "split": gm.at[sid, "split"], "ir_frame": irf.frame_id, "ir_time": str(irf.frame_time), "ir_heads": int(irf.n_heads),
+                         "colour_frame": col.frame_id.iloc[0] if len(col) else None,
+                         "colour_heads": int(col.n_heads.iloc[0]) if len(col) else 0})
+    return pd.DataFrame(rows)
+
+
+def sweep_masks(run: Path, fid: str, variant: str) -> dict:
+    """The T1 cache (reused prompts, remapped to sweep indices) + the sweep cache (new prompts) of one frame and variant."""
+    A = load_masks(run / "sam3_t1" / variant / f"{fid}.npz")
+    B = load_masks(run / "prompt_sweep" / "sam3" / variant / f"{fid}.npz")
+    inv = {t1: sw for sw, t1 in SWEEP_FROM_T1.items()}
+    ka = np.flatnonzero(np.isin(A["prompt"], list(inv)))
+    return {"bbox": np.concatenate([A["bbox"][ka], B["bbox"]]).astype(np.int64), "area": np.concatenate([A["area"][ka], B["area"]]),
+            "score": np.concatenate([A["score"][ka], B["score"]]).astype(np.float32),
+            "tile": np.concatenate([A["tile"][ka], B["tile"]]).astype(int),
+            "prompt": np.concatenate([np.array([inv[int(x)] for x in A["prompt"][ka]], int), B["prompt"].astype(int)]),
+            "crops": [A["crops"][k] for k in ka] + list(B["crops"])}
+
+
+def phase_sweep_gpu(run: Path, frames: pd.DataFrame, groups: pd.DataFrame) -> dict:
+    import cv2
+    import torch
+    sd = run / "prompt_sweep"
+    sd.mkdir(parents=True, exist_ok=True)
+    sel = select_sweep_frames(frames, groups)
+    sel.to_csv(sd / "sweep_frames.csv", index=False)
+    pred = build_semantic()
+    new = [(i, t) for i, t in enumerate(SWEEP_PROMPTS) if i not in SWEEP_FROM_T1]
+    tiles = [(x, y) for y in TILE_Y for x in TILE_X]
+    fpath = frames.set_index("frame_id").path
+    fids = list(sel.ir_frame) + [x for x in sel.colour_frame if isinstance(x, str)]
+    for n, fid in enumerate(fids):
+        pw, pt = sd / "sam3" / "whole" / f"{fid}.npz", sd / "sam3" / "tiled" / f"{fid}.npz"
+        if pw.exists() and pt.exists():
+            continue
+        img = cv2.imread(fpath[fid], cv2.IMREAD_COLOR)
+        t0 = time.perf_counter()
+        if not pw.exists():
+            recs = semantic_image(pred, img, new)
+            save_masks(pw, recs, {"prompt": np.array([r["prompt"] for r in recs], np.int8),
+                                  "score": np.array([r["score"] for r in recs], np.float32), "tile": np.full(len(recs), -1, np.int8)})
+        if not pt.exists():
+            recs = []
+            for ti, (ox, oy) in enumerate(tiles):
+                for r in semantic_image(pred, np.ascontiguousarray(img[oy:oy + TILE_H, ox:ox + TILE_W]), new):
+                    x0, y0, x1, y1 = r["bbox"]
+                    r["bbox"] = (x0 + ox, y0 + oy, x1 + ox, y1 + oy) if r["area"] else (0, 0, 0, 0)
+                    r["tile"] = ti
+                    recs.append(r)
+            save_masks(pt, recs, {"prompt": np.array([r["prompt"] for r in recs], np.int8),
+                                  "score": np.array([r["score"] for r in recs], np.float32),
+                                  "tile": np.array([r["tile"] for r in recs], np.int8)})
+        print(f"  sweep {n + 1}/{len(fids)} {fid}: {time.perf_counter() - t0:.1f} s", flush=True)
+    # determinism check: "rat" re-run on the first IR frame (whole) vs the T1 cache
+    fid = fids[0]
+    img = cv2.imread(fpath[fid], cv2.IMREAD_COLOR)
+    recs = sorted(semantic_image(pred, img, [(0, "rat")]), key=lambda r: -r["score"])
+    C = load_masks(run / "sam3_t1" / "whole" / f"{fid}.npz")
+    ck = sorted(np.flatnonzero(C["prompt"] == 0), key=lambda k: -C["score"][k])
+    same_n = len(recs) == len(ck)
+    det = {"frame_id": fid, "n_rerun": len(recs), "n_cache": len(ck), "same_n": same_n}
+    if same_n and ck:
+        det["max_abs_score_diff"] = float(max(abs(r["score"] - float(C["score"][k])) for r, k in zip(recs, ck)))
+        det["n_masks_pixel_identical"] = int(sum(tuple(r["bbox"]) == tuple(int(b) for b in C["bbox"][k]) and np.array_equal(r["crop"], C["crops"][k])
+                                                 for r, k in zip(recs, ck)))
+    info = {"new_prompts": [t for _, t in new], "reused_from_t1": {SWEEP_PROMPTS[k]: PKEYS[v] for k, v in SWEEP_FROM_T1.items()},
+            "n_frames": len(fids), "determinism_rat_whole": det,
+            "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"}
+    write_json(sd / "gpu_info.json", info)
+    del pred
+    torch.cuda.empty_cache()
+    return info
+
+
+def _draw_panel(base: np.ndarray, M: dict, clusters: list, uv: np.ndarray, scale: float, path: Path) -> None:
+    import cv2
+    im = base.copy()
+    for ci, cl in enumerate(clusters):
+        colr = SWEEP_COLOURS[ci % len(SWEEP_COLOURS)]
+        for k in cl:
+            crop = M["crops"][k]
+            if crop.size == 0:
+                continue
+            cs, _ = cv2.findContours(crop.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            off = np.array([M["bbox"][k][0], M["bbox"][k][1]], np.float32)
+            cv2.polylines(im, [((c.astype(np.float32) + off) * scale).astype(np.int32) for c in cs], True, colr, 2, cv2.LINE_AA)
+    for u, v in uv:
+        cv2.circle(im, (int(u * scale), int(v * scale)), 5, (0, 0, 0), -1, cv2.LINE_AA)
+        cv2.circle(im, (int(u * scale), int(v * scale)), 3, (255, 255, 255), -1, cv2.LINE_AA)
+    cv2.imwrite(str(path), im, [cv2.IMWRITE_JPEG_QUALITY, 82])
+
+
+def phase_sweep(run: Path, frames: pd.DataFrame, heads: pd.DataFrame, check: bool = True) -> dict:
+    """Scores the sweep against the blind clicks (T1 matching), draws the panels and writes the page for the user."""
+    import cv2
+    sd = run / "prompt_sweep"
+    sel = pd.read_csv(sd / "sweep_frames.csv")
+    pdir = sd / "panels"
+    if pdir.exists():
+        shutil.rmtree(pdir)
+    pdir.mkdir(parents=True)
+    fpath = frames.set_index("frame_id")
+    rows, page_frames = [], []
+    blocks = [("ir", fid) for fid in sel.ir_frame] + [("colour", fid) for fid in sel.colour_frame if isinstance(fid, str)]
+    for fi, (dom, fid) in enumerate(blocks):
+        H = heads[heads.frame_id == fid].sort_values("click_id")
+        uv = H[["u", "v"]].to_numpy(float)
+        img = cv2.imread(fpath.at[fid, "path"], cv2.IMREAD_COLOR)
+        scale = SWEEP_PANEL_W / img.shape[1]
+        base = cv2.resize(img, (SWEEP_PANEL_W, SWEEP_PANEL_H), interpolation=cv2.INTER_AREA)
+        tag = f"F{fi + 1:02d}"
+        _draw_panel(base, {"crops": [], "bbox": []}, [], uv, scale, pdir / f"{tag}_clicks.jpg")
+        panels: dict = {pk: {} for pk in SWEEP_PROMPTS}
+        for var in ("whole", "tiled"):
+            M = sweep_masks(run, fid, var)
+            for r in t1_frame_sweep(M, uv, tiled=(var == "tiled"), taus=SWEEP_TAUS, pkeys=SWEEP_PROMPTS):
+                clusters = r.pop("_clusters")
+                for k in ("_match", "_units", "_ncov"):
+                    r.pop(k)
+                rows.append({"domain": dom, "frame_id": fid, "variant": var, **r})
+                pi = SWEEP_PROMPTS.index(r["prompt"])
+                name = f"{tag}_p{pi}_{var[0]}_{int(round(r['tau'] * 100)):03d}.jpg"
+                _draw_panel(base, M, clusters, uv, scale, pdir / name)
+                panels[r["prompt"]].setdefault(var, {})[f"{r['tau']:g}"] = {
+                    "img": f"panels/{name}", "masks": r["n_masks"], "excl": r["excl"], "missed": r["missed"], "merged": r["merged"],
+                    "empty": r["empty"]}
+        page_frames.append({"tag": tag, "domain": dom, "frame_id": fid, "time": str(fpath.at[fid, "frame_time"]), "heads": len(uv),
+                            "clicks": f"panels/{tag}_clicks.jpg", "rows": [{"prompt": pk, **panels[pk]} for pk in SWEEP_PROMPTS]})
+        print(f"  sweep page {fi + 1}/{len(blocks)} {fid}", flush=True)
+    df = pd.DataFrame(rows)
+    df.to_csv(sd / "sweep_frame_metrics.csv", index=False)
+    summ = []
+    for (dom, var, pk, tau), g in df.groupby(["domain", "variant", "prompt", "tau"], sort=False):
+        nh = int(g.n_heads.sum())
+        summ.append({"domain": dom, "variant": var, "prompt": pk, "prompt_no": SWEEP_PROMPTS.index(pk) + 1, "tau": tau,
+                     "n_frames": len(g), "n_heads": nh, "n_masks": int(g.n_masks.sum()), "exclusive": int(g.excl.sum()),
+                     "X": g.excl.sum() / nh if nh else np.nan, "missed": int(g.missed.sum()), "merged": int(g.merged.sum()),
+                     "empty": int(g["empty"].sum()), "masks_per_frame": g.n_masks.mean(), "heads_per_frame": g.n_heads.mean(),
+                     "count_err_mean": (g.n_masks - g.n_heads).mean()})
+    sm = pd.DataFrame(summ).sort_values(["domain", "variant", "tau", "prompt_no"], key=lambda c: c.map({"ir": 0, "colour": 1}) if c.name == "domain" else c)
+    sm.to_csv(sd / "sweep_summary.csv", index=False)
+    (sd / "index.html").write_text(sweep_page_html(page_frames, run.name), encoding="utf-8")
+    res = {"n_frames": len(blocks), "n_panels": int(len(df))}
+    if check:
+        res["page_check"] = sweep_page_check(sd, len(blocks))
+        write_json(sd / "page_check.json", res["page_check"])
+        print(f"sweep page check: {res['page_check']['verdict']}", flush=True)
+    write_json(sd / "sweep_meta.json", res)
+    return res
+
+
+SWEEP_JS = r"""
+(function(){
+const D = JSON.parse(document.getElementById('data').textContent);
+let tau = '0.25';
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function cap(p, h){ return p.masks + ' masks · ' + p.excl + '/' + h + ' heads exclusive · ' + p.missed + ' missed · ' + p.merged + ' merged · ' + p.empty + ' empty'; }
+function render(){
+  const main = document.getElementById('list'); main.innerHTML = '';
+  let lastDom = null;
+  D.frames.forEach((f, i) => {
+    if (f.domain !== lastDom) { const h = document.createElement('h2'); h.className = 'dom';
+      h.textContent = f.domain === 'ir' ? 'IR frames (target domain)' : 'Colour frames (separate block, never pooled with IR)'; main.appendChild(h); lastDom = f.domain; }
+    const sec = document.createElement('section'); sec.className = 'frame'; sec.id = f.tag;
+    let html = '<h3>' + esc(f.tag) + ' · ' + esc(f.frame_id) + ' · ' + esc(f.time) + ' · ' + f.heads + ' clicked heads</h3>'
+      + '<figure class="clk"><img loading="lazy" src="' + esc(f.clicks) + '" alt="clicks"><figcaption>the user\'s blind head clicks (dots)</figcaption></figure>';
+    f.rows.forEach(r => {
+      html += '<div class="row"><div class="pname">' + esc(r.prompt) + '</div>';
+      ['whole', 'tiled'].forEach(v => { const p = r[v][tau];
+        html += '<figure><img loading="lazy" class="pan" data-v="' + v + '" data-p="' + esc(r.prompt) + '" src="' + esc(p.img) + '" alt="' + v + '"><figcaption><b>' + v + '</b>: ' + cap(p, f.heads) + '</figcaption></figure>'; });
+      html += '</div>';
+    });
+    sec.innerHTML = html; main.appendChild(sec);
+  });
+  document.getElementById('nav').innerHTML = D.frames.map(f => '<a href="#' + f.tag + '">' + f.tag + (f.domain === 'colour' ? 'c' : '') + '</a>').join(' ');
+}
+document.querySelectorAll('input[name=tau]').forEach(i => i.addEventListener('change', e => { tau = e.target.value; render(); }));
+render();
+window.__sweep = {n: D.frames.length, setTau: t => { tau = t; render(); }, tau: () => tau};
+})();
+"""
+
+
+def sweep_page_html(page_frames: list, run_name: str) -> str:
+    import html as _html
+    data = json.dumps({"frames": page_frames}, ensure_ascii=False).replace("</", "<\\/")
+    css = PAGE_CSS + """
+.dom{margin:18px 0 4px;font-size:18px}.frame{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0}
+.frame h3{font-size:15px;margin:0 0 6px}.row{display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start;margin:6px 0}
+.pname{font-weight:600;padding-top:4px}.clk{max-width:520px}#nav a{margin-right:6px}
+@media (max-width:900px){.row{grid-template-columns:minmax(0,1fr)}}
+"""
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In-box prompt sweep</title><style>{css}</style></head><body>
+<header><h1>In-box CH07 — SAM 3 prompt sweep (exploratory, 10 IR + 10 colour frames)</h1>
+<p>One panel per text prompt: SAM 3 on the whole frame (left) and on 2 × 2 tiles (right). Each machine mask is outlined in its own
+colour; the white dots are your blind head clicks. The counts under each panel are mask ↔ click counts only (a mask "covers" a click within
+15 px); nobody has judged these images. Exploratory: no threshold or prompt was chosen from it.</p>
+<div class="bar"><span>mask score threshold:</span><label><input type="radio" name="tau" value="0.01"> 0.01 (the earlier test's dev choice)</label>
+<label><input type="radio" name="tau" value="0.25" checked> 0.25</label><span style="color:var(--muted)">run {_html.escape(run_name)}</span></div>
+<div class="bar" id="nav"></div></header>
+<main id="list"></main>
+<script id="data" type="application/json">{data}</script>
+<script>{SWEEP_JS}</script></body></html>
+"""
+
+
+def sweep_page_check(page_dir: Path, n_frames: int) -> dict:
+    """Headless Chrome (throwaway profile): every frame section and image renders at both thresholds; no network URL."""
+    import inbox_identity_page as ipage
+    txt = (page_dir / "index.html").read_text(encoding="utf-8")
+    res = {"network_urls": re.findall(r"https?://[^\s\"'<>]+", txt), "n_panel_files": len(list((page_dir / "panels").glob("*.jpg")))}
+    prof = Path(tempfile.mkdtemp(prefix="sweep_"))
+    p, wsu, bws = ipage._chrome((page_dir / "index.html").resolve().as_uri(), prof, ipage._free_port())
+    c = None
+    try:
+        c = ipage._CDP(wsu)
+        c.call("Runtime.enable")
+
+        def loaded():
+            for _ in range(480):
+                try:
+                    c.ev("document.querySelectorAll('img').forEach(i => { if (i.loading !== 'eager') { i.loading = 'eager'; const s = i.src; i.src = ''; i.src = s; } })")
+                    if c.ev("!!window.__sweep && Array.from(document.images).every(i => i.complete)"):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+                time.sleep(0.25)
+            return False
+        for t in ("0.25", "0.01"):
+            c.ev(f"window.__sweep && window.__sweep.setTau('{t}')")
+            ok = loaded()
+            res[f"tau_{t}"] = {"loaded": ok, "n_sections": c.ev("document.querySelectorAll('section.frame').length"),
+                               "n_images": c.ev("document.images.length"),
+                               "n_images_ok": c.ev("Array.from(document.images).filter(i => i.complete && i.naturalWidth > 0).length"),
+                               "src_tau_ok": c.ev(f"Array.from(document.querySelectorAll('img.pan')).every(i => i.getAttribute('src').endsWith('_{int(round(float(t) * 100)):03d}.jpg'))")}
+    finally:
+        if c:
+            c.close()
+        ipage._close_chrome(p, bws)
+        shutil.rmtree(prof, ignore_errors=True)
+    n_img = n_frames * (1 + 2 * len(SWEEP_PROMPTS))
+    res["verdict"] = "PASS" if (not res["network_urls"] and res["n_panel_files"] == n_frames * (1 + 2 * len(SWEEP_PROMPTS) * len(SWEEP_TAUS))
+                                and all(res[f"tau_{t}"]["loaded"] and res[f"tau_{t}"]["n_sections"] == n_frames
+                                        and res[f"tau_{t}"]["n_images"] == n_img and res[f"tau_{t}"]["n_images_ok"] == n_img
+                                        and res[f"tau_{t}"]["src_tau_ok"] for t in ("0.25", "0.01"))) else "FAIL"
+    return res
+
+
 # ============================================================================================ report
 def f3(x, d=3):
     return "–" if x is None or (isinstance(x, float) and not np.isfinite(x)) else f"{x:.{d}f}"
@@ -1949,6 +2237,7 @@ def write_report(run: Path) -> Path:
           f"{pc.get('n_images_ok')} / {pc.get('n_images')} images loaded; a judgment kept across a reload; export of every item; no "
           "method or score words; no network URL.",
           "- **The agent has not looked at any mask.**", ""]
+    L += sweep_report_md(run)
     L += definitions_md()
     L += ["## Limits and what is not verified", "",
           "- **No usable-box claim yet.** Head-point exclusivity is necessary, not sufficient, for one-whole-rat masks. The blind mask "
@@ -1996,6 +2285,73 @@ def write_report(run: Path) -> Path:
                                           "mask_key": f"{rel}/mask_key.csv",
                                           "review_exports": REVIEW_EXPORT_DIR.relative_to(REPO).as_posix()})
     return rp
+
+
+def sweep_report_md(run: Path) -> list[str]:
+    """Amendment 4 section (exploratory prompt sweep), only if the sweep has run."""
+    sd = run / "prompt_sweep"
+    if not (sd / "sweep_summary.csv").exists():
+        return []
+    sm = pd.read_csv(sd / "sweep_summary.csv")
+    sel = pd.read_csv(sd / "sweep_frames.csv")
+    gi = json.loads((sd / "gpu_info.json").read_text(encoding="utf-8")) if (sd / "gpu_info.json").exists() else {}
+    pc = json.loads((sd / "page_check.json").read_text(encoding="utf-8")) if (sd / "page_check.json").exists() else {}
+    det = gi.get("determinism_rat_whole", {})
+    L = ["## Exploratory prompt sweep (amendment 4; user request, after results)", "",
+         "**EXPLORATORY and descriptive only.** There is no gate, no choice and no claim beyond these 20 frames, and nothing here "
+         "changes T1–T3. The user asked to try ten frames with rats in view and more prompts (2026-10-11).", "",
+         "- **Frames** (rule fixed before running):",
+         "  - per day, one segment per `group_alt` still episode, then 5 evenly spaced daytime segments with an IR frame holding "
+         "≥ 3 blind heads;",
+         "  - the colour mid-frames of the same segments are a separate block.", "",
+         md_table(sel[["day", "segment_id", "group", "split", "ir_frame", "ir_heads", "colour_frame", "colour_heads"]]), "",
+         "- **Prompts:** \"rat\", \"Long Evans rat\" and \"hooded rat\" are read from the T1 cache. The other seven are new, "
+         "run with the T1 settings (score floor 0.01, imgsz 1008).",
+         f"- **Determinism check:** \"rat\" re-run on {det.get('frame_id', '–')} (whole) gave {det.get('n_rerun', '–')} masks vs "
+         f"{det.get('n_cache', '–')} in the cache; max score difference {det.get('max_abs_score_diff', float('nan')):.2g}; "
+         f"{det.get('n_masks_pixel_identical', '–')} masks pixel-identical.",
+         "- **Matching:** as in T1 (coverage within 15 px).", "",
+         "**Columns:**",
+         "- X = heads with their own exclusive mask;",
+         "- missed = heads with no mask within 15 px;",
+         "- merged = masks over ≥ 2 heads; empty = masks over no head;",
+         "- masks = mask count (heads given in the caption).", "",
+         "Pooled over the 10 frames per block.", ""]
+    for dom, name in (("ir", "IR"), ("colour", "Colour (separate, never pooled with IR)")):
+        for tau in SWEEP_TAUS:
+            d = sm[(sm.domain == dom) & (sm.tau == tau)]
+            if d.empty:
+                continue
+            nh = int(d.n_heads.iloc[0])
+            rows = []
+            for pk in SWEEP_PROMPTS:
+                w, t = d[(d.prompt == pk) & (d.variant == "whole")], d[(d.prompt == pk) & (d.variant == "tiled")]
+                if w.empty or t.empty:
+                    continue
+                w, t = w.iloc[0], t.iloc[0]
+                rows.append({"prompt": pk, "whole X": f"{w.exclusive} ({pct(w.X, d=0)})", "whole missed": w.missed, "whole merged": w.merged,
+                             "whole empty": int(w["empty"]), "whole masks": w.n_masks, "tiled X": f"{t.exclusive} ({pct(t.X, d=0)})",
+                             "tiled missed": t.missed, "tiled merged": t.merged, "tiled empty": int(t["empty"]), "tiled masks": t.n_masks})
+            L += [f"**{name}, τ = {tau:g}** ({nh} heads on {int(d.n_frames.iloc[0])} frames):", "", md_table(pd.DataFrame(rows)), ""]
+    ir01 = sm[(sm.domain == "ir") & (sm.tau == min(SWEEP_TAUS)) & (sm.variant == "whole")]
+    hi = ir01[ir01.X >= 0.5]
+    if len(hi):
+        L += [f"- **Descriptive reading of the counts** (no judgment of the images): at τ = {min(SWEEP_TAUS):g}, the prompts with X ≥ 50 % "
+              f"on the whole IR frames ({', '.join(chr(34) + x + chr(34) for x in hi.prompt)}) return {int(hi.n_masks.min())}–"
+              f"{int(hi.n_masks.max())} masks for {int(hi.n_heads.iloc[0])} heads ({int(hi['empty'].min())}–{int(hi['empty'].max())} "
+              "of them empty).",
+              "  - So a high X there comes with many masks per head, one of which covers each head point alone.",
+              "  - It does not show a rat detector.",
+              f"  - At τ = {max(SWEEP_TAUS):g} almost every prompt misses almost every head.",
+              "  - Whether any mask outlines a rat is for the user to see on the page."]
+    L += [f"- **Page for the user:** `{(sd / 'index.html').as_posix()}`.",
+          "  - Per frame and prompt: whole and tiled panels with mask outlines in distinct colours, the blind clicks as dots, "
+          "and a τ switch (0.01 / 0.25).",
+          f"  - Headless check: **{pc.get('verdict', 'not run')}** (`prompt_sweep/page_check.json`).",
+          "- Tables: `prompt_sweep/sweep_summary.csv` (pooled), `sweep_frame_metrics.csv` (per frame); raw masks of the new prompts "
+          "in `prompt_sweep/sam3/`.",
+          "- **The agent did not look at the panels.**", ""]
+    return L
 
 
 def definitions_md() -> list[str]:
@@ -2192,6 +2548,23 @@ def selftest() -> int:
     rec("decision: clear gain -> carries + established", d1["carries_identity"] and d1["gain_15pp_established"])
     rec("decision: gain over best control < 15 pp -> no", not d2["carries_identity"])
     rec("decision: wide CI -> carries but not established", d3["carries_identity"] and not d3["gain_15pp_established"], str(d3))
+    # 9b exploratory sweep frame rule (amendment 4)
+    segs_ = [("2026-09-10", f"S{k:02d}", f"A{k:02d}", 8 + k) for k in range(12)] + \
+            [("2026-09-11", f"T{k:02d}", ("B00" if k < 3 else f"B{k:02d}"), 9 + k) for k in range(7)]
+    fr_, gr_ = [], []
+    for day, sid, ga, hh in segs_:
+        gr_.append({"segment_id": sid, "start": f"{day} {hh:02d}:00:00", "group": "G" + sid, "group_alt": ga, "split": "test"})
+        fr_.append({"frame_id": sid + "__ir_p06", "segment_id": sid, "domain": "ir", "frame_kind": "ir_p06",
+                    "frame_time": f"{day} {hh:02d}:00:30", "n_heads": 2 if sid == "S00" else 5})
+        fr_.append({"frame_id": sid + "__ir_p15", "segment_id": sid, "domain": "ir", "frame_kind": "ir_p15",
+                    "frame_time": f"{day} {hh:02d}:00:40", "n_heads": 5})
+        fr_.append({"frame_id": sid + "__colour_mid", "segment_id": sid, "domain": "colour", "frame_kind": "colour_mid",
+                    "frame_time": f"{day} {hh:02d}:00:10", "n_heads": 5})
+    ss = select_sweep_frames(pd.DataFrame(fr_), pd.DataFrame(gr_))
+    rec("sweep frames: 5 per day, one per still episode (middle), daytime only, ir_p06 unless < 3 heads",
+        list(ss.day.value_counts().sort_index()) == [5, 5] and ss.group_alt.is_unique and "T01" in set(ss.segment_id)
+        and not ({"T00", "T02"} & set(ss.segment_id)) and "S11" not in set(ss.segment_id)
+        and ss.set_index("segment_id").at["S00", "ir_frame"] == "S00__ir_p15", str(list(ss.segment_id)))
     # 10 review sampler + page
     t1c = pd.DataFrame({"frame_id": "F", "mask_index": range(30), "click_id": [f"c{k}" for k in range(30)],
                         "stratum": (["1"] * 3 + ["2-3"] * 7 + ["4+"] * 18 + ["none"] * 2)})
@@ -2262,7 +2635,8 @@ def main(argv=None) -> int:
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--run", type=Path, help="existing run folder (resume / re-score)")
     ap.add_argument("--phases", nargs="+", default=["data", "t1gpu", "t2gpu", "dino", "score", "review", "report"],
-                    choices=["data", "t1gpu", "t2gpu", "dino", "score", "review", "report"])
+                    choices=["data", "t1gpu", "t2gpu", "dino", "score", "review", "sweep_gpu", "sweep", "report"],
+                    help="sweep_gpu / sweep = the exploratory prompt sweep of amendment 4 (run on request, after t1gpu)")
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--no-page-check", action="store_true")
     a = ap.parse_args(argv)
@@ -2334,6 +2708,14 @@ def main(argv=None) -> int:
         t0 = time.perf_counter()
         meta["review"] = {k: v for k, v in phase_review(run, frames, heads, check=not a.no_page_check).items() if k != "page_check"}
         done("review", t0)
+    if "sweep_gpu" in a.phases:
+        t0 = time.perf_counter()
+        meta["sweep_gpu"] = phase_sweep_gpu(run, frames, groups)
+        done("sweep_gpu", t0)
+    if "sweep" in a.phases:
+        t0 = time.perf_counter()
+        meta["sweep"] = {k: v for k, v in phase_sweep(run, frames, heads, check=not a.no_page_check).items() if k != "page_check"}
+        done("sweep", t0)
     if "report" in a.phases:
         rp = write_report(run)
         print(f"report: {rp}")

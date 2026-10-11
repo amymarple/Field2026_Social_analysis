@@ -1,6 +1,6 @@
 # In-box CH07: SAM 3 text-prompt detection, SAM 3 point-prompt masks and a frozen DINOv3 identity probe (2026c)
 
-Driver `cv/cv_field/inbox_sam3_dino_test.py`; plan `implementation_plan/2026-10-11-inbox-sam3-dinov3-test.md` (approved by the user 2026-10-11). Amendment 1 = the Codex review *Yolo_identity*; amendment 2 = implementation details; amendment 3 = a grouping sensitivity. All three were written before any T1–T3 result. Run `D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320` (made 2026-10-10T23:20:42, commit `8696b7a773a9296091b433ba88ed11d350d7ca22+dirty`). Truth = the user's **blind** head clicks. The agent never judged an image.
+Driver `cv/cv_field/inbox_sam3_dino_test.py`; plan `implementation_plan/2026-10-11-inbox-sam3-dinov3-test.md` (approved by the user 2026-10-11). Amendment 1 = the Codex review *Yolo_identity*; amendment 2 = implementation details; amendment 3 = a grouping sensitivity. All three were written before any T1–T3 result. Run `D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320` (made 2026-10-10T23:20:42, commit `dbe25a959f9cae2ca88f27d11fb66d0b91495a88+dirty`). Truth = the user's **blind** head clicks. The agent never judged an image.
 
 **Scope of the T1 / T2 claims.** A head click proves only that a mask covers that head point. Until the user has scored the blind mask review (below), every T1 / T2 number here is **head-point exclusivity**: one mask per head point, no mask spanning two head points, no mask on no head point. None of them is a claim that SAM 3 gives one-whole-rat masks or usable single-rat boxes.
 
@@ -248,6 +248,110 @@ Further tables in the run folder:
 - **Key:** item → method, prompt, τ, score, frame and head in `mask_key.csv` in the run folder; not linked from the page.
 - **Headless check: PASS** (`mask_review_page_check.json`). It covered: 40 cards; 80 / 80 images loaded; a judgment kept across a reload; export of every item; no method or score words; no network URL.
 - **The agent has not looked at any mask.**
+
+## Exploratory prompt sweep (amendment 4; user request, after results)
+
+**EXPLORATORY and descriptive only.** There is no gate, no choice and no claim beyond these 20 frames, and nothing here changes T1–T3. The user asked to try ten frames with rats in view and more prompts (2026-10-11).
+
+- **Frames** (rule fixed before running):
+  - per day, one segment per `group_alt` still episode, then 5 evenly spaced daytime segments with an IR frame holding ≥ 3 blind heads;
+  - the colour mid-frames of the same segments are a separate block.
+
+| day | segment_id | group | split | ir_frame | ir_heads | colour_frame | colour_heads |
+|---|---|---|---|---|---|---|---|
+| 2026-09-10 | CH07_20260910_071415 | G02 | dev | CH07_20260910_071415__ir_p06 | 5 | CH07_20260910_071415__colour_mid | 5 |
+| 2026-09-10 | CH07_20260910_122703 | G05 | dev | CH07_20260910_122703__ir_p06 | 5 | CH07_20260910_122703__colour_mid | 5 |
+| 2026-09-10 | CH07_20260910_140227 | G08 | test | CH07_20260910_140227__ir_p06 | 5 | CH07_20260910_140227__colour_mid | 5 |
+| 2026-09-10 | CH07_20260910_143243 | G10 | test | CH07_20260910_143243__ir_p06 | 5 | CH07_20260910_143243__colour_mid | 5 |
+| 2026-09-10 | CH07_20260910_175935 | G13 | test | CH07_20260910_175935__ir_p06 | 5 | CH07_20260910_175935__colour_mid | 5 |
+| 2026-09-11 | CH07_20260911_092822 | G14 | test | CH07_20260911_092822__ir_p06 | 4 | CH07_20260911_092822__colour_mid | 3 |
+| 2026-09-11 | CH07_20260911_095409 | G15 | test | CH07_20260911_095409__ir_p06 | 5 | CH07_20260911_095409__colour_mid | 4 |
+| 2026-09-11 | CH07_20260911_141758 | G17 | test | CH07_20260911_141758__ir_p06 | 5 | CH07_20260911_141758__colour_mid | 5 |
+| 2026-09-11 | CH07_20260911_145024 | G19 | test | CH07_20260911_145024__ir_p06 | 5 | CH07_20260911_145024__colour_mid | 5 |
+| 2026-09-11 | CH07_20260911_182803 | G20 | test | CH07_20260911_182803__ir_p06 | 5 | CH07_20260911_182803__colour_mid | 5 |
+
+- **Prompts:** "rat", "Long Evans rat" and "hooded rat" are read from the T1 cache. The other seven are new, run with the T1 settings (score floor 0.01, imgsz 1008).
+- **Determinism check:** "rat" re-run on CH07_20260910_071415__ir_p06 (whole) gave 100 masks vs 100 in the cache; max score difference 0; 100 masks pixel-identical.
+- **Matching:** as in T1 (coverage within 15 px).
+
+**Columns:**
+- X = heads with their own exclusive mask;
+- missed = heads with no mask within 15 px;
+- merged = masks over ≥ 2 heads; empty = masks over no head;
+- masks = mask count (heads given in the caption).
+
+Pooled over the 10 frames per block.
+
+**IR, τ = 0.01** (49 heads on 10 frames):
+
+| prompt | whole X | whole missed | whole merged | whole empty | whole masks | tiled X | tiled missed | tiled merged | tiled empty | tiled masks |
+|---|---|---|---|---|---|---|---|---|---|---|
+| rat | 38 (78 %) | 5 | 5 | 684 | 783 | 39 (80 %) | 8 | 8 | 2274 | 2422 |
+| Long Evans rat | 4 (8 %) | 45 | 0 | 59 | 64 | 10 (20 %) | 39 | 0 | 169 | 185 |
+| hooded rat | 12 (24 %) | 35 | 2 | 46 | 66 | 22 (45 %) | 23 | 3 | 143 | 195 |
+| black striped rat | 43 (88 %) | 3 | 5 | 823 | 943 | 41 (84 %) | 3 | 8 | 2553 | 2710 |
+| rat with a black stripe on its back | 34 (69 %) | 3 | 20 | 1247 | 1433 | 41 (84 %) | 3 | 7 | 4823 | 5054 |
+| black and white rat | 43 (88 %) | 3 | 8 | 973 | 1108 | 44 (90 %) | 2 | 8 | 2562 | 2713 |
+| rat with a black head and a white body | 36 (73 %) | 3 | 18 | 375 | 482 | 45 (92 %) | 0 | 9 | 1822 | 2054 |
+| rat with an implant on its head | 12 (24 %) | 30 | 7 | 46 | 80 | 29 (59 %) | 12 | 23 | 175 | 292 |
+| sleeping rats | 3 (6 %) | 46 | 0 | 41 | 48 | 19 (39 %) | 29 | 1 | 283 | 320 |
+| pile of rats | 11 (22 %) | 0 | 51 | 705 | 975 | 22 (45 %) | 0 | 50 | 1653 | 2018 |
+
+**IR, τ = 0.25** (49 heads on 10 frames):
+
+| prompt | whole X | whole missed | whole merged | whole empty | whole masks | tiled X | tiled missed | tiled merged | tiled empty | tiled masks |
+|---|---|---|---|---|---|---|---|---|---|---|
+| rat | 2 (4 %) | 47 | 0 | 44 | 47 | 2 (4 %) | 47 | 0 | 70 | 72 |
+| Long Evans rat | 0 (0 %) | 49 | 0 | 0 | 0 | 0 (0 %) | 49 | 0 | 1 | 1 |
+| hooded rat | 0 (0 %) | 49 | 0 | 0 | 0 | 0 (0 %) | 49 | 0 | 0 | 0 |
+| black striped rat | 2 (4 %) | 47 | 0 | 44 | 47 | 1 (2 %) | 48 | 0 | 72 | 73 |
+| rat with a black stripe on its back | 3 (6 %) | 46 | 0 | 55 | 60 | 3 (6 %) | 46 | 0 | 82 | 86 |
+| black and white rat | 3 (6 %) | 46 | 0 | 61 | 65 | 2 (4 %) | 47 | 0 | 77 | 80 |
+| rat with a black head and a white body | 1 (2 %) | 48 | 0 | 8 | 9 | 1 (2 %) | 48 | 0 | 39 | 40 |
+| rat with an implant on its head | 0 (0 %) | 49 | 0 | 0 | 0 | 0 (0 %) | 49 | 0 | 0 | 0 |
+| sleeping rats | 0 (0 %) | 49 | 0 | 0 | 0 | 0 (0 %) | 49 | 0 | 4 | 4 |
+| pile of rats | 5 (10 %) | 9 | 14 | 2 | 22 | 6 (12 %) | 21 | 9 | 15 | 31 |
+
+**Colour (separate, never pooled with IR), τ = 0.01** (47 heads on 10 frames):
+
+| prompt | whole X | whole missed | whole merged | whole empty | whole masks | tiled X | tiled missed | tiled merged | tiled empty | tiled masks |
+|---|---|---|---|---|---|---|---|---|---|---|
+| rat | 38 (81 %) | 6 | 15 | 1004 | 1135 | 41 (87 %) | 2 | 11 | 3393 | 3583 |
+| Long Evans rat | 2 (4 %) | 45 | 0 | 61 | 63 | 12 (26 %) | 35 | 0 | 235 | 251 |
+| hooded rat | 3 (6 %) | 44 | 0 | 50 | 53 | 16 (34 %) | 29 | 3 | 152 | 181 |
+| black striped rat | 24 (51 %) | 22 | 3 | 347 | 394 | 35 (74 %) | 9 | 6 | 1608 | 1706 |
+| rat with a black stripe on its back | 35 (74 %) | 7 | 10 | 1251 | 1383 | 38 (81 %) | 7 | 10 | 5102 | 5355 |
+| black and white rat | 37 (79 %) | 9 | 4 | 917 | 1007 | 36 (77 %) | 10 | 1 | 2879 | 3002 |
+| rat with a black head and a white body | 34 (72 %) | 6 | 16 | 691 | 813 | 39 (83 %) | 5 | 11 | 2331 | 2552 |
+| rat with an implant on its head | 20 (43 %) | 20 | 11 | 43 | 97 | 32 (68 %) | 3 | 26 | 423 | 600 |
+| sleeping rats | 5 (11 %) | 42 | 0 | 65 | 71 | 21 (45 %) | 24 | 3 | 459 | 515 |
+| pile of rats | 19 (40 %) | 0 | 41 | 690 | 918 | 35 (74 %) | 0 | 35 | 2105 | 2389 |
+
+**Colour (separate, never pooled with IR), τ = 0.25** (47 heads on 10 frames):
+
+| prompt | whole X | whole missed | whole merged | whole empty | whole masks | tiled X | tiled missed | tiled merged | tiled empty | tiled masks |
+|---|---|---|---|---|---|---|---|---|---|---|
+| rat | 2 (4 %) | 45 | 0 | 68 | 70 | 1 (2 %) | 46 | 0 | 102 | 103 |
+| Long Evans rat | 0 (0 %) | 47 | 0 | 0 | 0 | 0 (0 %) | 47 | 0 | 0 | 0 |
+| hooded rat | 0 (0 %) | 47 | 0 | 0 | 0 | 0 (0 %) | 47 | 0 | 0 | 0 |
+| black striped rat | 0 (0 %) | 47 | 0 | 5 | 5 | 0 (0 %) | 47 | 0 | 23 | 23 |
+| rat with a black stripe on its back | 3 (6 %) | 44 | 0 | 65 | 68 | 0 (0 %) | 47 | 0 | 101 | 101 |
+| black and white rat | 1 (2 %) | 46 | 0 | 60 | 61 | 0 (0 %) | 47 | 0 | 87 | 87 |
+| rat with a black head and a white body | 1 (2 %) | 46 | 0 | 43 | 44 | 3 (6 %) | 44 | 0 | 59 | 62 |
+| rat with an implant on its head | 0 (0 %) | 47 | 0 | 0 | 0 | 1 (2 %) | 46 | 0 | 2 | 3 |
+| sleeping rats | 0 (0 %) | 47 | 0 | 0 | 0 | 1 (2 %) | 46 | 0 | 4 | 5 |
+| pile of rats | 3 (6 %) | 23 | 6 | 9 | 20 | 6 (13 %) | 34 | 3 | 26 | 35 |
+
+- **Descriptive reading of the counts** (no judgment of the images): at τ = 0.01, the prompts with X ≥ 50 % on the whole IR frames ("rat", "black striped rat", "rat with a black stripe on its back", "black and white rat", "rat with a black head and a white body") return 482–1433 masks for 49 heads (375–1247 of them empty).
+  - So a high X there comes with many masks per head, one of which covers each head point alone.
+  - It does not show a rat detector.
+  - At τ = 0.25 almost every prompt misses almost every head.
+  - Whether any mask outlines a rat is for the user to see on the page.
+- **Page for the user:** `D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320/prompt_sweep/index.html`.
+  - Per frame and prompt: whole and tiled panels with mask outlines in distinct colours, the blind clicks as dots, and a τ switch (0.01 / 0.25).
+  - Headless check: **PASS** (`prompt_sweep/page_check.json`).
+- Tables: `prompt_sweep/sweep_summary.csv` (pooled), `sweep_frame_metrics.csv` (per frame); raw masks of the new prompts in `prompt_sweep/sam3/`.
+- **The agent did not look at the panels.**
 
 ## Definitions
 
