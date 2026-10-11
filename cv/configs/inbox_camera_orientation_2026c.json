@@ -1,0 +1,16 @@
+{
+  "_about": "Orientation of the in-box camera images relative to the paddock map (paddock +x right, +y up), as observed by the user with the identity page's top-view control (rot_deg counter-clockwise, then mirror). A display default and an independent prior / check for the camera <-> WISER mapping that the pre-registered step fits from the user's blind clicks (implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md); not itself a fit.",
+  "house_2": {
+    "camera": "CH07",
+    "rot_deg": 180,
+    "mirror": false,
+    "meaning": "image right -> toward the x = 0 wall; image up -> toward the y = 0 (row A) side",
+    "source": "user, 2026-10-10 ('house2相机是rotate 180°的')"
+  },
+  "house_1": {
+    "camera": "CH08",
+    "rot_deg": null,
+    "mirror": null,
+    "source": "not yet stated"
+  }
+}

@@ -70,6 +70,10 @@ frame is in inches: origin pole A0, x along the 40-ft side (0–480), y across (
   - CH08 moves with median 2.4 px; 3 of 30 exceed 10 px, including 96 px at the 09-02 AM round and 41 px at the 09-12
     final round.
   - While a lid is open the camera points elsewhere; those frames carry flag `lid`.
+  - **Image orientation (user, 2026-10-10, visual check with the identity page's top-view control):** the CH07
+    (house_2) image is the paddock map **rotated 180°, not mirrored** — image right points toward the x = 0 wall, image
+    up toward the y = 0 (row A) side. CH08 (house_1): not yet stated. A prior / check only; the pre-registered
+    camera ↔ WISER mapping is still fitted from the blind clicks. Stored in `cv/configs/inbox_camera_orientation_2026c.json`.
 
 ## 4. house_1 moved on 09-18; house_2 never moved
 
