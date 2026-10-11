@@ -166,3 +166,46 @@ cases (10 % expected): some small, sub-threshold head motion.
 other-house sound. Body or limb movement, rat sounds and house noises are open; this needs listening.
 
 **Fix.** The random-time label is renamed from "null" to "random_time": pandas reads the string "null" as missing.
+
+## Amendment 2 — USV detector v2 (2026-10-10; before its results)
+
+**Basis.** The user labelled 254 30-s strips (36 with USV; `ephys/configs/usv_review_2026c/`). Detector v1 (median
+whitening, tonal components ≥ 30 ms) found 58 % of the USV strips and flagged 20 % of the empty ones. The user says it
+has few false positives but misses some; the misses are long calls cut into pieces and short calls. The user: "what
+matters first is yes or no; fine detection is the next step."
+
+**v2 (`ephys/usv/usv_detect_v2.py`).** Spectrogram as v1, then:
+1. Background per frequency = the 20th percentile of the dB values over the 60-s chunk, not the median, so a frequency
+   busy with calls does not raise its own background.
+2. Components: excess ≥ 10 dB after a 3 × 3 median filter, 8-connected.
+3. Fragments are joined into one contour when the gap is ≤ 50 ms and the ridge frequency jumps ≤ 2 kHz.
+4. A contour longer than 5 s is a "line": the drifting electronic tone, which the user tagged "long line", not a call.
+5. A call contour = tonal (median 1 − flatness ≥ 0.5), bandwidth ≤ 20 kHz, duration ≥ 10 ms, not a line.
+
+**Strip presence.** Features per strip: the number of call contours (≥ 10 / 20 / 30 ms), the total call duration,
+and the longest call.
+
+**Evaluation.**
+- The threshold is chosen per mic, leave-one-window-out (Youden J), against the user's labels; sensitivity /
+  specificity / precision are reported for v1 and v2 side by side.
+- Nothing is tuned on the held-out window itself.
+
+**Full run.** Only if v2 is clearly better than v1 (the user's call): all mic hours, on this PC if the CPU allows,
+else BioHPC through `run_then_store.sh`.
+
+### Amendment 2 — result (2026-10-11)
+
+On the 254 labelled strips (36 with USV), each threshold chosen leave-one-window-out per mic (`ephys/usv/usv_eval_v2.py`;
+`D:/Field2026_analysis_out/2026c/usv_v2_sample/eval/`):
+
+| mic | v1, best feature | v2, best feature |
+|---|---|---|
+| MIC01 | tonal any: sensitivity 0.90, specificity 0.66; tonal ≥ 20 ms: 0.86 / 0.72 | total call duration: 0.76 / 0.85, precision 0.48 (v1 0.32–0.35) |
+| MIC02 | tonal any: 0.67 / 0.86 | ≤ 0.33 sensitivity: MIC02's short, weak calls are dropped |
+
+- A per-mic logistic model on v1 + v2 features is no better: MIC01 0.76 / 0.78; MIC02 0.73 / 0.79 for one feature set,
+  0.33 for the others.
+
+**Verdict.** v2 is not clearly better (MIC01 Youden 0.61 vs 0.58; MIC02 worse), so no full run. Simple count / duration
+features plateau at ~0.7–0.85 sensitivity and specificity; in MIC01, more than half of the flagged strips are labelled
+"none".
