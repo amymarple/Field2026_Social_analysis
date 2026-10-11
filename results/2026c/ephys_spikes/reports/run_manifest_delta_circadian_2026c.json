@@ -1,0 +1,19 @@
+{
+  "name": "delta_circadian_verified",
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\delta_circadian_verified_20261010_2320",
+  "git": "fc28ee0+dirty",
+  "sessions": 140,
+  "events_loaded": 371886,
+  "events_in_bins": 349921,
+  "bins": 1265,
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF11",
+    "SF12"
+  ],
+  "figure": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\figures\\ephys_spikes_delta_rate_day_and_hour_2026c.png",
+  "twin_of": "swr_temperature.py figure"
+}

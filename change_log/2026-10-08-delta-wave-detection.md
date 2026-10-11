@@ -220,6 +220,44 @@ firing at the delta peaks of the strongest-dip site (`<lab>_cortex_check.json`).
 - SF12 `17_20260911` (final night, user `noise`) has an empty `use_until` in the SWR quality table, so its 23:30
   valid_until is not applied. Exclude it.
 
+## 2026-10-10: the delta rate per day and within a day (twin of the SWR figure)
+
+The user asked: "问一下 SWR detection circadian 图咋画的你画个类似的". The SWRdetection session confirmed that the figure is
+`ephys_spikes_swr_rate_day_and_hour_2026c.png` (`swr_temperature.py figure`).
+
+**`ephys/delta_circadian.py`.**
+- It imports the SWR figure's own functions: `settle_windows`, `keep_mask`, `build_bins`, `hour_profile`, `periods`,
+  `sun_times`.
+- Same definitions as the SWR figure:
+  - start_local clock, final 1-s NREM;
+  - the first 30 min of each file, use_until (+ cohort valid_until), after 09-11 19:40, and probe settle windows are
+    excluded;
+  - 30-min bins with ≥ 5 NREM min, rate = events / NREM min;
+  - NOAA sunrise / sunset; the same weather file (the SWR run's).
+- Events: verified delta waves from sessions with the MUA check, user 'noise' sessions excluded. `--events all` uses
+  every detected delta wave (FM64 included).
+- Outputs:
+  - `figures/ephys_spikes_delta_rate_day_and_hour{,_all}_2026c.png`;
+  - `reports/ephys_spikes_delta_rate_by_hour{,_all}_2026c.csv`, `…_by_period…`;
+  - pointer `run_manifest_delta_circadian{,_all}_2026c.json`.
+- Coverage: verified 140 sessions, 350 k events in 1265 bins (6 animals, 11 dates); all events 173 sessions, 788 k
+  events.
+
+**Description, block-demeaned rate by clock hour, mean over animals** (/NREM min; no test made):
+
+| | Night (21–04 h) | Morning peak | Lowest | Afternoon / evening |
+|---|---|---|---|---|
+| Delta, verified | +2 to +3 | 08–10 h, +4 to +5.6 | 18 h, −7.5 | falling |
+| Delta, all events | +2 to +3 | 09 h, +10.3 | 18 h, −12.6 | falling |
+| SWR (same bins definition) | +10 to +19 | — | 16–17 h | falling |
+
+- The same profile without the MUA check means it is not produced by the verification.
+- SWR peaks at night and delta in the morning; Spearman over the hours, SWR vs delta: 0.67 (verified), 0.58 (all).
+- **Caveat (recording path):** the morning battery round ends about 06:00–09:30. The delta peak at 08–10 h follows
+  that handling, so it may be post-disturbance recovery sleep rather than a clock effect. Only the first 30 min of each
+  file are excluded.
+- 19–20 h is missing: the evening round, plus the bins that contain sunset.
+
 ## Open (for the user)
 
 - SF11: choose the delta channel. Shank-3 top sites (col 11 or 8) are consistent across all three blocks; shank 4
