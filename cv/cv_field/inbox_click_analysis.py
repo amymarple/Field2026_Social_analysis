@@ -968,9 +968,10 @@ def write_report(run: Path, R: dict, Rs: dict | None = None, cmpb: pd.DataFrame 
              f"step is run, written before any result). Run `{run.as_posix()}`; generated {m['made']}; code `{m['git_commit']}`. "
              f"Phase-0 run `{m['p0_run']}`. Driver `cv/cv_field/inbox_click_analysis.py`. The agent never looked at a frame; "
              f"everything is computed from the click coordinates, the user's IDs and WISER.\n")
-    L.append("**Correction 2026-10-11 (plan amendment 12, carried over).** SF11 kept its tag and left the paddock at the 09-07 AM round "
-             "(last fix 08:20); from then to 09-11 19:40 the paddock held five animals, all tagged, so rosters are complete except in tag "
-             "dropouts. No number here depends on the earlier, wrong reading.\n")
+    L.append("**Correction 2026-10-11 (plan amendments 12–13).** Tag 3058 rode on SF11's implant: the implant fell off at 09-07 "
+             "06:10:45 with the tag on it, the rat was in the paddock untagged until it was taken out at the AM round (the last 3058 fix, "
+             "08:20, is the implant lying in house_2), and from 08:20 to 09-11 19:40 the paddock held five animals, all tagged, so rosters "
+             "are complete except in tag dropouts. No number here depends on the earlier, wrong reading.\n")
     # ---- summary
     ov = P["order_summary"]
     L.append("## Summary\n")

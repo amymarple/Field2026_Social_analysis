@@ -4,7 +4,7 @@
 
 Plan `implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md` (section "Pre-registered use of the user's clicks" + amendments 1–12; amendment 11 = how this step is run, written before any result). Run `D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2227`; generated 2026-10-10T22:27:47; code `0e665e9eca3f80feac06ca640a67c4140567f2d2+dirty`. Phase-0 run `D:/Field2026_analysis_out/2026c/cv_field_inbox_p0_20261010_1702`. Driver `cv/cv_field/inbox_click_analysis.py`. The agent never looked at a frame; everything is computed from the click coordinates, the user's IDs and WISER.
 
-**Correction 2026-10-11 (plan amendment 12, carried over).** SF11 kept its tag and left the paddock at the 09-07 AM round (last fix 08:20); from then to 09-11 19:40 the paddock held five animals, all tagged, so rosters are complete except in tag dropouts. No number here depends on the earlier, wrong reading.
+**Correction 2026-10-11 (plan amendments 12–13).** Tag 3058 rode on SF11's implant: the implant fell off at 09-07 06:10:45 with the tag on it, the rat was in the paddock untagged until it was taken out at the AM round (the last 3058 fix, 08:20, is the implant lying in house_2), and from 08:20 to 09-11 19:40 the paddock held five animals, all tagged, so rosters are complete except in tag dropouts. No number here depends on the earlier, wrong reading (refined by hand 2026-10-11: the first version of this note said SF11 kept its tag).
 
 ## Summary
 

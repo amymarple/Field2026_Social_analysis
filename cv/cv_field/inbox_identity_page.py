@@ -14,8 +14,9 @@ One entry per colour segment (deduplicated by configuration = one entry per segm
   lid      each frame's lid-closed segment and its correction (frame px -> the 09-04 12:00 reference px, the 2 x 3 matrix B
            of frame_correction.Corrections("2026c").correction(cam, t)), with the flag; recorded only, nothing fitted.
   WISER    roster of the camera's house (CH07 -> house_2, CH08 -> house_1) at the segment middle from the cleaned per-second
-           states (inbox_p0 states_1s.npz); SF11 note (corrected 2026-10-11): "SF11 left the paddock at the 09-07 AM round (last fix
-           08:20); rosters are complete except in tag dropouts" after 08:20, its 09-02 tag-dropout note inside it; per roster animal the
+           states (inbox_p0 states_1s.npz); SF11 note (2026-10-11, plan amendments 12-13): after 09-07 08:20 "SF11 out of the paddock
+           (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts",
+           inside its two tag dropouts (09-02 00:03-08:15; 09-07 06:10:45-08:20) "untagged ... may be present"; per roster animal the
            mean position over [start - 60 s, start) in the house frame (along / across the ridge, inches), SE = sd(raw
            fixes) / sqrt(n), +-1 SD of the raw fixes, and the IMU still / active / locomoting shares of that minute.
 The user clicks each visible rat's head (colour frame; optionally IR frames), picks SF07-SF12 / unknown and sure /
@@ -182,14 +183,20 @@ def lid_correction(C, cam: str, t: datetime) -> dict:
 
 
 # ----------------------------------------------------------------------------------------------- WISER panel
-SF11_ABSENT_NOTE = "SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts"
+SF11_ABSENT_NOTE = ("SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); "
+                    "rosters are complete except in tag dropouts")
 SF11_DROPOUT_NOTE = "SF11 untagged 09-02 00:03-08:15 - may be present"
+SF11_DROPOUT2_NOTE = "SF11 untagged 09-07 06:10:45-08:20 (implant with tag 3058 fell off) - may be present"
 
 
 def sf11_note(t: datetime) -> str:
-    """The roster note about SF11 at time t (corrected 2026-10-11, plan amendment 12: SF11 kept its tag and left the paddock at
-    the 09-07 AM round; only its 09-02 tag dropout leaves it present but invisible to WISER)."""
-    return SF11_ABSENT_NOTE if ip.absent("SF11", t) else SF11_DROPOUT_NOTE if ip.untagged("SF11", t) else ""
+    """The roster note about SF11 at time t (plan amendments 12-13, 2026-10-11): absent after 09-07 08:20; present but invisible
+    to WISER only in its two tag dropouts (09-02 00:03-08:15; 09-07 06:10:45-08:20, when tag 3058 lay on the fallen implant)."""
+    if ip.absent("SF11", t):
+        return SF11_ABSENT_NOTE
+    if ip.untagged("SF11", t):
+        return SF11_DROPOUT2_NOTE if t >= datetime(2026, 9, 7) else SF11_DROPOUT_NOTE
+    return ""
 
 
 def wiser_panel(run: Path, seg: pd.Series, z: dict, track_root: Path | None = None, cache: dict | None = None) -> dict:
@@ -411,7 +418,7 @@ def refresh_legend(run: Path, csv_path: Path = IDENTITY_CSV, closeup_src: Path |
             notes_changed += 1
     if notes_changed:
         data["meta"].setdefault("text_corrections", []).append({"at": datetime.now().isoformat(timespec="seconds"), "what": "sf11_note",
-                                                                "n_segments": notes_changed, "why": "plan amendment 12 (SF11 kept its tag; left 09-07 08:20)"})
+                                                                "n_segments": notes_changed, "why": "plan amendments 12-13 (SF11 absent after 09-07 08:20; tag dropouts 09-02 00:03-08:15, 09-07 06:10:45-08:20)"})
     if closeup_src is not None and (Path(closeup_src) / "MANIFEST_sha256.csv").exists():
         moves = relink_closeups(page, data, Path(closeup_src))
         if moves:
@@ -1474,9 +1481,10 @@ def selftest() -> int:
             raised = True
         rec("legend refuses a CSV without id_colour", raised)
         # SF11 note (corrected 2026-10-11): absent after 09-07 08:20, dropout note only 09-02 00:03-08:15, rosters re-checked
-        rec("SF11 note: 'left the paddock' after 09-07 08:20, dropout note 09-02 00:03-08:15, none otherwise; refresh keeps rosters",
+        rec("SF11 note: absent after 09-07 08:20, dropout notes 09-02 00:03-08:15 and 09-07 06:10:45-08:20, none otherwise; refresh keeps rosters",
             s0["wiser"]["sf11_note"] == SF11_ABSENT_NOTE and sf11_note(datetime(2026, 9, 2, 3, 0)) == SF11_DROPOUT_NOTE
-            and sf11_note(datetime(2026, 9, 5, 12, 0)) == "" and sf11_note(datetime(2026, 9, 7, 7, 0)) == ""
+            and sf11_note(datetime(2026, 9, 5, 12, 0)) == "" and sf11_note(datetime(2026, 9, 7, 7, 0)) == SF11_DROPOUT2_NOTE
+            and sf11_note(datetime(2026, 9, 7, 6, 10, 44)) == ""
             and rc["roster_recheck"].get("rosters_and_untracked_unchanged") is True, str(rc.get("roster_recheck")))
         # close-ups follow a renamed source (the user swapped SF09 / SF10 on 10-10): matched by the recorded sha256, no re-transcode
         (cs / "SF07.MOV").rename(cs / "x.MOV")

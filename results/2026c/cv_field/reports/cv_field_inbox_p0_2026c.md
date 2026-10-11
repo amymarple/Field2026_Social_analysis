@@ -1,12 +1,12 @@
 # In-box cameras CH07 / CH08, phase 0: colour segments, WISER box events, in-house positions, identity click page (cohort `2026c`)
 
-Plan `implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md` (pre-registered 2026-10-10, approved by the user; amendments dated there). Run `D:/Field2026_analysis_out/2026c/cv_field_inbox_p0_20261010_1702`; generated 2026-10-10 21:58; code `1cacf63f2f98e80229e307a0924fa41aad33d849+dirty`. Drivers `cv/cv_field/inbox_p0.py` (A, B) and `cv/cv_field/inbox_identity_page.py` (C). The agent never looked at a frame; every number below is computed. Scope 2026-08-30 19:00 → 2026-09-11 19:40 (before the five females).
+Plan `implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md` (pre-registered 2026-10-10, approved by the user; amendments dated there). Run `D:/Field2026_analysis_out/2026c/cv_field_inbox_p0_20261010_1702`; generated 2026-10-10 22:50; code `d743a4adf54625118421e9f698954c9ae3393495+dirty`. Drivers `cv/cv_field/inbox_p0.py` (A, B) and `cv/cv_field/inbox_identity_page.py` (C). The agent never looked at a frame; every number below is computed. Scope 2026-08-30 19:00 → 2026-09-11 19:40 (before the five females).
 
 ## Summary
 
 - **A. Colour segments**: threshold thr = **1.179** (largest log-chroma gap 0.5324 → 2.61, 0.69 decades; next largest gap 0.65 decades) over 243630 I-frames; **22 colour segments** CH07 2026-09-09: 1, CH07 2026-09-10: 13, CH07 2026-09-11: 7, CH08 2026-09-10: 1; 17 match a colour-log row, 5 unmatched; 2 log rows with an operator time have no segment. Controls: 0 colour I-frames in 12 control hours.
 - **B. 09-05 ground truth: PASS** — WISER entry order SF09, SF07, SF11, SF10, SF12 (operator SF09, SF07, SF11, SF10, SF12); 12 of 12 events matched, |Δt| median 2 s, max 4 s (Δt = WISER − operator from -4 to -1 s). Literal mask rule: FAIL; raw fixes instead of the track: PASS.
-- **B. Box events**: 6254 events (primary rule) for SF07–SF12, 391 near a handling mask; 67134 in-house animal-minutes; per second every animal in the paddock was tagged and located 83.8 % of the scope (78.7 % before 09-07 06:10:45, 94.0 % after SF11 left at 08:20; corrected 2026-10-11 — the 10-10 version gave 48.9 % by counting SF11 as present but untagged after 09-07 06:10:45).
+- **B. Box events**: 6254 events (primary rule) for SF07–SF12, 391 near a handling mask; 67134 in-house animal-minutes; per second every animal in the paddock was tagged and located 83.8 % of the scope (78.7 % before 09-07 06:10:45, 94.0 % after SF11 was taken out at 08:20; corrected 2026-10-11 — the 10-10 version gave 48.9 % by counting SF11 as present but untagged to the scope end).
 - **B. Camera ↔ house** (per-minute frame-difference energy vs per-minute WISER events, 09-09 → 09-11): CH07–house_1 r -0.02; CH07–house_2 r 0.17; CH08–house_1 r 0.29; CH08–house_2 r 0.08 (expected pairing CH07–house_2, CH08–house_1; no decision taken from it).
 - **C. Click page**: `D:/Field2026_analysis_out/2026c/cv_field_inbox_p0_20261010_1702/identity_page/index.html` — 22 segments, 66 frames, page check PASS (missing paths 0, network URLs 0, pre-filled identities 0). Exports go to `cv/configs/inbox_identity_2026c/`.
 
@@ -186,28 +186,28 @@ Default tracks (`wiser/src/default_tracks.py`, V3 / B2) of SF07–SF12, 08-30 19
 
 | segment_id | house | roster at the flash | untracked | SF11 | lid segment (colour frame) | lid flag | frame checks |
 |---|---|---|---|---|---|---|---|
-| CH07_20260909_191025 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 26 | ok | ok ok ok |
-| CH07_20260910_071415 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 26 | lid+ok | ok ok ok |
-| CH07_20260910_083742 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_091147 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_122703 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_125142 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_135131 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_140227 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_141613 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_143243 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_152307 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_163056 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_175935 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
-| CH07_20260910_195004 | house_2 | none |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | lid+ok | ok ok ok |
-| CH07_20260911_092822 | house_2 | SF07, SF08, SF09, SF10 | SF12 | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 28 | lid+ok | ok ok ok |
-| CH07_20260911_095409 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
-| CH07_20260911_140955 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
-| CH07_20260911_141758 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
-| CH07_20260911_144345 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
-| CH07_20260911_145024 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
-| CH07_20260911_182803 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 29 | lid+ok | ok ok ok |
-| CH08_20260910_084548 | house_1 | none |  | SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260909_191025 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 26 | ok | ok ok ok |
+| CH07_20260910_071415 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 26 | lid+ok | ok ok ok |
+| CH07_20260910_083742 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_091147 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_122703 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_125142 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_135131 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_140227 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_141613 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_143243 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_152307 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_163056 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_175935 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
+| CH07_20260910_195004 | house_2 | none |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | lid+ok | ok ok ok |
+| CH07_20260911_092822 | house_2 | SF07, SF08, SF09, SF10 | SF12 | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 28 | lid+ok | ok ok ok |
+| CH07_20260911_095409 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
+| CH07_20260911_140955 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
+| CH07_20260911_141758 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
+| CH07_20260911_144345 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
+| CH07_20260911_145024 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 29 | ok | ok ok ok |
+| CH07_20260911_182803 | house_2 | SF07, SF08, SF09, SF10, SF12 |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 29 | lid+ok | ok ok ok |
+| CH08_20260910_084548 | house_1 | none |  | SF11 out of the paddock (taken out at the 09-07 AM round; the last tag fix 08:20 is its implant); rosters are complete except in tag dropouts | 27 | ok | ok ok ok |
 
 
 Close-up clips: source `D:/Field2026_analysis_out/2026c/inhand_closeups/SF07.MOV … SF12.MOV` (read-only; every sha256 checked against that folder's `MANIFEST_sha256.csv` before transcoding; sources unchanged afterwards), transcoded once to H.264 MP4 (`identity_page/closeups/`). Per the folder README: SF07, SF08, SF09, SF10, SF12 were filmed 2026-09-10 07:54–08:19 (AM round); SF11 on 2026-08-30 (the user, 2026-10-10: its implant came off early, so an earlier clip is used); the files' `creation_time` tag (2026-10-10 20:3x UTC) is the transfer time, not the filming time. The clips are H.264 720 × 1280 portrait (SF11 1280 × 720), 30 fps.
@@ -268,11 +268,11 @@ Times are field-PC local (America/New_York, naive). Video frame time t = file-na
   event of the same animal, house and kind within ± 30 min; Δt = t_WISER − t_operator. **Pass** iff every |Δt| ≤ 30 s and
   the five house_2 entries, sorted by t_WISER, come in the operator's order SF09, SF07, SF11, SF10, SF12.
 - **Occupancy (per second)**: roster of house_h = animals whose cleaned state is h; `untracked` = animals present in the
-  paddock and tagged whose state is unknown; `sf11_untagged` = SF11 present without a working tag (the tag dropout 09-02
-  00:03 → 08:15); `sf11_absent` = SF11 out of the paddock (it left at the 09-07 AM round, last fix 08:20; the tag stayed on
-  the rat); `all_tracked` = no untracked animal and no untagged animal present. Rosters are complete except in tag dropouts
-  (SF11 09-02 00:03 → 08:15; SF12 before its tag's first fix 08-31 06:36) and while a tagged animal is untracked
-  (corrected 2026-10-11, plan amendment 12: an earlier version counted SF11 as present but untagged from 09-07 06:10:45).
+  paddock and tagged whose state is unknown; `sf11_untagged` = SF11 present without a tag on the animal (dropouts 09-02
+  00:03 → 08:15, and 09-07 06:10:45 → 08:20 after the implant carrying tag 3058 fell off); `sf11_absent` = SF11 out of the
+  paddock (taken out at the 09-07 AM round; the last 3058 fix at 08:20 is the implant in house_2); `all_tracked` = no
+  untracked animal and no untagged animal present. Rosters are complete except in tag dropouts (SF11's two; SF12 before its
+  tag's first fix 08-31 06:36) and while a tagged animal is untracked (plan amendments 12-13, 2026-10-11).
 - **Paddock position** p = s R(θ) (w − c) + c + d (the accepted WISER → paddock similarity: s 0.96340, θ 0.1143°,
   c (501.68, 761.10) in, d (−272.85, −605.80) in). **House frame**: along = (p − C) · (cos φ, sin φ),
   across = (p − C) · (−sin φ, cos φ), with C, φ the house centre and ridge angle (house_2 (342.4, 117.7) in, 92.0°;
@@ -309,7 +309,7 @@ Times are field-PC local (America/New_York, naive). Video frame time t = file-na
 - In-house positions use the accepted P0 WISER → paddock map (one CH01 hour, test median 4.4 in) and the house poses; the WISER tag sits on the head; WISER is a 2-D solve (no z). The arrangement layer is not accepted until the user's clicks pass the operator's rule (≥ 4 of the first 5 flashes with ≥ 3 identified animals; the later, pre-registered step).
 - SE = sd / √n ignores autocorrelation of consecutive fixes (a lower bound).
 - A colour insert shorter than the 2-s I-frame spacing can fall between I-frames and be missed by the scan.
-- Correction 2026-10-11 (plan amendment 12): SF11 kept its tag; it left the paddock at the 09-07 AM round (last fix 08:20), so from then to 09-11 19:40 the paddock held five animals, all tagged, and rosters are complete except in tag dropouts. An earlier version of this report called the rosters after 09-07 06:10 lower bounds (SF11 untagged); no event, position, segment or check result depended on that; only the `all_tracked` share changed (box_occupancy_1s.csv.gz rebuilt from the unchanged states_1s.npz). SF11's fixes 09-07 06:10:45 → 08:20 are flagged `m_off_animal` in the default tracks although the field note says 07:40 → 08:20 is real position data for the rat: a possible error, to be checked separately (the production tracks are unchanged).
+- Correction 2026-10-11 (plan amendments 12-13, confirmed by the user): tag 3058 rode on SF11's implant; at 09-07 06:10:45 the implant fell off with the tag, the rat stayed in the paddock untagged until it was taken out at the AM round, and the last 3058 fix (08:20) is the implant in house_2 (the default tracks' `m_off_animal` flag on those fixes is correct). From 08:20 to 09-11 19:40 SF11 is absent and the paddock held five animals, all tagged: rosters are complete except in tag dropouts (SF11 09-02 00:03 → 08:15 and 09-07 06:10:45 → 08:20; SF12 night 08-30 / 31). The 10-10 version called every roster after 09-07 06:10 a lower bound; no event, position, segment, roster or check result depended on that; only the `all_tracked` share changed (box_occupancy_1s.csv.gz rebuilt from the unchanged states_1s.npz; earlier versions in `superseded_20261011/` and `superseded_20261011b/`).
 
 ## Files
 

@@ -99,12 +99,12 @@ MIN_DWELL_S = 20
 HOUSES = ("house_1", "house_2")
 LABELS = ("SF07", "SF08", "SF09", "SF10", "SF11", "SF12")
 SECOND_TAG = "SF12_tag12376"
-# SF11's tag record (field incident log 09-07; corrected 2026-10-11, plan amendment 12): tag 305a died 09-02 00:03, 3058
-# mounted 09-02 08:15 -> a tag DROPOUT with the animal present; when the implant came off (~09-07 06:10:45) the tag stayed on
-# the rat, and the rat LEFT the paddock at the 09-07 AM round (last regular fix 08:20) -> ABSENT until the scope end; the
-# paddock then held five animals, all tagged. (06:10:45-08:20 the default tracks flag SF11's fixes m_off_animal: there SF11 is
-# present but untracked here; whether that flag is right is checked separately - amendment 12.)
-SF11_UNTAGGED = ((datetime(2026, 9, 2, 0, 3), datetime(2026, 9, 2, 8, 15)),)
+# SF11's tag record (plan amendments 12 + 13, confirmed by the user 2026-10-11; COHORT3_DATA_GUIDE section 6): tag 305a died
+# 09-02 00:03, 3058 mounted 09-02 08:15 -> tag DROPOUT 1, animal present. Tag 3058 rode on the IMPLANT: at 09-07 06:10:45 the
+# implant fell off with the tag on it, so the rat was in the paddock UNTAGGED until it was taken out at the AM round (dropout
+# 2; the default tracks' m_off_animal flag on 3058's fixes 06:10:45 -> 08:20 is correct: they are the implant lying in
+# house_2, last fix 08:20). From 08:20 to the scope end SF11 is ABSENT; the paddock held five animals, all tagged.
+SF11_UNTAGGED = ((datetime(2026, 9, 2, 0, 3), datetime(2026, 9, 2, 8, 15)), (datetime(2026, 9, 7, 6, 10, 45), datetime(2026, 9, 7, 8, 20)))
 SF11_ABSENT = ((datetime(2026, 9, 7, 8, 20), SCOPE_END),)
 HOUSE_POSE = {"house_2": {"centre": (342.4, 117.7), "ridge_deg": 92.0, "source": "calibration house_check 09-18 (house_2 never moved)"},
               "house_1": None}  # filled from cv/configs/house1_cohort_pose_2026c.json
@@ -799,7 +799,7 @@ def handling_seconds(df: pd.DataFrame, t0: datetime, n: int) -> np.ndarray:
 
 
 def untagged(label: str, t: datetime) -> bool:
-    """In the paddock without a working tag (a tag dropout): SF11 09-02 00:03 -> 08:15."""
+    """In the paddock without a tag on the animal (a tag dropout): SF11 09-02 00:03 -> 08:15 and 09-07 06:10:45 -> 08:20."""
     return label == "SF11" and any(a <= t < b for a, b in SF11_UNTAGGED)
 
 
@@ -1184,11 +1184,11 @@ Times are field-PC local (America/New_York, naive). Video frame time t = file-na
   event of the same animal, house and kind within ± 30 min; Δt = t_WISER − t_operator. **Pass** iff every |Δt| ≤ 30 s and
   the five house_2 entries, sorted by t_WISER, come in the operator's order SF09, SF07, SF11, SF10, SF12.
 - **Occupancy (per second)**: roster of house_h = animals whose cleaned state is h; `untracked` = animals present in the
-  paddock and tagged whose state is unknown; `sf11_untagged` = SF11 present without a working tag (the tag dropout 09-02
-  00:03 → 08:15); `sf11_absent` = SF11 out of the paddock (it left at the 09-07 AM round, last fix 08:20; the tag stayed on
-  the rat); `all_tracked` = no untracked animal and no untagged animal present. Rosters are complete except in tag dropouts
-  (SF11 09-02 00:03 → 08:15; SF12 before its tag's first fix 08-31 06:36) and while a tagged animal is untracked
-  (corrected 2026-10-11, plan amendment 12: an earlier version counted SF11 as present but untagged from 09-07 06:10:45).
+  paddock and tagged whose state is unknown; `sf11_untagged` = SF11 present without a tag on the animal (dropouts 09-02
+  00:03 → 08:15, and 09-07 06:10:45 → 08:20 after the implant carrying tag 3058 fell off); `sf11_absent` = SF11 out of the
+  paddock (taken out at the 09-07 AM round; the last 3058 fix at 08:20 is the implant in house_2); `all_tracked` = no
+  untracked animal and no untagged animal present. Rosters are complete except in tag dropouts (SF11's two; SF12 before its
+  tag's first fix 08-31 06:36) and while a tagged animal is untracked (plan amendments 12-13, 2026-10-11).
 - **Paddock position** p = s R(θ) (w − c) + c + d (the accepted WISER → paddock similarity: s 0.96340, θ 0.1143°,
   c (501.68, 761.10) in, d (−272.85, −605.80) in). **House frame**: along = (p − C) · (cos φ, sin φ),
   across = (p − C) · (−sin φ, cos φ), with C, φ the house centre and ridge angle (house_2 (342.4, 117.7) in, 92.0°;
@@ -1238,7 +1238,7 @@ def write_report(run: Path) -> Path:
     pgc = json.loads(pg.read_text(encoding="utf-8")) if pg.exists() else {}
     pdata = json.loads((run / "identity_page" / "page_data.json").read_text(encoding="utf-8")) if (run / "identity_page" / "page_data.json").exists() else {}
     occ = pd.read_csv(run / "box_occupancy_1s.csv.gz", usecols=["time", "all_tracked", "sf11_untagged"])
-    old_occ = run / "superseded_20261011" / "box_occupancy_1s.csv.gz"
+    old_occ = run / "superseded_20261011" / "box_occupancy_1s.csv.gz"            # the 10-10 version (first superseded)
     old_share = float(pd.read_csv(old_occ, usecols=["all_tracked"]).all_tracked.mean()) if old_occ.exists() else float("nan")
     seg["day"] = seg.start.str[:10]
     n_by = seg.groupby(["camera", "day"]).size().unstack(fill_value=0) if len(seg) else pd.DataFrame()
@@ -1264,8 +1264,8 @@ def write_report(run: Path) -> Path:
          f"- **B. Box events**: {len(ev)} events (primary rule) for SF07–SF12, {int(ev.in_handling.sum())} near a handling mask; "
          f"{len(ih)} in-house animal-minutes; per second every animal in the paddock was tagged and located {100 * occ.all_tracked.mean():.1f} % "
          f"of the scope ({100 * occ.loc[occ.time < '2026-09-07 06:10:45', 'all_tracked'].mean():.1f} % before 09-07 06:10:45, "
-         f"{100 * occ.loc[occ.time >= '2026-09-07 08:20:00', 'all_tracked'].mean():.1f} % after SF11 left at 08:20; corrected 2026-10-11 — "
-         f"the 10-10 version gave {100 * old_share:.1f} % by counting SF11 as present but untagged after 09-07 06:10:45).",
+         f"{100 * occ.loc[occ.time >= '2026-09-07 08:20:00', 'all_tracked'].mean():.1f} % after SF11 was taken out at 08:20; corrected "
+         f"2026-10-11 — the 10-10 version gave {100 * old_share:.1f} % by counting SF11 as present but untagged to the scope end).",
          ]
     if len(ch):
         a = ch[ch.subset == "all minutes"]
@@ -1422,13 +1422,14 @@ def write_report(run: Path) -> Path:
           "the operator's rule (≥ 4 of the first 5 flashes with ≥ 3 identified animals; the later, pre-registered step).",
           "- SE = sd / √n ignores autocorrelation of consecutive fixes (a lower bound).",
           "- A colour insert shorter than the 2-s I-frame spacing can fall between I-frames and be missed by the scan.",
-          "- Correction 2026-10-11 (plan amendment 12): SF11 kept its tag; it left the paddock at the 09-07 AM round (last fix 08:20), "
-          "so from then to 09-11 19:40 the paddock held five animals, all tagged, and rosters are complete except in tag dropouts. "
-          "An earlier version of this report called the rosters after 09-07 06:10 lower bounds (SF11 untagged); no event, position, "
-          "segment or check result depended on that; only the `all_tracked` share changed (box_occupancy_1s.csv.gz rebuilt from the "
-          "unchanged states_1s.npz). SF11's fixes 09-07 06:10:45 → 08:20 are flagged `m_off_animal` in the default tracks although "
-          "the field note says 07:40 → 08:20 is real position data for the rat: a possible error, to be checked separately "
-          "(the production tracks are unchanged).",
+          "- Correction 2026-10-11 (plan amendments 12-13, confirmed by the user): tag 3058 rode on SF11's implant; at 09-07 06:10:45 "
+          "the implant fell off with the tag, the rat stayed in the paddock untagged until it was taken out at the AM round, and the "
+          "last 3058 fix (08:20) is the implant in house_2 (the default tracks' `m_off_animal` flag on those fixes is correct). From "
+          "08:20 to 09-11 19:40 SF11 is absent and the paddock held five animals, all tagged: rosters are complete except in tag "
+          "dropouts (SF11 09-02 00:03 → 08:15 and 09-07 06:10:45 → 08:20; SF12 night 08-30 / 31). The 10-10 version called every "
+          "roster after 09-07 06:10 a lower bound; no event, position, segment, roster or check result depended on that; only the "
+          "`all_tracked` share changed (box_occupancy_1s.csv.gz rebuilt from the unchanged states_1s.npz; earlier versions in "
+          "`superseded_20261011/` and `superseded_20261011b/`).",
           "\n## Files\n",
           f"Run `{run.as_posix()}`: `scan/`, `scan_control/` (per-file I-frame tables), `scan_inventory.csv`, `scan_log.jsonl`, "
           "`colour_threshold.json`, `colour_segments.csv`, `colour_log_rows.csv`, `control_hours.csv`, `box_events.csv`, "
@@ -1590,10 +1591,10 @@ def selftest() -> int:
         stt[4, :] = S_UNK
         oc = occupancy_table(stt, list(LABELS), t_a)
         b4, af = oc.iloc[600], oc.iloc[1800]                     # 08:10 and 08:30
-        rec("occupancy: SF11 untracked before 08:20, absent after (all_tracked True, not a lower bound)",
-            b4.untracked == "SF11" and not b4.all_tracked and not b4.sf11_absent and af.untracked == "" and bool(af.all_tracked)
-            and bool(af.sf11_absent) and not af.sf11_untagged and af.n_house_2 == 5,
-            f"{b4.untracked!r} {b4.all_tracked} / {af.untracked!r} {af.all_tracked} {af.sf11_absent}")
+        rec("occupancy: SF11 untagged-present 06:10:45-08:20 (implant + tag off), absent after 08:20 (all_tracked True)",
+            b4.untracked == "" and bool(b4.sf11_untagged) and not b4.all_tracked and not b4.sf11_absent and af.untracked == ""
+            and bool(af.all_tracked) and bool(af.sf11_absent) and not af.sf11_untagged and af.n_house_2 == 5,
+            f"{b4.untracked!r} {b4.sf11_untagged} {b4.all_tracked} / {af.untracked!r} {af.all_tracked} {af.sf11_absent}")
         oc2 = occupancy_table(stt, list(LABELS), datetime(2026, 9, 2, 0, 0))
         rec("occupancy: SF11's tag dropout 09-02 00:03-08:15 = untagged, present (all_tracked False)",
             bool(oc2.iloc[600].sf11_untagged) and not oc2.iloc[600].all_tracked and oc2.iloc[600].untracked == "")

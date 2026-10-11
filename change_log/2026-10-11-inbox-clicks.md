@@ -77,7 +77,7 @@ WISER means come from the minute before ON; lid-flagged frames (09-10 07:14, 09-
 the user's 180° orientation was chosen by eye after 5 reveals (independent of the fit's numbers, not blind to WISER); click
 repeatability on one head is unmeasured.
 
-## Addendum (2026-10-11) — correction of a fact: SF11 kept its tag (plan amendment 12; text only)
+## Addendum (2026-10-11) — correction of a fact: SF11 kept its tag (plan amendment 12; text only) [refined by the addendum at the end]
 
 The report's composition section had said SF11 was untagged after 09-07 06:10:45 and called every roster a lower bound.
 That was wrong (the user: "SF11 has tag"; field incident log 09-07). SF11 kept its tag and left the paddock at the 09-07 AM
@@ -150,3 +150,12 @@ the order test's first 5 flashes differs**, and their WISER means are identical 
   are now the export, the snapshot as superseded, and the statement.
 - **Docs.** `cv/configs/inbox_identity_2026c/README.md` marks the snapshot superseded (file kept). The plan status and the
   `CLAUDE.md` cv_field line were updated. `change_log/README.md` is still not touched; its index row is still to be added.
+
+## Addendum (2026-10-11, later) — SF11 refined: the tag rode on the implant (plan amendment 13; text only)
+
+The correction above had SF11 keeping its tag. In fact tag 3058 rode on SF11's implant, which fell off at 09-07 06:10:45 with
+the tag. The rat was untagged in the paddock until it was taken out at the AM round, and the last 3058 fix (08:20) is the
+implant. From 08:20 the paddock held five animals, all tagged.
+
+The report's correction note and the generator's wording were refined by hand (text only). No number changes: no colour
+segment or click lies on 09-07, and the rosters are unchanged.
