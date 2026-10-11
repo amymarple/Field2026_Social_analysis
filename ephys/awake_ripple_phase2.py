@@ -709,6 +709,98 @@ def night_trials(a) -> Path:
     return fpath
 
 
+def nights_grid(a) -> Path:
+    """One animal, its first `a.first` nights: rows = nights, columns = the trials between home naps in time order (the
+    user, 2026-10-10: "row是一天, 行是naps, 画一个panel, 前7天"). Each cell: the trial's field path (coloured early -> late),
+    the awake ripples where they happened (red), the house counts, and the nap that follows. Description only."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+    from _common import figure_dir, report_dir
+    man = json.loads((report_dir(COHORT) / f"run_manifest_awake_ripple_map_{COHORT}.json").read_text())
+    run_dir = Path(a.run or man["run_dir"])
+    S = pd.read_csv(run_dir / f"seconds_{a.animal}.csv.gz",
+                    usecols=["sec", "night", "state", "zone", "x", "y", "nonloco", "aswr", "home_nap", "trial"])
+    S["night"] = S.night.astype(str)
+    S = S.sort_values("sec").reset_index(drop=True)
+    S["t"] = pd.to_datetime(S.sec, unit="s")
+    lm = json.loads((HERE / "configs/paddock_landmarks_wiser_2026c.json").read_text(encoding="utf-8"))
+    cor = np.array([lm["corners_wiser"][k] for k in ("A0", "A4", "C4", "C0", "A0")])
+    poles = np.array(list(lm["poles_wiser"].values()))
+    rows = []
+    for nt in sorted(S.night.unique()):
+        G = S[S.night == nt].reset_index(drop=True)
+        hn = G.home_nap.to_numpy().astype(bool)
+        ed = np.flatnonzero(np.diff(np.r_[0, hn.astype(int), 0]))
+        naps = [(G.t.iloc[i], G.t.iloc[j - 1], j - i) for i, j in zip(ed[::2], ed[1::2])]
+        T = [g for _, g in G[G.trial >= 0].groupby("trial", sort=False) if len(g) >= a.min_trial_min * 60]
+        if T:
+            rows.append((nt, T, naps))
+        if len(rows) == a.first:
+            break
+    ncol = max(len(T) for _, T, _ in rows)
+    nrow = len(rows)
+    fig, axs = plt.subplots(nrow, ncol, figsize=(2.9 * ncol + 0.6, 1.95 * nrow + 0.8), squeeze=False)
+    tab = []
+    for r, (nt, T, naps) in enumerate(rows):
+        for c in range(ncol):
+            ax = axs[r, c]
+            ax.set_xticks([])
+            ax.set_yticks([])
+            if c >= len(T):
+                ax.axis("off")
+                continue
+            g = T[c]
+            ax.plot(cor[:, 0], cor[:, 1], color="k", lw=0.5)
+            ax.scatter(poles[:, 0], poles[:, 1], s=2, color="k", zorder=3)
+            f = g[(g.zone == 3) & g.x.notna()]
+            if len(f) > 1:
+                pts = f[["x", "y"]].to_numpy()
+                gap = np.diff(f.sec.to_numpy()) > 5
+                segs = np.stack([pts[:-1], pts[1:]], axis=1)[~gap]
+                tt = ((f.sec.to_numpy()[:-1] - g.sec.iloc[0]) / max(len(g), 1))[~gap]
+                lc = LineCollection(segs, cmap="viridis", norm=plt.Normalize(0, 1), lw=0.5, alpha=0.75)
+                lc.set_array(tt)
+                ax.add_collection(lc)
+            q = g[g.nonloco.astype(bool)]
+            e = q[(q.aswr > 0) & (q.zone == 3)]
+            if len(e):
+                ax.scatter(e.x, e.y, s=3 + 5 * e.aswr, color="tab:red", edgecolor="k", lw=0.2, zorder=5, alpha=0.85)
+            for z, (hx, hy) in HOUSES.items():
+                n_ = int(q[q.zone == z].aswr.sum())
+                ax.add_patch(plt.Circle((hx, hy), 24, facecolor="white", edgecolor="k", lw=0.7, zorder=6))
+                ax.text(hx, hy, str(n_), ha="center", va="center", fontsize=5.5, zorder=7)
+            fq, hq = q[q.zone == 3], q[q.zone.isin([1, 2])]
+            nxt = next((n for n in naps if n[0] > g.t.iloc[-1] - pd.Timedelta(seconds=2)), None)
+            ttl = (f"{g.t.iloc[0]:%H:%M}-{g.t.iloc[-1]:%H:%M}  field {int(fq.aswr.sum())} / {len(fq) / 60:.1f} min"
+                   + (f"\nthen nap {nxt[2] / 60:.0f} min" if nxt is not None else "\n(no nap after)"))
+            ax.set_title(ttl, fontsize=6.3, pad=2)
+            ax.set_aspect("equal")
+            ax.set_xlim(cor[:, 0].min() - 25, cor[:, 0].max() + 25)
+            ax.set_ylim(cor[:, 1].min() - 25, cor[:, 1].max() + 25)
+            if c == 0:
+                ax.set_ylabel(f"night {nt}", fontsize=8)
+            tab.append(dict(night=nt, trial=c + 1, start=g.t.iloc[0], end=g.t.iloc[-1], field_quiet_min=len(fq) / 60,
+                            field_aswr=int(fq.aswr.sum()), house_quiet_min=len(hq) / 60, house_aswr=int(hq.aswr.sum()),
+                            nap_after_min=(nxt[2] / 60) if nxt is not None else np.nan))
+    for c in range(ncol):
+        axs[0, c].annotate(f"trial {c + 1} (before nap {c + 1})", xy=(0.5, 1.42), xycoords="axes fraction", ha="center", fontsize=7.5)
+    note = NOTES.get(a.animal, "")
+    fig.suptitle(f"{a.animal}, first {nrow} nights: rows = nights, columns = trials between home naps. Path coloured early -> late; "
+                 f"red = awake ripples in the field (size = count in that second); circles = awake ripples in house_1 / house_2; "
+                 f"titles: field ripples / field quiet minutes{'  -  NOTE: ' + note if note else ''}", fontsize=9, y=1.0)
+    fig.subplots_adjust(wspace=0.04, hspace=0.55, top=0.9)
+    fpath = figure_dir(COHORT) / f"ephys_spikes_awake_ripple_nights_{a.animal}_first{nrow}_{COHORT}.png"
+    fig.savefig(fpath, dpi=100, bbox_inches="tight")
+    plt.close(fig)
+    TT = pd.DataFrame(tab)
+    TT.to_csv(run_dir / "phase2" / f"nights_grid_{a.animal}_first{nrow}.csv", index=False)
+    print(TT.groupby("night").agg(trials=("trial", "size"), field_aswr=("field_aswr", "sum"), field_min=("field_quiet_min", "sum")).round(1).to_string())
+    print(f"figure {fpath}")
+    return fpath
+
+
 # ------------------------------------------------------------------ selftest
 def selftest() -> None:
     rng = np.random.default_rng(3)
