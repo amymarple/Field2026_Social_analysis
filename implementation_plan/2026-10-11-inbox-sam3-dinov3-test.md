@@ -79,3 +79,41 @@ and every threshold are made on dev only; all headline numbers are on test. Fram
   RTX 5070 Ti); expected tens of minutes.
 - Known limits stated up front: one house (CH07), ~20 segments, one labeller; IR frames are 6 s and 15 s after colour, so
   piles are mostly still and the same configuration appears twice per segment (hence segment-level holdout).
+
+## Amendment 1 — 2026-10-11, before results: text review by the Codex session "Yolo_identity"
+
+(The review was queued to astra first; astra's session was not open, so the user's open Codex session Yolo_identity
+reviewed it — reply pasted by the user.) Adopted in full:
+
+1. **What the truth can show.** Head clicks prove only head coverage, not that a mask / box is one whole rat; scoring a
+   point-prompted mask by the same point is close to self-validation (more so with negative points at the other heads).
+   → T1/T2 headline claims are restricted to **head-point exclusivity** (exactly-one-head coverage, merge and empty
+   rates). Any claim that SAM 3 gives **usable single-rat boxes** requires a **blind mask review by the user**: 40 masks
+   (T1 best prompt and T2 positive-point / negative-point variants, stratified by pile size, from test segments), shown
+   without method or score, each judged "one whole rat / part of a rat / two or more rats / not a rat"; the page is made
+   after the masks exist; the agent never judges them.
+2. **Grouping.** Adjacent flashes can show the same still pile → the unit is a **still episode**: consecutive segments of
+   the same house are one group if the WISER house roster is unchanged between them and every roster animal's head-IMU
+   state is still for ≥ 90 % of the seconds between them (`imu_seconds_cache`). All holdout, bootstrap and inner CV use
+   these groups. The dev set (T1/T2 prompt and τ choice only) = the groups containing the 5 earliest segments; T1/T2
+   headline numbers on the remaining groups. **T3 does not use the dev split**: it is evaluated leave-one-group-out over
+   all groups, with its only hyper-parameter (logistic C) chosen by inner grouped CV inside each training fold.
+3. **T3 decision rule.** "DINOv3 carries identity" (engineering gate) = point estimate ≥ 15 percentage points above BOTH
+   chance and the best control, AND the grouped-bootstrap 95 % CI of that difference excludes 0; "a gain of ≥ 15 pp is
+   established" only if the CI lower bound ≥ 15. Leave-one-group-out success alone is not a cross-day claim; the
+   leave-one-day-out result (09-11 held out) is reported for that.
+   **Crops:** primary = head-centred square of side 4 in (≈ 300 px at 74.8 px/in) resized to 224, so a crop rarely holds
+   another head; the 1 200-px body-scale crop becomes a sensitivity. **Controls replaced by matched ones:** (a) position-only
+   (u, v and house-frame position) classifiers; (b) **head-masked control** — the same crop with a disc of radius 1.5 in at
+   the head filled with the crop's median grey (tests context / neighbours / background); (c) **position-matched control** —
+   a crop at the same image position from another group's frame, labelled with the original rat (tests place); (d)
+   shuffled labels. The best of (a)–(c) is "the best control".
+4. **Fixed now:** primary embedding = CLS, primary classifier = logistic regression (mean-patch and nearest-centroid
+   secondary); crops clipped to the frame and padded with the frame's median grey; T1 matching: a head inside two masks goes
+   to the higher-score mask, a mask with ≥ 2 heads counts as merged and is matched to one head only (its highest-score
+   pairing), mask–head ties broken by mask score then area; tiled variant: cross-tile duplicates merged by mask IoU ≥ 0.5;
+   T2 fallback: SAM 2.1 (`sam2.1_b.pt`) only if the installed ultralytics exposes no point prompts for SAM 3 (checked and
+   reported first); CIs = paired grouped bootstrap (resampling groups, 2 000 draws); multiple comparisons: the primary
+   comparisons are pre-named (T1: chosen prompt on test; T2: positive-point exclusivity; T3: CLS + logistic vs best
+   control), the other prompts / variants are descriptive only; mask areas are reported in **pixels only** (one scale
+   cannot convert piles at different heights).
