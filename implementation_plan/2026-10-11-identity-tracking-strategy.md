@@ -191,6 +191,15 @@ caveat "rosters are lower bounds after 09-07" does not apply; (iii) to check sep
 flag SF11's fixes 09-07 06:10:45 → 08:20 as `m_off_animal`, but the field note says 07:40 → 08:20 "is still real position
 data for the rat" — the flag may be wrong (positions themselves are unaffected).
 
+**Update from the formal export (2026-10-11, clicks report re-run, export primary):** in 3 of 20 segments the WISER house
+roster listed animals the user did not see in the house (09-10 08:37 SF08 + SF09, 09-11 09:28 SF10, 09-11 09:54 SF12);
+at the colour frame WISER put three of them 5.1–8.8 in OUTSIDE the house body, inside the 15-in dilation that counts as
+"in the house" (the fourth inside). No clicked animal was ever missing from a roster. So the roster **over-counts animals
+just outside the door**: the roster constraint must allow a door-zone "maybe outside" state (or use a tighter boundary
+at the door) — Codex's call for tolerance stands, for this reason rather than SF11. (My earlier explanation — roster
+taken over the minute before the segment — was wrong: the page's roster is the state at the colour frame; only the
+positions use the preceding minute.)
+
 ## 12. In-box labelling strategy after the user's observation (2026-10-11, proposed)
 
 The user: "虽然是pile 但依然还是能分清谁是谁的。重点确实是分辨头在哪里" — even in a pile the user can tell who is who; the
