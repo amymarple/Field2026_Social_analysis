@@ -22,7 +22,7 @@ composition known, arrangement unknown"), and an error budget per layer.
 |---|---|
 | Panorama detector | YOLO11m `rat_m_v5` (cohort-1 trained, imgsz 1280); centre-match AP 0.83 on its own val (optimistic), 0.47 on a never-trained cohort-1 clip; transfers to cohort-3 night CH01 by the user's eye. Round-1 cohort-3 labels (400 frames + 100-frame frozen blind test on night 09-05) being labelled by the undergrad with a WISER-guided, blind-first loop (`2026-10-06-wiser-label-loop.md`). |
 | In-box detector | none; no in-box labels exist (cohort-1 in-box cameras were a different model). |
-| WISER | default tracks V3 (head tag; still error ≈ 3 in; pairwise still-distance p95 ≈ 3 in); WISER → paddock map accepted on one CH01 hour (median 4.4 in, 88.5 % within 14 in vs control 2.9 %); tag ↔ animal identity verified against the head IMU (raw-WISER speed vs IMU activity, diagonal dominant on 09-06 and 09-08); **2-D only (`location_z` = 0)** → never who lies on top; box entry/exit events pass the operator's 09-05 ground truth (12 / 12 within 1–4 s, order exact); every animal in the paddock carries a tag until 09-11 19:40 — SF11 kept tag 3058 after its implant fell off (09-07 ≈ 06:10) and was taken out of the paddock at the 09-07 AM round (last regular fix 08:20), so 09-07 08:20 → 09-11 19:40 = five animals, all tagged (user 2026-10-11; field incident log 09-07); rosters are incomplete only during tag dropouts (SF11's 305a 09-02 00:03 → ≈ 08:00, SF12 night 08-30/31). |
+| WISER | default tracks V3 (head tag; still error ≈ 3 in; pairwise still-distance p95 ≈ 3 in); WISER → paddock map accepted on one CH01 hour (median 4.4 in, 88.5 % within 14 in vs control 2.9 %); tag ↔ animal identity verified against the head IMU (raw-WISER speed vs IMU activity, diagonal dominant on 09-06 and 09-08); **2-D only (`location_z` = 0)** → never who lies on top; box entry/exit events pass the operator's 09-05 ground truth (12 / 12 within 1–4 s, order exact); every animal in the paddock carries a tag until 09-11 19:40 except in tag-dropout windows: SF11's 305a 09-02 00:03 → ≈ 08:15, SF12 night 08-30/31, and SF11 09-07 06:10:45 → ≈ 08:20 (its tag rode on the implant, which fell off; SF11 was taken out of the paddock at that AM round), so 09-07 08:20 → 09-11 19:40 = five animals, all tagged (§11). |
 | Head IMU (neurologger, one per animal) | per-second state (still / active / locomoting), turn rate, pitch / roll, sleep scores (imu_remclean); an identity-linked motion signal independent of WISER and of video. |
 | Colour flashes | 22 colour segments found in the video (CH07 1 / 13 / 7 on 09-09 / 10 / 11; CH08 only the 09-10 AM placement); the user clicked heads + ids on 11 of them (141 clicks on the colour frame and the IR frames 6 s / 15 s after) — analysis in §5. |
 | Identity cues on the animal | identifying colour (user, final): SF07 green, SF08 red, SF09 black, SF10 blue, SF11 white/grey, SF12 yellow (`id_colour`, `wiser/configs/rat_identities_2026c.csv`); IR-visible patterns x / none / star / square-with-cross / circle / two lines; headstages. In-hand close-ups per animal (`$OUT/2026c/inhand_closeups/`). |
@@ -112,7 +112,8 @@ snapshot (11 / 22 segments, one labeller, house_2 / CH07 only); blind colour-fra
 
 - Circularity: WISER (or IMU) used to create identity labels must not also score the identity system on the same
   frames; keep held-out truth (colour flashes, user spot labels) separate.
-- WISER rosters are incomplete only during tag dropouts (SF11's 305a 09-02 00:03 → ≈ 08:00; SF12 night 08-30/31); the first
+- WISER rosters are incomplete only during tag dropouts (SF11's 305a 09-02 00:03 → ≈ 08:15; SF12 night 08-30/31; SF11 untagged
+  09-07 06:10:45 → ≈ 08:20 after its implant + tag fell off); the first
   days' colours are uncertain (user). (An earlier version of this plan wrongly said SF11 stayed in the paddock untagged after
   09-07; corrected 2026-10-11, see §11.)
 - In-box cameras move at lid openings; colour inserts are calibration events, not behaviour (exclude ON −1 s to
@@ -177,19 +178,22 @@ Thread `01a12853-ba1a-7c93-ab0a-82792f818e2d` (queued with the user's agreement;
    correlated evidence; small short-term displacement ≠ long-term identity; CH07 results do not transfer to CH08; the
    literature's 77 % is not this project's ceiling; correct flash endpoints ≠ correct throughout.
 
-## 11. Correction (user, 2026-10-11): SF11 was never in the paddock untagged
+## 11. Correction (user, 2026-10-11, refined the same day): SF11's tag and presence
 
-The user: "SF11 has tag — Codex said is wrong". The premise came from this plan (and plan 2026-10-10 inbox p0), not from
-Codex. Field record (`field2026-sync/from-field/2026-09-21_cohort3-incident-log.md`, 09-07 entries): "Rat SF11 stays in the
-group: WISER tag 3058 and video/behavior continue; only the ephys stream ends"; then "tag 3058 (SF11) last regular fix
-2026-09-07 08:20 … the animal left the arena at the round"; and the 09-11 19:40 entry "population 5 -> 10". So the tag
-stayed on the rat after the implant fell off (≈ 06:10), the rat left the paddock at the 09-07 AM round, and from 08:20 to
-09-11 19:40 the paddock held five tagged animals. Consequences: (i) the WISER house roster is complete outside tag-dropout
-windows → the Fable proposal (roster count as a hard count) is closer to right than this plan's first resolution; the
-remaining tolerance is for dropouts and missed door events (Codex's other two reasons stand); (ii) the click analysis's
-caveat "rosters are lower bounds after 09-07" does not apply; (iii) to check separately: the production default tracks
-flag SF11's fixes 09-07 06:10:45 → 08:20 as `m_off_animal`, but the field note says 07:40 → 08:20 "is still real position
-data for the rat" — the flag may be wrong (positions themselves are unaffected).
+Final, confirmed by the user ("yup you are right") after a second check of the field record:
+1. **Until 09-07 06:10:45** SF11 carried tag 3058 (on the implant; 3058 was SF12's second tag until it fell off on 08-31
+   19:24, then remounted on SF11 on 09-02 ≈ 08:15 after 305a's battery died at 00:03).
+2. **09-07 06:10:45 → the AM round (≈ 08:20):** the implant came off **with the tag** — "the WISER tag is attached to the
+   implant" (operator correction 09-07 19:40 in `field2026-sync/from-field/2026-09-21_cohort3-incident-log.md` and
+   `2026-09-07_sf11-implant-loss.md`; `COHORT3_DATA_GUIDE.md` §6) — so for ≈ 2 h SF11 was in the paddock **untagged**,
+   and tag 3058's fixes are the implant lying in house_2, not the rat. The production tracks flag them `m_off_animal`:
+   **correct, unchanged** (a brief fix attempt stopped before changing anything).
+3. **From the 09-07 AM round (last 3058 fix 08:20) to 09-11 19:40** SF11 was out of the paddock; five animals, all tagged
+   ("population 5 -> 10" on 09-11; WISER holds only 7 shortids in all four DBs, so no replacement tag ever appeared).
+Consequences: the WISER house roster is complete outside the tag-dropout windows — 305a 09-02 00:03 → ≈ 08:15, SF12 night
+08-30/31, and **SF11 untagged 09-07 06:10:45 → ≈ 08:20**. My first two versions of this section were wrong (first "SF11
+untagged in the paddock until 09-11", then "the tag stayed on the rat"). No click segment falls in 06:10–08:20 on 09-07,
+so the click results are unaffected; the remaining roster tolerance is for dropouts and the door zone (below).
 
 **Update from the formal export (2026-10-11, clicks report re-run, export primary):** in 3 of 20 segments the WISER house
 roster listed animals the user did not see in the house (09-10 08:37 SF08 + SF09, 09-11 09:28 SF10, 09-11 09:54 SF12);
