@@ -209,3 +209,40 @@ On the 254 labelled strips (36 with USV), each threshold chosen leave-one-window
 **Verdict.** v2 is not clearly better (MIC01 Youden 0.61 vs 0.58; MIC02 worse), so no full run. Simple count / duration
 features plateau at ~0.7–0.85 sensitivity and specificity; in MIC01, more than half of the flagged strips are labelled
 "none".
+
+## Amendment 3 — strip presence from image embeddings (2026-10-11; before its results)
+
+**Why.** The user judges USV presence by shape. Simple count / duration features plateau (Amendment 2). Test whether
+a pretrained vision model, given the same images the user labelled, separates the strips better. No new labels.
+
+**Method (`ephys/usv/usv_dino_presence.py`, cv env, GPU).**
+1. Each 30-s strip PNG (the review page's whitened 15–100 kHz image, 3600 × 320 px) is cropped to its axes and cut into
+   three 10-s tiles, each resized to 960 × 240 px.
+2. DINOv3 ViT-B/16 (local checkpoint) gives per tile the CLS token, the mean and the maximum of the patch tokens.
+3. Strip embedding = the maximum and the mean over its three tiles.
+4. Classifier: standardise, PCA to 20 dimensions, logistic regression (class-balanced, C = 1). The PCA and scaler are
+   fitted inside each training fold.
+5. Leave-one-window-out over the 13 recording windows; both mics pooled with a mic indicator, and per mic.
+6. Reported: AUC, and sensitivity / specificity / precision at p ≥ 0.5, next to v1's best feature. Also "DINO + v1
+   counts".
+
+**Decision (fixed now).**
+- Clearly better than v1 = higher Youden J in both mics; then a labelling round of the strips the model is least
+  sure of.
+- Otherwise: more labels first.
+
+### Amendment 3 — result (2026-10-11)
+
+`ephys/usv/usv_dino_presence.py` → `D:/Field2026_analysis_out/2026c/usv_dino_presence/`. Leave-one-window-out:
+
+| mic | DINOv3 per mic | best v1 feature (threshold-free AUC) |
+|---|---|---|
+| MIC01 | AUC 0.88; at p ≥ 0.5 sensitivity 0.62, specificity 0.98, precision 0.87, Youden 0.60 | v1 tonal ≥ 20 ms: AUC 0.89, Youden 0.58 |
+| MIC02 | AUC 0.12–0.35 | v1 tonal any: AUC 0.79 |
+
+- MIC02 fails because its 15 positive strips lie in only 3 windows, 9 of them in 09-09 23:00. Held-out windows leave too
+  few positives to learn from.
+- Adding the v1 counts changed nothing (lost among 4 608 image dimensions).
+
+**Verdict (by the rule fixed above).** Not clearly better than v1 → more labels first. Proposed second round: about 24
+new 5-min windows (12 per mic, spread over 08-31 → 09-10, night-weighted), presence only.
