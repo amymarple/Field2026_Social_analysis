@@ -38,8 +38,8 @@ explicit evidence-fusion problem over tracklets.
 **L1 Detection (per frame).**
 - Panoramas: the undergrad's YOLO loop (unchanged).
 - In-box: a new IR detector (box, or instance mask for piles). Seed labels from the user's head clicks: head point →
-  SAM3 point/box prompt → mask/box *proposal* → human accept/fix (SAM3 failed zero-shot on the panoramas because rats are
-  ≈ 10–60 px there; in-box rats are hundreds of px, so it must be re-tested, not assumed). Training domain = IR; colour
+  SAM3 point/box prompt → mask/box *proposal* → human accept/fix (SAM3 failed zero-shot on cohort-1 panorama frames —
+  rats ≈ 65 px, cause not established, see §9; in-box rats are hundreds of px, so it must be re-tested, not assumed). Training domain = IR; colour
   frames are an identity oracle, not training data (operator, 09-09).
 
 **L2 Tracklets.** A standard tracking-by-detection association (ByteTrack / BoT-SORT / OC-SORT class) cut
@@ -102,6 +102,42 @@ displacement, the pre-registered house_2 fit and order test, WISER-assignment ac
   OFF + 5 s from motion measures).
 - No claims about who lies on top from WISER; arrangement only after the order test.
 - Females (from 09-11 19:40) out of scope.
+
+## 9. Response to the Fable SOTA audit (2026-10-11)
+
+Audit: `results/2026c/cv_field/reports/cv_field_identity_strategy_fable_audit_2026-10-11.md` (Fable 5.1, ~25 sources,
+each marked verified / unverified). Verdict: right family (sensor-assisted tracklet identity, as in Bains et al. 2023
+RFID + ILP 77 %, Henschel et al. 2019 video + IMU IDF1 91.2 %); no published system reports frame-level identity inside
+a tight rodent pile — the realistic deliverable is composition + door identity, arrangement on loose piles propagated
+from a visible moment, and an honest "unresolved". Accepted changes (coordinator's assessment; the user decides):
+- **Pile-aware state space**: L2 emits group nodes (blob + count); L3 assigns a *set* (composition) to a group node,
+  arrangement only optionally.
+- **One global formulation**: min-cost flow / ILP per lid-closed segment, animals enter and leave only through door
+  tracklets, WISER roster count as a hard count, continuity as pairwise terms — replaces "Hungarian per window or HMM".
+- **Clock offsets** (video / WISER / IMU) as an explicit likelihood term; +1 h shifted negative controls kept.
+- **Calibrated posteriors** (reliability diagram, ECE) before any "unresolved" threshold; accuracy-vs-coverage curve as
+  the headline figure.
+- **IMU term = discrete states and turn events vs tracklet motion classes, never continuous speed** (V6: head
+  acceleration ≈ 4× body); its information is confined to micro-events → report "distinctness coverage" (share of
+  pile-seconds with ≥ 1 roster animal non-still while the rest are still); < 10 % → tie-breaker only. On the panoramas it
+  is validated, not deployed.
+- **Appearance: a frozen DINOv3 + linear probe** on free crops first; a trained IR re-ID only if the probe beats chance
+  on held-out flash episodes.
+- **Proofreading loop** (the operator's labeler / the undergrad GUI with a roster panel).
+- **In-box detector classes** `rat`, `pile` (count 2–6), optional `head` point; ~150 single + ~60 pile frames; SAM 3 / SAM 2
+  point-prompt proposals after a 20-frame test (take the box, drop merged masks); no instance masks, no identity-as-class.
+- **Evaluation**: IDF1, HOTA with AssA, per-frame / composition / arrangement accuracy, track purity, per-layer error
+  budget; held out by flash **episode and day** (09-11 entirely), two raters on a subset; never score inside the static
+  episode the labels came from, never on WISER-selected frames; drop-one-cue, WISER-only / IMU-only / appearance-only,
+  degraded-roster ablations.
+- **Correction (audit item):** §3 said SAM3 failed on the panoramas because rats are "≈ 10–60 px". The SAM3 test used
+  cohort-1 frames with rats ≈ 65 px native; the 2016 → 1008 tiles (rats ≈ 32 px) scored *better* (AP 0.40) than the
+  native 1008 tiles (0.23) → not established as a size effect (inference resolution / domain are open).
+- **Decisive next experiment (the audit's Q6), proposed:** flash-to-flash identity propagation on CH07 09-10 → 09-11 —
+  from flash k, detect + tracklets + global assignment with free cues only (roster count, door events, continuity),
+  score at flash k + 1 by the user's clicks; add the IMU term and measure the delta; stratify by whether the pile
+  reshuffled. Needs the in-box detector (~100 labels) and the clicks; decides whether the arrangement layer exists
+  before any re-ID is built.
 
 ## 8. Questions for the SOTA audit
 
