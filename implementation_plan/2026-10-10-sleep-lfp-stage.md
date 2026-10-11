@@ -220,3 +220,49 @@ full-data REM-vs-stay coefficients of the interactions, and the REM entries per 
   scorings.
 - Report the future-window NREM coverage of the main (e) set.
 
+## 9. Revision 3 (2026-10-10, before these results; the user: "做吧 L2(b)") — L2(b) defined
+
+**Question:** is #60 (after evening rounds the first REM needs more NREM than predicted; strong on pass2med) partly a
+labelling lag? I.e. does REM-like theta already appear in NREM-scored seconds before the first REM?
+
+**Events** (each scoring):
+- **R-evening:** evening round records with a house entry (part H's `house_entries.csv`).
+  - t_N' = the first NREM bout start ≥ t_H.
+  - t_R = the first REM bout start ≥ t_N', with no WAKE bout ≥ 30 min in between.
+- **N-evening:** natural WAKE bouts ≥ 30 min inside records, ending 17:00–23:00 (field-PC time) and not within 3 h of a
+  round record start.
+  - t_N = the first NREM bout start after the wake.
+  - t_R = the first REM bout start ≥ t_N, with no WAKE bout ≥ 30 min in between.
+- **N-any:** the same at any clock time (context).
+
+**Window:** the NREM-scored seconds in $[\max(t_R - 600, t_N), t_R - 2)$ s. The last 2 s are dropped (2-s centred
+windows). At least 60 such seconds are required.
+
+**Measures per event:**
+- **th:** the scorer's theta / delta axis (`imu_fixch` `SleepScoreRaw.npz` `th`).
+  - z within animal × probe block over the block's NREM seconds.
+  - REM-like = th ≥ the block's 25th percentile of REM-second th.
+  - Coverage, blocks and masks as L1.
+- **CA1:** the theta session's cache (`theta_seconds`, `log_td`, `theta_on`, `f_peak`).
+  - REM-like theta = `theta_on` AND `f_peak` < 10 Hz (not spindles).
+  - SF10 sessions whose CA1 site is the scorer's theta channel are flagged.
+- **Per-event values:** mean z-th, REM-like share (th), REM-like share (CA1), mean `log_td`.
+- **Trajectory:** mean z-th per 60-s bin before t_R (description).
+
+**Comparison:**
+- R-evening − N-evening per measure.
+- Pooled difference: mean of the per-animal differences, 95 % CI by bootstrap over events within animals (2000).
+- The animals with both kinds counted by sign.
+
+**Pass ("a labelling lag of early theta"):**
+- R-evening has a higher REM-like share (th) than N-evening, with CI > 0 on both scorings.
+- At least n − 1 of the n animals with both kinds go the same way.
+- The CA1 share agrees in sign (reported).
+
+**Reading:**
+- Holds → #60 is at least partly REM-like theta in NREM-scored seconds before the first REM.
+- Not → #60 is not explained by early theta scored as NREM.
+
+**Next, for the user (astra):** a blind review page of the same transitions: LFP ± 60 s around t_R with the states
+hidden.
+
