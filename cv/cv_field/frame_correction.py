@@ -1,6 +1,8 @@
 """frame_correction.py — per-camera, per-time image correction (cohort px -> 09-18 calibration-epoch px) for the
-cameras CH01-CH08, and the pixel -> paddock chain. Coverage (user, 2026-10-02): CH01-CH06 at night (21:00 -> 04:20),
+cameras CH01-CH08, and the pixel -> paddock chain. Coverage (user, 2026-10-02): CH01-CH04 at night (21:00 -> 04:20),
 the in-box CH07/CH08 all day, segmented at the house-lid events (battery rounds, catches) when they may be bumped.
+CH05/CH06 (on the house roofs) all day since 2026-10-10 (the user: map CH05-CH08 into the paddock like CH01-CH04; the
+houses matter by day), segmented at the lid events too: they register on the roof, which IS the lid.
 
 Sources (the runs named by the canonical pointers in results/<cohort>/cv_field/reports/):
   CH01, CH02  landmark_night.py — dusk chain from the 09-18 labels, night frames tracked from the chained night reference;
@@ -8,6 +10,12 @@ Sources (the runs named by the canonical pointers in results/<cohort>/cv_field/r
   CH03, CH04  landmark_track.py --ref-labels <the user's 09-04 03:01 labels> --tie — tracked from the labelled night
               reference, tied to 09-18 by the two label sets (pole centre lines); track_frames.csv (+ tie.json).
               Pointer run_manifest_landmark_track_<tag>_<c>.json (default tag ch0304_ref0904night_hourly).
+  CH05, CH06  the same from the 09-04 03:01 labels (nights, ch0506_ref0904night_hourly) and the 09-04 12:00:02 labels
+              (05:00 -> 20:00 hourly + 10 min around every lid event, ch0506_ref0904day_hourly). CH06 is tied to 09-18 by
+              the labels (house_2 never moved). CH05 cannot be (house_1 was moved on 09-18): its rows keep their 09-04
+              reference frame, and to_paddock maps that frame through the recording repo's cohort tie
+              (calibration_qc/cohort_tie.py + cohort_ties_2026c.json: the release camera turned by what house_1 at its
+              cohort pose and pole B1 say CH05 turned between 09-04 and 09-18; validated on CH06 at 5-7 mm median).
 Table (one row per camera and sampled time): A = a11..a23, the affine 09-18 px -> frame px; B = b11..b23, its inverse
 frame px -> 09-18 px (what a detection needs); source; status / held-out error of that sample; the night's quality
 (CH01/CH02: dawn closure = median of the first three dawn frames and the verdict, pass <= 3 px; CH03/CH04: the tie's
@@ -19,9 +27,12 @@ held-out error); the night's rain (AWN console, 21:00 -> 04:20) and a flag:
   night         CH01/CH02 night failing the dawn-closure rule (closure > 3 px or a night frame unreliable)
 Lookup: Corrections.correction(cam, t) -> (B, info) for any time inside a sampled night (a night = 12:00 -> 12:00, named
 by its dusk date): the six parameters of A interpolated linearly between the two nearest usable samples of that night
-(within-night changes are a few px), the nearest sample beyond them; (None, info) outside sampled nights.
-Corrections.to_paddock(cam, t, uv, z_mm=60) -> paddock (x, y) through the 09-24 calibration (paddock_map.load()[cam]
-.to_paddock), z = the assumed height of the point (60 mm ~ a rat's back, per the calibration README).
+(within-night changes are a few px), the nearest sample beyond them; (None, info) outside sampled nights. CH05/CH06:
+the same, but over the samples of t's lid-closed segment (never across a lid event) that share the nearest sample's
+reference frame (CH05 has two: 09-04 03:01 at night, 09-04 12:00 by day). CH07/CH08: the segment's median.
+Corrections.to_paddock(cam, t, uv, z_mm=60) -> paddock (x, y) through the release calibration (paddock_map.load()[cam]
+.to_paddock; for CH05 the cohort-tied camera of its reference frame), z = the assumed height of the point above the
+local ground (60 mm ~ a rat's back, per the calibration README).
 Pixels are full-resolution UPRIGHT pixels (CH01/CH02: the 7680 x 2160 frame rotated upright, as grab_frames.py returns).
 Precision (user decisions 2026-10-02): CH01/CH02 <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px (~1-2 cm).
 The calibration's own error (76 mm median cross-camera, exploratory) is not reduced by this.
@@ -55,13 +66,16 @@ CLOSURE_MAX = 3.0
 # sample rule per camera: (held-out median max, held-out p90 max) in px (user, 2026-10-02: CH03/CH04 at 5 / 10 px)
 SAMPLE_RULE = {"CH01": (3.0, 6.0), "CH02": (3.0, 6.0), "CH03": (5.0, 10.0), "CH04": (5.0, 10.0),
                "CH05": (3.0, 6.0), "CH06": (3.0, 6.0), "CH07": (5.0, 10.0), "CH08": (5.0, 10.0)}
-# Coverage (user, 2026-10-02): the whole-field CH01-CH04 and the house-top CH05/CH06 at night; the in-box CH07/CH08 all day.
-NIGHT_CAMS = {"CH01", "CH02", "CH03", "CH04", "CH05", "CH06"}
+# Coverage (user, 2026-10-02): the whole-field CH01-CH04 at night; the in-box CH07/CH08 all day; the house-top CH05/CH06
+# all day since 2026-10-10 (were nights only), segmented at the lid events because they register on the roof = the lid.
+NIGHT_CAMS = {"CH01", "CH02", "CH03", "CH04"}
+ROOF_CAMS = {"CH05", "CH06"}
 # CH07 / CH08 sit in the house lids, which are lifted at every battery round / catch (user, 2026-10-02): their correction is
 # segmented at these events (cv/configs/cohort3_lid_events.json) and never interpolated across one.
 LID_CAMS = {"CH07", "CH08"}
 LID_EVENTS = REPO / "cv" / "configs" / "cohort3_lid_events.json"
-TRACK_TAGS = ("ch0304_ref0904night_hourly", "ch0506_ref0904night_hourly", "ch0708_ref0904day_24h", "ch0708_ref0904night_24h")
+TRACK_TAGS = ("ch0304_ref0904night_hourly", "ch0506_ref0904night_hourly", "ch0506_ref0904day_hourly", "ch0708_ref0904day_24h",
+              "ch0708_ref0904night_24h")
 # CH07/CH08 are tracked from two references whose label tie is weak (3 structures; 3.9 / 8.1 and 4.6 / 5.7 px): mixing
 # them made 15-24 px jumps whenever consecutive samples came from different references (2026-10-03). The night-reference
 # samples are therefore re-aligned to the day reference by the median of their differences on frames where both fit.
@@ -254,7 +268,7 @@ def build(cohort: str, night_run: Path | None, track_runs: list[tuple[str, Path]
         r.update({k: float(v) for k, v in zip(B_KEYS, invert(A).ravel())})
         r["rain_mm_night"] = rain.get(date.fromisoformat(r["night"]), np.nan)
         night_bad = r["night_quality"] == "dawn closure" and r["night_verdict"] != "PASS"
-        r["segment"], inside = segment_of(datetime.strptime(r["time"], FMT), events) if r["camera"] in LID_CAMS else ("", False)
+        r["segment"], inside = segment_of(datetime.strptime(r["time"], FMT), events) if r["camera"] in LID_CAMS | ROOF_CAMS else ("", False)
         r["flag"] = "lid" if inside else "sample" if not r["sample_ok"] else "night" if night_bad else "ok"
     src["_segments"] = segment_medians(rows)
     # one row per camera and time: two references (CH07/CH08 day + night) -> keep the better fit (usable first, lower p90)
@@ -279,6 +293,7 @@ class Corrections:
         for r in self.rows:
             r["_t"] = datetime.strptime(r["time"], FMT)
         self._cams = None
+        self._ties = None
         self.events = lid_events()
 
     def samples(self, cam: str, night: date) -> list[dict]:
@@ -290,6 +305,15 @@ class Corrections:
             seg, inside = segment_of(t, self.events)
             allr = sorted((r for r in self.rows if r["camera"] == cam and r.get("segment", "") == str(seg) and r["flag"] != "lid"),
                           key=lambda r: r["_t"])
+            info = {"camera": cam, "segment": seg, "lid_open": inside}
+        elif cam in ROOF_CAMS:                                 # roof-registered: t's lid-closed segment, one reference frame
+            seg, inside = segment_of(t, self.events)
+            allr = [r for r in self.rows if r["camera"] == cam and r.get("segment", "") == str(seg) and r["flag"] != "lid"]
+            near = [r for r in allr if r["flag"] not in ("sample", "outlier")] or allr
+            if near:
+                tgt = min(near, key=lambda r: abs((r["_t"] - t).total_seconds()))["target_frame"]
+                allr = [r for r in allr if r["target_frame"] == tgt]
+            allr = sorted(allr, key=lambda r: r["_t"])
             info = {"camera": cam, "segment": seg, "lid_open": inside}
         else:
             allr = self.samples(cam, n)
@@ -331,21 +355,37 @@ class Corrections:
         P = np.asarray(uv, float).reshape(-1, 2)
         return P @ B[:, :2].T + B[:, 2], info
 
-    def to_paddock(self, cam: str, t: datetime, uv, z_mm: float = 60.0, units: str = "in") -> tuple[np.ndarray | None, dict]:
-        """Detection pixel(s) at field-PC time t -> paddock (x, y) via the 09-18-epoch pixel and the 09-24 calibration.
-        Only where the target frame is 09-18 (CH01-CH04, CH06); CH05 (house_1 moved on 09-18) and the in-box CH07/CH08
-        map to a user-labelled 09-04 frame instead -> None here, use to_09_18 for their reference-frame pixels."""
-        p18, info = self.to_09_18(cam, t, uv)
-        if p18 is None:
-            return None, info
-        if not str(info.get("target_frame", "")).startswith("09-18"):
-            return None, {**info, "flag": info["flag"] + "+not calibrated (target " + str(info.get("target_frame")) + ")"}
+    def camera_model(self, cam: str, target_frame: str):
+        """the calibrated camera for a reference frame: the release camera for 09-18 targets, the recording repo's cohort
+        tie for a tied 09-04 frame (CH05), None otherwise (the in-box CH07/CH08 until their floor model exists)"""
         if self._cams is None:
             import landmark_guides
             sys.path.insert(0, str(landmark_guides.calib_dir()))
             import paddock_map as pm
             self._cams = pm.load()
-        return self._cams[cam].to_paddock(p18, z_mm=z_mm, units=units), info
+        if str(target_frame).startswith("09-18"):
+            return self._cams.get(cam)
+        if self._ties is None:
+            try:
+                import cohort_tie
+                self._ties = cohort_tie.load(cams=self._cams)
+            except (ImportError, FileNotFoundError):
+                self._ties = False
+        return self._ties.find(cam, target_frame) if self._ties else None
+
+    def to_paddock(self, cam: str, t: datetime, uv, z_mm: float = 60.0, units: str = "in") -> tuple[np.ndarray | None, dict]:
+        """Detection pixel(s) at field-PC time t -> paddock (x, y) via the reference-frame pixel and the release calibration:
+        CH01-CH04 and CH06 through their 09-18 frame, CH05 through the cohort tie of its 09-04 reference frame. The in-box
+        CH07/CH08 map to a user-labelled 09-04 frame with no paddock model yet -> None (use to_09_18 for those pixels)."""
+        p18, info = self.to_09_18(cam, t, uv)
+        if p18 is None:
+            return None, info
+        model = self.camera_model(cam, info.get("target_frame", ""))
+        if model is None:
+            return None, {**info, "flag": info["flag"] + "+not calibrated (target " + str(info.get("target_frame")) + ")"}
+        if not str(info.get("target_frame", "")).startswith("09-18"):
+            info = {**info, "model": "cohort tie (recording repo calibration_qc/cohort_ties_2026c.json)"}
+        return model.to_paddock(p18, z_mm=z_mm, units=units), info
 
 
 def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
@@ -359,7 +399,7 @@ def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
         w.writeheader()
         w.writerows(rows)
     f2 = lambda v: "-" if v in ("", None) or (isinstance(v, float) and not np.isfinite(v)) else f"{float(v):.2f}"  # noqa: E731
-    L = [f"# Frame corrections, whole-field cameras, nights (cohort `{cohort}`)\n",
+    L = [f"# Frame corrections, CH01-CH08 (cohort `{cohort}`)\n",
          f"Generated {datetime.now():%Y-%m-%d %H:%M} by `cv/cv_field/frame_correction.py build` (method, columns, flags and "
          "lookup in its docstring). Table: `cv_field_frame_corrections_" + cohort + ".csv` (A = 09-18 px -> frame px, B = "
          "frame px -> 09-18 px; full-resolution upright pixels). Use `Corrections(cohort).to_paddock(cam, t, uv, z_mm=60)`.\n",
@@ -369,8 +409,11 @@ def write_outputs(rows: list[dict], src: dict, cohort: str) -> Path:
                      f"p90 {a.get('before_p90', float('nan')):.1f} -> {a.get('after_p90', float('nan')):.1f} px"
                      for c, a in src.get("_reference_alignment", {}).items()) + ".\n",
          "Precision (user, 2026-10-02): CH01/CH02 dawn closure <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px "
-         "(~1-2 cm). Sample rule (held-out median / p90): CH01/CH02 3 / 6 px, CH03/CH04 5 / 10 px. The 09-24 calibration's "
-         "own error (76 mm median cross-camera) is separate and not reduced here.\n",
+         "(~1-2 cm). Sample rule (held-out median / p90): CH01/CH02 3 / 6 px, CH03/CH04 5 / 10 px. The calibration's "
+         "own error is separate and not reduced here (release 2026-10-03 rev g: CALIBRATION_FINAL_2026-10-04.md).\n",
+         "House-top cameras (CH05/CH06, all day since 2026-10-10): registered on the roof = the house lid, so a correction "
+         "never spans a lid event and samples inside one are flagged 'lid'; CH05 keeps its 09-04 reference frames (03:01 "
+         "at night, 12:00 by day) and maps to the paddock through the recording repo's cohort tie (cohort_tie.py).\n",
          "In-box cameras (CH07/CH08): static between lid events -> per lid-closed segment the median of its usable samples; "
          f"samples > {SEG_OUTLIER_PX:g} px from it are flagged 'outlier'. " + "; ".join(
              f"{c}: {sum(1 for (cc, _), v in src.get('_segments', {}).items() if cc == c and v['n'])} segments, "
@@ -449,6 +492,24 @@ def selftest() -> int:
         Bl, il = C2.correction("CH07", datetime(2026, 9, 4, 8, 10))
         rec("in-box: no interpolation across a lid event; inside the event flagged 'lid'",
             np.allclose(Bb, invert(A1)) and np.allclose(Ba, invert(A2)) and "lid" in il["flag"])
+        tab3 = Path(tmp) / "t3.csv"
+        with open(tab3, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=["segment", "target_frame", *keys])
+            w.writeheader()
+            for t, A, tg in (("2026-09-04 06:00:00", A1, "09-04 12:00"), ("2026-09-04 07:00:00", A2, "09-04 12:00"),
+                             ("2026-09-04 04:00:00", A2 + 3.0, "09-04 03:01"), ("2026-09-04 09:00:00", A2 + 9.0, "09-04 12:00"),
+                             ("2026-09-04 10:00:00", A1 + 9.0, "09-04 12:00")):
+                seg, _ = segment_of(datetime.strptime(t, FMT), ev)
+                w.writerow({"segment": seg, "target_frame": tg, "camera": "CH05", "night": "2026-09-03", "time": t, "flag": "ok",
+                            "night_quality": "untied", "night_quality_px": 1.0, "rain_mm_night": 0.0, **dict(zip(A_KEYS, A.ravel()))})
+        C3 = Corrections(table=tab3)
+        C3.events = ev
+        Bm, im = C3.correction("CH05", datetime(2026, 9, 4, 6, 30))
+        Bn, in_ = C3.correction("CH05", datetime(2026, 9, 4, 4, 10))
+        Bz, iz = C3.correction("CH05", datetime(2026, 9, 4, 7, 50))
+        rec("roof camera: interpolation within a segment and one reference frame, never across a lid event",
+            np.allclose(Bm, invert(0.5 * (A1 + A2))) and np.allclose(Bn, invert(A2 + 3.0)) and in_["target_frame"] == "09-04 03:01"
+            and np.allclose(Bz, invert(A2)) and im["target_frame"] == "09-04 12:00")
     print(("PASS" if ok else "FAIL") + " — frame_correction self-test")
     return 0 if ok else 1
 

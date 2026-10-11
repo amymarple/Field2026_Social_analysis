@@ -1,16 +1,18 @@
-# Frame corrections, whole-field cameras, nights (cohort `2026c`)
+# Frame corrections, CH01-CH08 (cohort `2026c`)
 
-Generated 2026-10-03 19:16 by `cv/cv_field/frame_correction.py build` (method, columns, flags and lookup in its docstring). Table: `cv_field_frame_corrections_2026c.csv` (A = 09-18 px -> frame px, B = frame px -> 09-18 px; full-resolution upright pixels). Use `Corrections(cohort).to_paddock(cam, t, uv, z_mm=60)`.
+Generated 2026-10-10 23:21 by `cv/cv_field/frame_correction.py build` (method, columns, flags and lookup in its docstring). Table: `cv_field_frame_corrections_2026c.csv` (A = 09-18 px -> frame px, B = frame px -> 09-18 px; full-resolution upright pixels). Use `Corrections(cohort).to_paddock(cam, t, uv, z_mm=60)`.
 
 Sources: CH01/CH02 night chain: `D:\Field2026_analysis_out\2026c\cv_field_landmark_night_20261002_0417`; ch0304_ref0904night_hourly: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0304_ref0904night_hourly_20261003_1849`; ch0506_ref0904night_hourly: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0506_ref0904night_hourly_20261003_1427`; ch0708_ref0904day_24h: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0708_ref0904day_24h_20261003_1834`; ch0708_ref0904night_24h: `D:\Field2026_analysis_out\2026c\cv_field_landmark_track_ch0708_ref0904night_24h_20261003_1842`.
 
 Reference alignment (CH07/CH08 night-reference samples -> the day reference, median over frames where both fit): CH07: n 110, centre difference median 7.7 -> 6.8 px, p90 25.2 -> 24.9 px; CH08: n 280, centre difference median 1.9 -> 2.0 px, p90 11.9 -> 11.8 px.
 
-Precision (user, 2026-10-02): CH01/CH02 dawn closure <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px (~1-2 cm). Sample rule (held-out median / p90): CH01/CH02 3 / 6 px, CH03/CH04 5 / 10 px. The 09-24 calibration's own error (76 mm median cross-camera) is separate and not reduced here.
+Precision (user, 2026-10-02): CH01/CH02 dawn closure <= 3 px on passing nights (< 1 cm); CH03/CH04 ~5-10 px (~1-2 cm). Sample rule (held-out median / p90): CH01/CH02 3 / 6 px, CH03/CH04 5 / 10 px. The calibration's own error is separate and not reduced here (release 2026-10-03 rev g: CALIBRATION_FINAL_2026-10-04.md).
+
+House-top cameras (CH05/CH06, all day since 2026-10-10): registered on the roof = the house lid, so a correction never spans a lid event and samples inside one are flagged 'lid'; CH05 keeps its 09-04 reference frames (03:01 at night, 12:00 by day) and maps to the paddock through the recording repo's cohort tie (cohort_tie.py).
 
 In-box cameras (CH07/CH08): static between lid events -> per lid-closed segment the median of its usable samples; samples > 10 px from it are flagged 'outlier'. CH07: 33 segments, 84 outliers, in-segment spread median 2.9 px; CH08: 32 segments, 35 outliers, in-segment spread median 1.1 px.
 
-Summary: CH01 98 ok / 0 sample / 26 night / 0 outlier / 0 lid of 124; CH02 116 ok / 1 sample / 8 night / 0 outlier / 0 lid of 125; CH03 102 ok / 22 sample / 0 night / 0 outlier / 0 lid of 124; CH04 124 ok / 2 sample / 0 night / 0 outlier / 0 lid of 126; CH05 116 ok / 9 sample / 0 night / 0 outlier / 0 lid of 125; CH06 123 ok / 3 sample / 0 night / 0 outlier / 0 lid of 126; CH07 202 ok / 86 sample / 0 night / 43 outlier / 30 lid of 361; CH08 296 ok / 40 sample / 0 night / 7 outlier / 42 lid of 385.
+Summary: CH01 98 ok / 0 sample / 26 night / 0 outlier / 0 lid of 124; CH02 116 ok / 1 sample / 8 night / 0 outlier / 0 lid of 125; CH03 102 ok / 22 sample / 0 night / 0 outlier / 0 lid of 124; CH04 124 ok / 2 sample / 0 night / 0 outlier / 0 lid of 126; CH05 114 ok / 9 sample / 0 night / 0 outlier / 2 lid of 125; CH06 121 ok / 3 sample / 0 night / 0 outlier / 2 lid of 126; CH07 202 ok / 86 sample / 0 night / 43 outlier / 30 lid of 361; CH08 296 ok / 40 sample / 0 night / 7 outlier / 42 lid of 385.
 
 | camera | night | samples | ok / sample / night flags | held-out median px (median) | night quality px | verdict | rain mm (21:00-04:20) | shift range tx, ty px |
 |---|---|---|---|---|---|---|---|---|
@@ -70,7 +72,7 @@ Summary: CH01 98 ok / 0 sample / 26 night / 0 outlier / 0 lid of 124; CH02 116 o
 | CH04 | 2026-09-10 | 9 | 9 / 0 / 0 | 1.40 | 3.05 | unreliable | 0.00 | see CSV |
 | CH04 | 2026-09-11 | 9 | 9 / 0 / 0 | 2.06 | 3.05 | unreliable | 0.00 | see CSV |
 | CH04 | 2026-09-16 | 9 | 9 / 0 / 0 | 2.74 | 3.05 | unreliable | 0.00 | see CSV |
-| CH05 | 2026-08-30 | 9 | 9 / 0 / 0 | 0.55 | - | - | 0.00 | see CSV |
+| CH05 | 2026-08-30 | 9 | 7 / 0 / 0 | 0.55 | - | - | 0.00 | see CSV |
 | CH05 | 2026-08-31 | 8 | 8 / 0 / 0 | 0.45 | - | - | 2.50 | see CSV |
 | CH05 | 2026-09-01 | 9 | 9 / 0 / 0 | 1.09 | - | - | 0.00 | see CSV |
 | CH05 | 2026-09-02 | 9 | 9 / 0 / 0 | 0.38 | - | - | 0.25 | see CSV |
@@ -84,7 +86,7 @@ Summary: CH01 98 ok / 0 sample / 26 night / 0 outlier / 0 lid of 124; CH02 116 o
 | CH05 | 2026-09-10 | 9 | 9 / 0 / 0 | 0.38 | - | - | 0.00 | see CSV |
 | CH05 | 2026-09-11 | 9 | 9 / 0 / 0 | 0.48 | - | - | 0.00 | see CSV |
 | CH05 | 2026-09-16 | 9 | 0 / 9 / 0 | 3.46 | - | - | 0.00 | see CSV |
-| CH06 | 2026-08-30 | 9 | 8 / 1 / 0 | 2.77 | 2.54 | ok | 0.00 | see CSV |
+| CH06 | 2026-08-30 | 9 | 6 / 1 / 0 | 2.77 | 2.54 | ok | 0.00 | see CSV |
 | CH06 | 2026-08-31 | 9 | 8 / 1 / 0 | 2.86 | 2.54 | ok | 2.50 | see CSV |
 | CH06 | 2026-09-01 | 9 | 9 / 0 / 0 | 1.41 | 2.54 | ok | 0.00 | see CSV |
 | CH06 | 2026-09-02 | 9 | 9 / 0 / 0 | 1.26 | 2.54 | ok | 0.25 | see CSV |
