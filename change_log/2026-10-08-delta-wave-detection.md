@@ -192,9 +192,38 @@ firing at the delta peaks of the strongest-dip site (`<lab>_cortex_check.json`).
 | FM64 sessions (no check) | 6 | 5 |
 | Skipped (no final sleep states) | 3 | 1 |
 
+## 2026-10-10: SF08, SF09, SF10, SF12 processed (user: "go for it process as you suggest. FM64 pending. SF09 本来就位置低未必能搞到啥结果")
+
+**Channels** (`delta_channels_2026c.yaml`):
+- **SF08: col 20 (shank 4 top), not the suggested col 11.** Before the 09-09 advance (`5_20260908`), shank 3's top
+  carries almost no units (col 11: 1.1 Hz, ratio 0.30), while col 20 is strongly DOWN-modulated in both blocks (0.06 at
+  11 / 17 Hz).
+- SF09: col 21.
+- SF10: col 9 (shank 2 top).
+- SF12: col 11 (shank 3 top). Shanks 2 / 3 stay clean while shanks 1 / 4 degrade; the top sites have no units, so the
+  check is SF07-like.
+
+**Run.**
+- BioHPC at commit 27e9d58, 14:47 → 23:06, 16 MUA workers per animal on a busy node.
+- 121 sessions, 0 errors.
+- Storage `3rd_rat/analysis/delta/`: 181 sessions, VERIFY PASS (860 files, 1.1 GB).
+- Server = local on one session per new animal (SF08 `6_20260910`, SF09 `10_20260902`, SF10 `9_20260902`, SF12
+  `11_20260902`): csv and evt content identical.
+- Table: `results/2026c/ephys_spikes/reports/ephys_spikes_delta_sessions_2026c.{md,csv}`.
+
+| | SF08 | SF09 | SF10 | SF12 |
+|---|---|---|---|---|
+| Share verified per session, median | 0.47 | 0.56 | 0.48 | 0.49 |
+| Verified rate per NREM min, median | 17.1 | 15.7 | 13.5 | 13.8 |
+
+- FM64 sessions are still untested (on hold).
+- SF12 `17_20260911` (final night, user `noise`) has an empty `use_until` in the SWR quality table, so its 23:30
+  valid_until is not applied. Exclude it.
+
 ## Open (for the user)
 
 - SF11: choose the delta channel. Shank-3 top sites (col 11 or 8) are consistent across all three blocks; shank 4
   (20/27/18/22) is the alternative.
 - SF07: detect from a top site without verification, as the user's own older script did? Or another check?
-- Then: the remaining local sessions, the server run (`run_then_store.sh`, new part `delta`), and the other animals.
+- FM64 sessions (before the 09-01 evening round, 34 sessions over six animals): de-glitch the raw for the MUA check?
+  The user put this on hold (2026-10-10).
