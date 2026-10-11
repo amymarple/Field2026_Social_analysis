@@ -71,9 +71,16 @@ label: per click `animal_before_sf09_sf10_fix` and `relabelled_sf09_sf10: true` 
 `sf09_sf10_fix_undone_at`. The flag is stored, so the swap never runs twice; clicks made after the fix are untouched. A JSON
 export made before the fix gets the same one-time swap when it is imported.
 
-## What uses it (pre-registered; first run 2026-10-11 on a browser snapshot)
+## What uses it (pre-registered; run 2026-10-11 on the user's export)
 
-`cv/cv_field/inbox_click_analysis.py --clicks <this folder's newest export>` (plan amendment 11; report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md`). `browser_snapshot_20261010T2017.json` is a copy of the page's localStorage taken 2026-10-10 20:17 (not an export made with the page's Export button): same click / segment schema, no `exported_at`; the first, PRELIMINARY run used it.
+`cv/cv_field/inbox_click_analysis.py` (plan amendment 11; report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md`). Its default input is the newest export, and it re-analyses the superseded snapshot for comparison.
+
+Files here (2026-10-11):
+
+- `inbox_identity_2026c_20261010_220725.csv`: the user's export at 22:07, the **current state and the primary input**. It holds 294 clicks in 20 segments. The CSV carries everything the analysis needs; `orientation_by_house` is JSON-only, and the orientation prior lives in `cv/configs/inbox_camera_orientation_2026c.json`.
+- `inbox_identity_2026c_20261010_215104.csv`, `inbox_identity_2026c_20261010_220510.csv`: the user's earlier exports, kept unchanged.
+- `composition_statement_user_2026-10-11.json`: the user's answer to "pile composition complete?" for every segment. Every clicked frame is complete (fewer clicks = animals outside the house); 09-10 19:50 is unusable (black).
+- `browser_snapshot_20261010T2017.json`: **SUPERSEDED.** A copy of the page's localStorage taken 2026-10-10 20:17 (not an export made with the page's Export button; no `exported_at`). The first, preliminary run used it (11 / 22 segments). Its 140 saved clicks are identical in the export, and its one unsaved click became a blind SF10 click. Kept for the record; the report's "Superseded preliminary run" section re-analyses it.
 
 Per house: the image ↔ house-frame mapping (2-D similarity of the clicked heads, corrected to the lid-segment reference
 frame, vs the WISER minute means of the same animals) and the WISER bias, with leave-one-flash-out residuals. The

@@ -724,6 +724,18 @@ Otherwise "not a ripple"; "unsure" only when the panel is unreadable.
 - Theta-quiet aSWR (Amendment 4): a second pass that needs the ± 2 s theta / delta series per session.
 - Descriptive maps show events / min per bin (≥ 60 s); unsmoothed; houses drawn as circles; landmarks as reference marks.
 
+**Post-hoc description (the user, after the SF10 nights × trials grid: "field ripples seem to increase over the
+nights").** Per night (`phase2/per_night_field_house.csv`).
+- **SF10:**
+  - field awake ripples 91 → 278 → 349 → 152 → 576 → 255 → 768 → 0 → 810 → 339 (09-01 to 09-10);
+  - field quiet minutes 1.1 → 11.9 / 10.8;
+  - field rate per quiet minute 80–95 early, 64–75 late (Spearman ρ −0.60 over nights).
+- **SF08:** counts 336 → 1 217 / 1 339; quiet minutes 4 → 14–17; rate ρ −0.39.
+- **SF09:** the opposite — less field quiet time later.
+- So the rise in counts is **more paused time in the field on later nights, not more ripples per paused minute**.
+- Zeros are nights without detectable non-locomotor field time (theta, coverage); 09-11 is cut at the females' release.
+- Description only. Pause spots wait for the IMU + WISER accuracy (asked of the IMU-video session) or the YOLO tracks.
+
 ## Output
 
 - `ephys/awake_ripple_map.py`: `phase0`, `review`, `phase2`, `phase3`, `--selftest`.

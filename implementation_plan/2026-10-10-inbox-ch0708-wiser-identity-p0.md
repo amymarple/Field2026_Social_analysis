@@ -1,6 +1,6 @@
 # In-box cameras CH07 / CH08, phase 0: colour segments, WISER box events, WISER in-house arrangement, identity click page
 
-Date: 2026-10-10. Status: **DONE (phase 0), 2026-10-10** — amendments 1–11 at the end; the clicks step ran 2026-10-11 on a browser snapshot (PRELIMINARY, status at the end). Approved by the user 2026-10-10 ("其余都可以": the four phase-0 items proposed in
+Date: 2026-10-10. Status: **DONE (phase 0), 2026-10-10** — amendments 1–11 at the end; the clicks step ran 2026-10-11 on the user's export (snapshot run superseded; status at the end). Approved by the user 2026-10-10 ("其余都可以": the four phase-0 items proposed in
 the session; the colour CH07/CH08 footage is on this PC; per-rat close-ups in `D:/Field2026_analysis_out/2026c/inhand_closeups/SF07.MOV` (amendment 5)
 … `SF12.MOV`; identity marks on the Notion cohort page). Pre-registered before any result; amendments dated and marked
 *before* or *after results*. Builds on the operator's own field design — `../Field_2026_Social_Recording/
@@ -250,3 +250,5 @@ coverage share `all_tracked` (box_occupancy_1s.csv.gz rebuilt from the unchanged
 06:10:45 → 08:20 are flagged `m_off_animal` in the production default tracks (the tag "rode on the dropped implant"), while the
 field note says the tag stayed on the rat and 07:40 → 08:20 is real position data for it; here SF11 is counted present but
 untracked in that window. The production tracks are not changed.
+
+**Status (2026-10-11, after results): the click step re-run on the user's export (primary; the snapshot run superseded)**: `cv/configs/inbox_identity_2026c/inbox_identity_2026c_20261010_220725.csv`, 284 blind clicks in 20 segments, with the user's composition statement. The snapshot's 140 saved clicks are unchanged, and the first 5 flashes have identical inputs. Fit: 18 flashes / 89 points, proper handedness, 74.8 px/in, page rotation 174.3° (Δ −5.7° vs the user's 180°), LOFO RMS 5.45 in / 406 px. **Pre-registered order test: NOT ACCEPTED** (exact order 0 of 5; 1 of 18 overall). The tie version is 3 of 5 (snapshot 4 of 5); it is borderline across variants. Kendall τ median +0.20. Composition = WISER roster in 17 of 20 segments, and the 4 non-clicked roster animals are WISER over-inclusions by the 15-in dilation / dwell rule (3 lay 5–9 in outside the body by WISER at the colour frame, 1 inside it). WISER assignment 64 % (chance 20 %). Run `cv_field_inbox_clicks_20261010_2227`.

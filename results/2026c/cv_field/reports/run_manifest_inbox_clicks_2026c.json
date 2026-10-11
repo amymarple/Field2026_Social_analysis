@@ -1,17 +1,27 @@
 {
-  "run_dir": "D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2042",
+  "run_dir": "D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2227",
   "cohort": "2026c",
   "direction": "cv_field",
   "analysis": "inbox_clicks",
   "driver": "cv/cv_field/inbox_click_analysis.py",
   "report": "cv_field_inbox_clicks_2026c.md",
   "plan": "implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md",
-  "git_commit": "53c13c12a6ffc181770df7f24179e8fae4df20a7+dirty",
-  "clicks": "cv/configs/inbox_identity_2026c/browser_snapshot_20261010T2017.json",
-  "clicks_sha256": "b37a94cb00ae732a75c811adab42e24b27daae3cdf410744ac3e569fc5f51b51",
-  "clicks_kind": "browser snapshot (not a formal export)",
+  "git_commit": "0e665e9eca3f80feac06ca640a67c4140567f2d2+dirty",
+  "clicks": "cv/configs/inbox_identity_2026c/inbox_identity_2026c_20261010_220725.csv",
+  "clicks_sha256": "3233d7b40db886944d59b11410dab232c2a5aaa58bd0ee5afd7a4c07b7b538de",
+  "clicks_kind": "CSV export",
+  "composition_statement": "cv/configs/inbox_identity_2026c/composition_statement_user_2026-10-11.json",
   "p0_run": "D:/Field2026_analysis_out/2026c/cv_field_inbox_p0_20261010_1702",
   "verdict_order_test": "NOT ACCEPTED",
-  "verdict_order_test_tie": "ACCEPTED",
-  "preliminary": true
+  "verdict_order_test_tie": "NOT ACCEPTED",
+  "preliminary": false,
+  "superseded": {
+    "clicks": "cv/configs/inbox_identity_2026c/browser_snapshot_20261010T2017.json",
+    "clicks_sha256": "b37a94cb00ae732a75c811adab42e24b27daae3cdf410744ac3e569fc5f51b51",
+    "run_dir_2026_10_10": "D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2042",
+    "reanalysed_in": "D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2227/superseded_snapshot",
+    "verdict_order_test": "NOT ACCEPTED",
+    "verdict_order_test_tie": "ACCEPTED",
+    "reproduced_2026_10_10": true
+  }
 }

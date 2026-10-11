@@ -20,7 +20,10 @@ Per house (CH07 = house_2; CH08 = house_1 when it has clicks):
 
 Usage (base Python: numpy, pandas, scipy, matplotlib):
   python cv/cv_field/inbox_click_analysis.py --selftest
-  python cv/cv_field/inbox_click_analysis.py [--clicks <export or snapshot json>] [--p0-run <inbox_p0 run dir>]
+  python cv/cv_field/inbox_click_analysis.py [--clicks <export CSV / JSON, or a snapshot JSON>] [--p0-run <inbox_p0 run dir>]
+         [--superseded-clicks <earlier click state, re-analysed into <run>/superseded_snapshot/ and compared>] [--statement <json>]
+  Defaults (2026-10-11): the user's CSV export inbox_identity_2026c_20261010_220725.csv (primary), the browser snapshot of
+  2026-10-10 20:17 as the superseded state, and the user's composition statement composition_statement_user_2026-10-11.json.
 Output: $OUT/2026c/cv_field_inbox_clicks_<ts>/ (tables, figures/, run.json) + results/2026c/cv_field/reports/
         cv_field_inbox_clicks_2026c.md + pointer run_manifest_inbox_clicks_2026c.json.
 """
@@ -50,7 +53,10 @@ PLAN = "implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md"
 REPORT_NAME = f"cv_field_inbox_clicks_{COHORT}.md"
 POINTER_NAME = f"run_manifest_inbox_clicks_{COHORT}.json"
 P0_POINTER = REPO / "results" / COHORT / DIRECTION / "reports" / f"run_manifest_inbox_p0_{COHORT}.json"
-CLICKS_DEFAULT = REPO / "cv" / "configs" / "inbox_identity_2026c" / "browser_snapshot_20261010T2017.json"
+CLICKS_DIR = REPO / "cv" / "configs" / "inbox_identity_2026c"
+CLICKS_DEFAULT = CLICKS_DIR / "inbox_identity_2026c_20261010_220725.csv"          # the user's formal export (primary since 10-11)
+SNAPSHOT_JSON = CLICKS_DIR / "browser_snapshot_20261010T2017.json"               # superseded preliminary input (kept)
+STATEMENT_JSON = CLICKS_DIR / "composition_statement_user_2026-10-11.json"       # the user's composition statement
 ORIENT_JSON = REPO / "cv" / "configs" / "inbox_camera_orientation_2026c.json"
 TZ = ZoneInfo("America/New_York")
 LABELS = ("SF07", "SF08", "SF09", "SF10", "SF11", "SF12")
@@ -128,6 +134,139 @@ def click_table(snap: dict) -> pd.DataFrame:
         df[pre + "u_ref"] = df.b11 * u + df.b12 * v + df.b13
         df[pre + "v_ref"] = df.b21 * u + df.b22 * v + df.b23
     return df
+
+
+def snap_from_csv(path: Path) -> dict:
+    """The page's CSV export -> the same dict shape as the JSON state (clicks with verdict_first from first_*, B from b11..b23;
+    segments from the segment rows). orientation_by_house exists only in the JSON export."""
+    d = pd.read_csv(path, dtype=str, keep_default_na=False)
+
+    def tb(x) -> bool:
+        return str(x).strip().lower() == "true"
+
+    def fl(x):
+        return float(x) if str(x).strip() != "" else None
+    clicks = []
+    for r in d[d.record == "click"].to_dict("records"):
+        c = {"click_id": r["click_id"], "segment_id": r["segment_id"], "camera": r["camera"], "house": r["house"],
+             "frame_kind": r["frame_kind"], "frame_file": r.get("frame_file"), "frame_time": r["frame_time"], "u_px": float(r["u_px"]),
+             "v_px": float(r["v_px"]), "animal": r["animal"] or None, "confidence": r["confidence"] or None,
+             "before_reveal": tb(r["before_reveal"]), "legacy": tb(r["legacy"]), "edited_after_reveal": tb(r["edited_after_reveal"]),
+             "deleted_after_reveal": tb(r["deleted_after_reveal"]), "lid_segment": r["lid_segment"] or None, "lid_flag": r["lid_flag"] or None,
+             "relabelled_sf09_sf10": tb(r.get("relabelled_sf09_sf10", "")), "clicked_at": r.get("clicked_at"),
+             "B_frame_to_ref": [[fl(r["b11"]), fl(r["b12"]), fl(r["b13"])], [fl(r["b21"]), fl(r["b22"]), fl(r["b23"])]]}
+        if any(v is None for row in c["B_frame_to_ref"] for v in row):
+            c["B_frame_to_ref"] = None
+        if str(r.get("first_u_px", "")).strip() != "":
+            c["verdict_first"] = {"animal": r["first_animal"] or None, "confidence": r["first_confidence"] or None,
+                                  "u_px": float(r["first_u_px"]), "v_px": float(r["first_v_px"]),
+                                  "frame_kind": r["first_frame_kind"] or r["frame_kind"]}
+        clicks.append(c)
+    segs = {r["segment_id"]: {"revealed_at": r["revealed_at"] or None, "complete": r["pile_complete"], "complete_first": r["pile_complete_first"],
+                              "note": r["note"]} for r in d[d.record == "segment"].to_dict("records")}
+    cl = d[d.record == "click"]
+    applied = [x for x in cl.get("sf09_sf10_fix_applied_at", pd.Series(dtype=str)) if x]
+    undone = [x for x in cl.get("sf09_sf10_fix_undone_at", pd.Series(dtype=str)) if x]
+    fix = {"applied_at": applied[0] if applied else None, "undone_at": undone[0] if undone else None,
+           "n_swapped": int(cl.get("relabelled_sf09_sf10", pd.Series(dtype=str)).str.lower().eq("true").sum())}
+    return {"clicks": clicks, "segments": segs, "sf09_sf10_fix": fix, "_kind": "CSV export"}
+
+
+def load_clicks(path: Path) -> dict:
+    """A JSON state (the page's JSON export, or a browser snapshot of its localStorage) or the page's CSV export."""
+    path = Path(path)
+    if path.suffix.lower() == ".csv":
+        return snap_from_csv(path)
+    s = json.loads(path.read_text(encoding="utf-8"))
+    s["_kind"] = "JSON export" if s.get("exported_at") else "browser snapshot (not a formal export)"
+    return s
+
+
+def compare_blind(ct_a: pd.DataFrame, ct_b: pd.DataFrame, la: str = "snapshot", lb: str = "export") -> pd.DataFrame:
+    """Click-by-click comparison of two click tables (by click_id): presence, status, and the blind values (b_animal, b_u, b_v,
+    b_frame_kind) and live values. change = same / changed / only in <la> / only in <lb>."""
+    A, B = ct_a.set_index("click_id"), ct_b.set_index("click_id")
+    rows = []
+    for cid in sorted(set(A.index) | set(B.index)):
+        a, b = (A.loc[cid] if cid in A.index else None), (B.loc[cid] if cid in B.index else None)
+        base = a if a is not None else b
+        r = {"click_id": cid, "segment_id": base.segment_id, "frame_kind": base.frame_kind,
+             f"status_{la}": None if a is None else a.status, f"status_{lb}": None if b is None else b.status}
+        if a is None or b is None:
+            r["change"] = f"only in {la}" if b is None else f"only in {lb}"
+            r["detail"] = f"{base.animal} ({base.u:.1f}, {base.v:.1f}), status {base.status}"
+        else:
+            diffs = []
+            for k in ("status", "animal", "b_animal", "b_frame_kind", "frame_kind"):
+                if str(a[k]) != str(b[k]):
+                    diffs.append(f"{k} {a[k]} → {b[k]}")
+            for k in ("u", "v", "b_u", "b_v"):
+                if not (pd.isna(a[k]) and pd.isna(b[k])) and not (abs(float(a[k]) - float(b[k])) < 1e-6):
+                    diffs.append(f"{k} {a[k]} → {b[k]}")
+            r["change"] = "changed" if diffs else "same"
+            r["detail"] = "; ".join(diffs)
+        rows.append(r)
+    return pd.DataFrame(rows)
+
+
+def load_statement(path: Path, segs: dict, tol_s: float = 1.0) -> dict:
+    """The user's composition statement: {'complete': bool, 'unusable': {segment_id: reason}, 'source': path}. An unusable
+    segment is matched by its time (start, mid or any frame time) within tol_s."""
+    if path is None or not Path(path).exists():
+        return {"complete": None, "unusable": {}, "source": None}
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
+    un = {}
+    for u in d.get("unusable_segments", []):
+        t = parse_t(u["start"])
+        for sid, S in segs.items():
+            if S["camera"] != u.get("camera", S["camera"]):
+                continue
+            ts = [S["start"], S["mid"]] + [f["time"] for f in S["frames"].values()]
+            if min(abs((x - t).total_seconds()) for x in ts) <= tol_s:
+                un[sid] = u.get("reason", "")
+    comp = str(d.get("composition_complete", "")).lower().startswith("yes")
+    src = Path(path).resolve()
+    src = src.relative_to(REPO).as_posix() if str(src).startswith(str(REPO)) else src.as_posix()
+    return {"complete": comp, "unusable": un, "source": src, "text": d.get("statement_en", "")}
+
+
+def wiser_at_frame(p0_run: Path, segs: dict, sids, half_s: float = 5.0) -> pd.DataFrame:
+    """Per segment and animal: the cleaned house state at the colour frame (the roster's own source, states_1s.npz) and the
+    mean default-track position of ALL primary-rule fixes in [t_col - half_s, t_col + half_s) in the house frame, with its
+    position relative to the house body (inside = |along| <= L/2 and |across| <= W/2; outside distance = distance to the body
+    rectangle)."""
+    import inbox_p0 as ip
+    z = dict(np.load(p0_run / "states_1s.npz", allow_pickle=False))
+    t0 = datetime.fromisoformat(str(z["t0"]))
+    labs = [str(x) for x in z["labels"]]
+    mp, poses = ip.load_map(), ip.house_poses()
+    cache, rows = {}, []
+    hl, hw = BODY_IN[0] / 2, BODY_IN[1] / 2
+    for sid in sids:
+        S = segs[sid]
+        tc = S["frames"]["colour_mid"]["time"]
+        code = ip.HOUSE_CODE[S["house"]]
+        k = int((tc - t0).total_seconds())
+        for j, lab in enumerate(labs):
+            if lab not in LABELS:
+                continue
+            st = int(z["states"][j, k]) if 0 <= k < z["states"].shape[1] else ip.S_UNK
+            key = (lab, tc.date())
+            if key not in cache:
+                days = sorted({(tc - timedelta(seconds=half_s)).strftime("%Y-%m-%d"), tc.strftime("%Y-%m-%d")})
+                df = ip.load_label(lab, days, None)
+                cache[key] = df.loc[ip.fix_mask(df, "primary")].reset_index(drop=True) if len(df) else df
+            df = cache[key]
+            d = df[(df.t >= tc - timedelta(seconds=half_s)) & (df.t < tc + timedelta(seconds=half_s))] if len(df) else df
+            r = {"segment_id": sid, "animal": lab, "state_at_colour_frame": ip.STATE_NAME.get(st, str(st)), "in_roster_state": st == code,
+                 "n_fix": len(d)}
+            if len(d):
+                h = ip.to_house_frame(ip.wiser_to_paddock(d[["x", "y"]].to_numpy(), mp), poses[S["house"]])
+                a, c = float(h[:, 0].mean()), float(h[:, 1].mean())
+                dx, dy = max(abs(a) - hl, 0.0), max(abs(c) - hw, 0.0)
+                r.update({"along_in": a, "across_in": c, "inside_body": dx == 0 and dy == 0, "outside_body_in": float(np.hypot(dx, dy))})
+            rows.append(r)
+    return pd.DataFrame(rows)
 
 
 def record(ct: pd.DataFrame, which: str) -> pd.DataFrame:
@@ -732,6 +871,19 @@ values frozen when the user pressed "Save clicks & reveal WISER"). *After-reveal
 *unsaved* clicks (in a segment not yet revealed when the browser state was taken) are listed but used by none of the fit, the
 order test or the assignment. The *final* record = blind + after-reveal clicks with their live values, minus deleted ones.
 
+**Composition (Q1).** Roster $\mathcal R_f$ = tagged animals whose cleaned per-second state is the camera's house at the colour
+frame (the page's roster: dilated rectangle + 15 in, 6-s smoothing, 20-s minimum dwell; `states_1s.npz`); clicked set
+$\mathcal K_f$ = animals with a named blind click on the colour frame. *Agree* $\Leftrightarrow \mathcal K_f = \mathcal R_f$;
+*missing* $= \mathcal R_f \setminus \mathcal K_f$; *extras* $= \mathcal K_f \setminus \mathcal R_f$. The user's composition statement
+(every clicked frame complete; fewer clicks = animals outside the house) makes $\mathcal K_f$ the in-house set, so a missing animal
+is a WISER over-inclusion and an extra a WISER omission. *WISER at the colour frame*: the mean house-frame position of all
+primary-rule default-track fixes in $[t_{col} - 5\,\mathrm s, t_{col} + 5\,\mathrm s)$; *inside the body* $\Leftrightarrow |A| \le 12.3$ in
+and $|C| \le 9.0$ in; *outside distance* = $\sqrt{\max(|A| - 12.3, 0)^2 + \max(|C| - 9.0, 0)^2}$ (in). *In-body roster* = roster
+animals inside the body by that position (secondary).
+
+**Blind record, snapshot vs export.** Clicks matched by `click_id`; *same* = identical status, animal, frame kind and position
+in both the live and the blind (`verdict_first` / `first_*`) values and the same $B$; *changed* lists the differing fields.
+
 **House frame.** For a paddock point $\mathbf x$ (in), $\text{along} = (\mathbf x - \mathbf c)\cdot(\cos\varphi, \sin\varphi)$,
 $\text{across} = (\mathbf x - \mathbf c)\cdot(-\sin\varphi, \cos\varphi)$, house_2 centre $\mathbf c = (342.4, 117.7)$ in, ridge
 $\varphi = 92.0°$ (`inbox_p0.to_house_frame`). Body 24.6 in along × 18.0 in across.
@@ -789,7 +941,8 @@ second active or locomoting; *still (partial)* = some seconds not ok, the ok one
 """
 
 
-def write_report(run: Path, R: dict) -> Path:
+def write_report(run: Path, R: dict, Rs: dict | None = None, cmpb: pd.DataFrame | None = None, f5: pd.DataFrame | None = None,
+                 repro_prev: dict | None = None) -> Path:
     import output_paths as op
     rep = op.report_dir(COHORT, DIRECTION)
     m = R["meta"]
@@ -798,25 +951,60 @@ def write_report(run: Path, R: dict) -> Path:
     P = V["primary"]
     fits = R["fits"]
     pr = R["prior"]
+    prelim = "snapshot" in str(m.get("clicks_kind", ""))
     L = []
-    L.append("# In-box camera CH07 (house_2): the user's first identity clicks — composition, colour → IR stability, "
+    L.append("# In-box camera CH07 (house_2): the user's identity clicks — composition, colour → IR stability, "
              "camera ↔ WISER fit, the pre-registered order test, WISER as an identity aid (cohort `2026c`)\n")
-    L.append(f"**PRELIMINARY — data = browser snapshot 2026-10-10 20:17 of the identity page's localStorage "
-             f"(`{m['clicks_rel']}`, sha256 `{m['clicks_sha256'][:16]}…`), {m['n_segments_clicked']} / {m['n_page_segments']} segments "
-             f"clicked, not a formal export.** The user has not exported yet; every number below can change when the export "
-             f"arrives (re-run: `python cv/cv_field/inbox_click_analysis.py --clicks <export.json>`).\n")
-    L.append(f"Plan `{PLAN}` (section \"Pre-registered use of the user's clicks\" + amendments 1–11; amendment 11 = how this "
+    if prelim:
+        L.append(f"**PRELIMINARY — data = browser snapshot of the identity page's localStorage (`{m['clicks_rel']}`, sha256 "
+                 f"`{m['clicks_sha256'][:16]}…`), {m['n_segments_clicked']} / {m['n_page_segments']} segments clicked, not a formal export.**\n")
+    else:
+        L.append(f"**Data = the user's formal {m['clicks_kind']}** `{m['clicks_rel']}` (sha256 `{m['clicks_sha256'][:16]}…`; the newest of the "
+                 f"user's exports in `cv/configs/inbox_identity_2026c/`), {m['n_segments_clicked']} / {m['n_page_segments']} segments clicked, "
+                 f"with the user's composition statement (`{Path(m['statement']).name if m.get('statement') else '-'}`). This supersedes the "
+                 "preliminary run on the browser snapshot of 2026-10-10 20:17 (its results: the comparison table below and the section "
+                 "\"Superseded preliminary run\").\n")
+    L.append(f"Plan `{PLAN}` (section \"Pre-registered use of the user's clicks\" + amendments 1–12; amendment 11 = how this "
              f"step is run, written before any result). Run `{run.as_posix()}`; generated {m['made']}; code `{m['git_commit']}`. "
              f"Phase-0 run `{m['p0_run']}`. Driver `cv/cv_field/inbox_click_analysis.py`. The agent never looked at a frame; "
              f"everything is computed from the click coordinates, the user's IDs and WISER.\n")
+    L.append("**Correction 2026-10-11 (plan amendment 12, carried over).** SF11 kept its tag and left the paddock at the 09-07 AM round "
+             "(last fix 08:20); from then to 09-11 19:40 the paddock held five animals, all tagged, so rosters are complete except in tag "
+             "dropouts. No number here depends on the earlier, wrong reading.\n")
     # ---- summary
     ov = P["order_summary"]
     L.append("## Summary\n")
     for s in R["summary"]:
         L.append(f"- {s}")
     L.append("")
+    if Rs is not None:
+        hs, he = headline(Rs), headline(R)
+        L.append("## Export vs the superseded snapshot run\n")
+        L.append(md_table(pd.DataFrame({"metric": list(he), "snapshot (10-10 20:17, superseded)": [hs.get(k, "-") for k in he],
+                                        "export (primary)": list(he.values())})))
+        ch = cmpb.change.value_counts() if cmpb is not None else pd.Series(dtype=int)
+        L.append(f"\n**Blind record, snapshot vs export (by `click_id`):** {ch.get('same', 0)} clicks identical (animal, position, frame, "
+                 f"status, B), {ch.get('changed', 0)} changed, {ch.get('only in export', 0)} only in the export, "
+                 f"{ch.get('only in snapshot', 0)} only in the snapshot.")
+        if cmpb is not None and (cmpb.change == "changed").any():
+            for r in cmpb[cmpb.change == "changed"].itertuples():
+                L.append(f"- changed: `{r.click_id}` {short(r.segment_id)} {r.frame_kind}: {r.detail}")
+        if cmpb is not None:
+            ne = cmpb[cmpb.change == "only in export"].groupby("segment_id").size()
+            L.append(f"- only in the export: {', '.join(f'{short(s)[:11]} ({n})' for s, n in ne.items())}.")
+        if f5 is not None and len(f5):
+            n_id = int(f5.inputs_identical.sum())
+            L.append(f"\n**Order test, the first {N_FIRST} flashes** (the same five in both runs): inputs (blind colour clicks after B, "
+                     f"WISER minute means) identical in **{n_id} of {len(f5)}** — no blind click of these flashes differs. The mapping "
+                     f"differs: each flash is now mapped by a fit on the other {P['n_flashes'] - 1} flashes instead of "
+                     f"{Rs['variants']['primary']['n_flashes'] - 1}.\n")
+            L.append(md_table(f5, ["segment_id", "inputs_identical", "order_wiser", "snapshot_clicks_order", "snapshot_exact", "snapshot_tau",
+                                   "snapshot_tie", "export_clicks_order", "export_exact", "export_tau", "export_tie"],
+                              {"snapshot_tau": "{:+.1f}", "export_tau": "{:+.1f}"}))
+        L.append("")
     L.append("## The question: what do the colour labels tell us, and can WISER serve as an identity-label aid?\n")
-    L.append("Preliminary (snapshot, 8 flashes in the fit); every statement is a number from the sections below.\n")
+    L.append(f"{'Preliminary (snapshot)' if prelim else 'From the user export'}, {P['n_flashes']} flashes in the fit; every statement is a "
+             "number from the sections below.\n")
     for s in R["answer"]:
         L.append(f"- {s}")
     L.append("")
@@ -911,6 +1099,28 @@ def write_report(run: Path, R: dict) -> Path:
     for s in R["q5_text"]:
         L.append(f"- {s}")
     L.append("")
+    # ---- superseded
+    if Rs is not None:
+        ms, Ps = Rs["meta"], Rs["variants"]["primary"]
+        L.append("## Superseded preliminary run (browser snapshot 2026-10-10 20:17)\n")
+        L.append(f"Input `{ms['clicks_rel']}` (sha256 `{ms['clicks_sha256'][:16]}…`; a copy of the page's localStorage, not a formal export; "
+                 f"{ms['n_segments_clicked']} / {ms['n_page_segments']} segments, {ms['n_clicks']} clicks), analysed on 2026-10-10 into "
+                 "`cv_field_inbox_clicks_20261010_2042` (report text in git history, commits e679650 / dcedabf). Re-analysed here with the "
+                 f"current code into `{(run / 'superseded_snapshot').as_posix()}`"
+                 + (f"; identical to the 10-10 run on all {repro_prev['n_variants']} variants (LOFO RMS, order counts, verdicts, accuracies): "
+                    f"**{'yes' if repro_prev['identical'] else 'NO'}**" if repro_prev else "")
+                 + ". Its headline numbers are the snapshot column above; its summary was:\n")
+        for s in Rs["summary"]:
+            L.append(f"- {s}")
+        n_bchg = int(((cmpb.change != "same") & (cmpb["status_snapshot"] == "blind")).sum()) if cmpb is not None else -1
+        same_in = bool(f5 is not None and len(f5) and f5.inputs_identical.all())
+        L.append(f"\nWhy superseded: the export adds {P['n_flashes'] - Ps['n_flashes']} flashes to the fit "
+                 f"({P['n_points']} vs {Ps['n_points']} points) and the user's composition statement; it changes "
+                 f"{n_bchg if n_bchg else 'no'} blind click(s) of the snapshot. Order-test verdict: {Ps['order_summary']['verdict']} → "
+                 f"{ov['verdict']}; tie version {Ps['order_summary']['verdict_tie']} ({Ps['order_summary']['n_tie_first']} of {N_FIRST}) → "
+                 f"{ov['verdict_tie']} ({ov['n_tie_first']} of {N_FIRST})"
+                 + (" — the first-5 inputs are identical, so any change comes from the leave-one-flash-out maps (more flashes in each "
+                    "fold's fit)." if same_in else ".") + "\n")
     # ---- not verified
     L.append("## What is not verified\n")
     for s in R["not_verified"]:
@@ -919,28 +1129,43 @@ def write_report(run: Path, R: dict) -> Path:
     L.append(DEFINITIONS)
     L.append("## Files\n")
     L.append(f"Run folder `{run.as_posix()}`: `clicks_table.csv` (every click, both records, B-corrected), `composition.csv`, "
-             "`stability_blind.csv`, `stability_final.csv`, `stability_counts.csv`, `fit_summary.csv`, `fit_points_<variant>.csv` "
-             "(LOFO predictions per click), `order_<variant>.csv`, `assignment_<variant>.csv`, `variants.csv`, `residual_per_animal.csv`, "
-             "`wiser_centred_window.json`, `wiser_reproduction_check.csv`, `run.json`; figures `figures/flash_overlays_primary.png`, "
-             "`figures/colour_ir_displacement.png`, `figures/assignment_vs_separation.png`. Pointer "
-             f"`results/{COHORT}/{DIRECTION}/reports/{POINTER_NAME}`.\n")
+             "`wiser_at_colour_frame.csv`, `stability_blind.csv`, `stability_final.csv`, `stability_counts.csv`, `stability_per_segment.csv`, "
+             "`fit_summary.csv`, `fit_points_<variant>.csv` (LOFO predictions per click), `lofo_per_flash.csv`, `order_<variant>.csv`, "
+             "`assignment_<variant>.csv`, `variants.csv`, `residual_per_animal.csv`, `wiser_centred_window.json`, `wiser_reproduction_check.csv`, "
+             + ("`blind_record_snapshot_vs_export.csv`, `order_test_first5_snapshot_vs_export.csv`, `headline_snapshot_vs_export.csv`, "
+                "`superseded_snapshot/` (the snapshot re-analysed, same file set), " if Rs is not None else "")
+             + "`run.json`; figures `figures/flash_overlays_primary.png`, `figures/colour_ir_displacement.png`, "
+             f"`figures/assignment_vs_separation.png`. Pointer `results/{COHORT}/{DIRECTION}/reports/{POINTER_NAME}`.\n")
     out = rep / REPORT_NAME
     out.write_text("\n".join(L), encoding="utf-8")
     ptr = {"run_dir": run.as_posix(), "cohort": COHORT, "direction": DIRECTION, "analysis": "inbox_clicks",
            "driver": "cv/cv_field/inbox_click_analysis.py", "report": REPORT_NAME, "plan": PLAN, "git_commit": m["git_commit"],
-           "clicks": m["clicks_rel"], "clicks_sha256": m["clicks_sha256"], "clicks_kind": "browser snapshot (not a formal export)",
-           "p0_run": m["p0_run"], "verdict_order_test": ov["verdict"], "verdict_order_test_tie": ov.get("verdict_tie"),
-           "preliminary": True}
+           "clicks": m["clicks_rel"], "clicks_sha256": m["clicks_sha256"], "clicks_kind": m.get("clicks_kind", ""),
+           "composition_statement": m.get("statement"), "p0_run": m["p0_run"], "verdict_order_test": ov["verdict"],
+           "verdict_order_test_tie": ov.get("verdict_tie"), "preliminary": prelim}
+    if Rs is not None:
+        ptr["superseded"] = {"clicks": Rs["meta"]["clicks_rel"], "clicks_sha256": Rs["meta"]["clicks_sha256"],
+                             "run_dir_2026_10_10": "D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2042",
+                             "reanalysed_in": (run / "superseded_snapshot").as_posix(),
+                             "verdict_order_test": Rs["variants"]["primary"]["order_summary"]["verdict"],
+                             "verdict_order_test_tie": Rs["variants"]["primary"]["order_summary"]["verdict_tie"],
+                             "reproduced_2026_10_10": None if repro_prev is None else repro_prev["identical"]}
     (rep / POINTER_NAME).write_text(json.dumps(ptr, indent=2) + "\n", encoding="utf-8")
     print(f"[report] {out.as_posix()} + {POINTER_NAME}", flush=True)
     return out
 
 
 # ============================================================================================ main analysis
-def analyse(clicks_path: Path, p0_run: Path, run: Path, imu_root: Path | None, do_centred: bool = True) -> dict:
-    snap = json.loads(Path(clicks_path).read_text(encoding="utf-8"))
+def analyse(clicks_path: Path, p0_run: Path, run: Path, imu_root: Path | None, do_centred: bool = True,
+            statement_path: Path | None = None, orient_json: Path | None = None) -> dict:
+    run.mkdir(parents=True, exist_ok=True)
+    snap = load_clicks(Path(clicks_path))
+    if not snap.get("orientation_by_house") and orient_json is not None and Path(orient_json).exists():
+        snap["orientation_by_house"] = json.loads(Path(orient_json).read_text(encoding="utf-8")).get("orientation_by_house") or {}
+        snap["_orient_from"] = Path(orient_json).name
     page = json.loads((p0_run / "identity_page" / "page_data.json").read_text(encoding="utf-8"))
     segs = page_segments(page)
+    stmt = load_statement(statement_path, segs)
     ct = click_table(snap)
     rb, rf = record(ct, "blind"), record(ct, "final")
     houses = sorted(ct.house.dropna().unique())
@@ -965,6 +1190,30 @@ def analyse(clicks_path: Path, p0_run: Path, run: Path, imu_root: Path | None, d
     n_rev_before = sum(1 for v in seg_rev.values() if v and snap_or.get("chosen_at") and v < snap_or["chosen_at"])
     # ---------------- Q1
     comp = composition(rb, rf, ct, segs)
+    comp["unusable"] = comp.segment_id.map(lambda s: stmt["unusable"].get(s, ""))
+    comp["user_complete"] = stmt["complete"]
+    waf = pd.DataFrame()
+    if do_centred:
+        waf = wiser_at_frame(p0_run, segs, [s for s in comp.segment_id if s in segs and comp.set_index("segment_id").loc[s, "revealed"]])
+        waf.to_csv(run / "wiser_at_colour_frame.csv", index=False)
+
+        def detail(sid, names):
+            out = []
+            for a in [x for x in names.split(",") if x]:
+                w = waf[(waf.segment_id == sid) & (waf.animal == a)]
+                if w.empty or not w.n_fix.iloc[0]:
+                    out.append(f"{a}: state {w.state_at_colour_frame.iloc[0] if len(w) else '?'}, no fix ±5 s")
+                    continue
+                w = w.iloc[0]
+                out.append(f"{a}: state {w.state_at_colour_frame}, along {w.along_in:+.1f} / across {w.across_in:+.1f} in, "
+                           + ("inside the body" if w.inside_body else f"{w.outside_body_in:.1f} in outside the body"))
+            return "; ".join(out)
+        comp["missing_wiser_at_frame"] = [detail(r.segment_id, r.missing) for r in comp.itertuples()]
+        comp["extras_wiser_at_frame"] = [detail(r.segment_id, r.extras) for r in comp.itertuples()]
+        body = {s: set(g[g.in_roster_state & (g.inside_body == True)].animal) for s, g in waf.groupby("segment_id")}  # noqa: E712
+        comp["roster_in_body"] = comp.segment_id.map(lambda s: ",".join(sorted(body.get(s, set()))))
+        comp["agree_in_body"] = [(set(r.clicked_colour.split(",")) - {""}) == body.get(r.segment_id, set()) if r.revealed else None
+                                 for r in comp.itertuples()]
     # ---------------- Q3 points + variants
     pts = fit_points(rb, segs, house)
     pts_raw = fit_points(rb, segs, house, ("along_raw_in", "across_raw_in"))
@@ -1087,6 +1336,8 @@ def analyse(clicks_path: Path, p0_run: Path, run: Path, imu_root: Path | None, d
             "n_segments_clicked": int(ct.segment_id.nunique()), "n_edited": int(ct.edited.sum()), "n_deleted": int(ct.deleted.sum()),
             "blind_live_max_diff_px": max_diff, "blind_live_animal_diff": anim_diff,
             "sf09_sf10_n_swapped": (snap.get("sf09_sf10_fix") or {}).get("n_swapped"), "sf09_sf10_undone": (snap.get("sf09_sf10_fix") or {}).get("undone_at"),
+            "clicks_kind": snap.get("_kind", ""), "orient_from": snap.get("_orient_from", "the clicks file"),
+            "statement": stmt.get("source"), "n_unusable": len(stmt["unusable"]),
             "orient_snapshot": f"{snap_or.get('rot_deg')}°, mirror {snap_or.get('mirror')}", "orient_chosen_at": snap_or.get("chosen_at"),
             "n_revealed_before_orient": n_rev_before, "imu_root": imu_root.as_posix() if imu_root else None,
             "chosen_handedness": "improper" if chosen_mirror else "proper", "ridge_deg": ridge, "prior": pr, "theta_house_prior": th_prior,
@@ -1098,7 +1349,8 @@ def analyse(clicks_path: Path, p0_run: Path, run: Path, imu_root: Path | None, d
     return {"meta": meta, "ct": ct, "composition": comp, "stab_blind": stb, "stab_final": stf, "stab_counts": cnt, "stab_seg": stab_seg,
             "variants": variants, "fits": fits, "variant_table": vt, "lofo_flash": lf, "sep2d": sep2d, "sepal": sepal, "asg_flash": af,
             "prior": pr, "fit_flashes": fit_flashes, "segs": segs, "repro": repro, "sp_primary": sp_primary, "untestable": untest,
-            "click_counts": cc, "W_c": W_c, "decomp": decomp, "decomp_an": decomp_an, "fix_sd": fix_sd(segs, fit_flashes)}
+            "click_counts": cc, "W_c": W_c, "decomp": decomp, "decomp_an": decomp_an, "fix_sd": fix_sd(segs, fit_flashes),
+            "stmt": stmt, "waf": waf, "rb": rb, "kind": snap.get("_kind", "")}
 
 
 def fix_sd(segs: dict, sids) -> dict:
@@ -1122,14 +1374,29 @@ def texts(R: dict) -> None:
     # ---- Q1
     rev = comp[comp.revealed]
     agree = rev[rev.agree == True]  # noqa: E712
-    q1 = [f"{len(comp)} segments carry clicks, {len(rev)} of them revealed (the 11th, {', '.join(short(s) for s in comp[~comp.revealed].segment_id)}, "
-          f"holds {int(comp[~comp.revealed].n_unsaved.sum())} unsaved click(s), not yet revealed)."]
+    stmt = R.get("stmt") or {"complete": None, "unusable": {}}
+    unrev = comp[~comp.revealed]
+    q1 = [f"{len(comp)} segments carry clicks, {len(rev)} of them revealed"
+          + (f"; not revealed: {', '.join(short(s) for s in unrev.segment_id)} ({int(unrev.n_unsaved.sum())} unsaved click(s))." if len(unrev) else ".")]
+    if stmt.get("complete"):
+        q1.append("**The user's composition statement** (`composition_statement_user_2026-10-11.json`): every clicked colour frame is "
+                  "complete — every rat in the house was identified; fewer clicks = animals outside the house at that frame (not hidden, "
+                  "not unidentified)"
+                  + (f"; unusable: {', '.join(short(s) + ' (' + why + ')' for s, why in stmt['unusable'].items())}, no click." if stmt["unusable"] else ".")
+                  + " The colour-frame set is therefore the in-house set, and the comparison below scores the WISER roster.")
+    q1.append("Roster source (page code): the cleaned per-second house state **at the colour frame** (dilated rectangle + 15 in, 6-s "
+              "smoothing, 20-s minimum dwell); only the WISER *positions* use the minute before ON.")
     q1.append(f"Colour-frame set = WISER roster in **{len(agree)} of {len(rev)}** revealed segments "
               f"({', '.join(short(s) for s in agree.segment_id)}).")
     for r in rev[rev.agree != True].itertuples():  # noqa: E712
         q1.append(f"{short(r.segment_id)}: roster {r.roster or '-'}{' (untracked ' + r.untracked + ')' if r.untracked else ''}; colour frame "
                   f"{r.clicked_colour or '-'} + {r.n_unknown_colour} unknown → missing {r.missing or '-'}, extras {r.extras or '-'}; on any "
-                  f"frame (blind) {r.clicked_any_frame_blind or '-'} (missing {r.missing_any_frame_blind or '-'}).")
+                  f"frame (blind) {r.clicked_any_frame_blind or '-'} (missing {r.missing_any_frame_blind or '-'})"
+                  + (f". WISER ±5 s around the colour frame: {r.missing_wiser_at_frame}" if getattr(r, "missing_wiser_at_frame", "") else "") + ".")
+    if "agree_in_body" in comp:
+        q1.append(f"A stricter roster (in the house state *and* WISER mean ±5 s inside the 24.6 × 18 in body footprint at the colour frame) "
+                  f"matches in only {int((rev.agree_in_body == True).sum())} of {len(rev)}: WISER places animals that are in the house "  # noqa: E712
+                  "outside the body footprint often, so the 15-in dilation is needed and also admits animals just outside.")
     q1.append(f"Unknown (`None`) clicks: {int((R['ct'].animal == 'unknown').sum())} in all "
               f"({', '.join(f'{short(s)} {k}' for s, k in R['ct'][R['ct'].animal == 'unknown'][['segment_id', 'frame_kind']].itertuples(index=False))}). "
               f"Extras (a clicked animal outside the roster): {int((comp.extras != '').sum())} segments. SF11 was clicked "
@@ -1161,9 +1428,13 @@ def texts(R: dict) -> None:
     q2.append(f"Animals named on the colour frame but not clicked on the IR frame (blind record): {int(sum(len(x.split(',')) for x in miss.colour_not_ir))} "
               f"of {tot_c} colour × IR-frame slots ({'; '.join(f'{short(r.segment_id)} {r.ir_frame}: {r.colour_not_ir}' for r in miss.itertuples()) or 'none'}); "
               f"named on IR but not on colour: {'; '.join(f'{short(r.segment_id)} {r.ir_frame}: {r.ir_not_colour}' for r in ncb[ncb.ir_not_colour != ''].itertuples()) or 'none'}.")
-    ncf = nc[(nc.record == "final") & (nc.dup_ir != "")]
-    if len(ncf):
-        q2.append(f"Final record (after-reveal additions): {'; '.join(f'{short(r.segment_id)} {r.ir_frame}: {r.dup_ir} (one label on two heads; excluded from the displacement)' for r in ncf.itertuples())}.")
+    dupb = nc[(nc.record == "blind") & (nc.dup_ir != "")]
+    dupf = nc[(nc.record == "final") & (nc.dup_ir != "")]
+    dupf = dupf[~dupf.set_index(["segment_id", "ir_frame"]).index.isin(dupb.set_index(["segment_id", "ir_frame"]).index)]
+    if len(dupb) or len(dupf):
+        q2.append("One label on two heads of one IR frame (excluded from the displacement): "
+                  + "; ".join([f"{short(r.segment_id)} {r.ir_frame}: {r.dup_ir} (blind)" for r in dupb.itertuples()]
+                              + [f"{short(r.segment_id)} {r.ir_frame}: {r.dup_ir} (after the reveal)" for r in dupf.itertuples()]) + ".")
     R["q2_text"] = q2
     # ---- Q3
     fp, fi = fits[fits.fit == "proper"].iloc[0], fits[fits.fit == "improper"].iloc[0]
@@ -1216,6 +1487,12 @@ def texts(R: dict) -> None:
     nt = int(o.n_pairs_ge_sep.sum())
     q4.append(f"Pairs ≥ {CAND_SEP_IN:g} in apart along the ridge by WISER: {nt} of {int(o.n_pairs.sum())} pairs; concordant {int(o.n_conc_ge_sep.sum())} "
               f"({int(o.n_conc_ge_sep.sum()) / nt:.0%})." if nt else "No pair ≥ 8 in apart.")
+    vt = R["variant_table"]
+    sec = vt[~vt.variant.isin(["primary", "proper", "improper"])]
+    acc_t = sec[sec.verdict_tie == "ACCEPTED"]
+    q4.append(f"Exact-order verdict across the secondary variants: NOT ACCEPTED in {int((sec.verdict == 'NOT ACCEPTED').sum())} of {len(sec)}. "
+              f"Tie version across them: ACCEPTED in {len(acc_t)} of {len(sec)} ({', '.join(f'{r.variant} {r.tie_first5}/5' for r in sec.itertuples())})"
+              + (" — borderline, it turns on one flash." if 0 < len(acc_t) < len(sec) else "."))
     q4.append(f"Not eligible: {R['not_fit_text']}")
     if R["untestable"]:
         q4.append(f"Alternative reading (a flash with ≥ 3 clicked animals but no WISER mean counts as a non-match: "
@@ -1240,12 +1517,35 @@ def texts(R: dict) -> None:
     moved = sb[sb.imu_class == "moved"] if "imu_class" in sb else sb.iloc[0:0]
     far = asg[asg.sep_2d_in >= 15]
     conc = int(o.n_conc_ge_sep.sum())
+    waf = R.get("waf")
+    miss = [(r.segment_id, a) for r in rev.itertuples() for a in r.missing.split(",") if a]
+    n_out_body = n_in_body = 0
+    out_d = []
+    if waf is not None and len(waf):
+        for sid, a in miss:
+            w = waf[(waf.segment_id == sid) & (waf.animal == a)]
+            if len(w) and w.n_fix.iloc[0]:
+                n_in_body += int(bool(w.inside_body.iloc[0]))
+                n_out_body += int(not bool(w.inside_body.iloc[0]))
+                if not bool(w.inside_body.iloc[0]):
+                    out_d.append(float(w.outside_body_in.iloc[0]))
+    out_rng = f"{min(out_d):.1f}–{max(out_d):.1f} in beyond it, " if out_d else ""
+    n_extra = int(sum(len([a for a in r.extras.split(",") if a]) for r in rev.itertuples()))
+    ctx = []
+    for sid in sorted({s for s, _ in miss}, key=lambda s: segs[s]["start"]):
+        S = segs[sid]
+        why = "; ".join(x for x in (S.get("log_kind", ""), ("lid event " + S["lid_event"]) if S.get("lid_event") else "") if x) or "no log row"
+        ctx.append(f"{short(sid)[:11]}: {why}, {S['duration_s']:.0f}-s colour segment")
+    unk_seg = [short(r.segment_id)[:11] for r in rev[(rev.agree != True) & (rev.n_unknown_colour > 0)].itertuples()]  # noqa: E712
     R["answer"] = [
         f"**Which animals are in the box — yes, WISER helps.** The house roster equalled the colour-clicked set in {len(agree)} of {len(rev)} "
-        f"revealed flashes, with no clicked animal outside the roster; in the other {len(rev) - len(agree)} (long colour segments during the "
-        "morning rounds, where the colour frame lies minutes after ON) every roster animal was clicked on some frame of the segment. "
-        "Rosters are complete here: all five animals in the paddock were tagged (SF11 had left at the 09-07 AM round; corrected "
-        "2026-10-11, plan amendment 12); SF11 was never clicked.",
+        f"revealed flashes. No clicked animal was ever missing from a roster ({n_extra} extras); the {len(miss)} roster animals not clicked "
+        f"({', '.join(f'{short(s)[:11]} {a}' for s, a in miss) or 'none'}) were, by WISER at the colour frame, {n_out_body} outside the house "
+        f"body ({out_rng}inside the 15-in dilated zone) and {n_in_body} inside it. With the user's statement (fewer clicks = animals "
+        "outside the house) these are WISER over-inclusions by the dilated zone / dwell rule"
+        + (f"; the colour frame of {', '.join(unk_seg)} also carries an unknown click, which could be one of its 'missing' animals" if unk_seg else "")
+        + f". Context: {'; '.join(ctx) or '-'}. Rosters are complete here: all five animals in the paddock were tagged (SF11 had left at "
+        "the 09-07 AM round; plan amendment 12); SF11 was never clicked.",
         f"**Who lies where inside a pile — not from WISER minute means.** The pre-registered order test is NOT ACCEPTED (exact order "
         f"{ov['n_exact_first']} of {N_FIRST}, {int(o.exact.sum())} of {len(o)} overall; Kendall τ median {ov['tau_median_all']:+.2f}); mapped heads sit "
         f"{P['lofo_rms_in']:.1f} in RMS from their own WISER mean while pile neighbours are a median {asg.sep_2d_in.median():.1f} in apart, "
@@ -1265,8 +1565,9 @@ def texts(R: dict) -> None:
         f"{fp.px_per_in:.0f} px/in; the image centre lands {np.hypot(*m['image_centre_house_in']):.1f} in from the WISER house centre."]
     # ---- summary
     sb = stb[stb.dt_s < 30]
-    S = [f"**Data**: {m['n_clicks']} clicks ({m['n_blind']} blind, {int((R['ct'].status == 'after_reveal').sum())} after the reveal, "
-         f"{int((R['ct'].status == 'unsaved').sum())} unsaved, 0 legacy) in {m['n_segments_clicked']} of {m['n_page_segments']} segments, all CH07 / house_2.",
+    S = [f"**Data** ({m.get('clicks_kind', '')}): {m['n_clicks']} clicks ({m['n_blind']} blind, {int((R['ct'].status == 'after_reveal').sum())} after the reveal, "
+         f"{int((R['ct'].status == 'unsaved').sum())} unsaved, {int((R['ct'].status == 'legacy').sum())} legacy) in {m['n_segments_clicked']} of "
+         f"{m['n_page_segments']} segments, all CH07 / house_2.",
          f"**1. Composition**: colour-frame set = WISER roster in {len(agree)} of {len(rev)} revealed segments; SF11 never clicked; "
          f"{int((R['ct'].animal == 'unknown').sum())} unknown clicks.",
          f"**2. Colour → IR**: where the IR frame is < 30 s after the colour frame the clicked heads moved median {sb.d_px.median():.0f} px (≈ {sb.d_in.median():.1f} in), "
@@ -1280,41 +1581,134 @@ def texts(R: dict) -> None:
          + ", ".join(f"{r.bin_in} in: {r.acc_hungarian:.0%} (n {r.n_clicks})" for r in sep.itertuples() if r.n_clicks) + "."]
     R["summary"] = S
     # ---- not verified
+    lidseg = sorted({r.segment_id for r in R["ct"].itertuples() if "lid" in str(r.lid_flag)})
     R["not_verified"] = [
-        "The clicks are a browser snapshot, not the user's export; 11 of 22 segments; one house (CH08 / house_1 has no clicks).",
+        (f"The clicks are a {m.get('clicks_kind', '')}; " if "snapshot" in str(m.get("clicks_kind", "")) else f"Clicks from the user's {m.get('clicks_kind', '')}; ")
+        + f"{m['n_segments_clicked']} of {m['n_page_segments']} segments clicked; one house (CH08 / house_1 has no clicks).",
         "The user's colour IDs are the reference; no second labeller; identities rest on the user's corrected key (SF09 black, SF10 blue).",
         "A 2-D similarity ignores perspective and head height: the camera sits in the lid ≈ 1 ft above the floor and piled heads lie at "
         "different heights, so one scale cannot hold everywhere; WISER is a 2-D solve (all z = 0) and cannot say who lies on top.",
         "WISER minute means come from the minute before ON; the colour frame is several seconds (long segments: minutes) later.",
-        "Frames inside a lid-event window (`lid+ok`: 09-10 07:14, 09-11 09:28) use the lid segment's median correction; the camera may "
-        "have been off it while the lid was open.",
+        f"Frames inside a lid-event window (`lid+ok`: {', '.join(short(s)[:11] for s in lidseg)}) use the lid segment's median correction; "
+        "the camera may have been off it while the lid was open.",
         "The user's display orientation (180°) was chosen after several reveals — independent of the fit's numbers, not blind to WISER.",
         "Click-to-click repeatability on one head is unmeasured, so a colour → IR displacement mixes head movement and click placement.",
     ]
 
 
+def finish(R: dict) -> None:
+    nf = [s for s in R["composition"].segment_id if s not in R["fit_flashes"]]
+    R["not_fit_text"] = "; ".join(
+        f"{short(s)} ({'not revealed' if not R['composition'].set_index('segment_id').loc[s, 'revealed'] else 'no WISER mean in [ON − 60 s, ON)' if not R['segs'][s]['W'] else 'no named colour click with a WISER mean'})"
+        for s in nf) or "none"
+    texts(R)
+
+
+def headline(R: dict) -> dict:
+    """Headline numbers of one run (for the snapshot vs export table)."""
+    m, comp, P = R["meta"], R["composition"], R["variants"]["primary"]
+    ov, fp = P["order_summary"], R["fits"][R["fits"].fit == "proper"].iloc[0]
+    rev = comp[comp.revealed]
+    sb = R["stab_blind"][R["stab_blind"].dt_s < 30]
+    still, moved = sb[sb.imu_class == "all still"], sb[sb.imu_class == "moved"]
+    asg = P["assign"]
+    far = asg[asg.sep_2d_in >= 15]
+    cts = R["ct"].status.value_counts()
+    return {
+        "clicks (blind / after reveal / unsaved / legacy)": f"{len(R['ct'])} ({cts.get('blind', 0)} / {cts.get('after_reveal', 0)} / "
+                                                           f"{cts.get('unsaved', 0)} / {cts.get('legacy', 0)})",
+        "segments clicked / revealed": f"{comp.segment_id.nunique()} / {int(rev.shape[0])}",
+        "1. colour set = WISER roster": f"{int((rev.agree == True).sum())} of {len(rev)}",  # noqa: E712
+        "2. colour → IR < 30 s: pairs, median / max px": f"{len(sb)}, {sb.d_px.median():.0f} / {sb.d_px.max():.0f}",
+        "2. IMU all still: n, max px": f"{len(still)}, {still.d_px.max():.0f}" if len(still) else "-",
+        "2. IMU moved: n, max px": f"{len(moved)}, {moved.d_px.max():.0f}" if len(moved) else "-",
+        "3. fit points / flashes": f"{P['n_points']} / {P['n_flashes']}",
+        "3. handedness; px/in": f"{m['chosen_handedness']}; {fp.px_per_in:.1f}",
+        "3. page rotation (Δ vs the user's 180°)": f"{fp.page_rot_deg:.1f}° ({fp.d_rot_vs_prior_deg:+.1f}°)",
+        "3. LOFO RMS in / px": f"{P['lofo_rms_in']:.2f} / {P['lofo_rms_px']:.0f}",
+        "4. first 5 flashes": ", ".join(short(s)[:11] for s in ov.get("first", [])),
+        "4. exact order, first 5 (verdict)": f"{ov['n_exact_first']} of {N_FIRST} ({ov['verdict']})",
+        "4. tie version, first 5 (verdict)": f"{ov['n_tie_first']} of {N_FIRST} ({ov['verdict_tie']})",
+        "4. Kendall τ median first 5 / all": f"{ov['tau_median_first']:+.2f} / {ov['tau_median_all']:+.2f}",
+        "4. exact order, all eligible flashes": f"{ov['n_exact_all']} of {ov['n_eligible']}",
+        "4. pairs ≥ 8 in concordant": f"{int(P['order'].n_conc_ge_sep.sum())} of {int(P['order'].n_pairs_ge_sep.sum())}",
+        "5. Hungarian accuracy (chance)": f"{P['acc_hungarian']:.0%} of {P['n_assigned']} ({P['chance']:.0%})",
+        "5. per-flash-offset accuracy": f"{P['acc_offset']:.0%}",
+        "5. heads ≥ 15 in apart correct": f"{int(far.correct_hungarian.sum())} of {len(far)}",
+    }
+
+
+def first5_compare(R: dict, Rs: dict) -> pd.DataFrame:
+    """For the first 5 flashes of the order test: are the inputs (blind clicks after B, WISER means) identical between the two
+    runs, and what did each run's LOFO map give."""
+    P, Ps = R["variants"]["primary"], Rs["variants"]["primary"]
+    rows = []
+    for sid in P["order_summary"].get("first", []):
+        a, b = P["pred"][P["pred"].segment_id == sid].set_index("animal"), Ps["pred"][Ps["pred"].segment_id == sid].set_index("animal")
+        same = (set(a.index) == set(b.index)) and all(np.allclose(a.loc[k, ["u_ref", "v_ref", "A", "C"]].astype(float),
+                                                                   b.loc[k, ["u_ref", "v_ref", "A", "C"]].astype(float)) for k in a.index)
+        oa = P["order"][P["order"].segment_id == sid].iloc[0]
+        ob = Ps["order"][Ps["order"].segment_id == sid]
+        ob = ob.iloc[0] if len(ob) else None
+        rows.append({"segment_id": sid, "inputs_identical": same, "order_wiser": oa.order_wiser,
+                     "snapshot_clicks_order": None if ob is None else ob.order_clicks, "snapshot_exact": None if ob is None else ob.exact,
+                     "snapshot_tau": None if ob is None else ob.tau, "snapshot_tie": None if ob is None else ob.tie_match,
+                     "export_clicks_order": oa.order_clicks, "export_exact": oa.exact, "export_tau": oa.tau, "export_tie": oa.tie_match})
+    return pd.DataFrame(rows)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0], allow_abbrev=False)
     ap.add_argument("--selftest", action="store_true")
-    ap.add_argument("--clicks", default=str(CLICKS_DEFAULT), help="export or browser-snapshot JSON of the identity page")
+    ap.add_argument("--clicks", default=str(CLICKS_DEFAULT), help="the page's export (CSV or JSON) or a browser-snapshot JSON")
+    ap.add_argument("--superseded-clicks", default=str(SNAPSHOT_JSON),
+                    help="an earlier click state re-analysed into <run>/superseded_snapshot/ and compared ('' = none)")
+    ap.add_argument("--statement", default=str(STATEMENT_JSON), help="the user's composition statement ('' = none)")
     ap.add_argument("--p0-run", default=None, help="inbox_p0 run folder (default: the pointer run_manifest_inbox_p0_2026c.json)")
     ap.add_argument("--imu-root", default=None, help="imu_seconds_cache root (default $OUT/2026c/imu_seconds_cache)")
-    ap.add_argument("--no-centred", action="store_true", help="skip the centred-window sensitivity (needs the default tracks)")
+    ap.add_argument("--no-centred", action="store_true", help="skip the WISER-track sensitivities (need the default tracks)")
     args = ap.parse_args(argv)
     if args.selftest:
         return selftest()
     import output_paths as op
     p0 = Path(args.p0_run) if args.p0_run else Path(json.loads(P0_POINTER.read_text(encoding="utf-8"))["run_dir"])
     imu_root = Path(args.imu_root) if args.imu_root else op.out_root() / COHORT / "imu_seconds_cache"
+    ptr_path = op.report_dir(COHORT, DIRECTION) / POINTER_NAME
+    prev = json.loads(ptr_path.read_text(encoding="utf-8")) if ptr_path.exists() else {}
     run = op.run_dir(NAME, COHORT, make_figures=True)
     print(f"[run] {run.as_posix()}", flush=True)
-    R = analyse(Path(args.clicks), p0, run, imu_root, not args.no_centred)
-    nf = [s for s in R["composition"].segment_id if s not in R["fit_flashes"]]
-    R["not_fit_text"] = "; ".join(
-        f"{short(s)} ({'not revealed' if not R['composition'].set_index('segment_id').loc[s, 'revealed'] else 'no WISER mean in [ON − 60 s, ON)' if not R['segs'][s]['W'] else 'no named colour click with a WISER mean'})"
-        for s in nf) or "none"
-    texts(R)
-    write_report(run, R)
+    stmt = Path(args.statement) if args.statement else None
+    R = analyse(Path(args.clicks), p0, run, imu_root, not args.no_centred, stmt, SNAPSHOT_JSON)
+    finish(R)
+    Rs, cmpb, f5, repro_prev = None, None, None, None
+    sup = Path(args.superseded_clicks) if args.superseded_clicks else None
+    if sup is not None and sup.exists() and sup.resolve() != Path(args.clicks).resolve():
+        Rs = analyse(sup, p0, run / "superseded_snapshot", imu_root, not args.no_centred, None, None)
+        finish(Rs)
+        cmpb = compare_blind(Rs["ct"], R["ct"])
+        cmpb.to_csv(run / "blind_record_snapshot_vs_export.csv", index=False)
+        f5 = first5_compare(R, Rs)
+        f5.to_csv(run / "order_test_first5_snapshot_vs_export.csv", index=False)
+        hs, he = headline(Rs), headline(R)
+        pd.DataFrame({"metric": list(he), "snapshot": [hs.get(k, "-") for k in he], "export": list(he.values())}).to_csv(
+            run / "headline_snapshot_vs_export.csv", index=False)
+        # the snapshot run of 10-10 (pointer before this run) reproduced by the current code?
+        cand = []
+        if prev and str(prev.get("clicks", "")).endswith(sup.name):
+            cand.append(prev.get("run_dir", ""))
+        if prev and str((prev.get("superseded") or {}).get("clicks", "")).endswith(sup.name):
+            cand.append((prev.get("superseded") or {}).get("run_dir_2026_10_10", ""))
+        cand = [c for c in cand if c and (Path(c) / "variants.csv").exists()]
+        pv = Path(cand[0]) / "variants.csv" if cand else Path("")
+        if cand:
+            prev = {"run_dir": cand[0]}
+            old, new = pd.read_csv(pv), Rs["variant_table"]
+            mm = old.merge(new, on="variant", suffixes=("_old", "_new"))
+            ok = all(np.allclose(mm[f"{c}_old"].astype(float), mm[f"{c}_new"].astype(float), atol=1e-9)
+                     for c in ("lofo_rms_in", "exact_first5", "tie_first5", "acc_hungarian", "acc_offset"))
+            repro_prev = {"run": Path(prev["run_dir"]).as_posix(), "identical": bool(ok and (mm.verdict_old == mm.verdict_new).all()),
+                          "n_variants": len(mm)}
+    write_report(run, R, Rs, cmpb, f5, repro_prev)
     print(f"[done] verdict {R['variants']['primary']['order_summary']['verdict']}", flush=True)
     return 0
 
@@ -1440,6 +1834,45 @@ def selftest() -> int:
     rec("colour-not-IR count", set(cnt.colour_not_ir) == {"SF08"})
     from datetime import timezone
     rec("DST-aware field-PC seconds (EDT = UTC-4)", s0 == int(datetime(2026, 9, 10, 16, 0, 0, tzinfo=timezone.utc).timestamp()), f"{s0}")
+    # 6. CSV export loader, blind-record comparison, composition statement
+    import tempfile
+    cols = ["record", "click_id", "segment_id", "camera", "house", "frame_kind", "frame_file", "frame_idx", "frame_time", "u_px", "v_px", "animal",
+            "confidence", "before_reveal", "legacy", "edited_after_reveal", "deleted_after_reveal", "first_frame_kind", "first_u_px", "first_v_px",
+            "first_animal", "first_confidence", "lid_segment", "lid_flag", "lid_target_frame", "b11", "b12", "b13", "b21", "b22", "b23",
+            "pile_complete", "pile_complete_first", "revealed_at", "note", "clicked_at", "animal_before_sf09_sf10_fix", "relabelled_sf09_sf10",
+            "first_animal_before_sf09_sf10_fix", "sf09_sf10_fix_applied_at", "sf09_sf10_fix_undone_at"]
+    bm = {"b11": "1", "b12": "0", "b13": "10", "b21": "0", "b22": "1", "b23": "-5"}
+    rows_csv = [
+        {"record": "click", "click_id": "a", "segment_id": "S1", "camera": "CH07", "house": "house_2", "frame_kind": "colour_mid", "u_px": "100",
+         "v_px": "200", "animal": "SF07", "confidence": "sure", "before_reveal": "true", "legacy": "false", "edited_after_reveal": "true",
+         "deleted_after_reveal": "false", "first_frame_kind": "colour_mid", "first_u_px": "90", "first_v_px": "200", "first_animal": "SF08",
+         "lid_flag": "ok", "relabelled_sf09_sf10": "false", **bm},
+        {"record": "click", "click_id": "b", "segment_id": "S1", "camera": "CH07", "house": "house_2", "frame_kind": "ir_p06", "u_px": "1",
+         "v_px": "2", "animal": "", "confidence": "sure", "before_reveal": "false", "legacy": "false", "edited_after_reveal": "false",
+         "deleted_after_reveal": "false", "lid_flag": "ok", "relabelled_sf09_sf10": "true", **bm},
+        {"record": "segment", "segment_id": "S1", "camera": "CH07", "house": "house_2", "revealed_at": "2026-10-11T00:00:00Z"}]
+    with tempfile.TemporaryDirectory() as td:
+        pth = Path(td) / "x.csv"
+        pd.DataFrame(rows_csv, columns=cols).to_csv(pth, index=False)
+        sc = load_clicks(pth)
+        ctc = click_table(sc)
+        rec("CSV export: statuses, blind record from first_*, B applied", list(ctc.status) == ["blind", "after_reveal"]
+            and record(ctc, "blind").iloc[0].animal == "SF08" and abs(record(ctc, "blind").iloc[0].u_ref - 100.0) < 1e-9
+            and ctc.set_index("click_id").loc["b", "animal"] == "unknown" and sc["sf09_sf10_fix"]["n_swapped"] == 1 and ctc.revealed.all())
+        ctj = click_table({"segments": {"S1": {"revealed_at": "x"}}, "clicks": [
+            {"click_id": "a", "segment_id": "S1", "camera": "CH07", "house": "house_2", "frame_kind": "colour_mid", "u_px": 100, "v_px": 200,
+             "animal": "SF07", "before_reveal": True, "legacy": False, "B_frame_to_ref": [[1, 0, 10], [0, 1, -5]],
+             "verdict_first": {"animal": "SF08", "u_px": 90, "v_px": 200, "frame_kind": "colour_mid"}}]})
+        cb = compare_blind(ctj, ctc)
+        rec("blind comparison: same click -> same, new click -> only in export",
+            dict(zip(cb.click_id, cb.change)) == {"a": "same", "b": "only in export"}, f"{dict(zip(cb.click_id, cb.change))}")
+        segs3 = {"S9": {"camera": "CH07", "start": datetime(2026, 9, 10, 19, 50, 4), "mid": datetime(2026, 9, 10, 19, 50, 7, 750000),
+                        "frames": {"colour_mid": {"time": datetime(2026, 9, 10, 19, 50, 7, 793000)}}}}
+        sp_ = Path(td) / "s.json"
+        sp_.write_text(json.dumps({"composition_complete": "yes for every segment", "unusable_segments": [
+            {"camera": "CH07", "start": "2026-09-10 19:50:07.793", "reason": "black"}]}), encoding="utf-8")
+        st_ = load_statement(sp_, segs3)
+        rec("composition statement: unusable segment matched by its colour-frame time", st_["unusable"] == {"S9": "black"} and st_["complete"])
     ok = all(c for _, c, _ in res)
     print(f"[selftest] {sum(c for _, c, _ in res)}/{len(res)} {'PASS' if ok else 'FAIL'}", flush=True)
     return 0 if ok else 1
