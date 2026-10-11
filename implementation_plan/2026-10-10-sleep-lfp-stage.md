@@ -9,7 +9,8 @@ ran 10-10: the long-wake memory term adds no held-out gain (#64) and leaves pass
 and main sleep follow the same count / depth rules (#69); #68 downgraded by the selection check. **L2(b) DONE 2026-10-10**
 ([report](../results/2026c/ephys_spikes/reports/ephys_spikes_sleep_lfp_L2b_2026c.md)): the pre-registered share sat at its
 floor (uninformative); the NREM before the first post-round REM is theta-richer across the window, partly with head
-movement, not a late REM label (#70, Candidate). Next: a targeted L2(a); L2(c) on hold.
+movement, not a late REM label (#70, Candidate; **paused by the user**, confounds in §10.1). Next: the REM ramp
+check (§10), then a targeted L2(a); L2(c) on hold.
 
 **Revision 1 (2026-10-10, before any result; the user):**
 - "sw slope 就可以 … delta 不过是 up-down state": depth is the scorer's raw slow-wave slope, already computed. No new
@@ -267,4 +268,95 @@ windows). At least 60 such seconds are required.
 
 **Next, for the user (astra):** a blind review page of the same transitions: LFP ± 60 s around t_R with the states
 hidden.
+
+## 10. Revision 4 (2026-10-10, before these results; the user: "写吧计划然后写检验") — L2(b) paused; the REM ramp within sleep episodes
+
+### 10.1 L2(b) paused (the user: too many confounds)
+
+#70 stays Candidate, marked paused. To resolve before any further theta reading:
+- **Clock:** the first REM falls at median 18 h after evening rounds vs 22 h after natural evening wakes.
+- **Prior wake:** release + handling + time in the field vs a natural wake ≥ 30 min; the windows start at different
+  events (house entry vs the end of a natural wake).
+- **Movement:** about half of the CA1 excess sits in head-moving seconds; it needs an IMU-matched (or video-labelled)
+  comparison.
+- **Scorer axis:** th is the scorer's own axis; on pass2med it is the axis that decides REM.
+- **Numbers:** 1–3 natural evening events per animal.
+
+### 10.2 Question
+
+Does REM entry follow a time course within a sleep episode (rising after onset, falling before the end) that the
+existing model does not produce? Naps hold less REM. Two readings:
+- **Short episodes:** naps follow the same rules but end before the REM-rich phase.
+- **Episode organisation:** at the same elapsed time, count, clock and wake history, REM entry still changes with the
+  time since the episode began.
+
+The count P empties at every REM, so it does not say how far an episode has progressed. Similar local rules (#69) do not
+exclude a whole-episode time course.
+
+### 10.3 Episodes (each scoring: FINAL, pass2med; the Step-B records)
+
+- **Onset:** the first NREM second after
+  - (i) a WAKE bout ≥ 30 min inside a record ("natural"), or
+  - (ii) a record start ("record start": post-round when the record follows a round gap, else "other start").
+- **End:** the next WAKE bout ≥ 30 min (an observed end), or censored at an unknown run > 60 s or the record end.
+- **Elapsed time** $u$ = seconds since onset, on the wall clock (short wakes and REM included).
+- **Classes:**
+  - *main* = the last natural onset in [sunset, sunrise + 1 h) of a night;
+  - *nap* = earlier natural onsets in [sunset, main onset);
+  - *day* = all other natural onsets;
+  - *post-round*;
+  - *other start* (dropped).
+  - Sunset / sunrise come from the night_sleep_wiser night table. On FINAL, main onsets are checked against its `mso`
+    (agreement reported).
+- **Bins of $u$ (min):** 0–10, 10–20, 20–30, 30–45, 45–60, 60–90, 90–120, 120–180, 180–240, 240–360, ≥ 360.
+- **Per bin:** episodes at risk (uncensored at the bin start), NREM steps, observed REM entries $O$, expected $E$.
+- Main sleep is usually cut by the morning round within ~0.5 h. The long daytime sleep therefore sits mostly in the
+  post-round class, whose first hours carry the known extra waking (#61).
+
+### 10.4 Tests
+
+**(A) Held-out calibration (primary).**
+- O/E of REM entry per 10-s NREM step, by bin and class, from the stored held-out B-full predictions
+  (`sleep_heldout_steps`, `p_rem`; forward chaining). WAKE O/E is reported alongside.
+- 95 % CI from 2000 bootstrap resamples of episodes within animals. O/E is also given per animal.
+- Judged bins: $E \ge 20$.
+- **Ramp residual in a class:**
+  - ≥ 2 adjacent judged bins whose CI excludes 1 in the same direction, on both scorings;
+  - per-animal O/E on that side in ≥ n − 1 of the n animals with $E \ge 5$ in the pooled bins.
+
+**(B) Generative overlay.**
+- The Step-E simulator (base model, conditional on the observed long wakes ≥ 7 min), 100 replicates per scoring.
+- Measure: the REM share of sleep, REM s / (NREM + REM) s, per bin and class, on the observed episode bounds. The
+  observed share is compared with the simulated 2.5–97.5 % band.
+- **Shape not reproduced in a class:** ≥ 2 adjacent judged bins (≥ 20 episodes at risk) outside the band in the same
+  direction, on both scorings.
+
+**(C) Nested held-out test (decides whether a term is needed).**
+- Add the episode clock as linear extras to B-full:
+  $g(u) = \big(\ln(1+u_m),\ \max(0, \ln(1+u_m) - \ln 31),\ \max(0, \ln(1+u_m) - \ln 121)\big)$, where $u_m$ is $u$ in
+  minutes (hinges at 30 and 120 min). Fitted with forward chaining.
+- Primary subset: natural episodes (nap + main + day). Post-round is excluded because of #61's arousal. Secondary:
+  with post-round included.
+- **Holds:** REM log-loss CI < 0 and ≥ n − 1 animals better, on both scorings.
+
+**(D) Description only.**
+- End-aligned O/E: minutes before an observed episode-ending wake ≥ 30 min. Selection-prone.
+- Sensitivity for (A): a wake threshold of 10 min.
+
+### 10.5 Reading
+
+| (A) / (B) | (C) | Reading |
+|---|---|---|
+| no residual, reproduced | does not hold | The REM time course within episodes, including the naps' low REM, comes out of the existing rules (count, clock, wake history): the short-episode reading. No episode clock. |
+| residual or not reproduced | holds | An episode clock is needed: Candidate claim, then added to the simulator. |
+| residual or not reproduced | does not hold | A residual without held-out value: described, not a model term. |
+| no residual, reproduced | holds | A small gain: Candidate. |
+
+### 10.6 Code and outputs
+
+- Driver `ephys/sleep_ramp.py run` (`--selftest`: episode builder, censoring, classes, binning, O/E = 1 for a
+  calibrated predictor).
+- Report `results/2026c/ephys_spikes/reports/ephys_spikes_sleep_ramp_2026c.md` with CSVs and a figure: observed vs
+  predicted hazard and REM share by $u$, per class, with episodes at risk.
+- Bulk `$OUT_ROOT/2026c/sleep_ramp_<ts>/`.
 
