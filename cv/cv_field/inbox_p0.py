@@ -99,8 +99,13 @@ MIN_DWELL_S = 20
 HOUSES = ("house_1", "house_2")
 LABELS = ("SF07", "SF08", "SF09", "SF10", "SF11", "SF12")
 SECOND_TAG = "SF12_tag12376"
-# SF11 carried no tag: 305a died 09-02 00:03, 3058 mounted 09-02 08:15 (identity table); implant (and tag) off 09-07 06:10:45
-SF11_UNTAGGED = ((datetime(2026, 9, 2, 0, 3), datetime(2026, 9, 2, 8, 15)), (datetime(2026, 9, 7, 6, 10, 45), SCOPE_END))
+# SF11's tag record (field incident log 09-07; corrected 2026-10-11, plan amendment 12): tag 305a died 09-02 00:03, 3058
+# mounted 09-02 08:15 -> a tag DROPOUT with the animal present; when the implant came off (~09-07 06:10:45) the tag stayed on
+# the rat, and the rat LEFT the paddock at the 09-07 AM round (last regular fix 08:20) -> ABSENT until the scope end; the
+# paddock then held five animals, all tagged. (06:10:45-08:20 the default tracks flag SF11's fixes m_off_animal: there SF11 is
+# present but untracked here; whether that flag is right is checked separately - amendment 12.)
+SF11_UNTAGGED = ((datetime(2026, 9, 2, 0, 3), datetime(2026, 9, 2, 8, 15)),)
+SF11_ABSENT = ((datetime(2026, 9, 7, 8, 20), SCOPE_END),)
 HOUSE_POSE = {"house_2": {"centre": (342.4, 117.7), "ridge_deg": 92.0, "source": "calibration house_check 09-18 (house_2 never moved)"},
               "house_1": None}  # filled from cv/configs/house1_cohort_pose_2026c.json
 MAPPING_JSON = OUT_ROOT / "2026c" / "cv_field_wiser_assist_p0_20261005_2211" / "mapping.json"
@@ -794,7 +799,59 @@ def handling_seconds(df: pd.DataFrame, t0: datetime, n: int) -> np.ndarray:
 
 
 def untagged(label: str, t: datetime) -> bool:
+    """In the paddock without a working tag (a tag dropout): SF11 09-02 00:03 -> 08:15."""
     return label == "SF11" and any(a <= t < b for a, b in SF11_UNTAGGED)
+
+
+def absent(label: str, t: datetime) -> bool:
+    """Not in the paddock: SF11 after it left at the 09-07 AM round (last fix 08:20)."""
+    return label == "SF11" and any(a <= t < b for a, b in SF11_ABSENT)
+
+
+def window_mask(wins, t0: datetime, n: int) -> np.ndarray:
+    tsec = np.arange(n)
+    m = np.zeros(n, bool)
+    for a, b in wins:
+        m |= (tsec >= (a - t0).total_seconds()) & (tsec < (b - t0).total_seconds())
+    return m
+
+
+def occupancy_table(st: np.ndarray, labs: list[str], t0: datetime) -> pd.DataFrame:
+    """Per second: roster per house, n out, untracked (present tagged animals with an unknown state), sf11_untagged (tag
+    dropout, animal present), sf11_absent (left the paddock), all_tracked (every present animal tagged and located)."""
+    n = st.shape[1]
+    occ = {"time": pd.date_range(t0, periods=n, freq="s").strftime(FMT)}
+    sf11_untag = window_mask(SF11_UNTAGGED, t0, n) if "SF11" in labs else np.zeros(n, bool)
+    sf11_abs = window_mask(SF11_ABSENT, t0, n) if "SF11" in labs else np.zeros(n, bool)
+
+    def roster_strings(mem: np.ndarray) -> np.ndarray:
+        code = (mem.astype(np.int64) * (1 << np.arange(len(labs)))[:, None]).sum(0)
+        lut = np.array([";".join(l for j, l in enumerate(labs) if c >> j & 1) for c in range(1 << len(labs))], dtype=object)
+        return lut[code]
+    for h in HOUSES:
+        mem = st == HOUSE_CODE[h]
+        occ[f"n_{h}"] = mem.sum(0)
+        occ[h] = roster_strings(mem)
+    occ["n_out"] = (st == S_OUT).sum(0)
+    unknown = st == S_UNK
+    if "SF11" in labs:
+        unknown[labs.index("SF11")] &= ~sf11_untag & ~sf11_abs
+    occ["untracked"] = roster_strings(unknown)
+    occ["sf11_untagged"] = sf11_untag
+    occ["sf11_absent"] = sf11_abs
+    occ["all_tracked"] = (~unknown.any(0)) & ~sf11_untag
+    return pd.DataFrame(occ)
+
+
+def phase_occupancy(run: Path) -> pd.DataFrame:
+    """Rebuild box_occupancy_1s.csv.gz from the saved cleaned states (states_1s.npz) - no WISER reload, events unchanged."""
+    z = np.load(run / "states_1s.npz", allow_pickle=False)
+    labs = [str(x) for x in z["labels"]]
+    keep = [i for i, l in enumerate(labs) if l in LABELS]
+    occ = occupancy_table(z["states"][keep], [labs[i] for i in keep], datetime.fromisoformat(str(z["t0"])))
+    occ.to_csv(run / "box_occupancy_1s.csv.gz", index=False)
+    print(f"[occupancy] rebuilt from states_1s.npz: all_tracked {occ.all_tracked.mean():.4f}", flush=True)
+    return occ
 
 
 def phase_wiser(run: Path, track_root: Path | None = None, t0: datetime = TRACK_START, t1: datetime = SCOPE_END,
@@ -839,32 +896,8 @@ def phase_wiser(run: Path, track_root: Path | None = None, t0: datetime = TRACK_
     ev.to_csv(run / "box_events.csv", index=False)
     pd.DataFrame(ev_lit + ev_raw).to_csv(run / "box_events_sensitivity.csv.gz", index=False)
     # per-second occupancy
-    times = pd.date_range(t0, periods=n, freq="s")
-    occ = {"time": times.strftime(FMT)}
     labs = [l for l in labels if l in states]
-    st = np.vstack([states[l] for l in labs])
-    tsec = np.arange(n)
-    sf11_untag = np.zeros(n, bool)
-    if "SF11" in labels:
-        for a, b in SF11_UNTAGGED:
-            sf11_untag |= (tsec >= (a - t0).total_seconds()) & (tsec < (b - t0).total_seconds())
-
-    def roster_strings(mem: np.ndarray) -> np.ndarray:
-        code = (mem.astype(np.int64) * (1 << np.arange(len(labs)))[:, None]).sum(0)
-        lut = np.array([";".join(l for j, l in enumerate(labs) if c >> j & 1) for c in range(1 << len(labs))], dtype=object)
-        return lut[code]
-    for h in HOUSES:
-        mem = st == HOUSE_CODE[h]
-        occ[f"n_{h}"] = mem.sum(0)
-        occ[h] = roster_strings(mem)
-    occ["n_out"] = (st == S_OUT).sum(0)
-    unknown = st == S_UNK
-    if "SF11" in labs:
-        unknown[labs.index("SF11")] &= ~sf11_untag
-    occ["untracked"] = roster_strings(unknown)
-    occ["sf11_untagged"] = sf11_untag
-    occ["all_tracked"] = (~unknown.any(0)) & ~sf11_untag
-    pd.DataFrame(occ).to_csv(run / "box_occupancy_1s.csv.gz", index=False)
+    occupancy_table(np.vstack([states[l] for l in labs]), labs, t0).to_csv(run / "box_occupancy_1s.csv.gz", index=False)
     np.savez_compressed(run / "states_1s.npz", t0=str(t0), labels=np.array(labs + ([SECOND_TAG] if SECOND_TAG in states else [])),
                         states=np.vstack([states[l] for l in labs] + ([states[SECOND_TAG]] if SECOND_TAG in states else [])))
     # SF12's second tag vs its primary tag
@@ -1150,9 +1183,12 @@ Times are field-PC local (America/New_York, naive). Video frame time t = file-na
   09:49:49, SF07 09:49:51, SF11 09:49:58, SF10 09:50:01, SF12 09:50:15; SF08 into house_1 09:50:13) the nearest WISER
   event of the same animal, house and kind within ± 30 min; Δt = t_WISER − t_operator. **Pass** iff every |Δt| ≤ 30 s and
   the five house_2 entries, sorted by t_WISER, come in the operator's order SF09, SF07, SF11, SF10, SF12.
-- **Occupancy (per second)**: roster of house_h = animals whose cleaned state is h; `untracked` = tagged animals whose
-  state is unknown; `sf11_untagged` = SF11 carried no tag (09-02 00:03 → 08:15; from 09-07 06:10:45); `all_tracked` =
-  no untracked animal and SF11 tagged. After 09-07 06:10:45 every roster is a lower bound (SF11 invisible).
+- **Occupancy (per second)**: roster of house_h = animals whose cleaned state is h; `untracked` = animals present in the
+  paddock and tagged whose state is unknown; `sf11_untagged` = SF11 present without a working tag (the tag dropout 09-02
+  00:03 → 08:15); `sf11_absent` = SF11 out of the paddock (it left at the 09-07 AM round, last fix 08:20; the tag stayed on
+  the rat); `all_tracked` = no untracked animal and no untagged animal present. Rosters are complete except in tag dropouts
+  (SF11 09-02 00:03 → 08:15; SF12 before its tag's first fix 08-31 06:36) and while a tagged animal is untracked
+  (corrected 2026-10-11, plan amendment 12: an earlier version counted SF11 as present but untagged from 09-07 06:10:45).
 - **Paddock position** p = s R(θ) (w − c) + c + d (the accepted WISER → paddock similarity: s 0.96340, θ 0.1143°,
   c (501.68, 761.10) in, d (−272.85, −605.80) in). **House frame**: along = (p − C) · (cos φ, sin φ),
   across = (p − C) · (−sin φ, cos φ), with C, φ the house centre and ridge angle (house_2 (342.4, 117.7) in, 92.0°;
@@ -1202,6 +1238,8 @@ def write_report(run: Path) -> Path:
     pgc = json.loads(pg.read_text(encoding="utf-8")) if pg.exists() else {}
     pdata = json.loads((run / "identity_page" / "page_data.json").read_text(encoding="utf-8")) if (run / "identity_page" / "page_data.json").exists() else {}
     occ = pd.read_csv(run / "box_occupancy_1s.csv.gz", usecols=["time", "all_tracked", "sf11_untagged"])
+    old_occ = run / "superseded_20261011" / "box_occupancy_1s.csv.gz"
+    old_share = float(pd.read_csv(old_occ, usecols=["all_tracked"]).all_tracked.mean()) if old_occ.exists() else float("nan")
     seg["day"] = seg.start.str[:10]
     n_by = seg.groupby(["camera", "day"]).size().unstack(fill_value=0) if len(seg) else pd.DataFrame()
     v = ws["check_0905"]
@@ -1224,8 +1262,10 @@ def write_report(run: Path) -> Path:
          f"{pd.to_numeric(chk.delta_s, errors='coerce').max():+.0f} s). Literal mask rule: "
          f"{ws['check_0905_literal']['verdict']}; raw fixes instead of the track: {ws['check_0905_rawfix']['verdict']}.",
          f"- **B. Box events**: {len(ev)} events (primary rule) for SF07–SF12, {int(ev.in_handling.sum())} near a handling mask; "
-         f"{len(ih)} in-house animal-minutes; per second all tagged animals tracked {100 * occ.all_tracked.mean():.1f} % of the scope "
-         f"({100 * occ.loc[occ.time < '2026-09-07 06:10:45', 'all_tracked'].mean():.1f} % before SF11's tag was retired).",
+         f"{len(ih)} in-house animal-minutes; per second every animal in the paddock was tagged and located {100 * occ.all_tracked.mean():.1f} % "
+         f"of the scope ({100 * occ.loc[occ.time < '2026-09-07 06:10:45', 'all_tracked'].mean():.1f} % before 09-07 06:10:45, "
+         f"{100 * occ.loc[occ.time >= '2026-09-07 08:20:00', 'all_tracked'].mean():.1f} % after SF11 left at 08:20; corrected 2026-10-11 — "
+         f"the 10-10 version gave {100 * old_share:.1f} % by counting SF11 as present but untagged after 09-07 06:10:45).",
          ]
     if len(ch):
         a = ch[ch.subset == "all minutes"]
@@ -1382,7 +1422,13 @@ def write_report(run: Path) -> Path:
           "the operator's rule (≥ 4 of the first 5 flashes with ≥ 3 identified animals; the later, pre-registered step).",
           "- SE = sd / √n ignores autocorrelation of consecutive fixes (a lower bound).",
           "- A colour insert shorter than the 2-s I-frame spacing can fall between I-frames and be missed by the scan.",
-          "- SF11 after 09-07 06:10:45 is untagged: rosters are lower bounds.",
+          "- Correction 2026-10-11 (plan amendment 12): SF11 kept its tag; it left the paddock at the 09-07 AM round (last fix 08:20), "
+          "so from then to 09-11 19:40 the paddock held five animals, all tagged, and rosters are complete except in tag dropouts. "
+          "An earlier version of this report called the rosters after 09-07 06:10 lower bounds (SF11 untagged); no event, position, "
+          "segment or check result depended on that; only the `all_tracked` share changed (box_occupancy_1s.csv.gz rebuilt from the "
+          "unchanged states_1s.npz). SF11's fixes 09-07 06:10:45 → 08:20 are flagged `m_off_animal` in the default tracks although "
+          "the field note says 07:40 → 08:20 is real position data for the rat: a possible error, to be checked separately "
+          "(the production tracks are unchanged).",
           "\n## Files\n",
           f"Run `{run.as_posix()}`: `scan/`, `scan_control/` (per-file I-frame tables), `scan_inventory.csv`, `scan_log.jsonl`, "
           "`colour_threshold.json`, `colour_segments.csv`, `colour_log_rows.csv`, `control_hours.csv`, `box_events.csv`, "
@@ -1538,6 +1584,19 @@ def selftest() -> int:
         occ = pd.read_csv(tmp / "box_occupancy_1s.csv.gz")
         r0 = occ[occ.time == "2026-09-05 08:40:00"].iloc[0]
         rec("occupancy: six in house_2 before the removal", r0.n_house_2 == 6 and r0.all_tracked, f"{r0.house_2}")
+        # SF11 (corrected 2026-10-11): unknown while present (06:10:45-08:20) -> untracked; after 08:20 absent, not a gap
+        t_a = datetime(2026, 9, 7, 8, 0)
+        stt = np.full((6, 2400), S_H2, np.int8)
+        stt[4, :] = S_UNK
+        oc = occupancy_table(stt, list(LABELS), t_a)
+        b4, af = oc.iloc[600], oc.iloc[1800]                     # 08:10 and 08:30
+        rec("occupancy: SF11 untracked before 08:20, absent after (all_tracked True, not a lower bound)",
+            b4.untracked == "SF11" and not b4.all_tracked and not b4.sf11_absent and af.untracked == "" and bool(af.all_tracked)
+            and bool(af.sf11_absent) and not af.sf11_untagged and af.n_house_2 == 5,
+            f"{b4.untracked!r} {b4.all_tracked} / {af.untracked!r} {af.all_tracked} {af.sf11_absent}")
+        oc2 = occupancy_table(stt, list(LABELS), datetime(2026, 9, 2, 0, 0))
+        rec("occupancy: SF11's tag dropout 09-02 00:03-08:15 = untagged, present (all_tracked False)",
+            bool(oc2.iloc[600].sf11_untagged) and not oc2.iloc[600].all_tracked and oc2.iloc[600].untracked == "")
         r1 = occ[occ.time == "2026-09-05 09:55:00"].iloc[0]
         rec("occupancy: five in house_2, SF08 in house_1 after the release", r1.n_house_2 == 5 and r1.house_1 == "SF08")
         phase_inhouse(tmp, track_root=tmp / "tracks", days=["2026-09-05"])
@@ -1593,6 +1652,8 @@ def main(argv=None) -> int:
         phase_inhouse(run)
     if "camhouse" in args.phases:
         phase_camhouse(run)
+    if "occupancy" in args.phases:
+        phase_occupancy(run)
     meta_path = run / "run.json"
     meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
     meta.setdefault("phases_run", []).append({"phases": args.phases, "started": t_start.isoformat(timespec="seconds"),

@@ -4,6 +4,8 @@
 
 Plan `implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md` (section "Pre-registered use of the user's clicks" + amendments 1–11; amendment 11 = how this step is run, written before any result). Run `D:/Field2026_analysis_out/2026c/cv_field_inbox_clicks_20261010_2042`; generated 2026-10-10T20:43:11; code `53c13c12a6ffc181770df7f24179e8fae4df20a7+dirty`. Phase-0 run `D:/Field2026_analysis_out/2026c/cv_field_inbox_p0_20261010_1702`. Driver `cv/cv_field/inbox_click_analysis.py`. The agent never looked at a frame; everything is computed from the click coordinates, the user's IDs and WISER.
 
+**Correction 2026-10-11 (text only, plan amendment 12).** An earlier version of this report said SF11 was untagged after 09-07 06:10:45 and called every roster a lower bound. Wrong: SF11 kept its tag and left the paddock at the 09-07 AM round (last fix 08:20); from then to 09-11 19:40 the paddock held five animals, all tagged, so rosters are complete except in tag dropouts and while a tagged animal is untracked. No number in this report depended on that reading: the rosters and untracked lists come from the phase-0 page data and the cleaned per-second states, which are unchanged (all 22 segments re-checked against `states_1s.npz`), and SF11 is in no roster or untracked list after 09-07 under either reading. Edited by hand; the generator `inbox_click_analysis.py` carries the corrected wording.
+
 ## Summary
 
 - **Data**: 141 clicks (135 blind, 5 after the reveal, 1 unsaved, 0 legacy) in 11 of 22 segments, all CH07 / house_2.
@@ -17,7 +19,7 @@ Plan `implementation_plan/2026-10-10-inbox-ch0708-wiser-identity-p0.md` (section
 
 Preliminary (snapshot, 8 flashes in the fit); every statement is a number from the sections below.
 
-- **Which animals are in the box — yes, WISER helps.** The house roster equalled the colour-clicked set in 8 of 10 revealed flashes, with no clicked animal outside the roster; in the other 2 (long colour segments during the morning rounds, where the colour frame lies minutes after ON) every roster animal was clicked on some frame of the segment. A roster is a lower bound: SF11 (untagged since 09-07) can be in the pile unseen by WISER — it was never clicked here.
+- **Which animals are in the box — yes, WISER helps.** The house roster equalled the colour-clicked set in 8 of 10 revealed flashes, with no clicked animal outside the roster; in the other 2 (long colour segments during the morning rounds, where the colour frame lies minutes after ON) every roster animal was clicked on some frame of the segment. Rosters are complete here: all five animals in the paddock were tagged (SF11 had left at the 09-07 AM round; corrected 2026-10-11, plan amendment 12); SF11 was never clicked.
 - **Who lies where inside a pile — not from WISER minute means.** The pre-registered order test is NOT ACCEPTED (exact order 0 of 5, 0 of 8 overall; Kendall τ median +0.50); mapped heads sit 6.0 in RMS from their own WISER mean while pile neighbours are a median 5.7 in apart, and neither a per-flash nor a per-tag offset removes that error. Assigning heads by WISER gets 65% right (chance 20%).
 - **Where WISER separations can be trusted.** Pairs ≥ 8 in apart along the ridge were ordered correctly in 25 of 28 (89%; tie version ACCEPTED); heads ≥ 15 in from every other animal were assigned correctly in 4 of 4. So WISER can name an animal lying apart at one end of the box and order clearly separated animals; it cannot resolve the order inside the pile (the plan's rule "trust > 8 in for 1-min means only" stands).
 - **The colour labels and the IR frames.** When the head IMU was still on every second between the colour and the IR frame, the clicked head moved ≤ 44 px (median 21 px ≈ 0.3 in; n 36), consistent with the operator's premise that IR frames can inherit identity from the colour frame; when the IMU registered movement the displacement reached 387 px (median 52 px, n 24). The head IMU is a candidate gate for carrying colour identities into IR (click repeatability on one head is not measured).
@@ -36,7 +38,7 @@ SF09 / SF10 one-time swap (amendment 10): applied to 6 clicks (all of segment 09
 
 ## 1. Composition: clicked on the colour frame vs the WISER roster
 
-Roster = tagged animals whose cleaned house state is house_2 at the colour frame (dilated house zone, plan B; "SF11 untagged after 09-07 06:10:45 — may be present"). Clicked = named blind clicks on the colour frame.
+Roster = tagged animals whose cleaned house state is house_2 at the colour frame (dilated house zone, plan B; SF11 had left the paddock at the 09-07 AM round, so the roster covers every animal present that WISER locates; corrected 2026-10-11, plan amendment 12). Clicked = named blind clicks on the colour frame.
 
 | segment_id | revealed | n_clicks | n_blind | roster | untracked | clicked_colour | n_unknown_colour | missing | extras | agree | clicked_any_frame_blind | missing_any_frame_blind | clicked_any_frame_final |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -57,7 +59,7 @@ Roster = tagged animals whose cleaned house state is house_2 at the colour frame
 - Colour-frame set = WISER roster in **8 of 10** revealed segments (09-09 19:10:25, 09-10 07:14:15, 09-10 09:11:47, 09-10 12:27:03, 09-10 12:51:42, 09-10 13:51:31, 09-10 14:16:13, 09-10 14:32:43).
 - 09-10 08:37:42: roster SF07,SF08,SF09,SF10,SF12; colour frame SF07,SF10,SF12 + 1 unknown → missing SF08,SF09, extras -; on any frame (blind) SF07,SF08,SF09,SF10,SF12 (missing -).
 - 09-11 09:28:22: roster SF07,SF08,SF09,SF10 (untracked SF12); colour frame SF07,SF08,SF09 + 0 unknown → missing SF10, extras -; on any frame (blind) SF07,SF08,SF09,SF10 (missing -).
-- Unknown (`None`) clicks: 3 in all (09-10 08:37:42 colour_mid, 09-10 08:37:42 ir_p15, 09-10 15:23:07 colour_mid). Extras (a clicked animal outside the roster): 0 segments. SF11 was clicked **never** (its tag was retired 09-07 06:10:45, so it can never be on a roster here; every roster is a lower bound).
+- Unknown (`None`) clicks: 3 in all (09-10 08:37:42 colour_mid, 09-10 08:37:42 ir_p15, 09-10 15:23:07 colour_mid). Extras (a clicked animal outside the roster): 0 segments. SF11 was clicked **never** (it left the paddock at the 09-07 AM round, last fix 08:20, so it cannot be in a pile here; corrected 2026-10-11, plan amendment 12).
 
 ## 2. Stability colour → IR (the premise that a pile does not move across the switch)
 

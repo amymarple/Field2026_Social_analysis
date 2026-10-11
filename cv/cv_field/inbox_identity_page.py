@@ -14,7 +14,8 @@ One entry per colour segment (deduplicated by configuration = one entry per segm
   lid      each frame's lid-closed segment and its correction (frame px -> the 09-04 12:00 reference px, the 2 x 3 matrix B
            of frame_correction.Corrections("2026c").correction(cam, t)), with the flag; recorded only, nothing fitted.
   WISER    roster of the camera's house (CH07 -> house_2, CH08 -> house_1) at the segment middle from the cleaned per-second
-           states (inbox_p0 states_1s.npz); "SF11 untagged after 09-07 06:10:45 — may be present"; per roster animal the
+           states (inbox_p0 states_1s.npz); SF11 note (corrected 2026-10-11): "SF11 left the paddock at the 09-07 AM round (last fix
+           08:20); rosters are complete except in tag dropouts" after 08:20, its 09-02 tag-dropout note inside it; per roster animal the
            mean position over [start - 60 s, start) in the house frame (along / across the ridge, inches), SE = sd(raw
            fixes) / sqrt(n), +-1 SD of the raw fixes, and the IMU still / active / locomoting shares of that minute.
 The user clicks each visible rat's head (colour frame; optionally IR frames), picks SF07-SF12 / unknown and sure /
@@ -181,6 +182,16 @@ def lid_correction(C, cam: str, t: datetime) -> dict:
 
 
 # ----------------------------------------------------------------------------------------------- WISER panel
+SF11_ABSENT_NOTE = "SF11 left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts"
+SF11_DROPOUT_NOTE = "SF11 untagged 09-02 00:03-08:15 - may be present"
+
+
+def sf11_note(t: datetime) -> str:
+    """The roster note about SF11 at time t (corrected 2026-10-11, plan amendment 12: SF11 kept its tag and left the paddock at
+    the 09-07 AM round; only its 09-02 tag dropout leaves it present but invisible to WISER)."""
+    return SF11_ABSENT_NOTE if ip.absent("SF11", t) else SF11_DROPOUT_NOTE if ip.untagged("SF11", t) else ""
+
+
 def wiser_panel(run: Path, seg: pd.Series, z: dict, track_root: Path | None = None, cache: dict | None = None) -> dict:
     t0 = datetime.fromisoformat(str(z["t0"]))
     labs = [str(x) for x in z["labels"]]
@@ -194,7 +205,7 @@ def wiser_panel(run: Path, seg: pd.Series, z: dict, track_root: Path | None = No
         if lab not in ip.LABELS:
             continue
         s = int(z["states"][j, k]) if 0 <= k < n else ip.S_UNK
-        if lab == "SF11" and ip.untagged("SF11", mid):
+        if lab == "SF11" and (ip.untagged("SF11", mid) or ip.absent("SF11", mid)):
             continue
         if s == code:
             roster.append(lab)
@@ -226,10 +237,9 @@ def wiser_panel(run: Path, seg: pd.Series, z: dict, track_root: Path | None = No
             d = d.loc[keep]
         st = ip.window_stats(d, mp, poses[house])
         pos.append({"animal": lab, **{kk: (round(v, 4) if isinstance(v, float) else v) for kk, v in st.items()}})
-    sf11_note = ("SF11 untagged after 09-07 06:10:45 - may be present" if mid >= ip.SF11_UNTAGGED[1][0]
-                 else "SF11 untagged 09-02 00:03-08:15 - may be present" if ip.untagged("SF11", mid) else "")
+    note = sf11_note(mid)
     return {"house": house, "at": seg.mid, "roster": roster, "other_house": other, "out": out, "untracked": unknown,
-            "sf11_note": sf11_note, "window": f"{a:%H:%M:%S}-{start:%H:%M:%S} (the minute before colour ON)",
+            "sf11_note": note, "window": f"{a:%H:%M:%S}-{start:%H:%M:%S} (the minute before colour ON)",
             "positions": pos, "pose": poses[house], "body_in": [round(BODY_IN[0], 3), round(BODY_IN[1], 3)]}
 
 
@@ -355,6 +365,34 @@ def relink_closeups(page: Path, data: dict, src_dir: Path = CLOSEUP_SRC) -> list
     return moves
 
 
+def roster_recheck(run: Path, data: dict) -> dict:
+    """Recompute every segment's roster / untracked list from states_1s.npz with the current SF11 rule and compare with the
+    page data (a text correction must not change them)."""
+    p = run / "states_1s.npz"
+    if not p.exists():
+        return {"checked": 0, "note": "no states_1s.npz"}
+    z = dict(np.load(p, allow_pickle=False))
+    t0 = datetime.fromisoformat(str(z["t0"]))
+    labs = [str(x) for x in z["labels"]]
+    bad = []
+    for sg in data["segments"]:
+        mid = datetime.fromisoformat(sg["mid"])
+        code = ip.HOUSE_CODE[sg["wiser"]["house"]]
+        k = int((mid - t0).total_seconds())
+        roster, unk = [], []
+        for j, lab in enumerate(labs):
+            if lab not in ip.LABELS or (lab == "SF11" and (ip.untagged("SF11", mid) or ip.absent("SF11", mid))):
+                continue
+            st_ = int(z["states"][j, k]) if 0 <= k < z["states"].shape[1] else ip.S_UNK
+            if st_ == code:
+                roster.append(lab)
+            elif st_ == ip.S_UNK:
+                unk.append(lab)
+        if roster != sg["wiser"]["roster"] or unk != sg["wiser"]["untracked"]:
+            bad.append(sg["segment_id"])
+    return {"checked": len(data["segments"]), "rosters_and_untracked_unchanged": not bad, "differ": bad}
+
+
 def refresh_legend(run: Path, csv_path: Path = IDENTITY_CSV, closeup_src: Path | None = CLOSEUP_SRC) -> dict:
     """Rewrite only the legend (from the identity CSV) and re-render index.html at the SAME path from the existing
     page_data.json: frames, close-ups, segments, page_version and run are kept, so the localStorage key
@@ -365,12 +403,22 @@ def refresh_legend(run: Path, csv_path: Path = IDENTITY_CSV, closeup_src: Path |
     frames_before = {p.name: p.stat().st_mtime for p in (page / "frames").glob("*.jpg")}
     data["legend"] = legend_from_csv(csv_path)
     data["meta"].update(legend_meta(csv_path))
+    notes_changed = 0
+    for sg in data["segments"]:
+        new = sf11_note(datetime.fromisoformat(sg["mid"]))
+        if sg["wiser"].get("sf11_note") != new:
+            sg["wiser"]["sf11_note"] = new
+            notes_changed += 1
+    if notes_changed:
+        data["meta"].setdefault("text_corrections", []).append({"at": datetime.now().isoformat(timespec="seconds"), "what": "sf11_note",
+                                                                "n_segments": notes_changed, "why": "plan amendment 12 (SF11 kept its tag; left 09-07 08:20)"})
     if closeup_src is not None and (Path(closeup_src) / "MANIFEST_sha256.csv").exists():
         moves = relink_closeups(page, data, Path(closeup_src))
         if moves:
             data["meta"].setdefault("closeup_relinks", []).append({"at": datetime.now().isoformat(timespec="seconds"), "renames": moves})
     data["meta"]["legend_refreshed"] = datetime.now().isoformat(timespec="seconds")
     assert {k: data["meta"].get(k) for k in ("page_version", "run")} == before, "the localStorage key would change"
+    roster_check = roster_recheck(run, data)
     (page / "page_data.json").write_text(json.dumps(data, indent=1, default=str), encoding="utf-8")
     (page / "index.html").write_text(render_html(data), encoding="utf-8")
     chk = check_page(page)
@@ -379,6 +427,7 @@ def refresh_legend(run: Path, csv_path: Path = IDENTITY_CSV, closeup_src: Path |
     chk["closeups_detail"] = [{k: c.get(k) for k in ("animal", "dst", "src_sha256", "mp4_duration_s", "manifest_duration_s", "duration_check", "relinked")}
                               for c in data.get("closeups", [])]
     chk["local_storage_key"] = f"{before['page_version']}::{before['run']}"
+    chk["roster_recheck"] = roster_check
     (page / "page_check.json").write_text(json.dumps(chk, indent=2), encoding="utf-8")
     print(f"[page] legend refreshed from {csv_path.name} -> {(page / 'index.html').as_posix()}; check: {chk['verdict']}", flush=True)
     return chk
@@ -1424,6 +1473,11 @@ def selftest() -> int:
         except ValueError:
             raised = True
         rec("legend refuses a CSV without id_colour", raised)
+        # SF11 note (corrected 2026-10-11): absent after 09-07 08:20, dropout note only 09-02 00:03-08:15, rosters re-checked
+        rec("SF11 note: 'left the paddock' after 09-07 08:20, dropout note 09-02 00:03-08:15, none otherwise; refresh keeps rosters",
+            s0["wiser"]["sf11_note"] == SF11_ABSENT_NOTE and sf11_note(datetime(2026, 9, 2, 3, 0)) == SF11_DROPOUT_NOTE
+            and sf11_note(datetime(2026, 9, 5, 12, 0)) == "" and sf11_note(datetime(2026, 9, 7, 7, 0)) == ""
+            and rc["roster_recheck"].get("rosters_and_untracked_unchanged") is True, str(rc.get("roster_recheck")))
         # close-ups follow a renamed source (the user swapped SF09 / SF10 on 10-10): matched by the recorded sha256, no re-transcode
         (cs / "SF07.MOV").rename(cs / "x.MOV")
         (cs / "SF08.MOV").rename(cs / "SF07.MOV")

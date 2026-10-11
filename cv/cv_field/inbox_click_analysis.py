@@ -835,7 +835,8 @@ def write_report(run: Path, R: dict) -> Path:
     # ---- Q1
     L.append("## 1. Composition: clicked on the colour frame vs the WISER roster\n")
     L.append("Roster = tagged animals whose cleaned house state is house_2 at the colour frame (dilated house zone, plan B; "
-             "\"SF11 untagged after 09-07 06:10:45 — may be present\"). Clicked = named blind clicks on the colour frame.\n")
+             "SF11 had left the paddock at the 09-07 AM round, so the roster covers every animal present that WISER locates; "
+             "corrected 2026-10-11, plan amendment 12). Clicked = named blind clicks on the colour frame.\n")
     L.append(md_table(comp, ["segment_id", "revealed", "n_clicks", "n_blind", "roster", "untracked", "clicked_colour", "n_unknown_colour",
                              "missing", "extras", "agree", "clicked_any_frame_blind", "missing_any_frame_blind", "clicked_any_frame_final"]))
     L.append("")
@@ -1132,8 +1133,8 @@ def texts(R: dict) -> None:
     q1.append(f"Unknown (`None`) clicks: {int((R['ct'].animal == 'unknown').sum())} in all "
               f"({', '.join(f'{short(s)} {k}' for s, k in R['ct'][R['ct'].animal == 'unknown'][['segment_id', 'frame_kind']].itertuples(index=False))}). "
               f"Extras (a clicked animal outside the roster): {int((comp.extras != '').sum())} segments. SF11 was clicked "
-              f"{'**never**' if not comp.sf11_clicked.any() else 'in ' + str(int(comp.sf11_clicked.sum())) + ' segments'} (its tag was retired "
-              f"09-07 06:10:45, so it can never be on a roster here; every roster is a lower bound).")
+              f"{'**never**' if not comp.sf11_clicked.any() else 'in ' + str(int(comp.sf11_clicked.sum())) + ' segments'} (it left the paddock at "
+              f"the 09-07 AM round, last fix 08:20, so it cannot be in a pile here; corrected 2026-10-11, plan amendment 12).")
     R["q1_text"] = q1
     # ---- Q2
     q2 = []
@@ -1243,7 +1244,8 @@ def texts(R: dict) -> None:
         f"**Which animals are in the box — yes, WISER helps.** The house roster equalled the colour-clicked set in {len(agree)} of {len(rev)} "
         f"revealed flashes, with no clicked animal outside the roster; in the other {len(rev) - len(agree)} (long colour segments during the "
         "morning rounds, where the colour frame lies minutes after ON) every roster animal was clicked on some frame of the segment. "
-        "A roster is a lower bound: SF11 (untagged since 09-07) can be in the pile unseen by WISER — it was never clicked here.",
+        "Rosters are complete here: all five animals in the paddock were tagged (SF11 had left at the 09-07 AM round; corrected "
+        "2026-10-11, plan amendment 12); SF11 was never clicked.",
         f"**Who lies where inside a pile — not from WISER minute means.** The pre-registered order test is NOT ACCEPTED (exact order "
         f"{ov['n_exact_first']} of {N_FIRST}, {int(o.exact.sum())} of {len(o)} overall; Kendall τ median {ov['tau_median_all']:+.2f}); mapped heads sit "
         f"{P['lofo_rms_in']:.1f} in RMS from their own WISER mean while pile neighbours are a median {asg.sep_2d_in.median():.1f} in apart, "

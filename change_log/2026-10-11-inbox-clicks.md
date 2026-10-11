@@ -49,7 +49,7 @@ formal export** (the user has not exported yet). Re-run on the export: `python c
   chance 20 %; greedy 55 %; free per-flash offset 72 %; centred window 76 %). By the clicked animal's separation from the nearest other
   roster mean: < 4 in 70 % (n 10), 4–8 in 60 % (n 20), 8–15 in 50 % (n 6), ≥ 15 in 100 % (n 4). Pile neighbours are a median 5.7 in apart
   (2.0 in along the ridge); a mapped head lies a median 4.3 in from its own WISER mean.
-- **Reading**: WISER gives the house roster (a lower bound — SF11 is untagged) and clearly separated animals (≥ 8–15 in), not the
+- **Reading**: WISER gives the house roster (complete here — SF11 had left the paddock at the 09-07 AM round; corrected 2026-10-11) and clearly separated animals (≥ 8–15 in), not the
   order inside a pile; the plan's rule (trust > 15 in per fix, > 8 in for 1-min means) stands. The head IMU is a candidate gate for
   carrying colour identities into IR.
 
@@ -76,3 +76,18 @@ Snapshot, not export; one labeller; one house; a 2-D similarity ignores perspect
 WISER means come from the minute before ON; lid-flagged frames (09-10 07:14, 09-11 09:28) use the lid segment's median correction;
 the user's 180° orientation was chosen by eye after 5 reveals (independent of the fit's numbers, not blind to WISER); click
 repeatability on one head is unmeasured.
+
+## Addendum (2026-10-11) — correction of a fact: SF11 kept its tag (plan amendment 12; text only)
+
+The report's composition section had said SF11 was untagged after 09-07 06:10:45 and called every roster a lower bound.
+That was wrong (the user: "SF11 has tag"; field incident log 09-07). SF11 kept its tag and left the paddock at the 09-07 AM
+round (last fix 08:20), so on the clicked days (09-09 → 09-11) all five animals in the paddock were tagged and the rosters
+are complete.
+
+**No number in the report depended on the "lower bound" reading.** The rosters and untracked lists are read from the
+phase-0 page data, which comes from the cleaned per-second states. Those states are unchanged, and all 22 segments were
+re-checked. Under either reading, SF11 is in no roster or untracked list after 09-07.
+
+The report text was corrected by hand: the summary, section 1 and the composition note, plus a correction note at the top.
+The generator `inbox_click_analysis.py` now carries the corrected wording, and its self-test passes 31 / 31. The
+clicks run was not re-run, because nothing in it changes.

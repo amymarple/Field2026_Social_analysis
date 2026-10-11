@@ -31,7 +31,8 @@ lies **on top** (all `location_z` = 0: a 2-D solve; checked 2026-10-10 on 142 83
   silver, none; SF09 3077, pink/black/brown, blue, star; SF10 306b, blue → **yellow from 08-31**, yellow, square with
   cross; SF11 305a → 3058 (09-02), white, green, circle — **tag retired 09-07 06:10:45, the animal stays in the
   paddock untagged**; SF12 3059, yellow → **blue from 08-31**, red, two lines. After 09-07 06:10 the WISER roster of a
-  house is therefore a **lower bound** (SF11 invisible to WISER).
+  house is therefore a **lower bound** (SF11 invisible to WISER). **[corrected 2026-10-11, see amendment 12: SF11 kept its tag
+  and left the paddock at the 09-07 AM round (last fix 08:20); rosters are complete except in tag dropouts]**
 - WISER box events (operator, validated 09-05): house rectangle dilated by 15 in, 6-s smoothing, 20-s minimum dwell;
   ground truth 09-05: all six exit house_2 together at 08:47:08; five enter house_2 09:49:49–09:50:15 in the order
   SF09, SF07, SF11, SF10, SF12; SF08 → house_1. CH07 = house_2 (09-07 evidence; SF11's implant came off 06:10:45 in a
@@ -70,7 +71,8 @@ lies **on top** (all `location_z` = 0: a 2-D solve; checked 2026-10-10 on 142 83
 Per colour segment found in A (deduplicated by configuration: one entry per segment):
 - frames: the colour frame at the segment middle, and IR frames at 6 s and 15 s after the segment end (after the
   white-out), full resolution, upright as recorded (no rotation for the in-box cams);
-- panel: WISER roster of that house at the flash (tagged animals; "SF11 untagged after 09-07 06:10 — may be present"),
+- panel: WISER roster of that house at the flash (tagged animals; "SF11 untagged after 09-07 06:10 — may be present"
+  **[corrected 2026-10-11, see amendment 12]**),
   each animal's minute-mean position drawn as a top view of the house (along / across ridge) with SE bars, IMU state;
   the identity legend (table above) and links to the close-up clips (`$OUT/2026c/inhand_closeups/SF07.MOV` … (amendment 5) transcoded once to H.264
   MP4 into the run folder, originals untouched);
@@ -229,3 +231,22 @@ with the time between the two frames and the head-IMU state over it (`imu_second
 `cv/cv_field/inbox_click_analysis.py`; report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md`.
 
 **Status (2026-10-11, after results): the click step, PRELIMINARY** — run on the browser snapshot `cv/configs/inbox_identity_2026c/browser_snapshot_20261010T2017.json` (not a formal export; 10 revealed segments, 8 in the fit). Fit: proper handedness, 79.3 px/in, page-equivalent rotation 178° vs the user's 180° (Δ −1.8°), LOFO RMS 5.96 in / 470 px. **Pre-registered order test: NOT ACCEPTED** (exact order 0 of the first 5 flashes, 0 of 8); tie version (pairs < 8 in not tested) 4 of 5; Kendall τ median +0.40. The arrangement layer is therefore not accepted; WISER separations stay trusted only above 15 in per fix / 8 in for 1-min means. Report `results/2026c/cv_field/reports/cv_field_inbox_clicks_2026c.md`, change log `change_log/2026-10-11-inbox-clicks.md`. Re-run on the user's export when it exists.
+
+**Amendment 12 (2026-10-11, correction of a fact; no result changes) — SF11 kept its tag and left the paddock.** The user:
+"SF11 has tag". The Facts line "tag retired 09-07 06:10:45, the animal stays in the paddock untagged … the WISER roster of a
+house is therefore a lower bound (SF11 invisible to WISER)" was wrong. The field record
+(`field2026-sync/from-field/2026-09-21_cohort3-incident-log.md`, 09-07): "Rat SF11 stays in the group: WISER tag 3058 and
+video/behavior continue; only the ephys stream ends" and "tag 3058 (SF11) last regular fix 2026-09-07 08:20 … the animal left
+the arena at the round"; 09-11 19:40 "population 5 -> 10". So the tag stayed on the rat when the implant fell off (≈ 06:10),
+the rat left the paddock at the 09-07 AM round, and from 08:20 to 09-11 19:40 the paddock held five animals, all tagged.
+Rosters are incomplete only in tag dropouts: SF11's 305a 09-02 00:03 → ≈ 08:00–08:15, and SF12 on night 08-30/31 (its tag's
+first fix 08-31 06:36). The SF11 rule of `inbox_p0.py` / `inbox_identity_page.py` is corrected: after 09-07 08:20 SF11 is
+**absent** (`sf11_absent`), not "untagged, present"; the page's roster note reads "SF11 left the paddock at the 09-07 AM round
+(last fix 08:20); rosters are complete except in tag dropouts"; the 09-02 dropout note is unchanged. **No result changes:**
+box events, the 09-05 check, segments, in-house positions, rosters (re-checked for all 22 segments against `states_1s.npz`),
+the camera ↔ house check and every click-step number are identical; the only quantity that depended on the premise is the
+coverage share `all_tracked` (box_occupancy_1s.csv.gz rebuilt from the unchanged states: 48.9 % → 83.8 % of the scope; the
+10-10 file is kept in `superseded_20261011/`). **Possible error to check separately (not changed):** SF11's fixes 09-07
+06:10:45 → 08:20 are flagged `m_off_animal` in the production default tracks (the tag "rode on the dropped implant"), while the
+field note says the tag stayed on the rat and 07:40 → 08:20 is real position data for it; here SF11 is counted present but
+untracked in that window. The production tracks are not changed.
