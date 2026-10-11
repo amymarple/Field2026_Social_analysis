@@ -219,3 +219,22 @@ discharged. The ripple rate follows the same course.
   | Night rise across days | +3.25 /day | +3.31 | none |
 
 - Night depth does not change across days (−0.014 SD/day), so the night rise across days is not deeper NREM.
+
+## 2026-10-10 — the hour profile with a post-round mask (asked by the delta-wave session)
+
+- The check: the 30-min bins overlapping a handling window + 1 h / + 3 h were dropped
+  (`cv/configs/cohort3_handling_windows.json`, 32 windows), and panel D of `ephys_spikes_swr_rate_day_and_hour_2026c.png`
+  was recomputed. The block-demeaned rate is mean ± SEM over animals, for hours seen in ≥ 3 animals.
+- Bins kept: 81 % / 56 %.
+- The SWR profile is unchanged: Spearman 0.92 against the unmasked one.
+
+  | mask | peak | night 21–04 h | afternoon 13–18 h |
+  |---|---|---:|---:|
+  | none | 23 h +19.5 | +14.5 | −6.6 |
+  | + 3 h | 23 h +19.0 | +14.2 | −7.8 |
+
+- Only the morning hours move: 07 h +4.1 → +1.0; 08 h +5.9 → −8.5, with 4 animals left.
+- So the night peak and the afternoon low are not handling effects. A small part of the post-dawn rate follows the
+  morning round.
+- Script and table: `hour_profile_post_round_mask.csv` in the swr_temperature run folder (the scratch script was kept
+  with it).
