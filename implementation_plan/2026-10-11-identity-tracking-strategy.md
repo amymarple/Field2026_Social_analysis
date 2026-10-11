@@ -191,6 +191,30 @@ caveat "rosters are lower bounds after 09-07" does not apply; (iii) to check sep
 flag SF11's fixes 09-07 06:10:45 → 08:20 as `m_off_animal`, but the field note says 07:40 → 08:20 "is still real position
 data for the rat" — the flag may be wrong (positions themselves are unaffected).
 
+## 12. In-box labelling strategy after the user's observation (2026-10-11, proposed)
+
+The user: "虽然是pile 但依然还是能分清谁是谁的。重点确实是分辨头在哪里" — even in a pile the user can tell who is who; the
+crux is locating the heads. The audit's and Codex's `pile` class assumed individuals are often unresolvable inside a pile;
+that assumption is weaker than thought, so the label unit becomes the **individual, head first**:
+- **Per rat:** a **head point** (required; it is where the WISER tag and the head IMU sit and where the identifying marks
+  and headstage are), a **body box** of the visible extent (approximate allowed inside a pile), optional tail-base point,
+  an occluded flag, optional identity. A `cluster` box with a count only as an escape for the rare truly unresolvable
+  case. Frame level: number of rats in the house (pre-filled from the WISER roster, confirmed by the labeller).
+- **Easy → hard applies to which frames, not to the label type:** (1) seed — the ≈ 200 IR head clicks already made
+  (+ 6 s / + 15 s after the flashes, with identities) get body boxes from SAM 3 point-prompt proposals + correction;
+  (2) 1–2 rats in the house (WISER count), apart; (3) loose piles of 3–5, still; (4) tight piles and transitions
+  (entries / exits, reshuffles, grooming), lid-segment edges, day and night. A first model after (2)–(3) pre-labels (4).
+- **Model:** one class `rat`, YOLO11-pose (box + head keypoint [+ tail base]); head localisation scored as head recall
+  within a pixel radius and per-pile head count vs the roster; identity stays separate (head crops for appearance,
+  tracking + door events for propagation).
+- **Active selection:** frames where the detected head count differs from the WISER roster count (reliable outside tag
+  dropouts) are the labelling priority.
+- **Who:** the user labels the hard frames and the held-out truth (only the user tells piled individuals apart reliably so
+  far); the undergrad the easy / medium frames with pre-labels; a two-rater subset for agreement.
+- **Tool:** the undergrad's labeller draws boxes but has no keypoints — a head-point + id layer is needed (the identity click
+  page already does points + ids).
+- Held-out: day 09-11 and whole flash episodes, as in §9.
+
 ## 8. Questions for the SOTA audit
 
 1. Is tracklet-level evidence fusion (WISER + head IMU + IR re-ID + continuity) the right architecture against current
