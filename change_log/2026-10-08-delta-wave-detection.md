@@ -258,6 +258,28 @@ The user asked: "问一下 SWR detection circadian 图咋画的你画个类似�
   file are excluded.
 - 19–20 h is missing: the evening round, plus the bins that contain sunset.
 
+**Handling sensitivity (2026-10-10).** SWRdetection relayed the sleep model's finding: post-round sleep is not
+ordinary; there is ~1.3–1.4× waking in the first hour and REM repayment after. `delta_circadian.py --mask-after-rounds H`
+also drops every operator-in-arena window of `cv/configs/cohort3_handling_windows.json` (rounds, probe handling; all
+animals) plus H hours after it. Block-demeaned verified rate by hour:
+
+| | No mask | + 1 h | + 3 h |
+|---|---|---|---|
+| Peak hour | 09 h (+5.6) | 09 h (+5.7) | 22 h (+4.8) |
+| 08 h | +3.8 | +1.3 | −2.4 |
+| 09 h | +5.6 | +5.7 | too few animals left |
+| 10 h | — | — | +3.4 (4 animals) |
+| Night 21–04 h | +2.5 | +2.7 | +3.9 |
+| Afternoon 13–18 h | −4.1 | −3.8 | −2.8 |
+| Spearman over hours vs the SWR profile | 0.67 | 0.71 | 0.83 |
+
+- **Reading:** the 08–09 h delta peak lies largely within 3 h after the morning round, so it is likely post-handling
+  recovery sleep, not a clock effect.
+- **Caveat:** the 3-h mask removes most of the morning data, so the peak is partly "gone because unobserved".
+- **Without the post-round sleep,** delta is highest at night and lowest in the late afternoon, like the SWR rate.
+- **The afternoon decline survives every mask.**
+- Figures and CSVs: `…delta_rate_day_and_hour_mask{1,3}h_2026c.png`, `…delta_rate_by_hour_mask{1,3}h_2026c.csv`.
+
 ## Open (for the user)
 
 - SF11: choose the delta channel. Shank-3 top sites (col 11 or 8) are consistent across all three blocks; shank 4

@@ -12,8 +12,11 @@ Delta-specific: events = the storage delta production (3rd_rat/analysis/delta/),
 the peak <= 0.5 x baseline) and after_use_until == 0; sessions = those with the MUA check (FM65; FM64 is on hold),
 excluding the user's 'noise' sleep sessions; probe block = the SWR quality table's block (as for the ripples).
 `--events all` draws every detected delta wave instead (no DOWN-state check; FM64 sessions included).
+`--mask-after-rounds H` (sensitivity, SWRdetection / sleep-model suggestion 2026-10-10): also drops every operator-in-arena
+window of cv/configs/cohort3_handling_windows.json (battery rounds, probe handling; all animals) and the H hours after it -
+post-round sleep is not ordinary sleep (the sleep model: ~1.3-1.4x waking in the first hour, REM repayment after).
 
-  python ephys/delta_circadian.py [--events verified|all] [--delta-root Q:/…/analysis/delta] [--states-root …]
+  python ephys/delta_circadian.py [--events verified|all] [--mask-after-rounds H] [--delta-root Q:/…/analysis/delta]
 """
 from __future__ import annotations
 
@@ -80,7 +83,7 @@ def load_delta_session(row, delta_root: Path, states_root: Path, end: pd.Timesta
     return ev, pd.DataFrame({"t": nrem.values, "animal": row.animal, "block": row.block_from})
 
 
-def figure(b: pd.DataFrame, per: pd.DataFrame, wx: pd.DataFrame, events: str, out: Path) -> pd.DataFrame:
+def figure(b: pd.DataFrame, per: pd.DataFrame, wx: pd.DataFrame, events: str, out: Path, mask_h=None) -> pd.DataFrame:
     """The layout of swr_temperature.rate_day_hour_figure, for delta waves."""
     import matplotlib
     matplotlib.use("Agg")
@@ -172,8 +175,9 @@ def figure(b: pd.DataFrame, per: pd.DataFrame, wx: pd.DataFrame, events: str, ou
                   fontsize=9, loc="left")
     what = ("verified delta waves (raw MUA at the peak <= 0.5 x baseline; sessions with the check, FM65)" if events == "verified"
             else "all detected delta waves (no DOWN-state check)")
+    extra = "" if mask_h is None else f"; ALSO every handling window + {mask_h:g} h after it (battery rounds, probe handling)"
     fig.suptitle(f"NREM delta-wave rate per NREM time, cohort {COHORT}: {what}; 08-31 -> 09-11 19:40; first 30 min of each file, "
-                 "probe-advance settle windows, user 'noise' sessions excluded", fontsize=10)
+                 f"probe-advance settle windows, user 'noise' sessions excluded{extra}", fontsize=10)
     fig.savefig(out, dpi=130, bbox_inches="tight")
     plt.close(fig)
     tab = pd.DataFrame({"mean_dm": m, "sem": se, "animals": nA}).sort_index()
@@ -189,12 +193,19 @@ def main():
     ap.add_argument("--table", default=str(report_dir(COHORT) / f"ephys_spikes_delta_sessions_{COHORT}.csv"))
     ap.add_argument("--review", default=str(report_dir(COHORT) / f"ephys_spikes_sleep_review_{COHORT}.csv"))
     ap.add_argument("--cohort-yaml", default=str(REPO / f"cohorts/{COHORT}.yaml"))
+    ap.add_argument("--mask-after-rounds", type=float, default=None, help="hours after each handling window to drop")
+    ap.add_argument("--handling", default=str(REPO / "cv/configs/cohort3_handling_windows.json"))
     a = ap.parse_args()
     from output_paths import run_dir
     rd = report_dir(COHORT)
-    out = run_dir(f"delta_circadian_{a.events}", COHORT)
+    suf = ("" if a.events == "verified" else "_all") + (f"_mask{a.mask_after_rounds:g}h" if a.mask_after_rounds is not None else "")
+    out = run_dir(f"delta_circadian_{a.events}{suf}", COHORT)
     q = delta_sessions(Path(a.table), Path(a.review), Path(a.cohort_yaml), a.events)
     win = st.settle_windows(Path(a.cohort_yaml))
+    if a.mask_after_rounds is not None:
+        hw = json.loads(Path(a.handling).read_text(encoding="utf-8"))["windows"]
+        win += [(an, pd.Timestamp(w0), pd.Timestamp(w1) + pd.Timedelta(hours=a.mask_after_rounds))
+                for an in sorted(q.animal.unique()) for w0, w1, *_ in hw]
     evs, nrs = [], []
     for row in q.itertuples():
         e, n = load_delta_session(row, Path(a.delta_root), Path(a.states_root), st.FEMALES, win, a.events)
@@ -209,13 +220,13 @@ def main():
     hp = st.hour_profile(b)
     per = st.periods(b, hp)
     b.to_csv(out / "bins_30min.csv.gz", index=False)
-    suf = "" if a.events == "verified" else "_all"
     fig_path = figure_dir(COHORT) / f"ephys_spikes_delta_rate_day_and_hour{suf}_{COHORT}.png"
-    tab = figure(b, per, wx.dropna(subset=["temp_C"]), a.events, fig_path)
+    tab = figure(b, per, wx.dropna(subset=["temp_C"]), a.events, fig_path, a.mask_after_rounds)
     tab.round(2).to_csv(rd / f"ephys_spikes_delta_rate_by_hour{suf}_{COHORT}.csv")
     per.to_csv(rd / f"ephys_spikes_delta_rate_by_period{suf}_{COHORT}.csv", index=False)
     write_json(rd / f"run_manifest_delta_circadian{suf}_{COHORT}.json",
-               dict(name=f"delta_circadian_{a.events}", run_dir=str(out), git=git_commit(), sessions=int(len(q)),
+               dict(name=f"delta_circadian_{a.events}{suf}", run_dir=str(out), git=git_commit(), sessions=int(len(q)),
+                    mask_after_rounds_h=a.mask_after_rounds,
                     events_loaded=int(len(ev)), events_in_bins=int(b.n.sum()), bins=int(len(b)),
                     animals=sorted(b.animal.unique()), figure=str(fig_path), twin_of="swr_temperature.py figure"))
     print(f"{len(q)} sessions, {len(ev)} events loaded, {int(b.n.sum())} in {len(b)} bins ({b.animal.nunique()} animals, "

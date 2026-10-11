@@ -1,0 +1,20 @@
+{
+  "name": "delta_circadian_verified_mask3h",
+  "run_dir": "D:\\Field2026_analysis_out\\2026c\\delta_circadian_verified_mask3h_20261010_2322",
+  "git": "d0e5029+dirty",
+  "sessions": 140,
+  "mask_after_rounds_h": 3.0,
+  "events_loaded": 218412,
+  "events_in_bins": 197903,
+  "bins": 845,
+  "animals": [
+    "SF07",
+    "SF08",
+    "SF09",
+    "SF10",
+    "SF11",
+    "SF12"
+  ],
+  "figure": "D:\\Documents\\GitHub\\Field2026_Social_analysis\\results\\2026c\\ephys_spikes\\figures\\ephys_spikes_delta_rate_day_and_hour_mask3h_2026c.png",
+  "twin_of": "swr_temperature.py figure"
+}
