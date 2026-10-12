@@ -94,7 +94,7 @@ def main() -> None:
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     F = pd.read_csv(a.features)                                   # labelled strips + v1 / v2 features (usv_eval_v2.py)
-    paths = [Path(a.page) / "media" / f"{s}.png" for s in F.id]
+    paths = [Path(pg) / "media" / f"{s}.png" for pg, s in zip(F.page if "page" in F else [a.page] * len(F), F.id)]
     cache = out / "embeddings.npz"
     if cache.exists() and list(np.load(cache, allow_pickle=True)["ids"]) == list(F.id):
         E = np.load(cache)["E"]

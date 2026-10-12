@@ -67,25 +67,31 @@ def lowo(X: pd.DataFrame, feat: str) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--v1", default=str(OUT / "usv_whiten_sample"))
-    ap.add_argument("--v2", default=str(OUT / "usv_v2_sample"))
-    ap.add_argument("--strips", default=str(OUT / "usv_strip_review_20261009_1757/strips.json"))
-    ap.add_argument("--labels", default=str(REPO / "ephys/configs/usv_review_2026c/usv_strip_labels.csv"))
+    # one entry per labelling round, aligned by position (round 1 = the defaults)
+    ap.add_argument("--v1", nargs="+", default=[str(OUT / "usv_whiten_sample")])
+    ap.add_argument("--v2", nargs="+", default=[str(OUT / "usv_v2_sample")])
+    ap.add_argument("--strips", nargs="+", default=[str(OUT / "usv_strip_review_20261009_1757/strips.json")])
+    ap.add_argument("--labels", nargs="+", default=[str(REPO / "ephys/configs/usv_review_2026c/usv_strip_labels.csv")])
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
-    L = pd.read_csv(a.labels)
-    M = pd.DataFrame(json.load(open(a.strips)))
-    D = M.merge(L, left_on="id", right_on="strip")
-    D = D[D.usv.isin(["none", "a few", "many"])].copy()
-    D["yes"] = D.usv != "none"
-    D["mic"] = D.file.str[:5]
-    D["window"] = D.file.str[:-4]
-    F = strip_features(D, Path(a.v1), Path(a.v2))
+    parts = []
+    for k, (s, lab, v1, v2) in enumerate(zip(a.strips, a.labels, a.v1, a.v2), start=1):
+        M = pd.DataFrame(json.load(open(s)))
+        D = M.merge(pd.read_csv(lab), left_on="id", right_on="strip")
+        D = D[D.usv.isin(["none", "a few", "many"])].copy()
+        D["yes"] = D.usv != "none"
+        D["mic"] = D.file.str[:5]
+        D["window"] = D.file.str[:-4] + f"_r{k}"
+        D["round"] = k
+        D["page"] = str(Path(s).parent)
+        parts.append(strip_features(D, Path(v1), Path(v2)))
+    F = pd.concat(parts, ignore_index=True)
     rows = []
     for mic in ("MIC01", "MIC02", "both"):
         X = F if mic == "both" else F[F.mic == mic]
         for feat in [c for c in F.columns if c.startswith(("v1_", "v2_"))]:
-            rows.append({"mic": mic, "feature": feat, "strips": len(X), "usv_strips": int(X.yes.sum()), **lowo(X, feat)})
+            rows.append({"mic": mic, "feature": feat, "strips": len(X), "usv_strips": int(X.yes.sum()),
+                         "windows": X.window.nunique(), **lowo(X, feat)})
     R = pd.DataFrame(rows)
     pd.set_option("display.width", 200)
     print(R.round(2).to_string(index=False))
