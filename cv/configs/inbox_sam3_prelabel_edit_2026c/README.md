@@ -132,3 +132,34 @@ Many rats come as several SAM 3 masks, so v2.1 lets you build one box from sever
 - `source` is cand / joined / manual. The proposed box is the first candidate of the first click (`prop_rule` first_click;
   `latest_click_v2.0` for rat boxes made in v2.0 with more than one body click).
 - The CSV adds `n_pieces`, `pieces_cache_index`, `union_*` and `prop_rule`.
+
+## v2.3 (2026-10-12) — the same page, updated in place: two modes, rat switching
+
+v2.2 (UX fixes: a click switched to the rat box, banner, toasts, legend) is replaced by two explicit modes. The page path,
+the storage key and your progress are unchanged; the v2.2 files are kept as `*.v2_2.bak`.
+
+**Two modes, sticky:**
+- Buttons above the image: **① 植入体 IMPLANT** (orange) and **② 整鼠 RAT** (green); keys **1** / **2**; **Tab** toggles.
+- The mode changes only through these. Enter, ←, a new rat and a new frame keep it.
+- In IMPLANT mode every click, key and drawn box acts on the current rat's implant box only:
+  - a click offers the masks under the click (cyan);
+  - the head-dot candidates are offered until you click;
+  - A / N / J / F / B work as before, and **H** (implant hidden) works only here.
+- In RAT mode, the same on the rat box: a click offers the masks under the click (pink); M / P apply here.
+- The banner reads e.g. "MODE 植入体 IMPLANT · rat 3 / 5 · PRELABEL 预标注". Only the active box is drawn bright.
+
+**Switching rats** ("怎么切换鼠"):
+- **Chips** in the banner, one per rat (◆ = added with R). Click one to select that rat. Each chip shows two marks, implant
+  and rat box: ✓ done, H hidden, · not yet.
+- **White dot:** a plain click within ~12 screen px of another rat's white head dot selects that rat, with no candidate
+  lookup. A click on the current rat's own dot is an ordinary click for the active box. To click a body part near another
+  rat's dot, zoom in first.
+- **Enter / →** next rat, **←** previous rat, **PageDown / PageUp** next / previous frame.
+
+**Export changes:**
+- `page_version` is `inbox_sam3_prelabel_edit_2026c_v2.3`; the schema is unchanged.
+- An implant click is stored in the implant object's `click` / `clicks`. The CSV columns `body_click_u/v` and
+  `n_body_clicks` then hold the implant click.
+- New `cand_src` field: `click` when the candidates came from a click, else `head` for the implant (the CSV always fills
+  it). Pieces carry `src`.
+- New events: `mode_set`, `implant_click`, `rat_select`, `rat_prev`.

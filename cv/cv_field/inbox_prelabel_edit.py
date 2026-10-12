@@ -29,6 +29,9 @@ Usage:
          J joins pieces); same storage key, backups *.v2_0.bak, payload verified identical, old-state load test
   python cv/cv_field/inbox_prelabel_edit.py update-v22 [--run <SAM 3 run>]                        # v2.1 -> v2.2 IN PLACE (UX: a click
          switches to the rat box, mode banner, toasts saying why a key cannot act, legend); backups *.v2_1.bak, old-state test
+  python cv/cv_field/inbox_prelabel_edit.py update-v23 [--run <SAM 3 run>]                        # v2.2 -> v2.3 IN PLACE (two sticky
+         modes IMPLANT / RAT — buttons, 1 / 2, Tab — no auto-switch; rat chips, white-dot select, Enter / ← next / previous
+         rat); backups *.v2_2.bak, old-state test
   python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sam3_prelabel_edit_2026c/<file>.json [--run <run>]
 """
 from __future__ import annotations
@@ -1081,7 +1084,7 @@ def write_summary(run: Path, export: Path, regenerate_report: bool = True, more:
     for e in [export] + list(more or []):
         exs.append(json.loads(Path(e).read_text(encoding="utf-8")))
     ver = exs[0].get("page_version")
-    v2s = (PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22)
+    v2s = (PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22, PAGE_VERSION_V23)
     if ver not in (PAGE_VERSION,) + v2s or any((x.get("page_version") in v2s) != (ver in v2s) for x in exs):
         raise SystemExit(f"not exports of one page version: {[x.get('page_version') for x in exs]}")
     meta = {"export": Path(export).as_posix(), "more_exports": [Path(m).as_posix() for m in (more or [])], "made": datetime.now().isoformat(timespec="seconds")}
@@ -1698,7 +1701,8 @@ def obj_table_v2(ex: dict) -> pd.DataFrame:
                              "any_partial": any(bool((v or {}).get("partial")) for v in cf.values()),
                              "edge_moves": int(o.get("edge_moves") or 0), "next_presses": int(o.get("next_presses") or 0),
                              "prop": o.get("prop"), "box": o.get("box"), "time_s": float(o.get("time_ms") or 0) / 1000.0,
-                             "has_click": o.get("click") is not None, "u": r["u"], "v": r["v"], "pass": mp.get("pass", 1)})
+                             "has_click": o.get("click") is not None, "u": r["u"], "v": r["v"], "pass": mp.get("pass", 1),
+                             "cand_src": o.get("cand_src") or ("click" if k == "rat" else "head")})
     t = pd.DataFrame(rows)
     return derive(t) if len(t) else t
 
@@ -1757,6 +1761,7 @@ def summarize_v2(ex: dict, more: list | None = None) -> dict:
                   for src in ("cand", "joined", "manual")} if len(d) else {}
         out["objects"][k] = {**(obj_block_v2(d) if len(d) else {"n_prelabel": 0}), "time": ({a: secs(d, a) for a in ("PRELABEL", "SCRATCH")} if len(d) else {}),
                              "time_by_source": by_src,
+                             "from_click": int((d[d.arm == "PRELABEL"].cand_src == "click").sum()) if len(d) and "cand_src" in d else 0,
                              "sizes": {"scratch": size_block(d[d.arm == "SCRATCH"].box) if len(d) else size_block([]),
                                        "accepted_mask_bbox": size_block([m for m in d[(d.arm == "PRELABEL") & (d.source == "cand")].prop]) if len(d) else size_block([])}}
         for dom in ("ir", "colour"):
@@ -1829,6 +1834,9 @@ def summary_md_v2(sm: dict, export_name: str) -> str:
               f"- Seconds per box (per-object time slices, completed frames): PRELABEL {fx(tp.get('s_per_object', np.nan))} s "
               f"(n {tp.get('n', 0)}), SCRATCH {fx(ts.get('s_per_object', np.nan))} s (n {ts.get('n', 0)}); PRELABEL by source: "
               + ", ".join(f"{src} {fx(v['s_per_object'])} s (n {v['n']})" for src, v in (o.get("time_by_source") or {}).items()) + ".", ""]
+        if k == "implant" and o.get("from_click"):
+            L += [f"Implant boxes whose candidates came from a click in IMPLANT mode (page v2.3), not from the head dot: {o['from_click']} — "
+                  "their rank refers to the click's candidate list, so usable@1 mixes two candidate sources.", ""]
         us = o.get("union_shift") or {}
         if us.get("n"):
             L += [f"Joined boxes ({us['n']}): per-edge shift from the union box (before edge drags) to the final box, px median [q25, q75]: "
@@ -2935,6 +2943,505 @@ def update_v22(run: Path, check: bool = True) -> dict:
     return meta
 
 
+# ============================================================================================ v2.3: two explicit sticky modes + rat switching
+PAGE_VERSION_V23 = "inbox_sam3_prelabel_edit_2026c_v2.3"
+
+
+def _make_js_v23() -> str:
+    """v2.2 -> v2.3 (the user: "太复杂了 … 显示我现在到底是啥模式" and "怎么切换鼠"): two explicit, sticky modes (IMPLANT / RAT; buttons,
+    1 / 2, Tab) — a click, key or drawn box acts only on the active object; no auto-switch; the mode never changes on Enter, ←,
+    a new rat or a new frame. Rat switching: number chips with per-object status in the banner, a plain click on another rat's
+    white head dot, Enter / ← next / previous rat."""
+    j = PAGE_JS_V22
+    # ---- clicks act on the ACTIVE object only (no auto-switch); a plain click on another rat's white dot selects that rat
+    j = _sub(j, """  const ed = edgeAt(x, y); if (ed) { drag = {kind: 'edge', edges: ed, b0: obj().box.slice()}; return; }
+  if (canDraw()) { drag = {kind: 'draw', start: [u, v], cur: null}; return; }
+  drag = {kind: 'press', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy, u: u, v: v, moved: false}; });""",
+             """  const dot = dotAt(x, y);
+  const ed = edgeAt(x, y); if (ed) { drag = {kind: 'edge', edges: ed, b0: obj().box.slice(), dot: dot, x0: e.clientX, y0: e.clientY}; return; }
+  if (canDraw()) { drag = {kind: 'draw', start: [u, v], cur: null, dot: dot, x0: e.clientX, y0: e.clientY}; return; }
+  drag = {kind: 'press', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy, u: u, v: v, moved: false, dot: dot}; });""")
+    j = _sub(j, """  if (d.kind === 'press') { if (!d.moved && st().arm === 'PRELABEL' && mode !== 'draw' && !showAll) { const r = rat();
+      if (r && !r.deleted) { if (S.cur.obj !== 'rat') { S.cur.obj = 'rat'; log('obj_auto_switch', {from: 'implant', reason: 'body_click'}); } bodyClick(d.u, d.v); } } return; }
+  if (d.kind === 'draw') { if (d.cur) {""",
+             """  const plain = Math.hypot(e.clientX - d.x0, e.clientY - d.y0) <= 4, dotHit = d.dot !== null && d.dot !== undefined && d.dot !== S.cur.ri;
+  if (d.kind === 'press') { if (!d.moved && dotHit) { selectRat(d.dot, 'dot'); return; }
+    if (!d.moved && st().arm === 'PRELABEL' && mode !== 'draw' && !showAll) objClick(d.u, d.v); return; }
+  if (d.kind === 'draw' && plain && dotHit) { selectRat(d.dot, 'dot'); return; }
+  if (d.kind === 'edge' && plain && dotHit) { obj().box = d.b0; selectRat(d.dot, 'dot'); return; }
+  if (d.kind === 'draw') { if (d.cur) {""")
+    j = _sub(j, """function canDraw(){""", """function dotAt(x, y){ let best = null, bd = 12; rats().forEach((r, i) => { if (r.deleted) return; const [cx, cy] = toCv(r.u, r.v);
+  const dd = Math.hypot(cx - x, cy - y); if (dd <= bd) { bd = dd; best = i; } }); return best; }
+function canDraw(){""")
+    j = _sub(j, """function addRat(u, v){""", """function implantClick(u, v){ const r = rat(); if (!r || r.deleted) { toast(MSG.norat); return; } const o = r.implant;
+  if (o.hidden) { toast(MSG.hidden); return; }
+  snap(); o.click = [Math.round(u * 10) / 10, Math.round(v * 10) / 10]; o.clicks = (o.clicks || []).concat([o.click.slice()]); o.cand = candidatesAt(u, v); o.k = 0; o.cand_src = 'click';
+  log('implant_click', {u: o.click[0], v: o.click[1], n_cand: o.cand.length, n_click: o.clicks.length}); if (!o.cand.length) toast(MSG.nocand); draw(); }
+function objClick(u, v){ if (S.cur.obj === 'implant') implantClick(u, v); else { bodyClick(u, v); const o = obj(); if (o && !o.cand.length) toast(MSG.nocand); } }
+function selectRat(i, via){ const q = rats()[i]; if (!q) return; if (i === S.cur.ri) { draw(); return; } const from = rat() ? rat().id : null;
+  S.cur.ri = i; mode = null; log('rat_select', {via: via, from: from, to: q.id});
+  if (via === 'dot') toast('rat ' + q.num + ' selected (its white dot) · 已选鼠 ' + q.num + ' — zoom in to click near a dot 放大后再点白点附近'); draw(); }
+function setMode(m, via){ if (S.cur.obj === m) { draw(); return; } S.cur.obj = m; mode = null; log('mode_set', {mode: m, via: via}); draw(); }
+function addRat(u, v){""")
+    # the pieces / log keep the click of either object (an implant click is recorded like a body click) and where the candidates came from
+    for a, b, n in (("click: S.cur.obj === 'rat' ? o.click : null}", "click: o.click || null, src: o.cand_src || (S.cur.obj === 'rat' ? 'click' : 'head')}", 2),
+                    ("click: S.cur.obj === 'rat' ? o.click : undefined", "click: o.click || undefined, cand_src: o.cand_src || (S.cur.obj === 'rat' ? 'click' : 'head')", 2)):
+        assert j.count(a) == n, (j.count(a), a)
+        j = j.replace(a, b)
+    # ---- the mode is sticky: it changes only through the buttons, 1 / 2 or Tab
+    j = _sub(j, """function startObj(r){ return r && r.implant.hidden ? 'rat' : 'implant'; }""", """function startObj(r){ return S.cur.obj || 'implant'; }""")
+    j = _sub(j, """function advance(){ if (S.cur.obj === 'implant') { S.cur.obj = 'rat'; mode = null; log('obj_next'); draw(); } else nextRat(); }""",
+             """function advance(){ nextRat(); }""")
+    j = _sub(j, """function back(){ if (S.cur.obj === 'rat' && rat() && !rat().implant.hidden) { S.cur.obj = 'implant'; mode = null; draw(); return; }
+  const live = liveIdx(), p = live.indexOf(S.cur.ri); if (p > 0) { S.cur.ri = live[p - 1]; S.cur.obj = 'rat'; mode = null; draw(); } else if (S.cur.fi > 0) goFrame(S.cur.fi - 1); }""",
+             """function back(){ const live = liveIdx(), p = live.indexOf(S.cur.ri); if (p > 0) { S.cur.ri = live[p - 1]; mode = null; log('rat_prev'); draw(); }
+  else if (S.cur.fi > 0) goFrame(S.cur.fi - 1); }""")
+    j = _sub(j, """function hideImplant(){ const r = rat(); if (!r || r.deleted) return; snap(); const o = r.implant; o.hidden = !o.hidden;
+  if (o.hidden) { o.box = null; o.source = null; o.rank = null; o.mask = null; o.pieces = []; o.union_box = null; o.obj_flags = {}; if (S.cur.obj === 'implant') S.cur.obj = 'rat'; }""",
+             """function hideImplant(){ if (S.cur.obj !== 'implant') { toast(MSG.h_mode); return; } const r = rat(); if (!r || r.deleted) return; snap(); const o = r.implant; o.hidden = !o.hidden;
+  if (o.hidden) { o.box = null; o.source = null; o.rank = null; o.mask = null; o.pieces = []; o.union_box = null; o.obj_flags = {}; }""")
+    j = _sub(j, """s.next_add++; s.rats.push(r); S.cur.ri = s.rats.length - 1; S.cur.obj = 'rat'; mode = null;""",
+             """s.next_add++; s.rats.push(r); S.cur.ri = s.rats.length - 1; mode = null; if (S.cur.obj === 'implant') toast(MSG.added_implant);""")
+    j = _sub(j, """S.cur.ri = Math.min(o.ri, st().rats.length - 1); S.cur.obj = o.obj; log('undo'); draw(); }""",
+             """S.cur.ri = Math.min(o.ri, st().rats.length - 1); log('undo'); draw(); }""")
+    j = _sub(j, """  if (k === 'Tab') { const r = rat(); S.cur.obj = (S.cur.obj === 'implant' || (r && r.implant.hidden)) ? 'rat' : 'implant'; mode = null; draw(); e.preventDefault(); return; }""",
+             """  if (k === 'Tab') { setMode(S.cur.obj === 'implant' ? 'rat' : 'implant', 'tab'); e.preventDefault(); return; }
+  if (k === '1') { setMode('implant', 'key'); return; } if (k === '2') { setMode('rat', 'key'); return; }""")
+    # ---- messages
+    j = _sub(j, """  nocand: 'no candidate here — click another part of the rat, or draw by hand (B) · 这里没有候选: 点鼠的别处或手画 (B)',""",
+             """  nocand: 'no candidate here — click another spot, or draw by hand (B) · 这里没有候选: 点别处或手画 (B)',""")
+    j = _sub(j, """  joined: 'already joined · 已经拼接过这个 mask', mp_implant: 'M / P apply to the rat box only · 合并 / 不完整只用于鼠框'};""",
+             """  joined: 'already joined · 已经拼接过这个 mask', mp_implant: 'M / P apply to the rat box only — press 2 · 合并 / 不完整只用于鼠框 (按 2)',
+  h_mode: 'H (implant hidden) works in IMPLANT mode only — press 1 · H 只在植入体模式有效 (按 1)',
+  added_implant: 'rat added: its implant is marked hidden — press 2 for its rat box · 已加鼠: 植入体标为看不见, 按 2 画鼠框'};""")
+    # ---- banner: mode, rat i / n, arm; number chips with per-object status; mode buttons
+    j = _sub(j, """  mb.textContent = (S.cur.obj === 'implant' ? 'NOW: IMPLANT box 植入体框 (orange)' : 'NOW: RAT box 整鼠框 (green) — ' + (pre ? 'click the body' : 'drag to draw'))
+    + '   ·   ' + (pre ? 'PRELABEL 预标注' : 'SCRATCH 从零画框 — drag to draw, no candidates, A/N/J off');
+  mb.className = 'mode-' + S.cur.obj;""",
+             """  $('modetext').textContent = 'MODE ' + (S.cur.obj === 'implant' ? '植入体 IMPLANT' : '整鼠 RAT') + ' · ' + (r ? 'rat ' + r.num + ' / ' + s.rats.length : 'no rat')
+    + ' · ' + (pre ? 'PRELABEL 预标注' : 'SCRATCH 从零画框 (drag to draw)');
+  mb.className = 'mode-' + S.cur.obj;
+  $('mb-implant').className = 'modebtn' + (S.cur.obj === 'implant' ? ' on-implant' : ''); $('mb-rat').className = 'modebtn' + (S.cur.obj === 'rat' ? ' on-rat' : '');
+  const chips = s.rats.map((q, i) => '<button type="button" class="chip' + (i === S.cur.ri ? ' cur' : '') + (q.deleted ? ' del' : '') + '" data-ri="' + i
+    + '" title="' + (q.origin === 'added' ? 'added rat ' : 'rat ') + q.num + ': implant ' + (q.implant.hidden ? 'hidden' : q.implant.box ? 'done' : 'not yet')
+    + ', rat box ' + (q.rat.box ? 'done' : 'not yet') + '">' + (q.origin === 'added' ? '◆' : '') + q.num
+    + '<span class="m mi">' + (q.implant.hidden ? 'H' : q.implant.box ? '✓' : '·') + '</span><span class="m mr">' + (q.rat.box ? '✓' : '·') + '</span></button>').join('');
+  if (chips !== lastChips) { $('ratchips').innerHTML = chips; lastChips = chips; }""")
+    j = _sub(j, """function panel(){""", """let lastChips = null;
+function panel(){""")
+    j = _sub(j, """$('redo').addEventListener('click', () => redoFrame(false));""",
+             """$('redo').addEventListener('click', () => redoFrame(false));
+['modebtns', 'ratchips'].forEach(id => $(id).addEventListener('mousedown', e => e.preventDefault()));      // never take the keyboard focus (Enter / Space)
+$('mb-implant').addEventListener('click', () => { touch(); setMode('implant', 'button'); });
+$('mb-rat').addEventListener('click', () => { touch(); setMode('rat', 'button'); });
+$('ratchips').addEventListener('click', e => { const b = e.target.closest('[data-ri]'); if (!b) return; touch(); selectRat(+b.dataset.ri, 'chip'); });""")
+    # ---- drawing: only the active object is bright
+    j = _sub(j, """    if (r && !r.deleted) ['implant', 'rat'].forEach(k => (r[k].pieces || []).forEach(pc => { const m = f.masks[pc.mask]; if (!m) return;""",
+             """    if (r && !r.deleted) [S.cur.obj].forEach(k => (r[k].pieces || []).forEach(pc => { const m = f.masks[pc.mask]; if (!m) return;""")
+    j = _sub(j, """      ctx.globalAlpha = cur ? 1 : 0.4; ctx.lineWidth = (act ? 3 : cur ? 1.8 : 1.3) * lw; ctx.strokeStyle = STYLE[k].box;""",
+             """      ctx.globalAlpha = act ? 1 : 0.35; ctx.lineWidth = (act ? 3 : 1.3) * lw; ctx.strokeStyle = STYLE[k].box;""")
+    j = _sub(j, """    if (cur) (r.rat.clicks || []).forEach((cl, n) => { const R = 8 * lw; ctx.lineWidth = 2.5 * lw; ctx.strokeStyle = STYLE.rat.cand; ctx.globalAlpha = n === r.rat.clicks.length - 1 ? 1 : 0.5;""",
+             """    if (cur) (r[S.cur.obj].clicks || []).forEach((cl, n, all) => { const R = 8 * lw; ctx.lineWidth = 2.5 * lw; ctx.strokeStyle = STYLE[S.cur.obj].cand; ctx.globalAlpha = n === all.length - 1 ? 1 : 0.5;""")
+    # ---- CSV: where the candidates came from
+    j = _sub(j, """n_body_clicks: (o.clicks || []).length, n_candidates: o.cand.length,""",
+             """n_body_clicks: (o.clicks || []).length, n_candidates: o.cand.length, cand_src: o.cand_src || (k === 'rat' ? 'click' : 'head'),""")
+    # ---- test hooks
+    j = _sub(j, """  banner: () => $('modebanner').textContent, clearToast: () => { $('toast').style.display = 'none'; }};""",
+             """  banner: () => $('modetext').textContent, clearToast: () => { $('toast').style.display = 'none'; },
+  buttons: () => [$('mb-implant').className, $('mb-rat').className],
+  chips: () => Array.from(document.querySelectorAll('#ratchips .chip')).map(b => ({ri: +b.dataset.ri, cls: b.className, text: b.textContent})),
+  dotAtImg: (u, v) => { const [x, y] = toCv(u, v); return dotAt(x, y); }};""")
+    assert "obj_auto_switch" not in j and "S.cur.obj = 'rat'" not in j, "an automatic mode change is left"
+    return j
+
+
+PAGE_JS_V23 = _make_js_v23()
+
+
+def page_html_v23(run_name: str) -> str:
+    h = page_html_v22(run_name).replace(PAGE_JS_V22, PAGE_JS_V23)
+    h = _sub(h, "<title>In-box pre-label edit v2.2</title>", "<title>In-box pre-label edit v2.3</title>")
+    h = _sub(h, "· v2.2: implant box + rat box, join pieces · 预标注编辑 v2.2</h1>", "· v2.3: two modes (implant / rat), join pieces · 预标注编辑 v2.3</h1>")
+    h = _sub(h, """<b>Each rat: implant (A/N/J, H hidden) → click the body → rat box (A/N/J…) → Enter</b> 每只鼠: 植入体 (A/N/J, H 看不见) → 点身体 → 鼠框 (A/N/J…) → Enter.
+A click on the image always switches to the RAT box 点击图像总是切换到鼠框.<br>""",
+             """<b>Two modes 两个模式: ① IMPLANT (key 1) · ② RAT (key 2) · Tab toggles. The mode stays until you change it 模式不会自动切换.</b>
+In a mode every click, key and drawn box acts on THAT box only 每个模式只改对应的框.<br>
+<b>switch rat: click its white dot or its number chip · Enter/← next/prev 切换鼠：点白点或上方数字</b>
+(chip marks: implant / rat box — ✓ done, H hidden, · not yet). PageDown / PageUp = next / previous frame.<br>""")
+    h = _sub(h, """<span class="obj-implant">IMPLANT</span> candidates come from the head dot (cyan). <span class="obj-rat">RAT</span> (head + body, no tail):
+click on the rat's body first 先点鼠身体; candidates containing that point are offered (pink).<br>""",
+             """<span class="obj-implant">IMPLANT</span> candidates (cyan) come from the head dot; in IMPLANT mode a click offers the masks under the click.
+<span class="obj-rat">RAT</span> (head + body, no tail): in RAT mode click the rat's body 点鼠身体; the masks under the click are offered (pink).<br>""")
+    h = _sub(h, "<b>SCRATCH</b>: drag the implant box, Enter, drag the rat box 先拖植入体框, Enter, 再拖鼠框<br>",
+             "<b>SCRATCH</b>: drag the box of the current mode (1 implant, 2 rat) 按当前模式手动拖框<br>")
+    h = _sub(h, "H implant hidden 植入体看不见 ·", "H implant hidden (IMPLANT mode) 植入体看不见 ·")
+    h = _sub(h, "Tab switch implant / rat 切换 · Enter / → next box, then next rat 下一个 ·", "1 / 2 / Tab mode 模式 · Enter / → next rat 下一只 ·")
+    h = _sub(h, "← back 上一个 ·", "← previous rat 上一只 ·")
+    h = _sub(h, '<div id="modebanner"></div>', '<div id="modebtns"><button type="button" id="mb-implant" class="modebtn">① 植入体 IMPLANT</button>'
+                                              '<button type="button" id="mb-rat" class="modebtn">② 整鼠 RAT</button></div>'
+                                              '<div id="modebanner"><span id="modetext"></span><span id="ratchips"></span></div>')
+    h = _sub(h, "</style></head>", """
+#modebanner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+#modebtns{display:flex;gap:10px;margin:4px 0}.modebtn{font-size:18px;font-weight:800;padding:8px 18px;border-radius:8px;border:2px solid #888;
+ background:#5a5a5a;color:#ddd;cursor:pointer}.modebtn.on-implant{background:#ff9f1a;border-color:#111;color:#111}
+.modebtn.on-rat{background:#39ff14;border-color:#111;color:#111}
+#ratchips{display:flex;flex-wrap:wrap;gap:6px}.chip{font-size:16px;font-weight:800;padding:2px 7px;border-radius:6px;border:2px solid #111;
+ background:rgba(255,255,255,.85);color:#111;cursor:pointer}.chip.cur{background:#ff2fd0;color:#fff;border-color:#fff;box-shadow:0 0 0 2px #111}
+.chip.del{text-decoration:line-through;opacity:.5}.chip .m{display:inline-block;min-width:13px;margin-left:3px;padding:0 2px;font-size:13px;border-radius:3px;background:#fff}
+.chip .mi{color:#b35400}.chip .mr{color:#0a7d00}
+</style></head>""")
+    return h
+
+
+def page_check_v23(new_dir: Path, data: dict, old_html: Path, old_data: Path) -> dict:
+    """Headless Chrome (throwaway profile). A: old-state test — the backed-up v2.2 page saves a state (an accepted implant, a
+    2-piece joined rat box with an object-level flag, a hidden implant + a manual rat box, SCRATCH boxes); v2.3 loads it under
+    the same key and exports it unchanged apart from version / time / reload events. B: v2.3 — a click in each mode affects only
+    that object; J in both modes; the mode persists across Enter, ← and frames; 1 / 2 / Tab and the buttons; H only in IMPLANT
+    mode; a click on another rat's white dot selects it without a candidate lookup (both modes); the chips select a rat and show
+    the status marks; banner text; help line; export; no network URL."""
+    import inbox_identity_page as ipage
+    html_t, js_t = (new_dir / "index.html").read_text(encoding="utf-8"), (new_dir / "pl_data.js").read_text(encoding="utf-8")
+    res = {"network_urls": re.findall(r"https?://[^\s\"'<>]+", html_t) + re.findall(r"https?://[^\s\"'<>]+", js_t)}
+    vdir = new_dir.parent if new_dir.name.startswith("_") else new_dir
+    tdir = vdir / "_v22_oldstate_test"
+    if tdir.exists():
+        shutil.rmtree(tdir)
+    tdir.mkdir()
+    shutil.copy2(old_html, tdir / "index.html")
+    od = _read_data_js(old_data)
+    for f in od["frames"]:
+        f["img"] = "../" + f["img"]
+    (tdir / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(od, separators=(",", ":")) + ";\n", encoding="utf-8")
+    prof = Path(tempfile.mkdtemp(prefix="pl23check_"))
+    p, wsu, bws = ipage._chrome((tdir / "index.html").resolve().as_uri(), prof, ipage._free_port())
+    c = None
+    fr = data["frames"]
+
+    def nt(o):
+        return {k: v for k, v in o.items() if k != "time_ms"}
+    try:
+        c = ipage._CDP(wsu)
+        c.call("Runtime.enable")
+
+        def ready():
+            for _ in range(240):
+                try:
+                    if c.ev("!!window.__pl && window.__pl.ready()"):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+                time.sleep(0.25)
+            return False
+
+        def key(k):
+            c.ev(f"document.dispatchEvent(new KeyboardEvent('keydown', {{key: {json.dumps(k)}, bubbles: true}}))")
+
+        def mouse(kind, u, v):
+            c.ev(f"(() => {{ const [x, y] = window.__pl.imgToClient({u}, {v}); document.getElementById('cv').dispatchEvent("
+                 f"new MouseEvent({json.dumps(kind)}, {{clientX: x, clientY: y, button: 0, bubbles: true}})); }})()")
+
+        def click(u, v):
+            mouse("mousedown", u, v)
+            mouse("mouseup", u, v)
+
+        def drag(u0, v0, u1, v1):
+            mouse("mousedown", u0, v0)
+            mouse("mousemove", (u0 + u1) / 2, (v0 + v1) / 2)
+            mouse("mousemove", u1, v1)
+            mouse("mouseup", u1, v1)
+
+        def R(i=None):
+            return c.ev("JSON.parse(JSON.stringify(window.__pl.rat()))" if i is None else
+                        f"JSON.parse(JSON.stringify(window.__pl.S().frames[window.__pl.frame().id].rats[{i}]))")
+
+        def cur():
+            return c.ev("window.__pl.cur()")
+
+        def last_ev():
+            return c.ev("window.__pl.S().events.slice(-1)")[0]
+
+        def body_points(f, min_cand, away_from_dots=False):
+            out = []
+            for m in sorted(f["masks"], key=lambda m: -m["a"])[:40]:
+                for pts in m["p"]:
+                    x0, y0 = float(np.mean(pts[0::2])), float(np.mean(pts[1::2]))
+                    if _pip(x0, y0, pts):
+                        if away_from_dots and c.ev(f"window.__pl.dotAtImg({x0}, {y0})") is not None:
+                            break
+                        cand = c.ev(f"window.__pl.candidatesAt({x0}, {y0})")
+                        if len(cand) >= min_cand:
+                            out.append(((x0, y0), cand))
+                        break
+            return out
+        # ---------------- A. old-state test with the backed-up v2.2 page (its auto-switch flow)
+        res["loaded_v22"] = ready()
+        res["v22_page_version"] = c.ev("window.__pl.D.page_version")
+        pre = [i for i, f in enumerate(fr) if f["arm"] == "PRELABEL" and len(f["cand"]) >= 2 and f["cand"][0]]
+        fi, pt = None, None
+        for i in pre:
+            c.ev(f"window.__pl.goFrame({i})")
+            bp = body_points(fr[i], 2)
+            if bp:
+                fi, pt = i, bp[0][0]
+                break
+        c.ev(f"window.__pl.goFrame({fi})")
+        ready()
+        f = fr[fi]
+        key("a")                                     # implant candidate 1
+        click(*pt)                                   # v2.2: switches to the rat box
+        key("j")
+        key("n")
+        key("j")
+        key("m")
+        for _ in range(3):
+            c.ev("window.__pl.setLastInput(0)")
+            time.sleep(0.5)
+        key("Enter")
+        c.ev("window.__pl.setCur(window.__pl.cur().ri, 'implant')")
+        key("h")
+        hu, hv = f["heads"][1]["u"], f["heads"][1]["v"]
+        key("b")
+        drag(hu - 120, hv - 90, hu + 160, hv + 140)
+        fs = next(i for i, x in enumerate(fr) if x["arm"] == "SCRATCH")
+        c.ev(f"window.__pl.goFrame({fs})")
+        ready()
+        g = fr[fs]
+        gu, gv = g["heads"][0]["u"], g["heads"][0]["v"]
+        drag(gu - 50, gv - 40, gu + 50, gv + 40)
+        key("Enter")
+        drag(gu - 180, gv - 140, gu + 220, gv + 180)
+        c.ev(f"window.__pl.goFrame({fi})")
+        c.ev("window.__pl.setLastInput(60000)")
+        ex_old = c.ev("window.__pl.exportJSON()")
+        c.ev("window.__pl.save()")
+        old_key = c.ev("window.__pl.key")
+        c.call("Page.navigate", url=(new_dir / "index.html").resolve().as_uri())
+        time.sleep(1.5)
+        res["loaded_v23"] = ready()
+        c.ev("window.__pl.setLastInput(60000)")
+        ex_new = c.ev("window.__pl.exportJSON()")
+        cmp = _compare_exports(ex_old, ex_new)
+        fo = next(x for x in ex_new["frames"] if x["frame_id"] == f["id"])
+        r1, r2 = fo["rats"][0], fo["rats"][1]
+        res["old_state"] = {**cmp, "same_storage_key": old_key == c.ev("window.__pl.key"),
+                            "rat1": [r1["implant"]["source"], r1["rat"]["source"], r1["rat"]["n_pieces"], r1["rat"]["obj_flags"]],
+                            "rat2": [r2["implant"]["hidden"], r2["rat"]["source"]],
+                            "ok": cmp["ok"] and old_key == c.ev("window.__pl.key") and r1["implant"]["source"] == "cand" and r1["rat"]["source"] == "joined"
+                            and r1["rat"]["n_pieces"] == 2 and r1["rat"]["obj_flags"].get("merged") is True and r2["implant"]["hidden"] is True
+                            and r2["rat"]["source"] == "manual"}
+        # ---------------- B. v2.3 on another PRELABEL frame with >= 2 rats
+        fj, pts = None, None
+        for i in pre:
+            if i == fi or i == len(fr) - 1:
+                continue
+            c.ev(f"window.__pl.goFrame({i})")
+            bp = body_points(fr[i], 2, away_from_dots=True)
+            if bp:
+                fj, pts = i, bp[0]
+                break
+        c.ev(f"window.__pl.goFrame({fj})")
+        ready()
+        (pu, pv), pc = pts
+        ri0 = cur()["ri"]
+        key("1")
+        m0 = cur()["obj"]
+        before = R()
+        click(pu, pv)                                # IMPLANT mode: implant candidates at the click; the rat box untouched
+        a1 = R()
+        e1 = last_ev()["ev"]
+        res["click_implant_mode"] = {"mode": m0, "n_cand": len(a1["implant"]["cand"]), "implant_click": a1["implant"]["click"], "last_event": e1,
+                                     "ok": m0 == "implant" and a1["implant"]["cand"] == pc and a1["implant"]["click"] is not None
+                                     and a1["implant"].get("cand_src") == "click" and nt(a1["rat"]) == nt(before["rat"]) and cur()["obj"] == "implant"
+                                     and e1 == "implant_click"}
+        key("j")                                     # J in IMPLANT mode
+        ji = R()
+        key("2")
+        b1 = R()
+        click(pu, pv)                                # RAT mode: rat candidates; the implant box untouched
+        a2 = R()
+        e2 = last_ev()["ev"]
+        res["click_rat_mode"] = {"mode": cur()["obj"], "n_cand": len(a2["rat"]["cand"]), "last_event": e2,
+                                 "ok": cur()["obj"] == "rat" and a2["rat"]["cand"] == pc and nt(a2["implant"]) == nt(b1["implant"]) and e2 == "body_click"}
+        key("j")
+        key("n")
+        key("j")
+        jr = R()
+        res["join_both_modes"] = {"implant": [ji["implant"]["source"], len(ji["implant"]["pieces"]),
+                                              ji["implant"]["pieces"][0].get("src") if ji["implant"]["pieces"] else None],
+                                  "rat": [jr["rat"]["source"], len(jr["rat"]["pieces"])],
+                                  "ok": ji["implant"]["source"] == "cand" and len(ji["implant"]["pieces"]) == 1 and ji["implant"]["pieces"][0].get("src") == "click"
+                                  and nt(ji["rat"]) == nt(before["rat"]) and jr["rat"]["source"] == "joined" and len(jr["rat"]["pieces"]) == 2
+                                  and nt(jr["implant"]) == nt(ji["implant"])}
+        ch0 = c.ev("window.__pl.chips()")           # rat 1 now has both boxes: ✓ ✓
+        # sticky mode: Enter, ←, next frame, previous frame
+        key("Enter")
+        c1 = cur()
+        key("ArrowLeft")
+        c2 = cur()
+        key("PageDown")
+        c3 = cur()
+        key("PageUp")
+        c4 = cur()
+        res["sticky"] = {"after_enter": c1, "after_left": c2, "after_pagedown": c3, "after_pageup": c4,
+                         "ok": all(x["obj"] == "rat" for x in (c1, c2, c3, c4)) and c1["ri"] != ri0 and c2["ri"] == ri0
+                         and c3["fi"] == fj + 1 and c4["fi"] == fj}
+        # keys and buttons
+        key("Tab")
+        t1 = cur()["obj"]
+        key("Tab")
+        t2 = cur()["obj"]
+        key("1")
+        k1 = cur()["obj"]
+        b_impl = c.ev("window.__pl.banner()")
+        btn_impl = c.ev("window.__pl.buttons()")
+        key("2")
+        k2 = cur()["obj"]
+        b_rat = c.ev("window.__pl.banner()")
+        btn_rat = c.ev("window.__pl.buttons()")
+        c.ev("document.getElementById('mb-implant').click()")
+        bt1 = cur()["obj"]
+        c.ev("document.getElementById('mb-rat').click()")
+        bt2 = cur()["obj"]
+        ms = [e for e in c.ev("window.__pl.S().events") if e["ev"] == "mode_set"]
+        res["keys_buttons"] = {"tab": [t1, t2], "one_two": [k1, k2], "buttons": [bt1, bt2], "mode_set_via": sorted({e["via"] for e in ms}),
+                               "ok": {t1, t2} == {"implant", "rat"} and t1 != t2 and k1 == "implant" and k2 == "rat" and bt1 == "implant" and bt2 == "rat"
+                               and {"tab", "key", "button"} <= {e["via"] for e in ms}}
+        # H: refused in RAT mode, works in IMPLANT mode (and the mode stays)
+        c.ev("window.__pl.clearToast()")
+        hb = R()
+        key("h")
+        t_h = c.ev("window.__pl.toast()")
+        h_rat_ok = R()["implant"]["hidden"] == hb["implant"]["hidden"]
+        key("1")
+        key("h")
+        h_impl = R()["implant"]["hidden"]
+        res["h_key"] = {"toast_in_rat_mode": t_h, "hidden_in_implant_mode": h_impl, "mode_after": cur()["obj"],
+                        "ok": "IMPLANT mode only" in t_h and h_rat_ok and h_impl is True and cur()["obj"] == "implant"}
+        # chips: number, highlight, marks; select a rat by its chip
+        chs = c.ev("window.__pl.chips()")
+        cri = cur()["ri"]
+        other = next(q["ri"] for q in chs if q["ri"] != cri)
+        c.ev(f"document.querySelector('#ratchips [data-ri=\"{other}\"]').click()")
+        c_chip = cur()
+        ev_chip = last_ev()
+        chs2 = c.ev("window.__pl.chips()")
+        n_rats_f = len(c.ev("window.__pl.S().frames[window.__pl.frame().id].rats"))
+        chip_worked = next(q for q in ch0 if q["ri"] == ri0)["text"]
+        chip_hidden = next(q for q in chs if q["ri"] == cri)["text"]
+        res["chips"] = {"n": len(chs), "n_rats": n_rats_f, "chip_after_work": chip_worked, "chip_after_hidden": chip_hidden,
+                        "after_chip_click": c_chip, "event": ev_chip,
+                        "ok": len(chs) == n_rats_f and sum("cur" in q["cls"].split() for q in chs) == 1 and "cur" in next(q for q in chs if q["ri"] == cri)["cls"].split()
+                        and chip_worked.endswith("✓✓") and chip_hidden.endswith("H✓") and c_chip["ri"] == other and c_chip["obj"] == "implant"
+                        and ev_chip["ev"] == "rat_select" and ev_chip["via"] == "chip" and "cur" in next(q for q in chs2 if q["ri"] == other)["cls"].split()}
+        # a click on ANOTHER rat's white dot selects it without a candidate lookup — in IMPLANT mode, then in RAT mode
+        dots = []
+        for mode_key in ("1", "2"):
+            key(mode_key)
+            ri_now = cur()["ri"]
+            tgt = next(i for i in range(n_rats_f) if i != ri_now and not R(i)["deleted"])
+            hd = R(tgt)
+            before_t = {k: nt(hd[k]) for k in ("implant", "rat")}
+            n_ev = len(c.ev("window.__pl.S().events"))
+            click(hd["u"], hd["v"])
+            after = R(tgt)
+            new_ev = c.ev(f"window.__pl.S().events.slice({n_ev})")
+            dots.append({"mode": cur()["obj"], "to": tgt, "ri_after": cur()["ri"], "events": [e["ev"] for e in new_ev],
+                         "ok": cur()["ri"] == tgt and cur()["obj"] == ("implant" if mode_key == "1" else "rat")
+                         and {k: nt(after[k]) for k in ("implant", "rat")} == before_t and [e["ev"] for e in new_ev] == ["rat_select"]
+                         and new_ev[0]["via"] == "dot"})
+        # the current rat's own dot is a normal click for the active object (the rat is already selected)
+        key("1")
+        if R()["implant"]["hidden"]:
+            key("h")
+        own, ri_own = R(), cur()["ri"]
+        click(own["u"], own["v"])
+        own_ev = last_ev()["ev"]
+        dots.append({"own_dot_event": own_ev, "ok": own_ev == "implant_click" and cur()["ri"] == ri_own})
+        res["dot_select"] = {"cases": dots, "ok": all(d["ok"] for d in dots)}
+        # SCRATCH banner
+        fs2 = next(i for i, x in enumerate(fr) if x["arm"] == "SCRATCH" and i != fs)
+        c.ev(f"window.__pl.goFrame({fs2})")
+        b_scr = c.ev("window.__pl.banner()")
+        res["banner"] = {"implant": b_impl, "rat": b_rat, "scratch": b_scr, "buttons_implant": btn_impl, "buttons_rat": btn_rat,
+                         "ok": b_impl.startswith("MODE 植入体 IMPLANT · rat ") and b_impl.endswith("PRELABEL 预标注")
+                         and b_rat.startswith("MODE 整鼠 RAT · rat ") and b_scr.endswith("SCRATCH 从零画框 (drag to draw)")
+                         and "on-implant" in btn_impl[0] and "on-rat" not in btn_impl[1] and "on-rat" in btn_rat[1] and "on-implant" not in btn_rat[0]}
+        res["help_legend"] = {"ok": bool(c.ev("document.body.textContent.includes('switch rat: click its white dot or its number chip · Enter/← next/prev 切换鼠：点白点或上方数字')")
+                                         and c.ev("!!document.getElementById('legend') && document.getElementById('legend').textContent.includes('rat candidate')"))}
+        ej = c.ev("window.__pl.exportJSON()")
+        n_rats = sum(len(x["rats"]) for x in ej["frames"])
+        csv_head = c.ev("window.__pl.exportCSV().split('\\n')[0]")
+        csv_lines = c.ev("window.__pl.exportCSV().trim().split('\\n').length")
+        new_evs = [e["ev"] for e in ej["events"][len(ex_old["events"]):]]
+        res["export"] = {"version": ej["page_version"], "csv_lines": csv_lines, "event_kinds_new": sorted(set(new_evs)),
+                         "ok": ej["page_version"] == PAGE_VERSION_V23 and csv_lines == 2 * n_rats + 1 and "cand_src" in csv_head
+                         and {"mode_set", "implant_click", "body_click", "join", "rat_select", "rat_prev"} <= set(new_evs) and "obj_auto_switch" not in new_evs}
+        c.ev("localStorage.clear()")
+    finally:
+        if c:
+            c.close()
+        ipage._close_chrome(p, bws)
+        shutil.rmtree(prof, ignore_errors=True)
+        shutil.rmtree(tdir, ignore_errors=True)
+    keys = ["old_state", "click_implant_mode", "click_rat_mode", "join_both_modes", "sticky", "keys_buttons", "h_key", "chips", "dot_select",
+            "banner", "help_legend", "export"]
+    res["verdict"] = "PASS" if (res.get("loaded_v22") and res.get("loaded_v23") and all(res[k]["ok"] for k in keys) and not res["network_urls"]) else "FAIL"
+    return res
+
+
+def update_v23(run: Path, check: bool = True) -> dict:
+    """In-place v2.2 -> v2.3 (two sticky modes, rat switching). Same storage key; *.v2_2.bak backups first; payload verified
+    identical to v2.2; a staged copy is checked (incl. the old-state test) before the live files are replaced."""
+    out = run / "prelabel_edit_v2"
+    cur = _read_data_js(out / "pl_data.js")
+    if cur["page_version"] == PAGE_VERSION_V22:
+        for name in ("index.html", "pl_data.js", "page_check.json", "build_meta.json"):
+            src, bak = out / name, out / f"{name}.v2_2.bak"
+            if src.exists() and not bak.exists():
+                shutil.copy2(src, bak)
+    old = _read_data_js(out / "pl_data.js.v2_2.bak")
+    assert old["page_version"] == PAGE_VERSION_V22, f"the backup is not v2.2: {old['page_version']}"
+    key = old["storage_key"]
+    new = _v2_data(run, PAGE_VERSION_V23, key, [PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22, PAGE_VERSION_V23])
+    same = len(old["frames"]) == len(new["frames"]) and all(a[k] == b[k] for a, b in zip(old["frames"], new["frames"])
+                                                            for k in ("id", "domain", "arm", "pile_bin", "order", "img", "heads", "masks", "cand"))
+    if not same:
+        raise SystemExit("v2.3 payload differs from v2.2: not written, v2.2 left in place")
+    js_final = "window.PL_DATA = " + json.dumps(new, separators=(",", ":")) + ";\n"
+    html_final = page_html_v23(run.name)
+    pc = None
+    if check:
+        stg = out / "_v23_staging"
+        if stg.exists():
+            shutil.rmtree(stg)
+        stg.mkdir()
+        staged = json.loads(json.dumps(new))
+        for f in staged["frames"]:
+            f["img"] = "../" + f["img"]
+        (stg / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(staged, separators=(",", ":")) + ";\n", encoding="utf-8")
+        (stg / "index.html").write_text(html_final, encoding="utf-8")
+        try:
+            pc = page_check_v23(stg, new, out / "index.html.v2_2.bak", out / "pl_data.js.v2_2.bak")
+        finally:
+            shutil.rmtree(stg, ignore_errors=True)
+        print(f"v2.3 page check (staged): {pc['verdict']}", flush=True)
+        if pc["verdict"] != "PASS":
+            S.write_json(out / "page_check_v2_3_FAILED.json", pc)
+            raise SystemExit("v2.3 check failed: the live v2.2 page was NOT replaced (see page_check_v2_3_FAILED.json)")
+    (out / "pl_data.js").write_text(js_final, encoding="utf-8")
+    (out / "index.html").write_text(html_final, encoding="utf-8")
+    meta = json.loads((out / "build_meta.json.v2_2.bak").read_text(encoding="utf-8"))
+    meta["v2_3"] = {"made": datetime.now().isoformat(timespec="seconds"),
+                    "why": "two explicit sticky modes (implant / rat), no auto-switch; rat chips, white-dot select, Enter / ← next / previous rat",
+                    "page_version": PAGE_VERSION_V23, "storage_key": key, "payload_identical_to_v2_2": same,
+                    "backups": sorted(q.name for q in out.glob("*.bak")), "page_check": pc["verdict"] if pc else "not run", "git_commit": git_commit()}
+    if pc:
+        S.write_json(out / "page_check.json", pc)
+    S.write_json(out / "build_meta.json", meta)
+    return meta
+
+
 # ============================================================================================ selftest
 def selftest() -> int:
     ok_all = True
@@ -3206,13 +3713,36 @@ def selftest() -> int:
                          {"a": 1, "events": [{"ev": "x"}, {"ev": "frame_open"}], "frames": [{"frame_id": "F", "active_s": 1.5, "rats": [{"id": "h1", "implant": {"box": [0, 0, 1, 1], "time_ms": 900}, "rat": {"box": None, "time_ms": 1}}]}]})["ok"]
         and not _compare_exports({"events": [], "frames": [{"frame_id": "F", "rats": [{"id": "h1", "implant": {"box": [0, 0, 1, 1]}, "rat": {}}]}]},
                                  {"events": [], "frames": [{"frame_id": "F", "rats": [{"id": "h1", "implant": {"box": [0, 0, 2, 1]}, "rat": {}}]}]})["ok"])
+    # ---------------- v2.3 (two sticky modes, rat switching)
+    if node:
+        with tempfile.TemporaryDirectory() as td:
+            js = Path(td) / "pl23.js"
+            js.write_text(PAGE_JS_V23, encoding="utf-8")
+            r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True)
+            rec("v2.3 page script parses (node --check)", r.returncode == 0, r.stderr[-300:])
+    h23 = page_html_v23("x")
+    rec("v2.3 page: mode buttons, chips, rat-switch help line, legend, no network", 'id="mb-implant"' in h23 and 'id="mb-rat"' in h23
+        and 'id="ratchips"' in h23 and "switch rat: click its white dot or its number chip · Enter/← next/prev 切换鼠：点白点或上方数字" in h23
+        and 'id="legend"' in h23 and not re.search(r"https?://", h23))
+    rec("v2.3 script: no automatic mode change; mode_set / implant_click / rat_select / rat_prev logged; H only in IMPLANT mode",
+        "obj_auto_switch" not in PAGE_JS_V23 and "S.cur.obj = 'rat'" not in PAGE_JS_V23
+        and all(m in PAGE_JS_V23 for m in ("log('mode_set'", "log('implant_click'", "log('rat_select'", "log('rat_prev')", "IMPLANT mode only")))
+    rec("v2.3 keeps the storage-key rule", "D.storage_key ||" in PAGE_JS_V23)
+    ex23 = json.loads(json.dumps(ex21))
+    ex23["page_version"] = PAGE_VERSION_V23
+    ex23["frames"][0]["rats"][0]["implant"]["cand_src"] = "click"
+    s23 = summarize_v2(ex23)
+    rec("v2.3 summary: implant boxes from a click counted (1), rat boxes all from clicks (4)",
+        s23["objects"]["implant"]["from_click"] == 1 and s23["objects"]["rat"]["from_click"] == 4,
+        str((s23["objects"]["implant"]["from_click"], s23["objects"]["rat"]["from_click"])))
+    rec("v2.3 markdown notes the mixed implant candidate sources", "came from a click in IMPLANT mode" in summary_md_v2(s23, "x.json"))
     print("SELFTEST", "PASS" if ok_all else "FAIL")
     return 0 if ok_all else 1
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", nargs="?", choices=["build", "summarize", "update-v21", "update-v22"])
+    ap.add_argument("cmd", nargs="?", choices=["build", "summarize", "update-v21", "update-v22", "update-v23"])
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--run", type=Path, default=RUN_DEFAULT)
     ap.add_argument("--export", type=Path)
@@ -3222,6 +3752,10 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.cmd == "update-v23":
+        m = update_v23(a.run, check=not a.no_page_check)
+        print(json.dumps(m.get("v2_3"), indent=1, default=str))
+        return 0
     if a.cmd == "update-v22":
         m = update_v22(a.run, check=not a.no_page_check)
         print(json.dumps(m.get("v2_2"), indent=1, default=str))

@@ -265,3 +265,51 @@ J did nothing at all").
     gives 2 pieces.
   - The four toasts and the banner text for both arms × both boxes; the legend.
   - Export (v2.2, CSV = 2 × rats + 1); no network URL.
+
+## Addendum 2026-10-12 — page v2.3 in place: two explicit sticky modes and rat switching
+
+**Why.** The user found the v2.2 flow too complicated: "太复杂了，按照俩选项，点implant 框只画implant 点rat body只换rat
+然后显示我现在到底是啥模式，不然我都不知道我在点啥". Then: "怎么切换鼠" (how do I switch rats).
+
+**Changes** (`inbox_prelabel_edit.py update-v23`; same folder, files and storage key):
+- **The v2.2 auto-switch is removed.**
+- **Two modes:**
+  - buttons "① 植入体 IMPLANT" (orange) and "② 整鼠 RAT" (green) above the image; keys 1 / 2; Tab toggles; each change
+    is logged as `mode_set`;
+  - the mode never changes on Enter, ←, a new rat or a new frame;
+  - every click, key and drawn box acts on the active object only;
+  - IMPLANT: a plain click offers the masks under the click (`implant_click`; `cand_src` = click). The head-dot candidates
+    stay pre-offered, and the proposed box is still the first head-dot candidate. H works only in this mode.
+  - RAT: a click offers rat candidates; M / P work only in this mode.
+- **Banner:** "MODE 植入体 IMPLANT · rat i / n · PRELABEL 预标注", or "… · SCRATCH 从零画框 (drag to draw)". Only the
+  active object's candidate, pieces and box are bright.
+- **Rat switching:**
+  - number chips in the banner, with per-object marks (✓ done, H hidden, · not yet);
+  - a plain click within 12 screen px of another rat's white dot selects that rat with no candidate lookup (`rat_select`,
+    via chip / dot);
+  - Enter / → next rat, ← previous rat (`rat_prev`), PageDown / PageUp frames.
+- **Kept from v2.2:** the toasts (new ones: H outside IMPLANT mode; a rat added in IMPLANT mode), the legend and the
+  logging.
+- **Choice of mine:** a click on the current rat's own dot stays an ordinary click for the active box. The implant sits at
+  the head, so a dot click there must still give candidates.
+- **Summary:** counts implant boxes whose candidates came from a click (`from_click`). Their rank refers to the click's
+  candidate list.
+
+**Safety:**
+- `*.v2_2.bak` backups were made first.
+- The payload was verified identical to v2.2, and the staged copy was checked before the live files were replaced.
+- `summarize` reads v2.0–v2.3 exports.
+
+**Checks:**
+- `--selftest` 58 / 58.
+- **Headless: PASS** (`prelabel_edit_v2/page_check.json`):
+  - **Old-state test:** a v2.2 state (accepted implant; 2-piece joined rat box with a merged flag; hidden implant with a
+    manual rat box; SCRATCH boxes) loads intact under the same key.
+  - **Clicks:** in IMPLANT mode a click gives 5 implant candidates and leaves the rat box untouched; in RAT mode the
+    reverse. J works in both modes (implant 1 piece from the click; rat 2 pieces).
+  - **Sticky mode:** the mode stays across Enter, ←, PageDown and PageUp.
+  - **Keys:** Tab, 1 / 2 and both buttons. H is refused with a toast in RAT mode and works in IMPLANT mode.
+  - **Rat switching:** the chips show "1✓✓" and "1H✓" and a chip click selects that rat. A dot click selects another rat in
+    both modes, with no candidate change; a click on the own dot gives `implant_click`.
+  - The banner texts, the help line and the legend.
+  - Export: v2.3; the CSV has `cand_src` and 2 × rats + 1 lines; no `obj_auto_switch` event; no network URL.
