@@ -135,3 +135,57 @@ no head is never shown in the default view.
 
 The agent never judges an image. Truth = the user's clicks and verdicts. Nothing is tuned on C frames. Local only (the
 cv env, RTX 5070 Ti); intermediates stay in the run folder and are never re-extracted; commits are local.
+
+## Amendment C1 — 2026-10-12, Codex *Yolo_identity* review of C (before any C frame is drawn or seen); supersedes C items 1–7 where they differ
+
+1. **Order (most important).** The freeze comes first:
+   1. B ends.
+   2. The freeze amendment is committed: candidate order, whole / tiled, filter, the cap K on candidates offered per
+      rat, the usable definition, all metric code.
+   3. Only then is the frame list drawn and committed (from the script, no image viewed).
+   4. Then the user's blind truth clicks.
+   5. Then SAM 3 on the frames, the timed session, the verdict pass and the re-read.
+
+   Nothing seen in a C image or click may change a frozen setting; a sample is never added after a result is seen.
+2. **Independence.**
+   - The sampling unit is a still episode, not a 30-min spacing: a still pile can last hours. The unit is formed by
+     the roster + head-IMU join rule of the 2026-10-11 test (Amendment 2 there), and at most one frame is drawn per still
+     episode.
+   - Clusters for the CIs are day × camera.
+   - An extra **"uncertain" stratum** covers WISER dropout, untagged-animal windows or a roster that disagrees with the
+     box events. Strata are assigned in priority order: door > uncertain > empty > roster count. Per-stratum quotas
+     replace weights, and the pooled estimates are unweighted over rats, with per-stratum results reported.
+   - 60 frames is a pilot. Per-camera results are descriptive unless a camera has ≥ 20 frames with ≥ 60 truth rats.
+3. **Truth denominator.**
+   - The user's blind truth step marks every visible rat: a head point where the head is visible, else a body point
+     ("head hidden").
+   - The P1 denominator is all such rats. Head-hidden rats get candidates at the body point and are reported separately.
+   - The claim is limited to "candidate usability after a human has located the rat".
+4. **P1 judged independently of the accept button.** After the timed session there is an untimed verdict pass for every
+   truth rat in both arms: each offered candidate up to rank K is judged usable / merged / partial / garbage, with the
+   full frame visible. P1 = share of rats with ≥ 1 usable candidate within K. A second person re-judges a random 30 %
+   of the rats, and their agreement is reported.
+5. **Timing.**
+   - Frames are presented in a random order with the two arms interleaved (seed 20261013).
+   - Time counts everything in the arm: cycling, deleting, edge moves and "show all".
+   - Empty frames (no truth rat) are excluded from the time ratio and reported separately.
+   - The comparison is of the body-box step after the heads are placed, not end to end; that is stated with the result.
+6. **Quality re-read.**
+   - **All** final rats are re-read, not 25 %. With ~300 rats and a good-rate near 0.9, the 95 % CI half-width of the
+     difference is ≈ 0.07; at 25 % it is ≈ 0.14, which cannot settle a −0.10 margin.
+   - Each rat is shown in full-frame context with its box highlighted, blind to the arm.
+   - The reader is a second person (the undergrad) by default. The user's next-day re-read is used only if no second
+     reader exists, and is labelled "self, non-independent".
+7. **Statistics.**
+   - Pooled over rats; 95 % percentile CIs from 2000 cluster-bootstrap resamples (day × camera).
+   - Decision outcomes: adopt / do not adopt / **insufficient evidence** (any CI crosses its threshold).
+   - Per-camera adoption needs P1, P2 and P3 for that camera, not P1 alone.
+8. **Other rules, fixed now.**
+   - **Unreadable or wrong frames:** a drawn frame that is unreadable, a colour insert or inside a lid window is replaced
+     by the next frame of the same stratum from the seeded backup list, which is drawn with the main list.
+   - **Cycling cap:** K is fixed in the freeze, from B's rank distribution.
+   - **Rats appearing only in "show all":** reported, not counted in P1.
+9. **Open for the user (needed before the freeze):**
+   - (a) Is a quality loss of up to 10 points (P3 lower CI > −0.10) acceptable in exchange for faster labelling, or is a
+     smaller margin required?
+   - (b) Who is the second reader (the undergrad?).
