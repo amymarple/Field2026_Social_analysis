@@ -224,3 +224,22 @@ So quality is measured from the user's own labels, against the user's own consis
    - **Do not adopt:** any of them clearly fails (its CI lies entirely on the wrong side).
    - **Insufficient evidence:** otherwise.
 5. **Cost to the user:** + about 30 extra frame passes (~25 min).
+
+## Amendment C3 — 2026-10-12, box convention vs tight SAM masks (the user; before any C frame)
+
+The user: SAM 3 masks look very tight, and their own hand-drawn boxes would be much larger ("sam3的mask感觉非常收束，如果我画框肯定会很大，那咋办").
+
+1. **The user's convention is the reference.** Whatever box the user draws by hand is the target. The suggested
+   default is the edge of the visible body, without the tail. Larger boxes overlap more inside piles.
+2. **B measures the systematic offset.**
+   - For every PRELABEL rat whose first candidate is kept, the signed shift of each edge (left / right / top / bottom)
+     from the mask's bounding box to the user's final box is recorded, in px and as a fraction of the box size.
+   - In SCRATCH frames, the user's own box sizes are recorded as well.
+3. **Padding rule, frozen with the other C settings.**
+   - From B, the median signed shift per edge, as a fraction of the box size, becomes a fixed padding applied to every
+     SAM 3 box before it is shown in C.
+   - The rule is chosen on B frames only and is not changed after C begins.
+   - If the shifts are not roughly uniform (e.g. one side, such as the dark head, is missed far more often), a uniform
+     padding is not used. The freeze then records that the mask misses parts, and the fix stays manual.
+4. **The P3 comparison uses the padded boxes,** so the C2 test measures agreement with the user's own convention and
+   not a difference of convention. The unpadded IoU is reported too.
