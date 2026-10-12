@@ -68,7 +68,8 @@ def main() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "common"))
     from output_paths import run_dir
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--wav", nargs="+", required=True)
+    ap.add_argument("--wav", nargs="*", default=[])
+    ap.add_argument("--targets", default=None, help="CSV wav,start_s,dur_s (one window per row; overrides --wav/--start-s/--dur-s)")
     ap.add_argument("--start-s", type=float, default=0.0)
     ap.add_argument("--dur-s", type=float, default=600.0)
     ap.add_argument("--cand-dir", default=None)
@@ -76,13 +77,18 @@ def main() -> None:
     out = run_dir("usv_strip_review", "2026c")
     (out / "media").mkdir(exist_ok=True)
     meta, cards = [], []
-    for w in a.wav:
+    if a.targets:
+        T = pd.read_csv(a.targets)
+        windows = [(r.wav, float(r.start_s), float(r.dur_s)) for r in T.itertuples()]
+    else:
+        windows = [(w, a.start_s, a.dur_s) for w in a.wav]
+    for w, st0, dur in windows:
         p = Path(w)
         mic, s0, _ = parse_name(p)
         rate, n, off = wav_info(p)
         mm = np.memmap(p, dtype="<i2", mode="r", offset=off, shape=(n,))
-        t1 = min(n / rate, a.start_s + a.dur_s)
-        x = np.asarray(mm[int(a.start_s * rate):int(t1 * rate)], dtype=np.float32)
+        t1 = min(n / rate, st0 + dur)
+        x = np.asarray(mm[int(st0 * rate):int(t1 * rate)], dtype=np.float32)
         f, t, E = whitened(x, rate)
         C = pd.DataFrame()
         if a.cand_dir and (Path(a.cand_dir) / f"{p.stem}.csv").exists():
@@ -92,19 +98,19 @@ def main() -> None:
             except pd.errors.EmptyDataError:
                 C = pd.DataFrame()
         dt = t[1] - t[0]
-        for j, ss in enumerate(np.arange(0, t1 - a.start_s - 1, STRIP_S)):
+        for j, ss in enumerate(np.arange(0, t1 - st0 - 1, STRIP_S)):
             k = (t >= ss) & (t < ss + STRIP_S)
             if k.sum() < 100:
                 continue
             Es = maxpool(E[:, k], PX)
-            sid = f"{p.stem}_{int(a.start_s + ss):04d}"
+            sid = f"{p.stem}_{int(st0 + ss):04d}"
             strip_png(out / "media" / f"{sid}.png", Es, f)
             ticks = []
             if len(C):
-                cc = C[(C.begin_s >= a.start_s + ss) & (C.begin_s < a.start_s + ss + STRIP_S)]
-                ticks = [((r.begin_s - a.start_s - ss) / STRIP_S, max(r.dur_s / STRIP_S, 0.002), r.peak_kHz) for r in cc.itertuples()]
-            tstart = s0 + pd.Timedelta(seconds=float(a.start_s + ss))
-            meta.append({"id": sid, "mic": mic, "file": p.name, "offset_s": float(a.start_s + ss), "t_start": str(tstart),
+                cc = C[(C.begin_s >= st0 + ss) & (C.begin_s < st0 + ss + STRIP_S)]
+                ticks = [((r.begin_s - st0 - ss) / STRIP_S, max(r.dur_s / STRIP_S, 0.002), r.peak_kHz) for r in cc.itertuples()]
+            tstart = s0 + pd.Timedelta(seconds=float(st0 + ss))
+            meta.append({"id": sid, "mic": mic, "file": p.name, "offset_s": float(st0 + ss), "t_start": str(tstart),
                          "candidates": len(ticks)})
             tk = "".join(f'<div class="tk" style="left:{1.2 + 98.6 * x0:.2f}%;width:{max(0.15, 98.6 * w_):.2f}%;'
                          f'background:{"#e33" if pk < 32 else "#36f"}" title="{pk:.0f} kHz"></div>' for x0, w_, pk in ticks)
@@ -112,7 +118,7 @@ def main() -> None:
                           for v in ("none", "a few", "many"))
             q2 = " ".join(f'<label><input type="checkbox" name="b_{sid}" value="{v}"> {v}</label>' for v in ("22-kHz band", "50-kHz band", "long line (>5 s)"))   # long line = MIC01's wandering 18-21.5 kHz tone (user, 10-09)
             cards.append(f'<div class="s" id="{sid}"><div class="h">{html.escape(mic)} {tstart:%m-%d %H:%M:%S} '
-                         f'(+{a.start_s + ss:.0f} s in {html.escape(p.name)}) · {len(ticks)} detector ticks</div>'
+                         f'(+{st0 + ss:.0f} s in {html.escape(p.name)}) · {len(ticks)} detector ticks</div>'
                          f'<a href="media/{sid}.png" target="_blank"><img loading="lazy" src="media/{sid}.png"></a>'
                          f'<div class="tr">{tk}</div><div class="q"><b>USV present?</b> {q1} &nbsp; {q2}</div></div>')
         print(p.name, "strips so far", len(meta), flush=True)
@@ -122,7 +128,7 @@ body{{font-family:sans-serif;margin:12px;max-width:1860px}} .s{{margin:10px 0 18
 .h{{font-size:13px;font-weight:bold;margin:2px 0}} img{{width:1800px;display:block}} .q{{font-size:13px;margin-top:3px}}
 body:not(.ticks) .tr{{display:none}} .tr{{position:relative;width:1800px;height:8px;background:#eee}} .tk{{position:absolute;top:0;height:8px}}
 </style></head><body><h2>USV review by shape — 30-s spectrogram strips, 15-100 kHz (cohort 2026c)</h2>
-<p>{len(meta)} strips from {len(a.wav)} recording windows, in time order. Each frequency has its own background removed (the mics' steady
+<p>{len(meta)} strips from {len(windows)} recording windows, in time order. Each frequency has its own background removed (the mics' steady
 electronic tones vanish); colour = 0-25 dB above that background; time compressed by the maximum, so short calls stay visible.
 Click a strip to open it full size. The thin row under each strip shows the automatic detector's candidates (red < 32 kHz, blue >= 32 kHz).
 Answer per strip; answers stay in this browser; <b>Export</b> at the end and put the files in <code>ephys/configs/usv_review_2026c/</code>.</p>
