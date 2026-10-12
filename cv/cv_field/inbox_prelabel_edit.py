@@ -27,6 +27,8 @@ Usage:
          implant box (head-point candidates) + rat box (head + body, no tail; candidates from a body click), amendments B1 / B1a
   python cv/cv_field/inbox_prelabel_edit.py update-v21 [--run <SAM 3 run>]                        # v2 -> v2.1 IN PLACE (amendment B2:
          J joins pieces); same storage key, backups *.v2_0.bak, payload verified identical, old-state load test
+  python cv/cv_field/inbox_prelabel_edit.py update-v22 [--run <SAM 3 run>]                        # v2.1 -> v2.2 IN PLACE (UX: a click
+         switches to the rat box, mode banner, toasts saying why a key cannot act, legend); backups *.v2_1.bak, old-state test
   python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sam3_prelabel_edit_2026c/<file>.json [--run <run>]
 """
 from __future__ import annotations
@@ -1079,7 +1081,7 @@ def write_summary(run: Path, export: Path, regenerate_report: bool = True, more:
     for e in [export] + list(more or []):
         exs.append(json.loads(Path(e).read_text(encoding="utf-8")))
     ver = exs[0].get("page_version")
-    v2s = (PAGE_VERSION_V2, PAGE_VERSION_V21)
+    v2s = (PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22)
     if ver not in (PAGE_VERSION,) + v2s or any((x.get("page_version") in v2s) != (ver in v2s) for x in exs):
         raise SystemExit(f"not exports of one page version: {[x.get('page_version') for x in exs]}")
     meta = {"export": Path(export).as_posix(), "more_exports": [Path(m).as_posix() for m in (more or [])], "made": datetime.now().isoformat(timespec="seconds")}
@@ -2566,6 +2568,373 @@ def page_check_v21(out: Path, data: dict, old_html: Path, old_data: Path) -> dic
     return res
 
 
+# ============================================================================================ v2.2: UX fixes (the user: "click body -> J does nothing")
+PAGE_VERSION_V22 = "inbox_sam3_prelabel_edit_2026c_v2.2"
+
+
+def _sub(src: str, old: str, new: str) -> str:
+    assert src.count(old) == 1, (src.count(old), old[:90])
+    return src.replace(old, new)
+
+
+def _make_js_v22() -> str:
+    j = PAGE_JS_V21
+    # 1. a plain click on a PRELABEL frame always goes to the RAT box and runs the body click (logged as obj_auto_switch)
+    j = _sub(j, """  if (d.kind === 'press') { if (!d.moved && st().arm === 'PRELABEL' && S.cur.obj === 'rat') bodyClick(d.u, d.v); return; }""",
+             """  if (d.kind === 'press') { if (!d.moved && st().arm === 'PRELABEL' && mode !== 'draw' && !showAll) { const r = rat();
+      if (r && !r.deleted) { if (S.cur.obj !== 'rat') { S.cur.obj = 'rat'; log('obj_auto_switch', {from: 'implant', reason: 'body_click'}); } bodyClick(d.u, d.v); } } return; }""")
+    # 3. why a key cannot act
+    j = _sub(j, """function accept(){ const o = obj(), c = curCand(); if (!o || c === null) return; snap(); const m = fr().masks[c];""",
+             """const MSG = {scratch: 'SCRATCH frame: draw by hand (drag) · 从零画框: 请手动拖框', norat: 'no rat selected · 没有选中的鼠',
+  hidden: 'implant hidden — press H to show it again · 植入体已标为看不见 (按 H 取消)', noclick: 'no candidate here — click the body first · 先点鼠的身体',
+  nocand: 'no candidate here — click another part of the rat, or draw by hand (B) · 这里没有候选: 点鼠的别处或手画 (B)',
+  none: '"none usable" is shown — press N for the candidates again, or draw by hand (B) · 当前为"无可用": 按 N 或手画 (B)',
+  joined: 'already joined · 已经拼接过这个 mask', mp_implant: 'M / P apply to the rat box only · 合并 / 不完整只用于鼠框'};
+function whyNot(){ const r = rat(), o = obj(); if (st().arm !== 'PRELABEL') return MSG.scratch; if (!r || r.deleted || !o) return MSG.norat;
+  if (S.cur.obj === 'implant' && o.hidden) return MSG.hidden; if (S.cur.obj === 'rat' && !o.click) return MSG.noclick;
+  if (!o.cand.length) return MSG.nocand; if (o.k >= o.cand.length) return MSG.none; return null; }
+function accept(){ const o = obj(), c = curCand(); if (!o || c === null) { const w = whyNot(); if (w) toast(w); return; } snap(); const m = fr().masks[c];""")
+    j = _sub(j, """function join(){ const o = obj(), c = curCand(); if (!o || c === null) return;
+  if ((o.pieces || []).some(p => p.mask === c)) { toast('this piece is already joined'); return; }""",
+             """function join(){ const o = obj(), c = curCand(); if (!o || c === null) { const w = whyNot(); if (w) toast(w); return; }
+  if ((o.pieces || []).some(p => p.mask === c)) { toast(MSG.joined); return; }""")
+    j = _sub(j, """function next(){ const o = obj(), r = rat(); if (!o || !r || r.deleted || st().arm !== 'PRELABEL' || showAll) return; if (S.cur.obj === 'implant' && o.hidden) return;
+  if (S.cur.obj === 'rat' && !o.click) return; snap();""",
+             """function next(){ const o = obj(), r = rat(); if (showAll) return; if (!o || !r || r.deleted || st().arm !== 'PRELABEL' || (S.cur.obj === 'implant' && o.hidden)
+  || (S.cur.obj === 'rat' && !o.click)) { toast(whyNot() || MSG.norat); return; } if (!o.cand.length) { toast(MSG.nocand); return; } snap();""")
+    j = _sub(j, """function flag(kind){ if (S.cur.obj !== 'rat') return; const o = obj(); if (!o) return;""",
+             """function flag(kind){ if (st().arm !== 'PRELABEL') { toast(MSG.scratch); return; } if (S.cur.obj !== 'rat') { toast(MSG.mp_implant); return; } const o = obj(); if (!o) return;""")
+    j = _sub(j, """  if (curCand() === null) return; snap(); const fl = o.cand_flags[o.k + 1] = o.cand_flags[o.k + 1] || {}; fl[kind] = !fl[kind];""",
+             """  if (curCand() === null) { toast(whyNot() || MSG.none); return; } snap(); const fl = o.cand_flags[o.k + 1] = o.cand_flags[o.k + 1] || {}; fl[kind] = !fl[kind];""")
+    j = _sub(j, """  if (k === 'a' && pre) accept(); else if (k === 'j' && pre) join(); else if (k === 'n' && pre) next(); else if (k === 'm' && pre) flag('merged'); else if (k === 'p' && pre) flag('partial');""",
+             """  if (!pre && ['a', 'j', 'n', 'm', 'p'].includes(k)) { toast(MSG.scratch); return; }
+  if (k === 'a') accept(); else if (k === 'j') join(); else if (k === 'n') next(); else if (k === 'm') flag('merged'); else if (k === 'p') flag('partial');""")
+    # 2. mode banner, coloured like the box
+    j = _sub(j, """  $('objtag').textContent = OBJ_NAME[S.cur.obj]; $('objtag').className = 'obj-' + S.cur.obj;""",
+             """  $('objtag').textContent = OBJ_NAME[S.cur.obj]; $('objtag').className = 'obj-' + S.cur.obj;
+  const pre = s.arm === 'PRELABEL', mb = $('modebanner');
+  mb.textContent = (S.cur.obj === 'implant' ? 'NOW: IMPLANT box 植入体框 (orange)' : 'NOW: RAT box 整鼠框 (green) — ' + (pre ? 'click the body' : 'drag to draw'))
+    + '   ·   ' + (pre ? 'PRELABEL 预标注' : 'SCRATCH 从零画框 — drag to draw, no candidates, A/N/J off');
+  mb.className = 'mode-' + S.cur.obj;""")
+    j = _sub(j, """  setCur: (ri, o) => { S.cur.ri = ri; S.cur.obj = o; draw(); }, toast: () => $('toast').style.display === 'block' ? $('toast').textContent : ''};""",
+             """  setCur: (ri, o) => { S.cur.ri = ri; S.cur.obj = o; draw(); }, toast: () => $('toast').style.display === 'block' ? $('toast').textContent : '',
+  banner: () => $('modebanner').textContent, clearToast: () => { $('toast').style.display = 'none'; }};""")
+    return j
+
+
+PAGE_JS_V22 = _make_js_v22()
+
+LEGEND_V22 = """<details id="legend" open><summary>colours 图例</summary>
+<div><span class="sw" style="border:2px dashed #00e5ff"></span> implant candidate 植入体候选</div>
+<div><span class="sw" style="border:2px dashed #ff9f1a"></span> implant box 植入体框 (orange)</div>
+<div><span class="sw" style="border:2px dashed #ff4fd8"></span> rat candidate 鼠候选 (pink)</div>
+<div><span class="sw" style="border:2px solid #39ff14"></span> rat box 整鼠框 (green)</div>
+<div><span class="sw" style="border:2px dashed #ffd400"></span> candidate bbox 候选框</div>
+<div><span style="color:#ff4fd8;font-weight:700">+</span> body click 点击位置 &nbsp; <span style="color:#fff">●</span> head 头 (<span style="color:#ff2fd0">●</span> current rat)</div>
+<div style="opacity:.55">faint = other rats 其他鼠</div></details>"""
+
+
+def page_html_v22(run_name: str) -> str:
+    h = page_html_v21(run_name).replace(PAGE_JS_V21, PAGE_JS_V22)
+    h = _sub(h, "<title>In-box pre-label edit v2.1</title>", "<title>In-box pre-label edit v2.2</title>")
+    h = _sub(h, "· v2.1: implant box + rat box, join pieces · 预标注编辑 v2.1</h1>", "· v2.2: implant box + rat box, join pieces · 预标注编辑 v2.2</h1>")
+    h = _sub(h, """<b>Per rat: IMPLANT box, then RAT box, then Enter</b> 每只鼠: 先植入体框, 再鼠框, 然后 Enter.<br>""",
+             """<b>Each rat: implant (A/N/J, H hidden) → click the body → rat box (A/N/J…) → Enter</b> 每只鼠: 植入体 (A/N/J, H 看不见) → 点身体 → 鼠框 (A/N/J…) → Enter.
+A click on the image always switches to the RAT box 点击图像总是切换到鼠框.<br>""")
+    h = _sub(h, '<canvas id="cv"></canvas>', '<div id="modebanner"></div><div style="position:relative"><canvas id="cv"></canvas>' + LEGEND_V22 + "</div>")
+    h = _sub(h, '<div id="toast" style="display:none;font-weight:600;color:var(--acc)"></div>', '<div id="toast" style="display:none"></div>')
+    h = _sub(h, "</style></head>", """
+#modebanner{font-size:19px;font-weight:800;padding:6px 12px;border-radius:6px;margin:4px 0;color:#111;letter-spacing:.2px}
+#modebanner.mode-implant{background:#ff9f1a}#modebanner.mode-rat{background:#39ff14}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:50;font-size:18px;font-weight:700;padding:10px 18px;border-radius:8px;
+ background:#222;color:#fff;border:2px solid #ffd400;box-shadow:0 4px 18px rgba(0,0,0,.4);max-width:80vw;text-align:center}
+#legend{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.62);color:#eee;font-size:12px;padding:4px 8px;border-radius:6px;line-height:1.5}
+#legend summary{cursor:pointer;font-weight:700}#legend .sw{display:inline-block;width:18px;height:9px;margin-right:4px;vertical-align:middle}
+</style></head>""")
+    return h
+
+
+def _compare_exports(ex_old: dict, ex_new: dict, strip=lambda x: x) -> dict:
+    """Same state, two page versions: everything equal (after strip) except page_version / exported_at, time that may only have
+    grown by the reload's seconds, and events (the old log must be a prefix of the new one)."""
+    a, b = strip(ex_old), strip(ex_new)
+    top = [k for k in set(a) | set(b) if k not in ("page_version", "exported_at", "events", "frames") and a.get(k) != b.get(k)]
+    fd = []
+    for fa, fb in zip(a["frames"], b["frames"]):
+        for k in fa:
+            if k == "active_s":
+                if not (fb[k] >= fa[k] - 1e-9 and fb[k] - fa[k] < 3.0):
+                    fd.append((fa["frame_id"], k))
+            elif k == "rats":
+                for ra, rb in zip(fa["rats"], fb["rats"]):
+                    for kk in ra:
+                        if kk in ("implant", "rat"):
+                            for k3 in ra[kk]:
+                                if k3 == "time_ms":
+                                    if not (rb[kk][k3] >= ra[kk][k3] - 1e-9 and rb[kk][k3] - ra[kk][k3] < 3000):
+                                        fd.append((fa["frame_id"], ra["id"], kk, k3))
+                                elif ra[kk][k3] != rb[kk].get(k3):
+                                    fd.append((fa["frame_id"], ra["id"], kk, k3))
+                        elif ra[kk] != rb.get(kk):
+                            fd.append((fa["frame_id"], ra["id"], kk))
+                if len(fa["rats"]) != len(fb["rats"]):
+                    fd.append((fa["frame_id"], "n_rats"))
+            elif fa[k] != fb.get(k):
+                fd.append((fa["frame_id"], k))
+    eo, en = ex_old["events"], ex_new["events"]
+    extra = [e["ev"] for e in en[len(eo):]]
+    return {"top_level_diffs": top, "frame_diffs": fd[:10], "events_prefix_intact": en[:len(eo)] == eo, "events_added_by_reload": extra,
+            "ok": not top and not fd and en[:len(eo)] == eo and set(extra) <= {"frame_open", "visibility"} and len(extra) <= 3}
+
+
+def page_check_v22(new_dir: Path, data: dict, old_html: Path, old_data: Path) -> dict:
+    """Headless Chrome (throwaway profile). A: old-state test — the backed-up v2.1 page saves a state with joins (2 pieces + an
+    object-level flag), an accepted implant, a hidden implant + manual rat box and SCRATCH boxes; v2.2 loads it under the same
+    key; exports equal apart from page_version / time / reload events. B: v2.2 UX — a click in IMPLANT mode switches to the RAT
+    box and gives candidates (obj_auto_switch logged), J joins; the toasts (already joined, no click yet, SCRATCH, implant hidden);
+    the banner text per mode and arm; export; no network URL."""
+    import inbox_identity_page as ipage
+    html_t, js_t = (new_dir / "index.html").read_text(encoding="utf-8"), (new_dir / "pl_data.js").read_text(encoding="utf-8")
+    res = {"network_urls": re.findall(r"https?://[^\s\"'<>]+", html_t) + re.findall(r"https?://[^\s\"'<>]+", js_t)}
+    vdir = new_dir.parent if new_dir.name.startswith("_") else new_dir
+    tdir = vdir / "_v21_oldstate_test"
+    if tdir.exists():
+        shutil.rmtree(tdir)
+    tdir.mkdir()
+    shutil.copy2(old_html, tdir / "index.html")
+    od = _read_data_js(old_data)
+    for f in od["frames"]:
+        f["img"] = "../" + f["img"]
+    (tdir / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(od, separators=(",", ":")) + ";\n", encoding="utf-8")
+    prof = Path(tempfile.mkdtemp(prefix="pl22check_"))
+    p, wsu, bws = ipage._chrome((tdir / "index.html").resolve().as_uri(), prof, ipage._free_port())
+    c = None
+    fr = data["frames"]
+    try:
+        c = ipage._CDP(wsu)
+        c.call("Runtime.enable")
+
+        def ready():
+            for _ in range(240):
+                try:
+                    if c.ev("!!window.__pl && window.__pl.ready()"):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+                time.sleep(0.25)
+            return False
+
+        def key(k):
+            c.ev(f"document.dispatchEvent(new KeyboardEvent('keydown', {{key: {json.dumps(k)}, bubbles: true}}))")
+
+        def mouse(kind, u, v):
+            c.ev(f"(() => {{ const [x, y] = window.__pl.imgToClient({u}, {v}); document.getElementById('cv').dispatchEvent("
+                 f"new MouseEvent({json.dumps(kind)}, {{clientX: x, clientY: y, button: 0, bubbles: true}})); }})()")
+
+        def click(u, v):
+            mouse("mousedown", u, v)
+            mouse("mouseup", u, v)
+
+        def drag(u0, v0, u1, v1):
+            mouse("mousedown", u0, v0)
+            mouse("mousemove", (u0 + u1) / 2, (v0 + v1) / 2)
+            mouse("mousemove", u1, v1)
+            mouse("mouseup", u1, v1)
+
+        def R():
+            return c.ev("JSON.parse(JSON.stringify(window.__pl.rat()))")
+
+        def body_points(f, min_cand):
+            out = []
+            for m in sorted(f["masks"], key=lambda m: -m["a"])[:25]:
+                for pts in m["p"]:
+                    x0, y0 = float(np.mean(pts[0::2])), float(np.mean(pts[1::2]))
+                    if _pip(x0, y0, pts):
+                        cand = c.ev(f"window.__pl.candidatesAt({x0}, {y0})")
+                        if len(cand) >= min_cand:
+                            out.append(((x0, y0), cand))
+                        break
+            return out
+        # ---------------- A. old-state test (v2.1 state with joins)
+        res["loaded_v21"] = ready()
+        res["v21_page_version"] = c.ev("window.__pl.D.page_version")
+        pre = [i for i, f in enumerate(fr) if f["arm"] == "PRELABEL" and len(f["cand"]) >= 2 and f["cand"][0]]
+        fi = None
+        for i in pre:
+            c.ev(f"window.__pl.goFrame({i})")
+            bp = body_points(fr[i], 2)
+            if bp:
+                fi, (pt, cands) = i, bp[0]
+                break
+        c.ev(f"window.__pl.goFrame({fi})")
+        ready()
+        f = fr[fi]
+        key("a")                                    # implant candidate 1
+        key("Enter")                                # -> rat (v2.1 needs the explicit switch)
+        click(*pt)
+        key("j")
+        key("n")
+        key("j")                                    # joined, 2 pieces
+        key("m")                                    # object-level flag
+        for _ in range(3):
+            c.ev("window.__pl.setLastInput(0)")
+            time.sleep(0.5)
+        key("Enter")
+        key("h")
+        hu, hv = f["heads"][1]["u"], f["heads"][1]["v"]
+        key("b")
+        drag(hu - 120, hv - 90, hu + 160, hv + 140)
+        fs = next(i for i, x in enumerate(fr) if x["arm"] == "SCRATCH")
+        c.ev(f"window.__pl.goFrame({fs})")
+        ready()
+        g = fr[fs]
+        gu, gv = g["heads"][0]["u"], g["heads"][0]["v"]
+        drag(gu - 50, gv - 40, gu + 50, gv + 40)
+        key("Enter")
+        drag(gu - 180, gv - 140, gu + 220, gv + 180)
+        c.ev(f"window.__pl.goFrame({fi})")
+        c.ev("window.__pl.setLastInput(60000)")
+        ex_old = c.ev("window.__pl.exportJSON()")
+        c.ev("window.__pl.save()")
+        old_key = c.ev("window.__pl.key")
+        c.call("Page.navigate", url=(new_dir / "index.html").resolve().as_uri())
+        time.sleep(1.5)
+        res["loaded_v22"] = ready()
+        c.ev("window.__pl.setLastInput(60000)")
+        ex_new = c.ev("window.__pl.exportJSON()")
+        cmp = _compare_exports(ex_old, ex_new)
+        f_new = next(x for x in ex_new["frames"] if x["frame_id"] == f["id"])
+        r1 = f_new["rats"][0]
+        res["old_state"] = {**cmp, "same_storage_key": old_key == c.ev("window.__pl.key"),
+                            "rat1_rat": [r1["rat"]["source"], r1["rat"]["n_pieces"], r1["rat"]["obj_flags"]],
+                            "ok": cmp["ok"] and old_key == c.ev("window.__pl.key") and r1["rat"]["source"] == "joined" and r1["rat"]["n_pieces"] == 2
+                            and r1["rat"]["obj_flags"].get("merged") is True}
+        # ---------------- B. v2.2 UX on another PRELABEL frame
+        fj, pts = None, None
+        for i in pre:
+            if i == fi:
+                continue
+            c.ev(f"window.__pl.goFrame({i})")
+            bp = body_points(fr[i], 2)
+            if bp:
+                fj, pts = i, bp[0]
+                break
+        c.ev(f"window.__pl.goFrame({fj})")
+        ready()
+        g = fr[fj]
+        b_impl = c.ev("window.__pl.banner()")
+        o0 = c.ev("window.__pl.cur()")["obj"]
+        click(*pts[0])                              # still in IMPLANT mode: the click switches to the RAT box
+        o1 = c.ev("window.__pl.cur()")["obj"]
+        rr = R()["rat"]
+        b_rat = c.ev("window.__pl.banner()")
+        evs = c.ev("window.__pl.S().events.slice(-3).map(e => e.ev)")
+        key("j")
+        r_j = R()["rat"]
+        key("j")                                    # same mask again -> toast
+        t_joined = c.ev("window.__pl.toast()")
+        res["click_switch_and_join"] = {"obj_before": o0, "obj_after": o1, "n_cand": len(rr["cand"]), "last_events": evs, "pieces_after_j": len(r_j["pieces"]),
+                                        "ok": o0 == "implant" and o1 == "rat" and len(rr["cand"]) >= 2 and "obj_auto_switch" in evs and "body_click" in evs
+                                        and len(r_j["pieces"]) == 1 and r_j["source"] == "cand"}
+        key("n")
+        key("j")
+        res["join_after_switch"] = {"source": R()["rat"]["source"], "n_pieces": len(R()["rat"]["pieces"]),
+                                    "ok": R()["rat"]["source"] == "joined" and len(R()["rat"]["pieces"]) == 2}
+        # toasts
+        c.ev("window.__pl.clearToast()")
+        key("Enter")                                # next rat, IMPLANT
+        c.ev("(() => { const S = window.__pl.S(); S.cur.obj = 'rat'; })()")
+        key("j")                                    # rat box, no body click yet
+        t_noclick = c.ev("window.__pl.toast()")
+        key("h")                                    # implant hidden
+        c.ev("window.__pl.setCur(window.__pl.cur().ri, 'implant')")
+        key("j")
+        t_hidden = c.ev("window.__pl.toast()")
+        fs2 = next(i for i, x in enumerate(fr) if x["arm"] == "SCRATCH" and i != fs)
+        c.ev(f"window.__pl.goFrame({fs2})")
+        ready()
+        b_scr_impl = c.ev("window.__pl.banner()")
+        key("a")
+        t_scratch = c.ev("window.__pl.toast()")
+        key("Enter")
+        b_scr_rat = c.ev("window.__pl.banner()")
+        res["toasts"] = {"already_joined": t_joined, "no_click": t_noclick, "implant_hidden": t_hidden, "scratch": t_scratch,
+                         "ok": "already joined" in t_joined and "click the body first" in t_noclick and "implant hidden" in t_hidden
+                         and "SCRATCH frame" in t_scratch}
+        res["banner"] = {"prelabel_implant": b_impl, "prelabel_rat": b_rat, "scratch_implant": b_scr_impl, "scratch_rat": b_scr_rat,
+                         "ok": "IMPLANT" in b_impl and "PRELABEL" in b_impl and "RAT box" in b_rat and "click the body" in b_rat
+                         and "IMPLANT" in b_scr_impl and "SCRATCH" in b_scr_impl and "A/N/J off" in b_scr_impl and "RAT box" in b_scr_rat
+                         and "drag to draw" in b_scr_rat}
+        res["legend"] = {"ok": c.ev("!!document.getElementById('legend') && document.getElementById('legend').textContent.includes('rat candidate')")}
+        ej = c.ev("window.__pl.exportJSON()")
+        n_rats = sum(len(x["rats"]) for x in ej["frames"])
+        csv_lines = c.ev("window.__pl.exportCSV().trim().split('\\n').length")
+        evk = sorted({e["ev"] for e in ej["events"]})
+        res["export"] = {"version": ej["page_version"], "csv_lines": csv_lines, "event_kinds": evk,
+                         "ok": ej["page_version"] == PAGE_VERSION_V22 and csv_lines == 2 * n_rats + 1 and "obj_auto_switch" in evk and "join" in evk}
+        c.ev("localStorage.clear()")
+    finally:
+        if c:
+            c.close()
+        ipage._close_chrome(p, bws)
+        shutil.rmtree(prof, ignore_errors=True)
+        shutil.rmtree(tdir, ignore_errors=True)
+    keys = ["old_state", "click_switch_and_join", "join_after_switch", "toasts", "banner", "legend", "export"]
+    res["verdict"] = "PASS" if (res.get("loaded_v21") and res.get("loaded_v22") and all(res[k]["ok"] for k in keys) and not res["network_urls"]) else "FAIL"
+    return res
+
+
+def update_v22(run: Path, check: bool = True) -> dict:
+    """In-place v2.1 -> v2.2 (UX fixes). Same storage key; *.v2_1.bak backups first; payload verified identical to v2.1; a
+    staged copy is checked (incl. the old-state load test) before the live files are replaced."""
+    out = run / "prelabel_edit_v2"
+    cur = _read_data_js(out / "pl_data.js")
+    if cur["page_version"] == PAGE_VERSION_V21:
+        for name in ("index.html", "pl_data.js", "page_check.json", "build_meta.json"):
+            src, bak = out / name, out / f"{name}.v2_1.bak"
+            if src.exists() and not bak.exists():
+                shutil.copy2(src, bak)
+    old = _read_data_js(out / "pl_data.js.v2_1.bak")
+    assert old["page_version"] == PAGE_VERSION_V21, f"the backup is not v2.1: {old['page_version']}"
+    key = old["storage_key"]
+    new = _v2_data(run, PAGE_VERSION_V22, key, [PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22])
+    same = len(old["frames"]) == len(new["frames"]) and all(a[k] == b[k] for a, b in zip(old["frames"], new["frames"])
+                                                            for k in ("id", "domain", "arm", "pile_bin", "order", "img", "heads", "masks", "cand"))
+    if not same:
+        raise SystemExit("v2.2 payload differs from v2.1: not written, v2.1 left in place")
+    js_final = "window.PL_DATA = " + json.dumps(new, separators=(",", ":")) + ";\n"
+    html_final = page_html_v22(run.name)
+    pc = None
+    if check:
+        stg = out / "_v22_staging"
+        if stg.exists():
+            shutil.rmtree(stg)
+        stg.mkdir()
+        staged = json.loads(json.dumps(new))
+        for f in staged["frames"]:
+            f["img"] = "../" + f["img"]
+        (stg / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(staged, separators=(",", ":")) + ";\n", encoding="utf-8")
+        (stg / "index.html").write_text(html_final, encoding="utf-8")
+        try:
+            pc = page_check_v22(stg, new, out / "index.html.v2_1.bak", out / "pl_data.js.v2_1.bak")
+        finally:
+            shutil.rmtree(stg, ignore_errors=True)
+        print(f"v2.2 page check (staged): {pc['verdict']}", flush=True)
+        if pc["verdict"] != "PASS":
+            S.write_json(out / "page_check_v2_2_FAILED.json", pc)
+            raise SystemExit("v2.2 check failed: the live v2.1 page was NOT replaced (see page_check_v2_2_FAILED.json)")
+    (out / "pl_data.js").write_text(js_final, encoding="utf-8")
+    (out / "index.html").write_text(html_final, encoding="utf-8")
+    meta = json.loads((out / "build_meta.json.v2_1.bak").read_text(encoding="utf-8"))
+    meta["v2_2"] = {"made": datetime.now().isoformat(timespec="seconds"), "why": "UX: click switches to the rat box; mode banner; toasts; legend",
+                    "page_version": PAGE_VERSION_V22, "storage_key": key, "payload_identical_to_v2_1": same,
+                    "backups": sorted(q.name for q in out.glob("*.bak")), "page_check": pc["verdict"] if pc else "not run", "git_commit": git_commit()}
+    if pc:
+        S.write_json(out / "page_check.json", pc)
+    S.write_json(out / "build_meta.json", meta)
+    return meta
+
+
 # ============================================================================================ selftest
 def selftest() -> int:
     ok_all = True
@@ -2818,13 +3187,32 @@ def selftest() -> int:
     md21 = summary_md_v2(sj, "synthetic_v21.json")
     rec("v2.1 markdown: single vs joins, pieces per box, union shifts", "with joins" in md21 and "pieces per box" in md21 and "union box" in md21)
     rec("strip of v2.1-only fields", _strip_new({"a": 1, "pieces": [], "x": {"union_box": 1, "b": 2}, "schema": "2.1"}) == {"a": 1, "x": {"b": 2}})
+    # ---------------- v2.2 (UX)
+    if node:
+        with tempfile.TemporaryDirectory() as td:
+            js = Path(td) / "pl22.js"
+            js.write_text(PAGE_JS_V22, encoding="utf-8")
+            r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True)
+            rec("v2.2 page script parses (node --check)", r.returncode == 0, r.stderr[-300:])
+    h22 = page_html_v22("x")
+    rec("v2.2 page: banner, legend, new help line, centred toast, no network", 'id="modebanner"' in h22 and 'id="legend"' in h22
+        and "Each rat: implant (A/N/J, H hidden) → click the body → rat box (A/N/J…) → Enter" in h22 and "#toast{position:fixed" in h22
+        and not re.search(r"https?://", h22))
+    rec("v2.2 script: click -> rat box + obj_auto_switch; toasts for scratch / hidden / no click / joined", "obj_auto_switch" in PAGE_JS_V22
+        and all(m in PAGE_JS_V22 for m in ("SCRATCH frame: draw by hand", "implant hidden", "click the body first", "already joined")))
+    rec("v2.2 keeps the storage-key rule", "D.storage_key ||" in PAGE_JS_V22)
+    rec("export comparison helper: equal states pass, a changed box fails",
+        _compare_exports({"a": 1, "events": [{"ev": "x"}], "frames": [{"frame_id": "F", "active_s": 1.0, "rats": [{"id": "h1", "implant": {"box": [0, 0, 1, 1], "time_ms": 5}, "rat": {"box": None, "time_ms": 1}}]}]},
+                         {"a": 1, "events": [{"ev": "x"}, {"ev": "frame_open"}], "frames": [{"frame_id": "F", "active_s": 1.5, "rats": [{"id": "h1", "implant": {"box": [0, 0, 1, 1], "time_ms": 900}, "rat": {"box": None, "time_ms": 1}}]}]})["ok"]
+        and not _compare_exports({"events": [], "frames": [{"frame_id": "F", "rats": [{"id": "h1", "implant": {"box": [0, 0, 1, 1]}, "rat": {}}]}]},
+                                 {"events": [], "frames": [{"frame_id": "F", "rats": [{"id": "h1", "implant": {"box": [0, 0, 2, 1]}, "rat": {}}]}]})["ok"])
     print("SELFTEST", "PASS" if ok_all else "FAIL")
     return 0 if ok_all else 1
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", nargs="?", choices=["build", "summarize", "update-v21"])
+    ap.add_argument("cmd", nargs="?", choices=["build", "summarize", "update-v21", "update-v22"])
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--run", type=Path, default=RUN_DEFAULT)
     ap.add_argument("--export", type=Path)
@@ -2834,6 +3222,10 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.cmd == "update-v22":
+        m = update_v22(a.run, check=not a.no_page_check)
+        print(json.dumps(m.get("v2_2"), indent=1, default=str))
+        return 0
     if a.cmd == "update-v21":
         m = update_v21(a.run, check=not a.no_page_check)
         print(json.dumps(m.get("v2_1"), indent=1, default=str))

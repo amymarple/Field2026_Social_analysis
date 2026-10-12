@@ -230,3 +230,38 @@ Tested on synthetic exports only.
   - **Joins:** join 2 pieces (box = union) → J again = no-op → a 3rd piece from a second click → U back to 2 → an edge drag
     then F → the union → M on the joined box (object level) → A replaces the pieces (toast) → J on an implant (2 pieces).
   - **Export:** v2.1, CSV = 2 × rats + 1, `join` events, pieces with cache indices; no network URL.
+
+## Addendum 2026-10-12 — page v2.2 in place: UX fixes (a click always goes to the rat box)
+
+**Why.** The user: "我click了body 然后显示橘色或者黄色，但按j完全没反应" ("I clicked the body, it showed orange or yellow, but
+J did nothing at all").
+- The page was still in IMPLANT mode, so the body click was ignored.
+- J then acted on an implant candidate that was already joined, and the toast was easy to miss.
+
+**Fixes** (`inbox_prelabel_edit.py update-v22`; same folder, files and storage key):
+- **Click:** on a PRELABEL frame, a plain click on the image (not in draw mode, not in show-all) always switches to the
+  current rat's RAT box and runs the body click. This is logged as `obj_auto_switch`.
+- **Mode banner** above the image, coloured like the box:
+  - "NOW: IMPLANT box 植入体框 (orange)" or "NOW: RAT box 整鼠框 (green) — click the body";
+  - plus "PRELABEL 预标注" or "SCRATCH 从零画框 — drag to draw, no candidates, A/N/J off".
+- **Toasts:** larger and centred near the top. When J, A, N, M or P cannot act, a toast in English and Chinese says why:
+  already joined; no candidate here — click the body first; SCRATCH frame — draw by hand; implant hidden; none usable;
+  M / P are for the rat box only.
+- **Legend:** a collapsible colour legend in the image corner.
+- **Help line:** "Each rat: implant (A/N/J, H hidden) → click the body → rat box (A/N/J…) → Enter".
+
+**Safety:**
+- `*.v2_1.bak` backups were made first; they are byte-identical to v2.1 (MD5).
+- The payload was verified identical to v2.1, and the staged copy was checked before the live files were replaced.
+- No data field changed: the page version is v2.2, and `summarize` reads v2.0 / v2.1 / v2.2 exports.
+
+**Checks:**
+- `--selftest` 52 / 52.
+- **Headless: PASS** (`prelabel_edit_v2/page_check.json`):
+  - **Old-state test:** a v2.1 state with a 2-piece joined rat box and an object-level merged flag, an accepted implant, a
+    hidden implant with a manual rat box, and SCRATCH boxes loads intact in v2.2. Exports are equal apart from the version
+    and the reload's events.
+  - A click in IMPLANT mode switches to RAT and gives 5 candidates (`obj_auto_switch` + `body_click`). J joins 1, then N → J
+    gives 2 pieces.
+  - The four toasts and the banner text for both arms × both boxes; the legend.
+  - Export (v2.2, CSV = 2 × rats + 1); no network URL.
