@@ -246,3 +246,23 @@ a pretrained vision model, given the same images the user labelled, separates th
 
 **Verdict (by the rule fixed above).** Not clearly better than v1 → more labels first. Proposed second round: about 24
 new 5-min windows (12 per mic, spread over 08-31 → 09-10, night-weighted), presence only.
+
+### Round 2 labels + re-evaluation (2026-10-12)
+
+**Labels.** The user labelled 240 more strips from 24 new 5-min windows (`usv_pick_windows.py`, seed 12; page
+`usv_strip_review_20261012_1024`; labels `ephys/configs/usv_review_2026c/usv_strip_labels_round2.*`): 17 with USV
+(MIC01 15, MIC02 2). Both rounds: 492 strips, 53 with USV, 19 / 18 windows per mic.
+
+**Leave-one-window-out** (`D:/Field2026_analysis_out/2026c/usv_eval_r1r2/`, `usv_dino_presence_r1r2/`):
+
+| mic | DINOv3 per mic | best simple feature |
+|---|---|---|
+| MIC01 | AUC 0.84; sensitivity 0.75 / specificity 0.86 / precision 0.46, Youden 0.61 | v1 tonal ≥ 20 ms AUC 0.86 but Youden 0.47 after a held-out threshold; v2 longest call Youden 0.54 |
+| MIC02 | AUC 0.23–0.45 | v1 total tonal duration AUC 0.72, Youden 0.44, precision 0.17 |
+
+**Verdict (by the rule).** DINOv3 is clearly better on MIC01 only, so the "both mics" rule is not met.
+
+**Description.** USV strips are rare (~14 % MIC01, ~7 % MIC02) and MIC02's calls are short and faint.
+
+**Recommendation to the user.** Model-assisted screening, not a fully automatic detector: rank all MIC01 strips with
+DINOv3, the user confirms the top ~300; park MIC02.
