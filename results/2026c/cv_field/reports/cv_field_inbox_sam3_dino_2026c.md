@@ -4,6 +4,21 @@ Driver `cv/cv_field/inbox_sam3_dino_test.py`; plan `implementation_plan/2026-10-
 
 **Scope of the T1 / T2 claims.** A head click proves only that a mask covers that head point. Until the user has scored the blind mask review (below), every T1 / T2 number here is **head-point exclusivity**: one mask per head point, no mask spanning two head points, no mask on no head point. None of them is a claim that SAM 3 gives one-whole-rat masks or usable single-rat boxes.
 
+**Correction (2026-10-12) — the T1 reading below was too strong.**
+- **Corrected wording** (Codex *Yolo_identity*, accepted): the pre-registered prompt-and-threshold selection did not
+  meet the bar for a stand-alone detector. Low-τ "rat" covered most head points on the exploratory frames and may serve
+  as a candidate generator; the quality of whole-rat masks is not yet verified.
+- **Why the old reading misled.**
+  - The selection rule (pooled F1 over all masks) counts every mask on no head point as a false positive, so it chose
+    "hooded rat", a prompt that returns few masks.
+  - For "rat" the cache shows test IR X 50.7 % (recall 52 %) at τ 0.03, and 38 / 49 heads with their own mask (5
+    missed) on the 10 exploratory IR frames at τ 0.01.
+  - Its rat masks score low (mostly 0.01–0.25), so no global threshold separates them from the many other masks.
+- **The user** (prompt GUI, 2026-10-12): with "rat" the rats are labelled; the extra masks are mostly garbage.
+- **Codex's caution:** a mask on no head point may be a fragment of a rat, not garbage.
+- **Follow-up:** plan [`2026-10-12-inbox-sam3-rat-prelabel.md`](../../../../implementation_plan/2026-10-12-inbox-sam3-rat-prelabel.md).
+  It has two parts: B = a head-anchored pre-label edit pilot on these seen frames (dev); C = a frozen test on new frames.
+
 ## Headline
 
 - **T1 (text prompt; the pre-named primary is the chosen prompt on test IR frames).** The dev choice is P4 "hooded rat" at τ = 0.01 (dev IR F1 0.252). On test IR (28 frames, 138 heads, 15 groups):
@@ -28,7 +43,11 @@ Driver `cv/cv_field/inbox_sam3_dino_test.py`; plan `implementation_plan/2026-10-
 
 ## Reading (what these numbers do and do not say)
 
-- **T1:** SAM 3 text prompts do not find the in-box rats zero-shot on whole IR frames. The best dev setting reaches F1 0.25 at the lowest τ, and on test only 8.0 % of the head points get a mask of their own.
+- **T1** (corrected 2026-10-12; see the correction above): the pre-registered selection did not yield a stand-alone
+  detector. The F1-chosen "hooded rat" gives only 8.0 % of the test head points a mask of their own. "Rat" at a low τ
+  covers about half of them on test IR (X 50.7 %), but among many other masks, and no score threshold removes those.
+  As a candidate generator it is untested; plan 2026-10-12 tests it. *(Superseded wording: "SAM 3 text prompts do not
+  find the in-box rats zero-shot on whole IR frames.")*
   - Tiling raises head coverage to about 49 %, at the cost of about 10 surplus masks per frame (descriptive).
 - **T2:** one head click gives a mask on that head every time (100 %), and the mask rarely spans a second head point (4.3 %).
   - The masks are numerically head-sized (median long side 189 px).

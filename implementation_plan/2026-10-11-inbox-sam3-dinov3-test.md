@@ -245,3 +245,20 @@ grouping** (`group_alt`) is added:
   - Per frame, one panel per prompt × variant: mask outlines in distinct colours, the prompt shown, the blind head
     clicks as small dots, and a τ switch (0.01 / 0.25).
   - Headless load check. The agent never judges the images; the numbers are counts against the clicks.
+
+## Amendment 5 — 2026-10-12: correction of the T1 reading (after the user's look at the prompt GUI)
+
+- **The user** (prompt GUI): with "rat", the rats are labelled and the extra masks are mostly garbage — why call it a
+  failure? ("我怎么觉得rat作为 prompt其实老鼠都被label出来了，有false postive那些基本都是写garbage你为啥说这个失败了呢")
+- **Correction.** The T1 result stands as computed, but its reading changes.
+  - Old reading: "SAM 3 text prompts do not find the in-box rats zero-shot."
+  - New reading (Codex *Yolo_identity* wording, accepted): the pre-registered prompt-and-threshold selection did not meet
+    the bar for a stand-alone detector. Low-τ "rat" covered most head points on the exploratory frames and may serve as a
+    candidate generator; the quality of whole-rat masks is not yet verified.
+  - Cause: pooled F1 counts every mask on no head point as a false positive, so it chose the low-output "hooded rat".
+    For "rat" the cache gives test IR X 50.7 % at τ 0.03, and 38 / 49 own masks (5 missed) on the 10 exploratory IR
+    frames at τ 0.01. Its rat masks score low (0.01–0.25), so no single score threshold removes the other masks.
+- **Caution (Codex):** a mask on no head point may be a rat fragment. The blind 40-mask review's text-prompt items are
+  "hooded rat" and cannot stand in for "rat".
+- **Follow-up:** [2026-10-12-inbox-sam3-rat-prelabel.md](2026-10-12-inbox-sam3-rat-prelabel.md) (B = head-anchored
+  pre-label edit pilot on these frames, all now dev; C = a frozen test on new frames).

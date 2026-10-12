@@ -173,3 +173,17 @@ myself"), so the sweep now has an interactive explorer. It is descriptive only a
   - a note survives a reload;
   - the live counts equal the Python sweep counts in 200 / 200 frame × prompt cases (whole frame, min score 0.25);
   - no network URL.
+
+## Addendum 2026-10-12 — T1 reading corrected (user + Codex *Yolo_identity*)
+
+- **What changed.** The user's look at the prompt GUI and the Codex reply changed the T1 reading. Only the wording
+  changed; no number changed.
+  - Old reading: "SAM 3 text prompts fail zero-shot in-box."
+  - New reading: the pre-registered prompt / τ selection did not meet the bar for a stand-alone detector. Low-τ "rat" is
+    a possible candidate generator (test IR X 50.7 % at τ 0.03; 38 / 49 own masks, 5 missed, on the 10 exploratory IR
+    frames at τ 0.01), and its whole-rat mask quality is unverified.
+- **Where it is recorded:**
+  - a correction block and a corrected Reading bullet in the report;
+  - Amendment 5 of the test plan;
+  - the follow-up plan [`2026-10-12-inbox-sam3-rat-prelabel.md`](../implementation_plan/2026-10-12-inbox-sam3-rat-prelabel.md)
+    (B pilot + C frozen test).
