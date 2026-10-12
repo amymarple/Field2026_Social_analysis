@@ -219,6 +219,21 @@ amendments 1–3 before results, 4 and 6 after results, 5 = the close-up source)
 | Report, pointer | `REPO/results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md`, `REPO/results/2026c/cv_field/reports/run_manifest_inbox_sam3_dino_2026c.json` | final |
 | Inputs (read-only) | phase-0 run `$OUT/2026c/cv_field_inbox_p0_20261010_1702/` (`identity_page/frames`, `page_data.json`, `box_occupancy_1s.csv.gz`); clicks run `$OUT/2026c/cv_field_inbox_clicks_20261010_2227/` (`fit_points_primary.csv`, `fit_summary.csv`: 74.8 px/in); `$OUT/2026c/imu_seconds_cache/`; SAM 3 `sam3.pt` (section B); DINOv3 `~/.cache/torch/hub/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth` + local hub repo `~/.cache/torch/hub/facebookresearch_dinov3_main` | — |
 
+## M. In-box CH07: SAM 3 "rat" pre-label edit pilot, part B (2026-10-12)
+
+- **Plan:** `REPO/implementation_plan/2026-10-12-inbox-sam3-rat-prelabel.md`. Part B, with the B-side items of amendments
+  C2 / C3; approved by the user 2026-10-12.
+- **Change log:** `REPO/change_log/2026-10-12-inbox-sam3-rat-prelabel.md`.
+- **Inputs:** the SAM 3 test run of section L. No new SAM 3 run, no C frame.
+
+| What | Path | Status |
+|---|---|---|
+| Code | `REPO/cv/cv_field/inbox_prelabel_edit.py` (`build`, `summarize --export`, `--selftest` 26 checks; base Python); the B report section is included by `inbox_sam3_dino_test.write_report` when `prelabel_edit/summary_B.md` exists | final |
+| **Page for the user** | `$OUT/2026c/cv_field_inbox_sam3_dino_20261010_2320/prelabel_edit/index.html` (file://, no network) + `pl_data.js` (3.2 MB: 5 167 "rat" mask polygons ε 2 px + bboxes, per-head candidate lists) + `frames/` (58 original JPEGs, 97.9 MB) | final; waits for the user |
+| Arms, candidates, checks | `prelabel_edit/arms.csv` (39 PRELABEL / 19 SCRATCH, order, pile bin), `head_candidates.csv` (284 heads: candidates in score order; 50 with none), `build_meta.json`, `page_check.json` (headless Chrome PASS) | final |
+| The user's exports | `REPO/cv/configs/inbox_sam3_prelabel_edit_2026c/` (`README.md`: schema; files `inbox_sam3_prelabel_edit_2026c_<ts>.json` / `.csv`) | empty until the user labels |
+| B summary (after an export) | `prelabel_edit/summary_B.md` + `summary_B.json` (+ `summary_B_repeat_pairs.csv`), section "B — pre-label edit pilot (dev)" of `REPO/results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md` | planned |
+
 ## Rules an auditor should hold the work to
 
 The agent never judged images; every visual verdict is the user's. Machine boxes (YOLO, SAM3, WISER projections) are

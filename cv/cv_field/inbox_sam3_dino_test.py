@@ -2598,6 +2598,9 @@ def write_report(run: Path) -> Path:
           "method or score words; no network URL.",
           "- **The agent has not looked at any mask.**", ""]
     L += sweep_report_md(run)
+    pb = run / "prelabel_edit" / "summary_B.md"          # part B of plan 2026-10-12 (inbox_prelabel_edit.py summarize)
+    if pb.exists():
+        L += [pb.read_text(encoding="utf-8"), ""]
     L += definitions_md()
     L += ["## Limits and what is not verified", "",
           "- **No usable-box claim yet.** Head-point exclusivity is necessary, not sufficient, for one-whole-rat masks. The blind mask "
