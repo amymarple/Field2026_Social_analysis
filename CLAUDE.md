@@ -339,17 +339,22 @@ ok, then from an anchor frame) and checks by dawn closure → `cv_field_landmark
 (own pointer `run_manifest_landmark_night_2026c.json`; pass = median of the first three dawn closure frames ≤ 3 px, user
 2026-10-02; `--report-only <run>` re-judges). Both have `--selftest`; plan revision 3 in
 `implementation_plan/2026-09-28-cohort3-camera-stability.md`.
-**Use the correction, not the raw pixel, for any CH01–CH04 position:** `frame_correction.py build --cohort 2026c` assembles
-`results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv` (per camera and sampled night time, hourly
-21:00→04:20; CH01/CH02 from the night chain, CH03/CH04 from the user's 09-04 03:01 labels tied to 09-18) and
-`Corrections("2026c").to_paddock(cam, t, uv_upright, z_mm=60)` maps a detection pixel at field-PC time `t` to paddock
-inches (cohort px → 09-18 px → 09-24 calibration); check the returned `info["flag"]`. Coverage (user, 2026-10-02):
-CH01–CH06 nights hourly; the in-box CH07/CH08 all day, segmented at the house-lid events (`cv/configs/cohort3_lid_events.json`,
-battery rounds / catches) with one median correction per lid-closed segment (outliers > 10 px flagged). CH05 (house_1
-moved 09-18) and CH07/CH08 (uncalibrated) map to user-labelled 09-04 frames, not 09-18 — use `to_09_18` for their
-reference-frame pixels; `to_paddock` refuses them. Precision: CH01/CH02 ≤ 3 px on passing nights, CH03/CH04 ~5–10 px,
-CH05/CH06 held-out ~0.5–1.8 px, CH07/CH08 in-segment spread ~3 / ~1 px. **The table is night-only for CH01–CH06**: at a
-daytime time it returns the nearest night sample (09-04 12:00 on CH02: 30 px off) — track daytime frames directly with
+**Use the correction, not the raw pixel, for any CH01–CH08 position:** `frame_correction.py build --cohort 2026c` assembles
+`results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.csv` (per camera and sampled time; CH01/CH02 from the
+night chain, CH03/CH04 from the user's 09-04 03:01 labels tied to 09-18, CH05/CH06 from the 09-04 03:01 and 12:00:02
+labels) and `Corrections("2026c").to_paddock(cam, t, uv_upright, z_mm=60)` maps a detection pixel at field-PC time `t`
+to paddock inches (cohort px → reference px → the release calibration rev g); check the returned `info["flag"]`.
+Coverage: CH01–CH04 nights hourly 21:00→04:20 (user, 2026-10-02); **CH05/CH06 all day since 2026-10-10** (nights hourly
++ 05:00→20:00 hourly + 10 min around every lid event) and the in-box CH07/CH08 all day — all four segmented at the
+house-lid events (`cv/configs/cohort3_lid_events.json`, battery rounds / catches; CH05/CH06 register on the roof = the
+lid), never interpolated across one; CH07/CH08 one median correction per lid-closed segment (outliers > 10 px flagged).
+CH05 (house_1 moved 09-18) and CH07/CH08 keep user-labelled 09-04 reference frames; `to_paddock` maps them through the
+recording repo's cohort ties (`calibration_qc/cohort_tie.py` + `cohort_ties_2026c.json`: CH05 = the release camera
+turned by what house_1 + pole B1 say, validated on CH06 at 5–7 mm median; CH07/CH08 = house-floor models,
+`inbox_floor_fit.py`, z above the house floor; `info["model"]` says so). Precision: CH01/CH02 ≤ 3 px on passing nights,
+CH03/CH04 ~5–10 px, CH05/CH06 held-out ~0.5–1.8 px, CH07/CH08 in-segment spread ~3 / ~1 px; change log
+`change_log/2026-10-10-ch05-ch08-paddock-mapping.md`. **The table is night-only for CH01–CH04**: at a daytime time it
+returns the nearest night sample (09-04 12:00 on CH02: 30 px off) — track daytime frames directly with
 `landmark_track.py --times HH:MM --start D --end D --tag …`. Summary for detector/tracking work (camera motion, house_1,
 landmark names, occluder regions): **`cv/cv_field/CAMERA_GEOMETRY_2026c.md`**.
 **Cohort-1 CH01/CH02 pano detector (`social-field-rat`, another lab member's folder, broken `.git`, 2026-10-05):** the
@@ -563,8 +568,10 @@ verified on the receiving side per `README_verify_server_copy.md`). And field `E
 `paddock_map.load()` → `to_paddock(px, z_mm, units="in")` (NaN outside each camera's verified support; pano pixels
 upright). Frame: 480 × 240 in, origin pole A0, defined by the laid lattice of cords/cones/wall. Status: exploratory,
 region-restricted only — held-out cross-camera disagreement median 76 mm, p90 137 mm (worst at the +x end), ground plane
-only; not accepted for whole-field accuracy (`AUDIT_CALIBRATION_2026-09-24*.md`). CH07/CH08 and thermal are
-uncalibrated; the older CH05/CH06 4-point fits are not accepted.
+only; not accepted for whole-field accuracy (`AUDIT_CALIBRATION_2026-09-24*.md`). Superseded by the frozen release
+rev g (2026-10-04, `calibration_qc/CALIBRATION_FINAL_2026-10-04.md`); CH07/CH08 have house-floor models since 2026-10-11
+(`calibration_qc/inbox_floor_fit.py`, through `cohort_tie.py`); thermal is uncalibrated; the older CH05/CH06 4-point fits
+are not accepted.
 
 **Per-cohort records.** `BATTERY_LOG_cohort3.md` (per round: Stop/Start, fleet gaps, anchor counts, SD cards, probe
 moves, ADC lane; SF11 retired 09-07; five females added 09-11 19:40), `COLOUR_SAMPLING_LOG_cohort3.md`,
