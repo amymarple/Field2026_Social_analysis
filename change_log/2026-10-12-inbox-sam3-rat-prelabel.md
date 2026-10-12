@@ -115,3 +115,57 @@
 - **Part C freeze** (candidate order, whole vs tiled, filters, the "usable" definition, the padding rule) follows B with
   the user, before any C frame.
 - **Index lines** (`implementation_plan/README.md`, `change_log/README.md`, `CLAUDE.md`) are left to the coordinator.
+
+## Addendum 2026-10-12 — page v2: implant box + rat box (plan amendments B1 / B1a)
+
+**Why.** On v1, the first candidate at a head was the implant mask ("这个implant简直完美", "the implant is just perfect").
+The 15-px head rule hides body masks that do not reach the head point. The user decided on an implant box (IR marks are on
+the implant) plus a rat box (head + body, no tail).
+
+**What changed:**
+- **Command:** `inbox_prelabel_edit.py build --v2` → `D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320/prelabel_edit_v2/index.html`.
+  - The same frames, arms (39 / 19, identical to v1: checked) and seed.
+  - The frames are hard links to v1's copies (58), so no second 98 MB on disk. `pl_data.js` is 3.2 MB.
+  - v1's page and files are untouched. v2 has its own page_version / storage key and ignores v1 progress (checked).
+- **Per rat:** the implant box, then the rat box, then Enter; an IMPLANT / RAT indicator; the finished implant box dashed
+  orange and the rat box solid green.
+  - **Implant box:** the exact v1 head lists (15 px, score, then smaller area), plus **H** = implant hidden.
+  - **Rat box:** a body click → candidates = the masks containing the point (the page's polygon + 15 px rule), in score
+    order. Nothing is shown before the click.
+  - **Both:** A / N / edge drag / F / B. M / P flags on the rat box only.
+- **SCRATCH:** both boxes by hand; H applies.
+- **R / X / U / redo / show-all:** as in v1.
+- **Logging:** per object — the proposed box (the first candidate bbox, with the body click for rat boxes), the final box,
+  source / rank, flags, edge moves, N presses, and a time slice (the clock runs for the active box only). Events carry the
+  object.
+- **Exports:** to `cv/configs/inbox_sam3_prelabel_edit_2026c/`, prefix `v2_`; README updated.
+- **`summarize`** detects v2 and computes, per object type (implant box, rat box):
+  - usable@1, usable@any; the manual (and, for the rat box, merged / partial) rates;
+  - the implant-hidden rate;
+  - IoU proposed → final; per-edge signed shifts with the proposed padding rule and the uniformity flag;
+  - SCRATCH vs accepted mask-bbox sizes; seconds per box PRELABEL vs SCRATCH;
+  - all split by domain × pile; the repeat check per object type.
+
+  It writes `prelabel_edit_v2/summary_B.md`, which the SAM 3 report now prefers over the v1 summary. Tested on synthetic
+  exports only.
+
+**Checks:**
+- `--selftest`: 37 / 37 (v1 26 + v2 11).
+- **Headless Chrome on v2: PASS** (`prelabel_edit_v2/page_check.json`):
+  - a v1 storage key is ignored;
+  - implant: accept = candidate bbox, edge move, F restores;
+  - Enter → RAT, nothing drawn before the body click, the click gives 6 candidates and records the first candidate's
+    bbox, N → candidate 2, M flag, accept rank 2;
+  - Enter → next rat, H → hidden and active = rat, manual rat box;
+  - add (implant hidden, 6 rat candidates from the add point), delete, undo;
+  - the rat time slice grows (1.5 s) and the implant slice does not; 0 ms while idle;
+  - SCRATCH: two manual boxes, no mask drawn;
+  - persistence across a reload; export (v2, 58 frames, CSV = 2 × rats + 1, all event kinds); no network URL.
+
+**Choices made in v2 (not fixed by B1 / B1a):**
+- **Added rat:** the R click is also its first body click, so rat-box candidates are offered at once; the implant starts
+  hidden and B un-hides it.
+- **In RAT mode, mouse:** a left press without movement is the body click; a left drag pans.
+- **Body clicks:** a new click replaces the candidate list. The proposed rat box is the first candidate of the latest
+  click; every click is logged.
+- **Navigation:** Tab switches implant / rat; ← steps back.

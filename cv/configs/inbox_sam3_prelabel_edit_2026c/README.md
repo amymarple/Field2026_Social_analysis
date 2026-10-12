@@ -73,3 +73,40 @@ python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sa
 It writes the section "B — pre-label edit pilot (dev)" of `results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md`.
 The section holds usable@1 and usable@any; the merged, partial and manual-box rates; seconds per rat in PRELABEL vs
 SCRATCH; the C2 quality from your own corrections; and the repeat check. All of it is split by pile size and domain.
+
+## v2 page — implant box + rat box (plan amendments B1 / B1a, 2026-10-12) — use this one
+
+After a first look at v1, the user changed the labels per rat.
+
+**Labels per rat:**
+- the **head point**: your click, kept as the keypoint;
+- an **implant box**: the implant only, which carries the IR marks;
+- a **rat box**: head + body, without the tail, visible parts only.
+
+**Page:** `D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320/prelabel_edit_v2/index.html`. It has the
+same frames, arms (39 PRELABEL / 19 SCRATCH) and order as v1, and its own storage key
+(`inbox_sam3_prelabel_edit_2026c_v2::<run>`). v1 progress is ignored, and v1's page and files are kept unchanged.
+
+**Flow per rat:** the implant box, Enter, the rat box, Enter.
+- **Implant box:** candidates are the masks within 15 px of the head dot (cyan), as in v1.
+  - **H** = implant hidden: no implant box for this rat.
+- **Rat box:** click on the rat's body first. The masks containing that point (or within 15 px) are offered (pink).
+  - No rat-box candidate is shown before the click; a new click replaces the candidate list.
+- **Keys on both boxes:**
+  - A accept (the box = the mask bbox, no padding) · N next candidate · F fit back to the mask · B draw by hand · drag
+    edges to adjust;
+  - M / P (merged / partial) apply to the rat box only;
+  - Tab switches between implant and rat; ← goes back.
+- **SCRATCH frames:** drag both boxes by hand; H applies there too.
+- **Added rats:** R places a rat; its click is also the first body click, and its implant starts hidden (you can still
+  draw one).
+- **Timing:** a clock per frame, plus a time slice for the active box only.
+
+**Exports:** `v2_inbox_sam3_prelabel_edit_2026c_<YYYYMMDD_HHMMSS>.json` / `.csv`, into this folder.
+- **JSON:** as in v1, but each rat has `implant` and `rat` objects. Each object holds `cand`, `k`, `prop` (the first
+  candidate's bbox; for the rat box, of the latest body click), `box`, `source`, `rank`, `mask`, `cand_flags`,
+  `edge_moves`, `next_presses`, `time_ms`, `hidden` (implant), and `click` / `clicks` (rat-box body clicks).
+- **CSV:** one row per rat × object × pass.
+
+**Summary:** `python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sam3_prelabel_edit_2026c/v2_<file>.json`
+writes the per-object B section of the SAM 3 report. A v2 summary takes precedence over a v1 one.

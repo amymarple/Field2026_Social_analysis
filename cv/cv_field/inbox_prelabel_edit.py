@@ -22,7 +22,9 @@ The agent never judges an image: every verdict is the user's. Base Python (numpy
 headless check; node for the selftest's syntax check).
 Usage:
   python cv/cv_field/inbox_prelabel_edit.py --selftest
-  python cv/cv_field/inbox_prelabel_edit.py build [--run <SAM 3 run>] [--no-page-check]
+  python cv/cv_field/inbox_prelabel_edit.py build [--run <SAM 3 run>] [--no-page-check]            # v1 page (prelabel_edit/)
+  python cv/cv_field/inbox_prelabel_edit.py build --v2 [--run <SAM 3 run>]                         # v2 page (prelabel_edit_v2/):
+         implant box (head-point candidates) + rat box (head + body, no tail; candidates from a body click), amendments B1 / B1a
   python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sam3_prelabel_edit_2026c/<file>.json [--run <run>]
 """
 from __future__ import annotations
@@ -750,6 +752,12 @@ def rat_table(ex: dict) -> pd.DataFrame:
     t = pd.DataFrame(rows)
     if t.empty:
         return t
+    return derive(t)
+
+
+def derive(t: pd.DataFrame) -> pd.DataFrame:
+    """Derived per-object columns shared by v1 (rats) and v2 (implant / rat boxes)."""
+    t = t.copy()
     t["usable1"] = (t.source == "cand") & (t["rank"] == 1) & ~t.acc_merged & ~t.acc_partial
     t["usable_any"] = (t.source == "cand") & ~t.acc_merged & ~t.acc_partial
     t["manual"] = t.source == "manual"
@@ -1060,23 +1068,792 @@ def summary_md(sm: dict, export_name: str) -> str:
 
 
 def write_summary(run: Path, export: Path, regenerate_report: bool = True, more: list | None = None) -> Path:
+    """v1 export -> <run>/prelabel_edit/summary_B.*; v2 export (amendments B1 / B1a) -> <run>/prelabel_edit_v2/summary_B.*.
+    The SAM 3 report includes the v2 section when it exists, else the v1 one."""
     exs = []
     for e in [export] + list(more or []):
-        ex = json.loads(Path(e).read_text(encoding="utf-8"))
-        if ex.get("page_version") != PAGE_VERSION:
-            raise SystemExit(f"not an export of this page: {e} ({ex.get('page_version')})")
-        exs.append(ex)
-    sm = summarize(exs[0], exs[1:])
-    rp = sm.pop("_repeat_pairs")
-    if len(rp):
-        rp.to_csv(run / "prelabel_edit" / "summary_B_repeat_pairs.csv", index=False)
-    out = run / "prelabel_edit" / "summary_B.md"
-    out.write_text(summary_md(sm, Path(export).as_posix()), encoding="utf-8")
-    S.write_json(run / "prelabel_edit" / "summary_B.json", {**sm, "export": Path(export).as_posix(), "more_exports": [Path(m).as_posix() for m in (more or [])],
-                                                          "made": datetime.now().isoformat(timespec="seconds")})
+        exs.append(json.loads(Path(e).read_text(encoding="utf-8")))
+    ver = exs[0].get("page_version")
+    if ver not in (PAGE_VERSION, PAGE_VERSION_V2) or any(x.get("page_version") != ver for x in exs):
+        raise SystemExit(f"not exports of one page version: {[x.get('page_version') for x in exs]}")
+    meta = {"export": Path(export).as_posix(), "more_exports": [Path(m).as_posix() for m in (more or [])], "made": datetime.now().isoformat(timespec="seconds")}
+    if ver == PAGE_VERSION_V2:
+        d = run / "prelabel_edit_v2"
+        d.mkdir(parents=True, exist_ok=True)
+        sm = summarize_v2(exs[0], exs[1:])
+        out = d / "summary_B.md"
+        out.write_text(summary_md_v2(sm, Path(export).as_posix()), encoding="utf-8")
+        S.write_json(d / "summary_B.json", {**sm, **meta})
+    else:
+        sm = summarize(exs[0], exs[1:])
+        rp = sm.pop("_repeat_pairs")
+        if len(rp):
+            rp.to_csv(run / "prelabel_edit" / "summary_B_repeat_pairs.csv", index=False)
+        out = run / "prelabel_edit" / "summary_B.md"
+        out.write_text(summary_md(sm, Path(export).as_posix()), encoding="utf-8")
+        S.write_json(run / "prelabel_edit" / "summary_B.json", {**sm, **meta})
     if regenerate_report:
         S.write_report(run)
     return out
+
+
+# ============================================================================================ v2: implant box + rat box (amendments B1 / B1a)
+PAGE_VERSION_V2 = "inbox_sam3_prelabel_edit_2026c_v2"
+OBJS = ("implant", "rat")
+DEFINITIONS_V2 = [
+    ("Head point", "your click on the head; kept as the keypoint."),
+    ("Implant box", "the implant only (the IR identity marks are on it). If the implant is not visible: H = implant hidden, no box."),
+    ("Rat box", "head + body, without the tail; visible parts only, occluded parts are not inferred."),
+    ("Usable mask", "for the rat box: covers the visible head + body of exactly ONE rat and no part of another rat; for the implant "
+                    "box: covers this rat's implant only. The box may still need small edge moves."),
+    ("Merged / partial (rat box only)", "merged = covers parts of ≥ 2 rats; partial = clearly misses a large part of the rat's visible "
+                                         "head + body."),
+    ("Garbage / fragment", "only in the optional 'show all' view: on no rat / on part of a rat but not offered for it."),
+]
+
+PAGE_JS_V2 = r"""
+(function(){
+const D = window.PL_DATA, KEY = D.page_version + '::' + D.run;
+const $ = id => document.getElementById(id);
+const iso = () => new Date().toISOString();
+const OBJ_NAME = {implant: 'IMPLANT box', rat: 'RAT box'};
+function newObj(f, cand, hidden){ return {cand: cand, k: 0, prop: cand.length ? f.masks[cand[0]].b.slice() : null, box: null, source: null, rank: null,
+  mask: null, cand_flags: {}, edge_moves: 0, next_presses: 0, time_ms: 0, hidden: !!hidden, click: null, clicks: []}; }
+function initFrame(f){ return {arm: f.arm, active_ms: 0, showall_ms: 0, completed: false, visited: false, next_add: 1, marks: {}, passes: [],
+  rats: f.heads.map((h, i) => ({id: 'h' + (i + 1), num: i + 1, origin: 'click', click_id: h.c, u: h.u, v: h.v, deleted: false,
+    implant: newObj(f, f.cand[i], false), rat: newObj(f, [], false)}))}; }
+function fresh(){ const fr = {}; D.frames.forEach(f => fr[f.id] = initFrame(f));
+  return {v: 2, started_at: iso(), defnote: '', cur: {fi: 0, ri: 0, obj: 'implant'}, frames: fr, events: []}; }
+function load(){ try { const t = localStorage.getItem(KEY); if (t) { const o = JSON.parse(t); if (o && o.frames && o.v === 2) return o; } } catch (e) {} return null; }
+let saveT = null;
+function save(now){ const f = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { $('banner').textContent = 'could not save to this browser: export now'; } };
+  if (now) { f(); return; } clearTimeout(saveT); saveT = setTimeout(f, 250); }
+let S = load() || fresh();
+const fr = () => D.frames[S.cur.fi], st = () => S.frames[fr().id], rats = () => st().rats;
+const liveIdx = () => rats().map((r, i) => i).filter(i => !rats()[i].deleted);
+const rat = () => rats()[S.cur.ri];
+const obj = () => { const r = rat(); return r ? r[S.cur.obj] : null; };
+function log(ev, extra){ const r = rat(); S.events.push(Object.assign({t: iso(), frame: fr().id, arm: st().arm, rat: r ? r.id : null, obj: S.cur.obj, ev: ev}, extra || {})); save(); }
+// ---------------------------------------------------------------- undo (per frame, in memory)
+const undo = {};
+function snap(){ const id = fr().id; (undo[id] = undo[id] || []).push(JSON.stringify({rats: st().rats, marks: st().marks, next_add: st().next_add, ri: S.cur.ri, obj: S.cur.obj}));
+  if (undo[id].length > 200) undo[id].shift(); }
+function doUndo(){ const a = undo[fr().id]; if (!a || !a.length) return; const o = JSON.parse(a.pop());
+  st().rats = o.rats; st().marks = o.marks; st().next_add = o.next_add; S.cur.ri = Math.min(o.ri, st().rats.length - 1); S.cur.obj = o.obj; log('undo'); draw(); }
+// ---------------------------------------------------------------- geometry
+function pointInPoly(x, y, p){ let ins = false; for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+  const xi = p[i], yi = p[i + 1], xj = p[j], yj = p[j + 1];
+  if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) ins = !ins; } return ins; }
+function segDist(x, y, x1, y1, x2, y2){ const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy; let t = L ? ((x - x1) * dx + (y - y1) * dy) / L : 0;
+  t = Math.max(0, Math.min(1, t)); return Math.hypot(x - x1 - t * dx, y - y1 - t * dy); }
+function polyDist(x, y, p){ let d = Infinity; for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) d = Math.min(d, segDist(x, y, p[j], p[j + 1], p[i], p[i + 1])); return d; }
+function maskHit(m, x, y, tol){ for (const p of m.p) { if (pointInPoly(x, y, p)) return true; } if (tol > 0) { for (const p of m.p) if (polyDist(x, y, p) <= tol) return true; } return false; }
+function candidatesAt(x, y){ const out = []; fr().masks.forEach((m, j) => { if (maskHit(m, x, y, D.cover_px)) out.push(j); }); return out; }
+// ---------------------------------------------------------------- view
+const cv = $('cv'), ctx = cv.getContext('2d');
+let view = null, mode = null, drag = null, spaceDown = false, showAll = false;
+const imgs = {};
+function img(){ const f = fr(); if (!imgs[f.img]) { const im = new Image(); im.onload = () => draw(); im.src = f.img; imgs[f.img] = im; } return imgs[f.img]; }
+function fit(){ const w = cv.clientWidth, h = cv.clientHeight, f = fr(); const s = Math.min(w / f.w, h / f.h); view = {s, ox: (w - f.w * s) / 2, oy: (h - f.h * s) / 2}; }
+const toImg = (x, y) => [(x - view.ox) / view.s, (y - view.oy) / view.s];
+const toCv = (u, v) => [u * view.s + view.ox, v * view.s + view.oy];
+function polyPath(p){ const P = new Path2D(); for (let i = 0; i < p.length; i += 2) { if (i === 0) P.moveTo(p[i], p[i + 1]); else P.lineTo(p[i], p[i + 1]); } P.closePath(); return P; }
+function colour(r){ return 'hsl(' + ((r * 137.508) % 360).toFixed(1) + ',90%,58%)'; }
+const STYLE = {implant: {box: '#ff9f1a', cand: '#00e5ff'}, rat: {box: '#39ff14', cand: '#ff4fd8'}};
+let drawnMasks = 0;
+function curCand(){ const r = rat(), o = obj(); if (!r || r.deleted || st().arm !== 'PRELABEL' || showAll || !o) return null;
+  if (S.cur.obj === 'implant' && o.hidden) return null; return o.k < o.cand.length ? o.cand[o.k] : null; }
+function draw(){
+  const f = fr(), s = st(); if (!f) return;
+  if (cv.width !== cv.clientWidth) cv.width = cv.clientWidth; if (cv.height !== cv.clientHeight) cv.height = cv.clientHeight;
+  if (!view) fit();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
+  const im = img(); if (im.complete && im.naturalWidth) ctx.drawImage(im, 0, 0, f.w, f.h);
+  const lw = 1 / view.s; drawnMasks = 0;
+  if (showAll) {
+    f.masks.forEach((m, j) => { const mk = s.marks[j]; const col = mk === 'garbage' ? '#ff3b3b' : mk === 'fragment' ? '#ffa500' : colour(j);
+      m.p.forEach(p => { const P = polyPath(p); if (mk) { ctx.globalAlpha = 0.35; ctx.fillStyle = col; ctx.fill(P); ctx.globalAlpha = 1; }
+        ctx.lineWidth = 1.5 * lw; ctx.strokeStyle = col; ctx.stroke(P); }); drawnMasks++; });
+  } else {
+    const c = curCand();
+    if (c !== null) { const m = f.masks[c], col = STYLE[S.cur.obj].cand; m.p.forEach(p => { const P = polyPath(p); ctx.globalAlpha = 0.18; ctx.fillStyle = col; ctx.fill(P);
+      ctx.globalAlpha = 1; ctx.lineWidth = 2.5 * lw; ctx.strokeStyle = col; ctx.stroke(P); }); drawnMasks = 1;
+      ctx.setLineDash([8 * lw, 6 * lw]); ctx.lineWidth = 2 * lw; ctx.strokeStyle = '#ffd400'; ctx.strokeRect(m.b[0], m.b[1], m.b[2] - m.b[0], m.b[3] - m.b[1]); ctx.setLineDash([]); }
+  }
+  s.rats.forEach((r, i) => { if (r.deleted) return; const cur = i === S.cur.ri;
+    ['rat', 'implant'].forEach(k => { const b = r[k].box; if (!b) return; const act = cur && S.cur.obj === k;
+      ctx.globalAlpha = cur ? 1 : 0.4; ctx.lineWidth = (act ? 3 : cur ? 1.8 : 1.3) * lw; ctx.strokeStyle = STYLE[k].box;
+      if (k === 'implant') ctx.setLineDash([4 * lw, 3 * lw]); ctx.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); ctx.setLineDash([]); ctx.globalAlpha = 1; });
+    const cl = r.rat.click; if (cur && cl) { const R = 8 * lw; ctx.lineWidth = 2.5 * lw; ctx.strokeStyle = STYLE.rat.cand; ctx.beginPath();
+      ctx.moveTo(cl[0] - R, cl[1]); ctx.lineTo(cl[0] + R, cl[1]); ctx.moveTo(cl[0], cl[1] - R); ctx.lineTo(cl[0], cl[1] + R); ctx.stroke(); } });
+  if (drag && drag.kind === 'draw' && drag.cur) { const b = normBox(drag.start, drag.cur); ctx.setLineDash([6 * lw, 4 * lw]); ctx.lineWidth = 2 * lw; ctx.strokeStyle = STYLE[S.cur.obj].box;
+    ctx.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); ctx.setLineDash([]); }
+  ctx.font = (16 * lw) + 'px system-ui, sans-serif';
+  s.rats.forEach((r, i) => { const cur = i === S.cur.ri, R = (cur ? 9 : 7) * lw;
+    ctx.beginPath(); if (r.origin === 'added') { ctx.moveTo(r.u, r.v - R); ctx.lineTo(r.u + R, r.v); ctx.lineTo(r.u, r.v + R); ctx.lineTo(r.u - R, r.v); ctx.closePath(); }
+    else ctx.arc(r.u, r.v, R, 0, 2 * Math.PI);
+    ctx.fillStyle = r.deleted ? '#777' : '#fff'; ctx.fill(); ctx.lineWidth = (cur ? 3 : 2) * lw; ctx.strokeStyle = cur ? '#ff2fd0' : '#000'; ctx.stroke();
+    if (r.deleted) { ctx.strokeStyle = '#ff3b3b'; ctx.beginPath(); ctx.moveTo(r.u - R, r.v - R); ctx.lineTo(r.u + R, r.v + R); ctx.moveTo(r.u + R, r.v - R); ctx.lineTo(r.u - R, r.v + R); ctx.stroke(); }
+    ctx.lineWidth = 3 * lw; ctx.strokeStyle = '#000'; ctx.strokeText(String(r.num), r.u + R + 3 * lw, r.v - R); ctx.fillStyle = cur ? '#ff2fd0' : '#fff'; ctx.fillText(String(r.num), r.u + R + 3 * lw, r.v - R); });
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  panel();
+}
+function objText(r, k){ const o = r[k], pre = st().arm === 'PRELABEL';
+  if (k === 'implant' && o.hidden) return 'implant hidden';
+  let t = '';
+  if (pre) { if (k === 'rat' && !o.click) t = 'click the rat\'s body'; else if (o.cand.length === 0) t = 'no candidate — draw (B)';
+    else t = o.k < o.cand.length ? 'candidate ' + (o.k + 1) + ' / ' + o.cand.length : 'none usable — draw (B)'; }
+  else t = 'draw by hand (drag)';
+  if (o.box) t += ' · box: ' + (o.source === 'manual' ? 'manual' : 'candidate ' + o.rank) + (o.edge_moves ? ', ' + o.edge_moves + ' edge move(s)' : '');
+  if (k === 'rat' && pre && o.k < o.cand.length) { const fl = o.cand_flags[o.k + 1] || {}; if (fl.merged || fl.partial) t += ' · flagged ' + [fl.merged ? 'merged' : '', fl.partial ? 'partial' : ''].filter(Boolean).join(' + '); }
+  return t; }
+function panel(){
+  const f = fr(), s = st(), r = rat();
+  $('armtag').textContent = s.arm; $('armtag').className = s.arm; if ($('goto').value !== String(S.cur.fi)) $('goto').value = String(S.cur.fi);
+  $('objtag').textContent = OBJ_NAME[S.cur.obj]; $('objtag').className = 'obj-' + S.cur.obj;
+  $('ftitle').textContent = 'frame ' + (S.cur.fi + 1) + ' / ' + D.frames.length + ' · ' + (f.domain === 'ir' ? 'IR' : 'colour') + ' · ' + f.id + ((s.passes || []).length ? ' · pass ' + (s.passes.length + 1) : '');
+  const live = liveIdx();
+  $('status').innerHTML = r ? ('rat ' + r.num + (r.origin === 'added' ? ' (added)' : '') + ' · ' + (live.indexOf(S.cur.ri) + 1) + ' of ' + live.length + (r.deleted ? ' · deleted' : '')
+    + '<br><span class="obj-implant">IMPLANT</span> ' + objText(r, 'implant') + '<br><span class="obj-rat">RAT</span> ' + objText(r, 'rat')) : 'no rat on this frame';
+  $('banner').textContent = showAll ? 'SHOW ALL: every "rat" mask; click a mask: garbage → fragment → clear. Press S to go back. (显示全部)' : mode === 'draw' ? 'draw the ' + OBJ_NAME[S.cur.obj] + ': drag on the image (画框)' : mode === 'add' ? 'add a rat: click its visible body (加鼠)' : '';
+  const done = D.frames.filter(x => S.frames[x.id].completed).length; let nr = 0, nb = 0;
+  D.frames.forEach(x => S.frames[x.id].rats.forEach(q => { if (!q.deleted) { nr++; if (q.rat.box && (q.implant.box || q.implant.hidden)) nb++; } }));
+  $('progbar').style.width = (100 * done / D.frames.length).toFixed(1) + '%';
+  $('progtxt').textContent = done + ' / ' + D.frames.length + ' frames done · ' + nb + ' / ' + nr + ' rats with both boxes';
+  $('timetxt').textContent = 'active ' + (s.active_ms / 1000).toFixed(0) + ' s' + (s.showall_ms ? ' · show-all ' + (s.showall_ms / 1000).toFixed(0) + ' s' : '') + (idle() ? ' · paused' : '');
+}
+function normBox(a, b){ return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])]; }
+// ---------------------------------------------------------------- actions
+function startObj(r){ return r && r.implant.hidden ? 'rat' : 'implant'; }
+function goFrame(i){ S.cur.fi = Math.max(0, Math.min(D.frames.length - 1, i)); const live = liveIdx(); S.cur.ri = live.length ? live[0] : 0; S.cur.obj = startObj(rat());
+  st().visited = true; view = null; mode = null; showAll = false; $('showall').checked = false; log('frame_open'); draw(); }
+function nextRat(){ const live = liveIdx(), p = live.indexOf(S.cur.ri);
+  let nx = p >= 0 ? (p < live.length - 1 ? live[p + 1] : undefined) : live.find(i => i > S.cur.ri);
+  if (nx !== undefined) { S.cur.ri = nx; S.cur.obj = startObj(rat()); mode = null; log('rat_next'); draw(); return; }
+  st().completed = true; log('frame_done'); if (S.cur.fi < D.frames.length - 1) goFrame(S.cur.fi + 1); else { draw(); $('banner').textContent = 'last frame done — please export'; } }
+function advance(){ if (S.cur.obj === 'implant') { S.cur.obj = 'rat'; mode = null; log('obj_next'); draw(); } else nextRat(); }
+function back(){ if (S.cur.obj === 'rat' && rat() && !rat().implant.hidden) { S.cur.obj = 'implant'; mode = null; draw(); return; }
+  const live = liveIdx(), p = live.indexOf(S.cur.ri); if (p > 0) { S.cur.ri = live[p - 1]; S.cur.obj = 'rat'; mode = null; draw(); } else if (S.cur.fi > 0) goFrame(S.cur.fi - 1); }
+function accept(){ const o = obj(), c = curCand(); if (!o || c === null) return; snap(); const m = fr().masks[c];
+  o.box = m.b.slice(); o.source = 'cand'; o.rank = o.k + 1; o.mask = c;
+  log('accept', {rank: o.rank, mask: c, mask_score: m.s, box: o.box, flags: o.cand_flags[o.rank] || {}, click: S.cur.obj === 'rat' ? o.click : undefined}); draw(); }
+function next(){ const o = obj(), r = rat(); if (!o || !r || r.deleted || st().arm !== 'PRELABEL' || showAll) return; if (S.cur.obj === 'implant' && o.hidden) return;
+  if (S.cur.obj === 'rat' && !o.click) return; snap(); o.k = o.k < o.cand.length ? o.k + 1 : 0; o.next_presses++;
+  log('next', {to: o.k < o.cand.length ? o.k + 1 : 'none'}); draw(); }
+function flag(kind){ if (S.cur.obj !== 'rat') return; const o = obj(); if (curCand() === null) return; snap(); const fl = o.cand_flags[o.k + 1] = o.cand_flags[o.k + 1] || {}; fl[kind] = !fl[kind];
+  log('flag', {rank: o.k + 1, flag: kind, value: fl[kind]}); draw(); }
+function setManual(b){ const r = rat(), o = obj(); if (!r || r.deleted || !o) return; snap(); o.box = b.map(x => Math.round(x * 10) / 10); o.source = 'manual'; o.rank = null; o.mask = null;
+  if (S.cur.obj === 'implant') o.hidden = false; log('manual_box', {box: o.box}); mode = null; draw(); }
+function fitToMask(){ const r = rat(), o = obj(); if (!r || r.deleted || !o || o.mask === null || o.source !== 'cand') return; const b = fr().masks[o.mask].b;
+  if (o.box && o.box.every((x, i) => x === b[i])) return; snap(); const from = o.box; o.box = b.slice(); log('fit_to_mask', {from: from, to: o.box, rank: o.rank}); draw(); }
+function hideImplant(){ const r = rat(); if (!r || r.deleted) return; snap(); const o = r.implant; o.hidden = !o.hidden;
+  if (o.hidden) { o.box = null; o.source = null; o.rank = null; o.mask = null; if (S.cur.obj === 'implant') S.cur.obj = 'rat'; }
+  log('implant_hidden', {value: o.hidden}); draw(); }
+function bodyClick(u, v){ const r = rat(); if (!r || r.deleted) return; snap(); const o = r.rat, f = fr(); o.click = [Math.round(u * 10) / 10, Math.round(v * 10) / 10];
+  o.clicks.push(o.click.slice()); o.cand = candidatesAt(u, v); o.k = 0; o.prop = o.cand.length ? f.masks[o.cand[0]].b.slice() : null;
+  log('body_click', {u: o.click[0], v: o.click[1], n_cand: o.cand.length}); draw(); }
+function addRat(u, v){ snap(); const s = st(), f = fr(); const r = {id: 'a' + s.next_add, num: s.rats.length + 1, origin: 'added', click_id: null,
+  u: Math.round(u * 10) / 10, v: Math.round(v * 10) / 10, deleted: false, implant: newObj(f, [], true), rat: newObj(f, [], false)};
+  if (s.arm === 'PRELABEL') { r.rat.click = [r.u, r.v]; r.rat.clicks = [[r.u, r.v]]; r.rat.cand = candidatesAt(u, v); r.rat.prop = r.rat.cand.length ? f.masks[r.rat.cand[0]].b.slice() : null; }
+  s.next_add++; s.rats.push(r); S.cur.ri = s.rats.length - 1; S.cur.obj = 'rat'; mode = null; log('add_rat', {u: r.u, v: r.v, n_cand: r.rat.cand.length}); draw(); }
+function delDot(){ const r = rat(); if (!r) return; snap(); r.deleted = !r.deleted; log(r.deleted ? 'delete_dot' : 'undelete_dot'); draw(); }
+function redoFrame(skipConfirm){ const f = fr(), s = st();
+  if (!skipConfirm && !confirm('Label this frame again from the start? The current labels are kept as pass ' + ((s.passes || []).length + 1) + '.')) return;
+  s.passes = (s.passes || []).concat([{rats: s.rats, active_ms: s.active_ms, showall_ms: s.showall_ms, completed: s.completed, marks: s.marks, archived_at: iso()}]);
+  const nf = initFrame(f); s.rats = nf.rats; s.active_ms = 0; s.showall_ms = 0; s.completed = false; s.marks = {}; s.next_add = 1; undo[f.id] = [];
+  S.cur.ri = 0; S.cur.obj = startObj(rat()); log('redo_frame', {pass: s.passes.length + 1}); draw(); }
+function toggleShowAll(on){ showAll = on === undefined ? !showAll : on; $('showall').checked = showAll; mode = null; log('show_all', {on: showAll}); draw(); }
+function markMask(u, v){ const f = fr(), s = st(); let best = -1, ba = Infinity;
+  f.masks.forEach((m, j) => { if (maskHit(m, u, v, 0) && m.a < ba) { best = j; ba = m.a; } }); if (best < 0) return; snap();
+  const cur = s.marks[best], nx = !cur ? 'garbage' : cur === 'garbage' ? 'fragment' : null; if (nx) s.marks[best] = nx; else delete s.marks[best];
+  log('showall_mark', {mask: best, mark: nx || 'clear'}); draw(); }
+// ---------------------------------------------------------------- timing (frame clock + per-object time slices)
+let lastInput = performance.now(), lastTick = performance.now();
+const idle = () => document.visibilityState !== 'visible' || performance.now() - lastInput > D.idle_ms;
+function touch(){ lastInput = performance.now(); }
+setInterval(() => { const now = performance.now(), dt = now - lastTick; lastTick = now;
+  if (!idle() && dt < 5000) { const s = st(); if (showAll) s.showall_ms += dt; else { s.active_ms += dt; const r = rat(); if (r && !r.deleted) r[S.cur.obj].time_ms += dt; } }
+  panel(); if (Math.random() < 0.1) save(); }, 500);
+document.addEventListener('visibilitychange', () => { log('visibility', {state: document.visibilityState}); save(true); });
+window.addEventListener('beforeunload', () => save(true));
+// ---------------------------------------------------------------- mouse
+function edgeAt(x, y){ const o = obj(), r = rat(); if (!r || !o || !o.box || r.deleted || showAll) return null; const b = o.box, [u, v] = toImg(x, y), t = 8 / view.s;
+  const inY = v > b[1] - t && v < b[3] + t, inX = u > b[0] - t && u < b[2] + t, e = [];
+  if (inY && Math.abs(u - b[0]) < t) e.push(0); if (inY && Math.abs(u - b[2]) < t) e.push(2); if (inX && Math.abs(v - b[1]) < t) e.push(1); if (inX && Math.abs(v - b[3]) < t) e.push(3);
+  return e.length ? e : null; }
+function canDraw(){ const r = rat(); if (!r || r.deleted) return false; if (mode === 'draw') return true;
+  return st().arm === 'SCRATCH' && !(S.cur.obj === 'implant' && r.implant.hidden); }
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mousedown', e => { touch(); const r0 = cv.getBoundingClientRect(), x = e.clientX - r0.left, y = e.clientY - r0.top, [u, v] = toImg(x, y);
+  if (e.button === 2 || e.button === 1 || spaceDown) { drag = {kind: 'pan', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy}; return; }
+  if (showAll) { markMask(u, v); return; }
+  if (mode === 'add') { addRat(u, v); return; }
+  const ed = edgeAt(x, y); if (ed) { drag = {kind: 'edge', edges: ed, b0: obj().box.slice()}; return; }
+  if (canDraw()) { drag = {kind: 'draw', start: [u, v], cur: null}; return; }
+  drag = {kind: 'press', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy, u: u, v: v, moved: false}; });
+window.addEventListener('mousemove', e => { if (e.target === cv) touch(); const r0 = cv.getBoundingClientRect(), x = e.clientX - r0.left, y = e.clientY - r0.top;
+  if (!drag) { cv.style.cursor = showAll ? 'pointer' : edgeAt(x, y) ? 'move' : (canDraw() || mode === 'add' || (S.cur.obj === 'rat' && st().arm === 'PRELABEL')) ? 'crosshair' : 'grab'; return; }
+  if (drag.kind === 'press') { if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 4) drag.moved = true; if (drag.moved) { view.ox = drag.ox + e.clientX - drag.x0; view.oy = drag.oy + e.clientY - drag.y0; draw(); } return; }
+  if (drag.kind === 'pan') { view.ox = drag.ox + e.clientX - drag.x0; view.oy = drag.oy + e.clientY - drag.y0; draw(); return; }
+  const [u, v] = toImg(x, y);
+  if (drag.kind === 'draw') { drag.cur = [u, v]; draw(); return; }
+  if (drag.kind === 'edge') { const b = obj().box; drag.edges.forEach(k => { b[k] = (k % 2 === 0) ? u : v; }); draw(); } });
+window.addEventListener('mouseup', e => { if (!drag) return; const d = drag; drag = null;
+  if (d.kind === 'press') { if (!d.moved && st().arm === 'PRELABEL' && S.cur.obj === 'rat') bodyClick(d.u, d.v); return; }
+  if (d.kind === 'draw') { if (d.cur) { const b = normBox(d.start, d.cur); if (b[2] - b[0] >= 5 && b[3] - b[1] >= 5) { setManual(b); return; } } draw(); return; }
+  if (d.kind === 'edge') { const o = obj(), b = normBox([o.box[0], o.box[1]], [o.box[2], o.box[3]]); const moved = b.some((x, i) => Math.abs(x - d.b0[i]) > 0.5);
+    if (moved) { const nb = b.map(x => Math.round(x * 10) / 10); o.box = d.b0; snap(); o.box = nb; o.edge_moves++; log('edge_move', {from: d.b0, to: nb, edges: d.edges}); } else o.box = d.b0; draw(); } });
+cv.addEventListener('wheel', e => { e.preventDefault(); touch(); const r0 = cv.getBoundingClientRect(), mx = e.clientX - r0.left, my = e.clientY - r0.top;
+  const z = Math.exp(-e.deltaY * 0.0015), s2 = Math.min(Math.max(view.s * z, 0.05), 20);
+  view.ox = mx - (mx - view.ox) * s2 / view.s; view.oy = my - (my - view.oy) * s2 / view.s; view.s = s2; draw(); }, {passive: false});
+window.addEventListener('resize', () => { view = null; draw(); });
+// ---------------------------------------------------------------- keys
+document.addEventListener('keyup', e => { if (e.key === ' ') spaceDown = false; });
+document.addEventListener('keydown', e => { touch(); const tg = e.target.tagName; if (tg === 'TEXTAREA' || tg === 'SELECT' || (tg === 'INPUT' && e.target.type === 'text')) return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (k === ' ') { spaceDown = true; e.preventDefault(); return; }
+  if (k === 's') { toggleShowAll(); return; } if (k === 'z') { view = null; draw(); return; } if (k === 'u') { doUndo(); return; }
+  if (k === 'PageDown') { goFrame(S.cur.fi + 1); e.preventDefault(); return; } if (k === 'PageUp') { goFrame(S.cur.fi - 1); e.preventDefault(); return; }
+  if (showAll) return;
+  if (k === 'Enter' || k === 'ArrowRight') { advance(); e.preventDefault(); return; } if (k === 'ArrowLeft') { back(); e.preventDefault(); return; }
+  if (k === 'Tab') { const r = rat(); S.cur.obj = (S.cur.obj === 'implant' || (r && r.implant.hidden)) ? 'rat' : 'implant'; mode = null; draw(); e.preventDefault(); return; }
+  if (k === 'Escape') { mode = null; draw(); return; }
+  const pre = st().arm === 'PRELABEL';
+  if (k === 'a' && pre) accept(); else if (k === 'n' && pre) next(); else if (k === 'm' && pre) flag('merged'); else if (k === 'p' && pre) flag('partial');
+  else if (k === 'h') hideImplant();
+  else if (k === 'b') { if (S.cur.obj === 'implant' && rat() && rat().implant.hidden) rat().implant.hidden = false; mode = mode === 'draw' ? null : 'draw'; log('draw_mode', {on: mode === 'draw'}); draw(); }
+  else if (k === 'r') { mode = mode === 'add' ? null : 'add'; log('add_mode', {on: mode === 'add'}); draw(); }
+  else if (k === 'x') delDot();
+  else if (k === 'f') fitToMask(); });
+// ---------------------------------------------------------------- export / import
+function objOut(f, o){ return Object.assign({}, o, {mask_cache_index: o.mask === null ? null : f.masks[o.mask].i, mask_score: o.mask === null ? null : f.masks[o.mask].s,
+  cand_cache_index: o.cand.map(j => f.masks[j].i), cand_scores: o.cand.map(j => f.masks[j].s)}); }
+function ratOut(f, r){ return Object.assign({}, r, {implant: objOut(f, r.implant), rat: objOut(f, r.rat)}); }
+function marksOut(f, mk){ return Object.entries(mk || {}).map(([j, m]) => ({mask: +j, mask_cache_index: f.masks[+j].i, mask_score: f.masks[+j].s, mark: m})); }
+function exportJSON(){ return {page_version: D.page_version, run: D.run, plan: D.plan, seed: D.seed, exported_at: iso(), started_at: S.started_at,
+  definitions: D.definitions, definition_note: S.defnote, idle_ms: D.idle_ms, objects: ['implant', 'rat'],
+  coords: 'full-resolution pixels, origin top-left; box = [x0, y0, x1, y1]',
+  frames: D.frames.map(f => { const s = S.frames[f.id]; return {frame_id: f.id, domain: f.domain, arm: s.arm, pile_bin: f.pile_bin, order: f.order,
+    active_s: +(s.active_ms / 1000).toFixed(3), showall_s: +(s.showall_ms / 1000).toFixed(3), visited: s.visited, completed: s.completed,
+    rats: s.rats.map(r => ratOut(f, r)), showall_marks: marksOut(f, s.marks),
+    passes: (s.passes || []).map((ps, i) => ({pass: i + 1, active_s: +(ps.active_ms / 1000).toFixed(3), showall_s: +(ps.showall_ms / 1000).toFixed(3),
+      completed: ps.completed, archived_at: ps.archived_at, rats: ps.rats.map(r => ratOut(f, r)), showall_marks: marksOut(f, ps.marks)}))}; }),
+  events: S.events}; }
+function rows(){ const out = []; D.frames.forEach(f => { const s = S.frames[f.id];
+  const passes = (s.passes || []).map((ps, i) => ({n: i + 1, rats: ps.rats, active_ms: ps.active_ms, showall_ms: ps.showall_ms, completed: ps.completed}))
+    .concat([{n: (s.passes || []).length + 1, rats: s.rats, active_ms: s.active_ms, showall_ms: s.showall_ms, completed: s.completed}]);
+  passes.forEach(ps => ps.rats.forEach(r => ['implant', 'rat'].forEach(k => { const o = r[k], fl = o.rank ? (o.cand_flags[o.rank] || {}) : {};
+    const any = q => Object.values(o.cand_flags).some(x => x && x[q]);
+    out.push({frame_id: f.id, pass: ps.n, domain: f.domain, arm: s.arm, pile_bin: f.pile_bin, frame_order: f.order, rat_id: r.id, origin: r.origin,
+      click_id: r.click_id || '', head_u: r.u, head_v: r.v, deleted: r.deleted, object: k, hidden: k === 'implant' ? o.hidden : '',
+      body_click_u: o.click ? o.click[0] : '', body_click_v: o.click ? o.click[1] : '', n_body_clicks: o.clicks.length, n_candidates: o.cand.length,
+      source: o.source || '', rank: o.rank || '', mask_index: o.mask === null ? '' : o.mask, mask_cache_index: o.mask === null ? '' : f.masks[o.mask].i,
+      mask_score: o.mask === null ? '' : f.masks[o.mask].s,
+      box_x0: o.box ? o.box[0] : '', box_y0: o.box ? o.box[1] : '', box_x1: o.box ? o.box[2] : '', box_y1: o.box ? o.box[3] : '',
+      prop_x0: o.prop ? o.prop[0] : '', prop_y0: o.prop ? o.prop[1] : '', prop_x1: o.prop ? o.prop[2] : '', prop_y1: o.prop ? o.prop[3] : '',
+      flag_merged: !!fl.merged, flag_partial: !!fl.partial, any_merged: any('merged'), any_partial: any('partial'), edge_moves: o.edge_moves,
+      next_presses: o.next_presses, object_s: +(o.time_ms / 1000).toFixed(2), frame_active_s: +(ps.active_ms / 1000).toFixed(2),
+      frame_showall_s: +(ps.showall_ms / 1000).toFixed(2), frame_completed: ps.completed}); }))); }); return out; }
+function csvCell(v){ v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function exportCSV(){ const rs = rows(); const cols = Object.keys(rs[0] || {frame_id: ''}); return [cols.join(',')].concat(rs.map(r => cols.map(c => csvCell(r[c])).join(','))).join('\n') + '\n'; }
+function stamp(){ const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+function download(name, text, type){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+function strip(r){ const q = JSON.parse(JSON.stringify(r)); ['implant', 'rat'].forEach(k => { ['mask_cache_index', 'mask_score', 'cand_cache_index', 'cand_scores'].forEach(x => delete q[k][x]); }); return q; }
+$('ej').addEventListener('click', () => { log('export'); download(D.export_prefix + stamp() + '.json', JSON.stringify(exportJSON()), 'application/json'); });
+$('ec').addEventListener('click', () => download(D.export_prefix + stamp() + '.csv', exportCSV(), 'text/csv'));
+$('ij').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const o = JSON.parse(t);
+  if (!o.frames || o.run !== D.run || o.page_version !== D.page_version) { alert('not a v2 export of this page'); return; }
+  o.frames.forEach(x => { if (!S.frames[x.frame_id]) return; const s = S.frames[x.frame_id]; s.active_ms = x.active_s * 1000; s.showall_ms = x.showall_s * 1000;
+    s.visited = x.visited; s.completed = x.completed; s.rats = x.rats.map(strip); s.marks = {}; (x.showall_marks || []).forEach(m => s.marks[m.mask] = m.mark);
+    s.next_add = 1 + s.rats.filter(r => r.origin === 'added').length;
+    s.passes = (x.passes || []).map(ps => { const mk = {}; (ps.showall_marks || []).forEach(m => mk[m.mask] = m.mark);
+      return {rats: ps.rats.map(strip), active_ms: ps.active_s * 1000, showall_ms: ps.showall_s * 1000, completed: ps.completed, marks: mk, archived_at: ps.archived_at}; }); });
+  S.events = o.events || []; S.defnote = o.definition_note || ''; $('defnote').value = S.defnote; save(true); draw(); }); });
+$('defnote').value = S.defnote || '';
+$('defnote').addEventListener('input', e => { S.defnote = e.target.value; save(); });
+$('defnote').addEventListener('change', () => log('definition_note', {text: S.defnote}));
+$('showall').addEventListener('change', e => toggleShowAll(e.target.checked));
+$('redo').addEventListener('click', () => redoFrame(false));
+$('goto').innerHTML = D.frames.map((f, i) => '<option value="' + i + '">' + (i + 1) + ' · ' + (f.domain === 'ir' ? 'IR' : 'col') + ' · ' + f.arm + '</option>').join('');
+$('goto').addEventListener('change', e => goFrame(+e.target.value));
+const keepObj = S.cur.obj; goFrame(S.cur.fi); S.cur.ri = Math.max(0, Math.min(S.cur.ri, rats().length - 1)); S.cur.obj = keepObj || 'implant'; draw();
+window.__pl = {S: () => S, D, goFrame, cur: () => ({fi: S.cur.fi, ri: S.cur.ri, obj: S.cur.obj}), rat: () => rat(), frame: () => fr(), drawn: () => drawnMasks,
+  candidatesAt, exportJSON, exportCSV, key: KEY, redoFrame, setLastInput: dt => { lastInput = performance.now() - dt; },
+  imgToClient: (u, v) => { const r0 = cv.getBoundingClientRect(), [x, y] = toCv(u, v); return [x + r0.left, y + r0.top]; },
+  ready: () => { const im = img(); return im.complete && im.naturalWidth > 0; }, save: () => save(true), visible: () => document.visibilityState,
+  setCur: (ri, o) => { S.cur.ri = ri; S.cur.obj = o; draw(); }};
+})();
+"""
+
+
+def page_html_v2(run_name: str) -> str:
+    import html as _html
+    defs = "".join(f"<div><dt>{_html.escape(k)}:</dt><dd>{_html.escape(v)}</dd></div>" for k, v in DEFINITIONS_V2)
+    css = PAGE_CSS + """
+#objtag{font-weight:700;padding:1px 8px;border-radius:4px}.obj-implant{color:#111;background:#ff9f1a;padding:0 5px;border-radius:3px;font-weight:700}
+.obj-rat{color:#111;background:#39ff14;padding:0 5px;border-radius:3px;font-weight:700}
+"""
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In-box pre-label edit v2</title><style>{css}</style></head><body>
+<header><h1>In-box CH07 — SAM 3 pre-label edit pilot (B, dev) · v2: implant box + rat box · 预标注编辑 v2</h1>
+<dl class="defs">{defs}</dl>
+<div class="bar"><label style="flex:1;display:flex;gap:6px;align-items:center">my definition changes / 我的定义修改:
+<input type="text" id="defnote" style="flex:1;font:inherit;padding:3px 6px" placeholder="optional — exported with your labels"></label></div>
+<div class="bar"><div style="flex:1"><div class="prog"><div id="progbar" style="width:0"></div></div></div><span id="progtxt"></span>
+<button id="ej" type="button">Export JSON</button><button id="ec" type="button">Export CSV</button>
+<label class="btn">Import JSON<input id="ij" type="file" accept=".json,application/json" class="hidden"></label></div></header>
+<div class="wrap"><div><div class="bar"><span id="armtag"></span><span id="objtag"></span><span id="ftitle" style="font-weight:600"></span><span id="timetxt" style="color:var(--muted)"></span></div>
+<canvas id="cv"></canvas><div id="banner"></div></div>
+<div class="side"><div id="status"></div>
+<label><input type="checkbox" id="showall"> show all "rat" candidates (S) · 显示全部候选</label>
+<label>jump to frame <select id="goto"></select></label>
+<button id="redo" type="button" title="the current labels are kept as an earlier pass">redo this frame (keeps the earlier pass) · 重做此帧</button>
+<div class="keys"><b>Per rat: IMPLANT box, then RAT box, then Enter</b> 每只鼠: 先植入体框, 再鼠框, 然后 Enter.<br>
+<span class="obj-implant">IMPLANT</span> candidates come from the head dot (cyan). <span class="obj-rat">RAT</span> (head + body, no tail):
+click on the rat's body first 先点鼠身体; candidates containing that point are offered (pink).<br>
+<b>PRELABEL</b>: A accept 接受 (box = the mask's bounding box, no padding) · N next candidate 下一个候选 (then "none usable") ·
+M / P flag merged / partial (rat box) 合并 / 不完整 · B draw by hand 手画框 · F fit back to the mask 恢复 mask 框<br>
+<b>SCRATCH</b>: drag the implant box, Enter, drag the rat box 先拖植入体框, Enter, 再拖鼠框<br>
+<b>both</b>: H implant hidden 植入体看不见 · drag a box edge to adjust 拖边调整 · Tab switch implant / rat 切换 · Enter / → next box, then next rat 下一个 ·
+← back 上一个 · R add a rat whose head is hidden, click its body 加鼠 · X delete a dot that is not a rat 删除点 · U undo 撤销 ·
+PageDown / PageUp frame 换帧 · wheel zoom 缩放 · right-drag or Space + drag pan 平移 · Z fit 适配 · Esc cancel<br>
+Clock: active time per frame and per box; it pauses when the tab is hidden or after 45 s without input (计时: 45 秒无操作暂停). Stop any time; progress is saved in this browser.</div>
+<div class="keys">Exports (prefix v2_) → <code>cv/configs/inbox_sam3_prelabel_edit_2026c/</code> · run {_html.escape(run_name)}</div></div></div>
+<script src="pl_data.js"></script>
+<script>{PAGE_JS_V2}</script></body></html>
+"""
+
+
+def build_v2(run: Path, check: bool = True) -> dict:
+    """The v2 page in <run>/prelabel_edit_v2/: same frames, arms, seed, masks and head candidate lists as v1 (amendment B1:
+    arms unchanged); implant box from the head candidates, rat box from a body click. v1's files are not touched."""
+    import os
+    frames = pd.read_csv(run / "frames.csv")
+    heads = pd.read_csv(run / "heads.csv")
+    arms = assign_arms(frames, heads)
+    out = run / "prelabel_edit_v2"
+    if out.exists():
+        shutil.rmtree(out)
+    (out / "frames").mkdir(parents=True)
+    data = {"page_version": PAGE_VERSION_V2, "run": run.name, "plan": PLAN, "seed": SEED, "idle_ms": IDLE_MS, "cover_px": S.COVER_PX,
+            "definitions": [{"term": k, "text": v} for k, v in DEFINITIONS_V2], "export_prefix": "v2_inbox_sam3_prelabel_edit_2026c_",
+            "frames": []}
+    linked = 0
+    for r in arms.itertuples():
+        H = heads[heads.frame_id == r.frame_id].sort_values(["u", "click_id"]).reset_index(drop=True)
+        pl = frame_payload(run, r.frame_id, H)
+        dst = out / "frames" / Path(r.path).name
+        src_v1 = run / "prelabel_edit" / "frames" / dst.name
+        try:
+            os.link(src_v1 if src_v1.exists() else r.path, dst)            # hard link (no second copy on disk)
+            linked += 1
+        except OSError:
+            shutil.copy2(r.path, dst)
+        data["frames"].append({"id": r.frame_id, "domain": r.domain, "arm": r.arm, "pile_bin": r.pile_bin, "order": int(r.order),
+                               "img": f"frames/{dst.name}", "w": S.IMG_W, "h": S.IMG_H,
+                               "heads": [{"c": h.click_id, "u": round(float(h.u), 1), "v": round(float(h.v), 1)} for h in H.itertuples()],
+                               "masks": pl["masks"], "cand": pl["cand"]})
+        print(f"  build v2 {int(r.order)}/{len(arms)} {r.frame_id} ({r.arm})", flush=True)
+    (out / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(data, separators=(",", ":")) + ";\n", encoding="utf-8")
+    (out / "index.html").write_text(page_html_v2(run.name), encoding="utf-8")
+    arms.drop(columns=["path"]).to_csv(out / "arms.csv", index=False)
+    v1_arms = run / "prelabel_edit" / "arms.csv"
+    same_arms = bool(v1_arms.exists() and pd.read_csv(v1_arms)[["frame_id", "arm", "order"]].equals(arms[["frame_id", "arm", "order"]]))
+    meta = {"made": datetime.now().isoformat(timespec="seconds"), "plan": PLAN, "amendments": "B1, B1a", "run": run.as_posix(), "seed": SEED,
+            "page_version": PAGE_VERSION_V2, "n_frames": len(arms), "n_prelabel": int((arms.arm == "PRELABEL").sum()),
+            "n_scratch": int((arms.arm == "SCRATCH").sum()), "arms_identical_to_v1": same_arms, "frames_hard_linked": linked,
+            "size": {"pl_data_js_bytes": (out / "pl_data.js").stat().st_size, "index_html_bytes": (out / "index.html").stat().st_size,
+                     "frames_bytes_apparent": int(sum(p.stat().st_size for p in (out / "frames").glob("*.jpg")))},
+            "git_commit": git_commit()}
+    if check:
+        meta["page_check"] = page_check_v2(out, data)
+        S.write_json(out / "page_check.json", meta["page_check"])
+        print(f"v2 page check: {meta['page_check']['verdict']}", flush=True)
+    S.write_json(out / "build_meta.json", meta)
+    return meta
+
+
+def page_check_v2(out: Path, data: dict) -> dict:
+    """Headless Chrome (throwaway profile), the full two-box flow: implant accept + edge move + F; H; body click -> candidates
+    -> N -> accept; manual rat box; SCRATCH two boxes; add / delete / undo; per-object time + idle pause; a v1 storage key is
+    ignored; persistence across a reload; export; no network URL."""
+    import inbox_identity_page as ipage
+    html_t, js_t = (out / "index.html").read_text(encoding="utf-8"), (out / "pl_data.js").read_text(encoding="utf-8")
+    res = {"network_urls": re.findall(r"https?://[^\s\"'<>]+", html_t) + re.findall(r"https?://[^\s\"'<>]+", js_t)}
+    prof = Path(tempfile.mkdtemp(prefix="pl2check_"))
+    p, wsu, bws = ipage._chrome((out / "index.html").resolve().as_uri(), prof, ipage._free_port())
+    c = None
+    try:
+        c = ipage._CDP(wsu)
+        c.call("Runtime.enable")
+
+        def ready():
+            for _ in range(240):
+                try:
+                    if c.ev("!!window.__pl && window.__pl.ready()"):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+                time.sleep(0.25)
+            return False
+
+        def key(k):
+            c.ev(f"document.dispatchEvent(new KeyboardEvent('keydown', {{key: {json.dumps(k)}, bubbles: true}}))")
+
+        def mouse(kind, u, v):
+            c.ev(f"(() => {{ const [x, y] = window.__pl.imgToClient({u}, {v}); document.getElementById('cv').dispatchEvent("
+                 f"new MouseEvent({json.dumps(kind)}, {{clientX: x, clientY: y, button: 0, bubbles: true}})); }})()")
+
+        def click(u, v):
+            mouse("mousedown", u, v)
+            mouse("mouseup", u, v)
+
+        def drag(u0, v0, u1, v1):
+            mouse("mousedown", u0, v0)
+            mouse("mousemove", (u0 + u1) / 2, (v0 + v1) / 2)
+            mouse("mousemove", u1, v1)
+            mouse("mouseup", u1, v1)
+
+        def R():
+            return c.ev("JSON.parse(JSON.stringify(window.__pl.rat()))")
+
+        def cur():
+            return c.ev("window.__pl.cur()")
+        # a v1 state under the v1 key must be ignored
+        c.ev("localStorage.setItem('inbox_sam3_prelabel_edit_2026c_v1::' + window.PL_DATA.run, JSON.stringify({frames: {x: 1}, cur: {fi: 5, ri: 0}}))")
+        c.call("Page.reload")
+        time.sleep(1.0)
+        res["loaded"] = ready()
+        res["v1_storage_ignored"] = {"cur_fi": cur()["fi"], "ok": cur()["fi"] == 0 and c.ev("!!localStorage.getItem('inbox_sam3_prelabel_edit_2026c_v1::' + window.PL_DATA.run)")}
+        fr = data["frames"]
+        # PRELABEL frame: head 0 with an implant candidate, and a body point with >= 2 rat candidates
+        fi, body = None, None
+        for i, f in enumerate(fr):
+            if f["arm"] != "PRELABEL" or len(f["cand"]) < 2 or not f["cand"][0]:
+                continue
+            for m in sorted(f["masks"], key=lambda m: -m["a"])[:15]:
+                for pts in m["p"]:
+                    x0, y0 = float(np.mean(pts[0::2])), float(np.mean(pts[1::2]))
+                    if _pip(x0, y0, pts):
+                        c.ev(f"window.__pl.goFrame({i})")
+                        if len(c.ev(f"window.__pl.candidatesAt({x0}, {y0})")) >= 2:
+                            fi, body = i, (x0, y0)
+                        break
+                if body:
+                    break
+            if body:
+                break
+        c.ev(f"window.__pl.goFrame({fi})")
+        ready()
+        f = fr[fi]
+        cb = f["masks"][f["cand"][0][0]]["b"]
+        # 1 implant: accept, edge move, F
+        st0 = cur()
+        key("a")
+        r = R()
+        acc_ok = st0["obj"] == "implant" and r["implant"]["source"] == "cand" and r["implant"]["rank"] == 1 and r["implant"]["box"] == cb
+        b = r["implant"]["box"]
+        drag(b[2], (b[1] + b[3]) / 2, b[2] + 30, (b[1] + b[3]) / 2)
+        moved = R()["implant"]
+        key("f")
+        fitted = R()["implant"]["box"]
+        res["implant"] = {"accept_ok": acc_ok, "edge_moves": moved["edge_moves"], "fitted_equals_mask": fitted == cb,
+                          "ok": acc_ok and moved["edge_moves"] == 1 and moved["box"] != cb and fitted == cb}
+        # 2 Enter -> RAT box; no candidate before the body click; body click -> candidates; N; accept rank 2
+        key("Enter")
+        o1 = cur()["obj"]
+        drawn_before = c.ev("window.__pl.drawn()")
+        click(*body)
+        rr = R()["rat"]
+        key("n")
+        k1 = R()["rat"]["k"]
+        key("m")
+        key("a")
+        rr2 = R()["rat"]
+        res["rat_box"] = {"obj_after_enter": o1, "drawn_before_click": drawn_before, "n_cand": len(rr["cand"]), "prop": rr["prop"],
+                          "click": rr["click"], "k_after_n": k1, "source": rr2["source"], "rank": rr2["rank"], "flags": rr2["cand_flags"],
+                          "ok": o1 == "rat" and drawn_before == 0 and len(rr["cand"]) >= 2 and rr["click"] is not None
+                          and rr["prop"] == f["masks"][rr["cand"][0]]["b"] and k1 == 1 and rr2["source"] == "cand" and rr2["rank"] == 2
+                          and rr2["cand_flags"].get("2", {}).get("merged") is True and rr2["box"] == f["masks"][rr["cand"][1]]["b"]}
+        # 3 Enter -> next rat (implant); H -> hidden, active = rat; manual rat box (B + drag)
+        ri0 = cur()["ri"]
+        key("Enter")
+        c2 = cur()
+        key("h")
+        c3 = cur()
+        hu, hv = f["heads"][c2["ri"]]["u"], f["heads"][c2["ri"]]["v"]
+        key("b")
+        drag(hu - 150, hv - 100, hu + 220, hv + 160)
+        r3 = R()
+        res["hidden_and_manual"] = {"moved_to_rat": c2["ri"] != ri0 and c2["obj"] in ("implant", "rat"), "hidden": r3["implant"]["hidden"],
+                                    "obj_after_h": c3["obj"], "rat_source": r3["rat"]["source"], "rat_box": r3["rat"]["box"],
+                                    "ok": c2["ri"] != ri0 and r3["implant"]["hidden"] is True and r3["implant"]["box"] is None and c3["obj"] == "rat"
+                                    and r3["rat"]["source"] == "manual" and abs(r3["rat"]["box"][0] - (hu - 150)) < 3}
+        # 4 add / delete / undo (added rat: implant hidden, rat candidates from the add point)
+        fid_js = json.dumps(f["id"])
+        nr = c.ev(f"window.__pl.S().frames[{fid_js}].rats.length")
+        key("r")
+        click(*body)
+        ra = R()
+        key("x")
+        dl = c.ev(f"window.__pl.S().frames[{fid_js}].rats[{nr}].deleted")
+        key("u")
+        ud = c.ev(f"window.__pl.S().frames[{fid_js}].rats[{nr}].deleted")
+        res["add_delete_undo"] = {"origin": ra["origin"], "implant_hidden": ra["implant"]["hidden"], "rat_n_cand": len(ra["rat"]["cand"]),
+                                  "deleted": dl, "after_undo": ud,
+                                  "ok": ra["origin"] == "added" and ra["implant"]["hidden"] is True and len(ra["rat"]["cand"]) >= 1 and dl is True and ud is False}
+        # 5 per-object time slice + idle pause
+        c.ev("window.__pl.setCur(0, 'rat')")
+        t0 = c.ev(f"window.__pl.S().frames[{fid_js}].rats[0].rat.time_ms")
+        i0 = c.ev(f"window.__pl.S().frames[{fid_js}].rats[0].implant.time_ms")
+        for _ in range(3):
+            c.ev("window.__pl.setLastInput(0)")
+            time.sleep(0.5)
+        t1 = c.ev(f"window.__pl.S().frames[{fid_js}].rats[0].rat.time_ms")
+        i1 = c.ev(f"window.__pl.S().frames[{fid_js}].rats[0].implant.time_ms")
+        c.ev("window.__pl.setLastInput(50000)")
+        a0 = c.ev(f"window.__pl.S().frames[{fid_js}].active_ms")
+        time.sleep(1.6)
+        a1 = c.ev(f"window.__pl.S().frames[{fid_js}].active_ms")
+        c.ev("window.__pl.setLastInput(0)")
+        res["timing"] = {"rat_slice_gain_ms": t1 - t0, "implant_slice_gain_ms": i1 - i0, "idle_gain_ms": a1 - a0,
+                         "ok": t1 - t0 > 800 and i1 - i0 < 1e-6 and a1 - a0 < 1e-6}
+        # 6 SCRATCH frame: two boxes by hand, no mask drawn
+        fs = next(i for i, x in enumerate(fr) if x["arm"] == "SCRATCH")
+        c.ev(f"window.__pl.goFrame({fs})")
+        ready()
+        g = fr[fs]
+        gu, gv = g["heads"][0]["u"], g["heads"][0]["v"]
+        drag(gu - 60, gv - 50, gu + 60, gv + 40)
+        key("Enter")
+        drag(gu - 200, gv - 150, gu + 250, gv + 200)
+        r6 = R()
+        res["scratch"] = {"implant_source": r6["implant"]["source"], "rat_source": r6["rat"]["source"], "drawn_masks": c.ev("window.__pl.drawn()"),
+                          "ok": r6["implant"]["source"] == "manual" and r6["rat"]["source"] == "manual" and c.ev("window.__pl.drawn()") == 0}
+        # 7 persistence
+        snap_before = c.ev(f"JSON.stringify(window.__pl.S().frames[{fid_js}].rats.map(r => [r.implant.box, r.implant.hidden, r.rat.box, r.rat.click]))")
+        c.ev("window.__pl.save()")
+        c.call("Page.reload")
+        time.sleep(1.5)
+        ready()
+        snap_after = c.ev(f"JSON.stringify(window.__pl.S().frames[{fid_js}].rats.map(r => [r.implant.box, r.implant.hidden, r.rat.box, r.rat.click]))")
+        res["persistence"] = {"ok": snap_before == snap_after}
+        # 8 export
+        ej = c.ev("window.__pl.exportJSON()")
+        n_rats = sum(len(x["rats"]) for x in ej["frames"])
+        csv_lines = c.ev("window.__pl.exportCSV().trim().split('\\n').length")
+        evk = sorted({e["ev"] for e in ej["events"]})
+        f0 = next(x for x in ej["frames"] if x["frame_id"] == f["id"])
+        props_ok = all((r["implant"]["prop"] == f["masks"][r["implant"]["cand"][0]]["b"]) if r["implant"]["cand"] else r["implant"]["prop"] is None
+                       for r in f0["rats"] if r["origin"] == "click")
+        res["export"] = {"version": ej["page_version"], "frames": len(ej["frames"]), "rats": n_rats, "csv_lines": csv_lines, "event_kinds": evk,
+                         "implant_props_ok": props_ok,
+                         "ok": ej["page_version"] == PAGE_VERSION_V2 and len(ej["frames"]) == len(fr) and csv_lines == 2 * n_rats + 1 and props_ok
+                         and {"accept", "edge_move", "fit_to_mask", "obj_next", "body_click", "next", "flag", "implant_hidden", "manual_box",
+                              "add_rat", "delete_dot", "undo", "rat_next"} <= set(evk)}
+        c.ev("localStorage.clear()")
+    finally:
+        if c:
+            c.close()
+        ipage._close_chrome(p, bws)
+        shutil.rmtree(prof, ignore_errors=True)
+    keys = ["v1_storage_ignored", "implant", "rat_box", "hidden_and_manual", "add_delete_undo", "timing", "scratch", "persistence", "export"]
+    res["verdict"] = "PASS" if (res.get("loaded") and all(res[k]["ok"] for k in keys) and not res["network_urls"]) else "FAIL"
+    return res
+
+
+# ---------------------------------------------------------------- v2 summary (per object type)
+def obj_table_v2(ex: dict) -> pd.DataFrame:
+    """One row per rat x object (implant, rat) of each frame's main pass, with the v1 derived columns."""
+    rows = []
+    for f0 in ex["frames"]:
+        mp = main_pass(f0)
+        for r in mp["rats"]:
+            for k in OBJS:
+                o = r[k]
+                cf = o.get("cand_flags") or {}
+                acc = cf.get(str(o.get("rank")), {}) if o.get("rank") else {}
+                rows.append({"frame_id": f0["frame_id"], "domain": f0["domain"], "arm": f0["arm"], "pile_bin": f0["pile_bin"],
+                             "completed": bool(mp["completed"]), "rat_id": r["id"], "origin": r["origin"], "deleted": bool(r["deleted"]),
+                             "object": k, "hidden": bool(o.get("hidden")) if k == "implant" else False, "n_cand": len(o.get("cand") or []),
+                             "source": o.get("source") or "", "rank": o.get("rank"), "boxed": o.get("box") is not None,
+                             "acc_merged": bool(acc.get("merged")), "acc_partial": bool(acc.get("partial")),
+                             "any_merged": any(bool((v or {}).get("merged")) for v in cf.values()),
+                             "any_partial": any(bool((v or {}).get("partial")) for v in cf.values()),
+                             "edge_moves": int(o.get("edge_moves") or 0), "next_presses": int(o.get("next_presses") or 0),
+                             "prop": o.get("prop"), "box": o.get("box"), "time_s": float(o.get("time_ms") or 0) / 1000.0,
+                             "has_click": o.get("click") is not None, "u": r["u"], "v": r["v"], "pass": mp.get("pass", 1)})
+    t = pd.DataFrame(rows)
+    return derive(t) if len(t) else t
+
+
+def obj_block_v2(d: pd.DataFrame) -> dict:
+    """Per object type on its evaluated objects (not deleted, boxed), PRELABEL arm."""
+    pre = d[d.arm == "PRELABEL"]
+    n = len(pre)
+    c3 = c3_table(d) if len(d) else pd.DataFrame()
+    cb = c3_block(c3)
+    return {"n_prelabel": n, "usable1": pre.usable1.mean() if n else np.nan, "usable_any": pre.usable_any.mean() if n else np.nan,
+            "manual": pre.manual.mean() if n else np.nan, "merged": pre.any_merged.mean() if n else np.nan,
+            "partial": pre.any_partial.mean() if n else np.nan, "no_candidate": (pre.n_cand == 0).mean() if n else np.nan,
+            "quality": quality_block(d), "c3": {"n": int(len(c3)), "edges": cb, "padding_rule_frac": {e: cb[e]["frac"]["median"] for e in EDGES},
+                                                "uniformity": uniformity(cb)}}
+
+
+def summarize_v2(ex: dict, more: list | None = None) -> dict:
+    t = obj_table_v2(ex)
+    live = t[~t.deleted] if len(t) else t
+    ev = live[live.boxed] if len(live) else live
+    fr = pd.DataFrame([{"frame_id": f["frame_id"], "domain": f["domain"], "arm": f["arm"], "pile_bin": f["pile_bin"],
+                        "completed": bool(mp["completed"]), "showall_s": float(mp["showall_s"]),
+                        "n_garbage": sum(1 for m in (mp.get("showall_marks") or []) if m["mark"] == "garbage"),
+                        "n_fragment": sum(1 for m in (mp.get("showall_marks") or []) if m["mark"] == "fragment")}
+                       for f in ex["frames"] for mp in [main_pass(f)]])
+    done = set(fr.loc[fr.completed, "frame_id"])
+
+    def secs(d: pd.DataFrame, arm: str) -> dict:
+        x = d[(d.arm == arm) & d.frame_id.isin(done)]
+        return {"n": int(len(x)), "s_per_object": float(x.time_s.sum() / len(x)) if len(x) else np.nan,
+                "median_s": float(x.time_s.median()) if len(x) else np.nan}
+
+    def hidden_rate(d: pd.DataFrame) -> dict:
+        x = d[d.object == "implant"]
+        return {a: (float(x[x.arm == a].hidden.mean()) if (x.arm == a).any() else np.nan) for a in ("PRELABEL", "SCRATCH")} | {
+            "all": float(x.hidden.mean()) if len(x) else np.nan, "n_rats": int(len(x))}
+    out = {"page_version": PAGE_VERSION_V2, "n_frames_visited": int(sum(1 for f in ex["frames"] if f.get("visited"))),
+           "n_frames_completed": int(fr.completed.sum()), "n_rats": int((t.object == "rat").sum()) if len(t) else 0,
+           "n_deleted": int(((t.object == "rat") & t.deleted).sum()) if len(t) else 0,
+           "n_added": int(((t.object == "rat") & (t.origin == "added") & ~t.deleted).sum()) if len(t) else 0,
+           "hidden": hidden_rate(live) if len(live) else {}, "objects": {}, "split": [],
+           "showall": {"frames_used": int((fr.showall_s > 0).sum()), "showall_s": float(fr.showall_s.sum()),
+                       "garbage": int(fr.n_garbage.sum()), "fragment": int(fr.n_fragment.sum())},
+           "definition_note": ex.get("definition_note", "")}
+    for k in OBJS:
+        d = ev[ev.object == k] if len(ev) else ev
+        out["objects"][k] = {**(obj_block_v2(d) if len(d) else {"n_prelabel": 0}), "time": ({a: secs(d, a) for a in ("PRELABEL", "SCRATCH")} if len(d) else {}),
+                             "sizes": {"scratch": size_block(d[d.arm == "SCRATCH"].box) if len(d) else size_block([]),
+                                       "accepted_mask_bbox": size_block([m for m in d[(d.arm == "PRELABEL") & (d.source == "cand")].prop]) if len(d) else size_block([])}}
+        for dom in ("ir", "colour"):
+            for b in PILE_BINS:
+                x = d[(d.domain == dom) & (d.pile_bin == b)] if len(d) else d
+                lx = live[(live.domain == dom) & (live.pile_bin == b)] if len(live) else live
+                row = {"object": k, "domain": dom, "pile_bin": b}
+                if len(x):
+                    bl = obj_block_v2(x)
+                    row.update({kk: bl[kk] for kk in ("n_prelabel", "usable1", "usable_any", "manual", "merged", "partial")})
+                    row.update({f"iou_{q}": bl["quality"][f"iou_{q}"] for q in ("median", "q25", "q75")})
+                    row.update({f"pad_{e}": bl["c3"]["padding_rule_frac"][e] for e in EDGES})
+                    row["uniform"] = bl["c3"]["uniformity"]["uniform"]
+                    for a in ("PRELABEL", "SCRATCH"):
+                        row[f"{a}_s"] = secs(x, a)["s_per_object"]
+                if k == "implant" and len(lx):
+                    row["hidden"] = float(lx[lx.object == "implant"].hidden.mean()) if (lx.object == "implant").any() else np.nan
+                out["split"].append(row)
+    # repeat check per object: reuse the v1 pairing on per-object views of the passes
+    out["repeat"] = {}
+    for k in OBJS:
+        exs = [ex] + list(more or [])
+        proj = [{**e, "frames": [{**f, "rats": [{"id": r["id"], "u": r["u"], "v": r["v"], "deleted": r["deleted"] or (k == "implant" and r["implant"].get("hidden")),
+                                                 "box": r[k].get("box")} for r in f["rats"]],
+                                  "passes": [{**ps, "rats": [{"id": r["id"], "u": r["u"], "v": r["v"],
+                                                              "deleted": r["deleted"] or (k == "implant" and r["implant"].get("hidden")),
+                                                              "box": r[k].get("box")} for r in ps["rats"]]} for ps in (f.get("passes") or [])]}
+                                 for f in e["frames"]]} for e in exs]
+        rp = repeat_pairs(proj)
+        out["repeat"][k] = {"n_pairs": len(rp), "n_frames": int(rp.frame_id.nunique()) if len(rp) else 0,
+                            "iou_median": float(rp.iou.median()) if len(rp) else np.nan,
+                            "iou_q25": float(rp.iou.quantile(0.25)) if len(rp) else np.nan,
+                            "iou_q75": float(rp.iou.quantile(0.75)) if len(rp) else np.nan,
+                            "share_below_0_5": float((rp.iou < 0.5).mean()) if len(rp) else np.nan}
+    return out
+
+
+def summary_md_v2(sm: dict, export_name: str) -> str:
+    def fx(v, d=1):
+        return S.f3(v, d)
+    L = ["## B — pre-label edit pilot (dev)", "",
+         f"Plan `{PLAN}`, part B as amended by B1 / B1a: an implant box and a rat box per rat. Page v2; driver "
+         f"`cv/cv_field/inbox_prelabel_edit.py`; the user's export `{export_name}`.", "",
+         "**Status: dev, descriptive only.** The 58 frames had all been seen before, so nothing here is a claim and the timing "
+         "contrast is indicative only. The frozen test is part C. Every metric is per object type (implant box, rat box).", "",
+         "**Coverage of the export:**",
+         f"- {sm['n_frames_completed']} frames completed of {sm['n_frames_visited']} opened;",
+         f"- {sm['n_rats']} rats, {sm['n_added']} added by the user (head hidden), {sm['n_deleted']} dots deleted.", ""]
+    hd = sm.get("hidden") or {}
+    if hd:
+        L += [f"**Implant hidden:** {S.pct(hd.get('all', np.nan))} of {hd.get('n_rats', 0)} rats (PRELABEL "
+              f"{S.pct(hd.get('PRELABEL', np.nan))}, SCRATCH {S.pct(hd.get('SCRATCH', np.nan))}).", ""]
+    for k, name in (("implant", "Implant box"), ("rat", "Rat box (head + body, no tail)")):
+        o = sm["objects"].get(k, {})
+        if not o or not o.get("n_prelabel"):
+            L += [f"### {name}", "", "No PRELABEL object of this type in the export.", ""]
+            continue
+        q, c3 = o["quality"], o["c3"]
+        tp, ts = o["time"].get("PRELABEL", {}), o["time"].get("SCRATCH", {})
+        L += [f"### {name}", "",
+              f"**PRELABEL** ({o['n_prelabel']} boxes):",
+              f"- usable@1 {S.pct(o['usable1'])}; usable@any {S.pct(o['usable_any'])}; manual {S.pct(o['manual'])}; no candidate "
+              f"{S.pct(o['no_candidate'])}" + (f"; merged {S.pct(o['merged'])}, partial {S.pct(o['partial'])}." if k == "rat" else "."),
+              f"- IoU proposed → final: median {fx(q['iou_median'], 3)} [quartiles {fx(q['iou_q25'], 3)}, {fx(q['iou_q75'], 3)}];",
+              f"- no edit {S.pct(q['no_edit'])}; edge moves only {S.pct(q['edge_only'])} (median edge shift "
+              f"{fx(q['edge_shift_median_px'])} px); another candidate {S.pct(q['other_candidate'])}.",
+              f"- Seconds per box (per-object time slices, completed frames): PRELABEL {fx(tp.get('s_per_object', np.nan))} s "
+              f"(n {tp.get('n', 0)}), SCRATCH {fx(ts.get('s_per_object', np.nan))} s (n {ts.get('n', 0)}).", ""]
+
+        def cell(qq, pct_=False):
+            if not qq["n"]:
+                return "–"
+            f = (lambda v: f"{100 * v:+.1f} %") if pct_ else (lambda v: f"{v:+.0f}")
+            return f"{f(qq['median'])} [{f(qq['q25'])}, {f(qq['q75'])}]"
+        L += [f"Per-edge signed shift from the mask bbox to the final box ({c3['n']} kept first candidates; + = the final box larger):", "",
+              S.md_table(pd.DataFrame([{**{f"{e} px": cell(c3["edges"][e]["px"]) for e in EDGES},
+                                        **{f"{e} fraction": cell(c3["edges"][e]["frac"], True) for e in EDGES}}])), ""]
+        pr, un = c3["padding_rule_frac"], c3["uniformity"]
+        L += ["- **Proposed padding rule** (a proposal; frozen later with the user): "
+              + ", ".join(f"{e} {100 * pr[e]:+.1f} %" if np.isfinite(pr[e]) else f"{e} –" for e in EDGES) + ".",
+              "- Uniformity: " + ("not computable." if un["uniform"] is None else ("**uniform**." if un["uniform"] else
+                                  "**NOT uniform** (" + "; ".join(([f"IQR > |median| on {', '.join(un['spread_edges'])}"] if un["spread_flag"] else [])
+                                                                 + ([f"{un['worst_edge']} edge {un['worst_over_others']:.1f}× the others"] if un["one_edge_flag"] else []))
+                                  + "); a uniform padding would then not be used (amendment C3 item 3).")), ""]
+        sz = o["sizes"]
+
+        def scell(qq, d=0):
+            return "–" if not qq["n"] else f"{qq['median']:.{d}f} [{qq['q25']:.{d}f}, {qq['q75']:.{d}f}] (n {qq['n']})"
+        L += [S.md_table(pd.DataFrame([{"boxes": nm, "width px": scell(v["width_px"]), "height px": scell(v["height_px"]),
+                                        "aspect w / h": scell(v["aspect_w_over_h"], 2)}
+                                       for nm, v in (("SCRATCH (by hand)", sz["scratch"]), ("accepted mask bboxes", sz["accepted_mask_bbox"]))])), ""]
+        rows = [{"domain": r["domain"], "pile": r["pile_bin"], "PRELABEL n": r.get("n_prelabel", 0), "usable@1": S.pct(r.get("usable1", np.nan)),
+                 "usable@any": S.pct(r.get("usable_any", np.nan)), "manual": S.pct(r.get("manual", np.nan)),
+                 **({"merged": S.pct(r.get("merged", np.nan)), "partial": S.pct(r.get("partial", np.nan))} if k == "rat" else
+                    {"hidden": S.pct(r.get("hidden", np.nan))}),
+                 "IoU median": fx(r.get("iou_median", np.nan), 3),
+                 "padding L / R / T / B": " / ".join(f"{100 * r[f'pad_{e}']:+.0f} %" if np.isfinite(r.get(f"pad_{e}", np.nan)) else "–" for e in EDGES),
+                 "s PRELABEL": fx(r.get("PRELABEL_s", np.nan)), "s SCRATCH": fx(r.get("SCRATCH_s", np.nan))}
+                for r in sm["split"] if r["object"] == k]
+        L += ["By domain and pile size:", "", S.md_table(pd.DataFrame(rows)), ""]
+        rp = sm["repeat"].get(k, {})
+        L += [f"Repeat check ({name.lower()}): " + (f"{rp['n_pairs']} pairs on {rp['n_frames']} frames, IoU median {fx(rp['iou_median'], 3)} "
+                                                    f"[{fx(rp['iou_q25'], 3)}, {fx(rp['iou_q75'], 3)}], {S.pct(rp['share_below_0_5'])} below 0.5."
+                                                    if rp.get("n_pairs") else "no frame was labelled twice."), ""]
+    sa = sm["showall"]
+    L += [f"**'Show all' view** (descriptive): {sa['frames_used']} frames, {fx(sa['showall_s'], 0)} s, {sa['garbage']} garbage / "
+          f"{sa['fragment']} fragment marks.", ""]
+    if sm.get("definition_note"):
+        L += [f"**The user's definition changes:** {sm['definition_note']}", ""]
+    L += ["**Definitions (B, v2):**", "",
+          "- **Implant box** = the implant only; candidates = the 'rat' masks within 15 px of the head point, in score order; "
+          "**implant hidden** = the user's H.",
+          "- **Rat box** = head + body, no tail, visible parts only; candidates = the masks containing the user's body click "
+          "(polygon or within 15 px), in score order. The proposed box is the first candidate of the latest body click.",
+          "- **usable@1 / usable@any:** per object type, as in v1. Merged / partial flags apply to the rat box only.",
+          "- **IoU proposed → final**, **edge shifts**, **padding rule**, **uniformity flag:** as in v1 (C2 / C3), per object type.",
+          "- **Seconds per box** = the object's active time slice (the clock runs for the active box only; it pauses when the tab "
+          "is hidden or after 45 s without input), mean over the boxed objects on completed frames.",
+          "- **Repeat check** per object type: rats paired by head point within 15 px, IoU of the two final boxes (hidden implants "
+          "excluded).", ""]
+    return "\n".join(L)
 
 
 # ============================================================================================ selftest
@@ -1221,6 +1998,72 @@ def selftest() -> int:
         p.write_text(json.dumps(ex), encoding="utf-8")
         out = write_summary(run, p, regenerate_report=False)
         rec("write_summary: fragment + json written (report not touched in the selftest)", out.exists() and (run / "prelabel_edit" / "summary_B.json").exists())
+    # ---------------- v2 (implant box + rat box)
+    if node:
+        with tempfile.TemporaryDirectory() as td:
+            js = Path(td) / "pl2.js"
+            js.write_text(PAGE_JS_V2, encoding="utf-8")
+            r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True)
+            rec("v2 page script parses (node --check)", r.returncode == 0, r.stderr[-300:])
+    h2 = page_html_v2("x")
+    rec("v2 page: no network URL, data in a sibling .js, both object names", not re.search(r"https?://", h2) and '<script src="pl_data.js">' in h2
+        and "IMPLANT" in h2 and "RAT" in h2)
+
+    def O(src, rank=None, prop=(0, 0, 10, 10), box=None, hidden=False, flags=None, t=10.0, click=None, edges=0, ncand=2):
+        return {"cand": list(range(ncand)), "k": 0, "prop": list(prop) if prop else None, "box": box if box is not None else ((list(prop) if prop else [0, 0, 10, 10]) if src else None),
+                "source": src, "rank": rank, "mask": 0 if src == "cand" else None, "cand_flags": {str(a): b for a, b in (flags or {}).items()},
+                "edge_moves": edges, "next_presses": 0, "time_ms": t * 1000, "hidden": hidden, "click": click, "clicks": [click] if click else []}
+
+    def RR(i, imp, rt, origin="click", deleted=False):
+        return {"id": f"h{i}", "num": i, "origin": origin, "click_id": f"c{i}", "u": 100.0 * i, "v": 50.0, "deleted": deleted, "implant": imp, "rat": rt}
+    ex2 = {"page_version": PAGE_VERSION_V2, "definition_note": "", "frames": [
+        {"frame_id": "P", "domain": "ir", "arm": "PRELABEL", "pile_bin": "2-3", "completed": True, "visited": True, "active_s": 100.0, "showall_s": 0.0,
+         "showall_marks": [], "passes": [], "rats": [
+             RR(1, O("cand", 1, t=4), O("cand", 1, prop=(0, 0, 100, 50), box=[-10, -5, 110, 55], click=[5, 5], t=6, edges=2)),
+             RR(2, O("cand", 2, t=5), O("cand", 1, prop=(0, 0, 100, 50), flags={1: {"merged": True}}, click=[5, 5], t=8)),
+             RR(3, O(None, hidden=True, t=1), O("manual", None, prop=(0, 0, 100, 50), box=[0, 0, 90, 40], click=[5, 5], t=12)),
+             RR(4, O("manual", None, prop=None, ncand=0, t=7), O("cand", 2, prop=(0, 0, 100, 50), click=[5, 5], t=9))]},
+        {"frame_id": "Q", "domain": "ir", "arm": "SCRATCH", "pile_bin": "2-3", "completed": True, "visited": True, "active_s": 60.0, "showall_s": 0.0,
+         "showall_marks": [], "passes": [], "rats": [
+             RR(1, O("manual", None, prop=None, box=[0, 0, 12, 12], t=6), O("manual", None, prop=None, box=[0, 0, 120, 60], t=14)),
+             RR(2, O(None, hidden=True, prop=None, t=2), O("manual", None, prop=None, box=[0, 0, 110, 60], t=16))]}]}
+    sv = summarize_v2(ex2)
+    oi, orr = sv["objects"]["implant"], sv["objects"]["rat"]
+    # implant PRELABEL boxed: h1 (rank 1), h2 (rank 2), h4 (manual) -> usable@1 1/3, usable@any 2/3, manual 1/3
+    rec("v2 implant: usable@1 1/3, usable@any 2/3, manual 1/3", abs(oi["usable1"] - 1 / 3) < 1e-12 and abs(oi["usable_any"] - 2 / 3) < 1e-12
+        and abs(oi["manual"] - 1 / 3) < 1e-12, str({k: oi[k] for k in ("usable1", "usable_any", "manual")}))
+    # rat PRELABEL boxed: h1 rank 1 (edges), h2 rank 1 merged, h3 manual, h4 rank 2 -> usable@1 1/4, usable@any 2/4, merged 1/4, manual 1/4
+    rec("v2 rat: usable@1 1/4, usable@any 2/4, merged 1/4, manual 1/4", abs(orr["usable1"] - 0.25) < 1e-12 and abs(orr["usable_any"] - 0.5) < 1e-12
+        and abs(orr["merged"] - 0.25) < 1e-12 and abs(orr["manual"] - 0.25) < 1e-12, str({k: orr[k] for k in ("usable1", "usable_any", "merged", "manual")}))
+    rec("v2 implant hidden: PRELABEL 1/4, SCRATCH 1/2, all 2/6", abs(sv["hidden"]["PRELABEL"] - 0.25) < 1e-12 and abs(sv["hidden"]["SCRATCH"] - 0.5) < 1e-12
+        and abs(sv["hidden"]["all"] - 2 / 6) < 1e-12, str(sv["hidden"]))
+    rec("v2 seconds per box: implant PRELABEL 16/3, SCRATCH 6/1; rat PRELABEL 35/4, SCRATCH 30/2",
+        abs(oi["time"]["PRELABEL"]["s_per_object"] - 16 / 3) < 1e-9 and abs(oi["time"]["SCRATCH"]["s_per_object"] - 6.0) < 1e-9
+        and abs(orr["time"]["PRELABEL"]["s_per_object"] - 35 / 4) < 1e-9 and abs(orr["time"]["SCRATCH"]["s_per_object"] - 15.0) < 1e-9,
+        str((oi["time"], orr["time"])))
+    rec("v2 rat C3: kept first candidates h1 (+10 / +10 / +5 / +5 px) and h2 (0) -> medians +5 / +5 / +2.5 / +2.5 px, fraction +5 %",
+        [orr["c3"]["edges"][e]["px"]["median"] for e in EDGES] == [5.0, 5.0, 2.5, 2.5] and abs(orr["c3"]["padding_rule_frac"]["left"] - 0.05) < 1e-12,
+        str(orr["c3"]["padding_rule_frac"]))
+    rec("v2 rat sizes: SCRATCH width median 115 vs accepted mask bboxes 100", orr["sizes"]["scratch"]["width_px"]["median"] == 115
+        and orr["sizes"]["accepted_mask_bbox"]["width_px"]["median"] == 100)
+    ex3 = json.loads(json.dumps(ex2))
+    fq = ex3["frames"][1]
+    fq["passes"] = [{"pass": 1, "rats": json.loads(json.dumps(fq["rats"])), "active_s": 60.0, "showall_s": 0.0, "completed": True, "showall_marks": []}]
+    fq["rats"][0]["rat"]["box"] = [0, 0, 120, 120]
+    fq["rats"][0]["implant"]["box"] = [0, 0, 12, 24]
+    sv3 = summarize_v2(ex3)
+    rec("v2 repeat per object: rat 2 pairs (IoU 0.5, 1), implant 1 pair (IoU 0.5; hidden excluded)", sv3["repeat"]["rat"]["n_pairs"] == 2
+        and abs(sv3["repeat"]["rat"]["iou_median"] - 0.75) < 1e-12 and sv3["repeat"]["implant"]["n_pairs"] == 1
+        and abs(sv3["repeat"]["implant"]["iou_median"] - 0.5) < 1e-12, str(sv3["repeat"]))
+    md2 = summary_md_v2(sv, "synthetic_v2.json")
+    rec("v2 summary markdown: per-object sections, padding proposal, implant hidden", "### Implant box" in md2 and "### Rat box" in md2
+        and "Proposed padding rule" in md2 and "Implant hidden" in md2)
+    with tempfile.TemporaryDirectory() as td:
+        run = Path(td)
+        pp = run / "ex2.json"
+        pp.write_text(json.dumps(ex2), encoding="utf-8")
+        out2 = write_summary(run, pp, regenerate_report=False)
+        rec("v2 write_summary -> prelabel_edit_v2/summary_B.md", out2 == run / "prelabel_edit_v2" / "summary_B.md" and out2.exists())
     print("SELFTEST", "PASS" if ok_all else "FAIL")
     return 0 if ok_all else 1
 
@@ -1233,9 +2076,14 @@ def main(argv=None) -> int:
     ap.add_argument("--export", type=Path)
     ap.add_argument("--more-exports", type=Path, nargs="*", default=[], help="exports from other labelling sessions (repeat check only)")
     ap.add_argument("--no-page-check", action="store_true")
+    ap.add_argument("--v2", action="store_true", help="build the v2 page (implant box + rat box, amendments B1 / B1a) into <run>/prelabel_edit_v2")
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.cmd == "build" and a.v2:
+        m = build_v2(a.run, check=not a.no_page_check)
+        print(json.dumps({k: m[k] for k in ("n_prelabel", "n_scratch", "arms_identical_to_v1", "frames_hard_linked", "size")}, indent=1))
+        return 0
     if a.cmd == "build":
         m = build(a.run, check=not a.no_page_check)
         print(json.dumps({k: m[k] for k in ("n_prelabel", "n_scratch", "n_heads", "heads_with_0_candidates", "size")}, indent=1))
