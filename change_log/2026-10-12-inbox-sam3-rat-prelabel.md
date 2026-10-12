@@ -313,3 +313,64 @@ J did nothing at all").
     both modes, with no candidate change; a click on the own dot gives `implant_click`.
   - The banner texts, the help line and the legend.
   - Export: v2.3; the CSV has `cand_src` and 2 × rats + 1 lines; no `obj_auto_switch` event; no network URL.
+
+## Addendum 2026-10-12 — page v2.4 in place: mask panel, drag handles, clearer status
+
+**Why.** Two requests from the user:
+- "不行右侧显示一列 哪些mask被包括进了当前选择这样我可以直接点击删除不是的mask。另外我发现没法更改implant的框": show which
+  masks are in the box so wrong ones can be removed; and the implant box could not be changed.
+- From a screenshot, "这明明已经画上了为啥没有候选": the status line mixed the box with the last click.
+
+**Cause of "the implant box cannot be changed"** (reproduced headlessly on the v2.3 page, 1185 × 675 canvas, fit zoom
+0.35 screen px per image px):
+- **Before A there was no box to edit.** Dragging the yellow dashed bbox of the shown candidate only panned the image
+  (36 px).
+- **The edge grab band was 8 screen px with no visible handle.** A press 12 px inside the edge panned the image (100 px)
+  instead of resizing.
+- **In RAT mode the implant box was silently not editable.** A drag on its edge panned the image, with no message.
+- **A small box collapsed.** At ≤ ~16 screen px the four 8-px bands overlapped, so one drag moved all four edges to the
+  cursor. A 9 × 9 px box became a zero-height line.
+  - The implant candidates are whole-rat masks (smallest side at fit zoom: median 65 px, q10 50 px). Shrinking one to
+    the implant therefore lands in this range.
+- **What did work:** after A, in IMPLANT mode, an edge or corner drag on a large box.
+
+**Changes** (`inbox_prelabel_edit.py update-v24`; same folder, files and storage key):
+- **Right-side panel for the active object:**
+  - the masks in the box (rank, area, score; hover = white highlight; × removes one and the box is refit to the union of
+    the rest; the last one clears the box; a hand-drawn box has one row whose × clears it; U undoes);
+  - the candidates at the last click or the head dot (a row click shows it, + joins it).
+- **Handles:**
+  - visible square handles on the active box: corners move two edges; mid-edge handles appear when a side is ≥ 30 px;
+  - grab radius 10 screen px; the nearest handle wins over the head dot and over click-for-candidates;
+  - an edge is grabbed within 8 px, one edge only; minimum box size 2 px.
+- **Candidate box:** a drag on the yellow bbox of an un-accepted candidate (hollow handles) accepts it, then resizes
+  (`cand_drag_accept`). A plain click there is still a candidate click.
+- **Wrong mode:** a drag on the inactive box shows "switch to ① IMPLANT (press 1) to edit this box 按 1 切到植入体模式再改" (or
+  ② RAT) and does not pan (`wrong_mode_edit`).
+- **Status per object:** "Box 框: ✓ done — 1 mask (candidate k) / n joined masks / hand-drawn, edge moves" or "— not yet
+  未标". Then "Last click 上次点击: k of n candidates / no mask under this point (box unchanged) 这里没有 mask，框没变 / no
+  click yet 还没点". The no-mask toast now reads "no mask under this point (box unchanged 框没变)".
+
+**Safety:**
+- `*.v2_3.bak` backups were made first.
+- The payload was verified identical to v2.3; the staged copy was checked before the live files were replaced.
+- The data fields are unchanged, apart from new events and `edge_move.handle` / `via` and `join.via`.
+
+**Checks:**
+- `--selftest` 63 / 63.
+- **Headless: PASS** (`prelabel_edit_v2/page_check.json`):
+  - **Old state:** a v2.3 state (implant click + accept, 2-piece joined rat box with a merged flag, hidden implant +
+    manual rat box, SCRATCH boxes) loads intact.
+  - **Panel:** 5 candidate rows; a row click makes it current; hover highlights the mask; + joins three (`via` panel).
+  - **× and undo:** × removes one piece and the box shrinks to the union of the other two; U restores the 3-piece box. ×
+    on a single mask clears the box ("Box 框: — not yet 未标"), and U restores it.
+  - **Resizing the implant box:** a mid-edge handle drag of −15 px and a corner drag of +10 / +10 px after A, with the
+    other edges unchanged.
+  - **Candidate box:** a corner drag on rat 2's un-accepted head candidate gives the events accept → cand_drag_accept →
+    edge_move and a resized box.
+  - **Wrong mode:** in RAT mode a drag on the implant handle gives the toast, no change and no pan.
+  - **Small box:** a 9 × 9 px hand-drawn box at fit zoom has 4 handles and grows by its corner without collapsing; a press
+    between handles changes nothing; × clears it (`box_clear`).
+  - **Status:** the split status after a no-mask click on a 3-mask rat box ("✓ done — 3 joined masks" + "no mask under
+    this point (box unchanged)"), and the toast; the empty status.
+  - The help line, the legend and the v2.4 export; no network URL.

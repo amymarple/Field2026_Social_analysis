@@ -32,6 +32,9 @@ Usage:
   python cv/cv_field/inbox_prelabel_edit.py update-v23 [--run <SAM 3 run>]                        # v2.2 -> v2.3 IN PLACE (two sticky
          modes IMPLANT / RAT — buttons, 1 / 2, Tab — no auto-switch; rat chips, white-dot select, Enter / ← next / previous
          rat); backups *.v2_2.bak, old-state test
+  python cv/cv_field/inbox_prelabel_edit.py update-v24 [--run <SAM 3 run>]                        # v2.3 -> v2.4 IN PLACE (right-side
+         mask panel: × remove / + join / hover; drag handles; a drag on the candidate bbox accepts it; status split into
+         Box / Last click); backups *.v2_3.bak, old-state test
   python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sam3_prelabel_edit_2026c/<file>.json [--run <run>]
 """
 from __future__ import annotations
@@ -1084,7 +1087,7 @@ def write_summary(run: Path, export: Path, regenerate_report: bool = True, more:
     for e in [export] + list(more or []):
         exs.append(json.loads(Path(e).read_text(encoding="utf-8")))
     ver = exs[0].get("page_version")
-    v2s = (PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22, PAGE_VERSION_V23)
+    v2s = (PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22, PAGE_VERSION_V23, PAGE_VERSION_V24)
     if ver not in (PAGE_VERSION,) + v2s or any((x.get("page_version") in v2s) != (ver in v2s) for x in exs):
         raise SystemExit(f"not exports of one page version: {[x.get('page_version') for x in exs]}")
     meta = {"export": Path(export).as_posix(), "more_exports": [Path(m).as_posix() for m in (more or [])], "made": datetime.now().isoformat(timespec="seconds")}
@@ -3442,6 +3445,596 @@ def update_v23(run: Path, check: bool = True) -> dict:
     return meta
 
 
+# ============================================================================================ v2.4: mask panel, drag handles, split status
+PAGE_VERSION_V24 = "inbox_sam3_prelabel_edit_2026c_v2.4"
+
+
+def _make_js_v24() -> str:
+    """v2.3 -> v2.4. The user: "右侧显示一列 哪些mask被包括进了当前选择 … 直接点击删除不是的mask。另外我发现没法更改implant的框" and
+    "这明明已经画上了为啥没有候选". (1) a right-side panel for the active object: the masks in the box (× removes, hover
+    highlights) and the candidates at the last click / head dot (click = current, + = join); (2) visible drag handles on the
+    active box (corners move two edges, nearest handle only, hit radius 10 screen px, priority over the head dot and
+    click-for-candidates), a drag on the yellow bbox of an un-accepted candidate accepts it and then resizes, a minimum box
+    size, a toast for a drag on the inactive box; (3) the status per object split into "Box 框" and "Last click 上次点击"."""
+    j = PAGE_JS_V23
+    # ---- state for the panel / hover
+    j = _sub(j, "let view = null, mode = null, drag = null, spaceDown = false, showAll = false;",
+             "let view = null, mode = null, drag = null, spaceDown = false, showAll = false;\nlet hoverMask = null, lastHL = null, lastPanel = null;")
+    # ---- grabbing: handles (nearest, 10 screen px) then one edge (8 px); never several edges of a small box at once
+    old_edge = j[j.index("function edgeAt(x, y){"):j.index("  return e.length ? e : null; }") + len("  return e.length ? e : null; }")]
+    assert j.count(old_edge) == 1
+    j = j.replace(old_edge, """function handlesOf(b){ const [x0, y0] = toCv(b[0], b[1]), [x1, y1] = toCv(b[2], b[3]), mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  const hs = [{x: x0, y: y0, e: [0, 1]}, {x: x1, y: y0, e: [2, 1]}, {x: x0, y: y1, e: [0, 3]}, {x: x1, y: y1, e: [2, 3]}];
+  if (Math.abs(y1 - y0) >= 30) { hs.push({x: x0, y: my, e: [0], mid: true}); hs.push({x: x1, y: my, e: [2], mid: true}); }
+  if (Math.abs(x1 - x0) >= 30) { hs.push({x: mx, y: y0, e: [1], mid: true}); hs.push({x: mx, y: y1, e: [3], mid: true}); }
+  return hs; }
+function grabAt(b, x, y){ let best = null, bd = 10; handlesOf(b).forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d <= bd) { bd = d; best = {edges: h.e.slice(), handle: true}; } });
+  if (best) return best; const [x0, y0] = toCv(b[0], b[1]), [x1, y1] = toCv(b[2], b[3]), t = 8, c = [];
+  if (y > y0 - t && y < y1 + t) { c.push([Math.abs(x - x0), 0]); c.push([Math.abs(x - x1), 2]); }
+  if (x > x0 - t && x < x1 + t) { c.push([Math.abs(y - y0), 1]); c.push([Math.abs(y - y1), 3]); }
+  const hit = c.filter(q => q[0] < t).sort((a, b2) => a[0] - b2[0]); return hit.length ? {edges: [hit[0][1]], handle: false} : null; }
+function candInBox(o, c){ return !!o.box && o.source !== 'manual' && (o.pieces || []).some(p => p.mask === c); }
+function grabBox(x, y){ const o = obj(), r = rat(); if (!r || !o || !o.box || r.deleted || showAll) return null; return grabAt(o.box, x, y); }
+function grabCand(x, y){ if (showAll || mode === 'draw' || st().arm !== 'PRELABEL') return null; const o = obj(), c = curCand(); if (!o || c === null || candInBox(o, c)) return null;
+  const g = grabAt(fr().masks[c].b, x, y); return g ? Object.assign(g, {cand: c}) : null; }
+function grabOther(x, y){ const r = rat(); if (!r || r.deleted || showAll) return null; const k = S.cur.obj === 'implant' ? 'rat' : 'implant';
+  return r[k].box && grabAt(r[k].box, x, y) ? k : null; }""")
+    # ---- mousedown: active box (handles first) > un-accepted candidate bbox > draw > press (with the inactive-box flag)
+    j = _sub(j, """  const dot = dotAt(x, y);
+  const ed = edgeAt(x, y); if (ed) { drag = {kind: 'edge', edges: ed, b0: obj().box.slice(), dot: dot, x0: e.clientX, y0: e.clientY}; return; }
+  if (canDraw()) { drag = {kind: 'draw', start: [u, v], cur: null, dot: dot, x0: e.clientX, y0: e.clientY}; return; }
+  drag = {kind: 'press', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy, u: u, v: v, moved: false, dot: dot}; });""",
+             """  const dot = dotAt(x, y);
+  const g = grabBox(x, y); if (g) { drag = {kind: 'edge', edges: g.edges, handle: g.handle, b0: obj().box.slice(), dot: g.handle ? null : dot, x0: e.clientX, y0: e.clientY}; return; }
+  const gc = grabCand(x, y); if (gc) { drag = {kind: 'cedge', edges: gc.edges, handle: gc.handle, cand: gc.cand, accepted: false, dot: dot, x0: e.clientX, y0: e.clientY, u: u, v: v}; return; }
+  const wrong = grabOther(x, y);
+  if (canDraw() && !wrong) { drag = {kind: 'draw', start: [u, v], cur: null, dot: dot, x0: e.clientX, y0: e.clientY}; return; }
+  drag = {kind: 'press', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy, u: u, v: v, moved: false, dot: dot, wrong: wrong}; });""")
+    j = _sub(j, """  if (!drag) { cv.style.cursor = showAll ? 'pointer' : edgeAt(x, y) ? 'move' : (canDraw() || mode === 'add' || (S.cur.obj === 'rat' && st().arm === 'PRELABEL')) ? 'crosshair' : 'grab'; return; }
+  if (drag.kind === 'press') { if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 4) drag.moved = true; if (drag.moved) {""",
+             """  if (!drag) { cv.style.cursor = showAll ? 'pointer' : (grabBox(x, y) || grabCand(x, y)) ? 'move' : (canDraw() || mode === 'add' || st().arm === 'PRELABEL') ? 'crosshair' : 'grab'; return; }
+  if (drag.kind === 'press') { if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 4) drag.moved = true;
+    if (drag.moved && drag.wrong) { if (!drag.told) { drag.told = true; toast(drag.wrong === 'implant' ? MSG.wrong_implant : MSG.wrong_rat); log('wrong_mode_edit', {box: drag.wrong}); } return; }
+    if (drag.moved) {""")
+    j = _sub(j, """  if (drag.kind === 'edge') { const b = obj().box; drag.edges.forEach(k => { b[k] = (k % 2 === 0) ? u : v; }); draw(); } });""",
+             """  if (drag.kind === 'cedge' && !drag.accepted) { if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) <= 3) return;
+    accept(); const o = obj(); if (!o || !o.box || o.mask !== drag.cand) { drag = null; draw(); return; }
+    log('cand_drag_accept', {rank: o.rank, mask: drag.cand, edges: drag.edges}); drag.accepted = true; drag.b0 = o.box.slice(); drag.dot = null; }
+  if (drag.kind === 'edge' || drag.kind === 'cedge') { const b = obj().box; drag.edges.forEach(k => { b[k] = (k % 2 === 0) ? u : v; }); draw(); } });""")
+    # ---- mouseup
+    j = _sub(j, """  if (d.kind === 'press') { if (!d.moved && dotHit) { selectRat(d.dot, 'dot'); return; }""",
+             """  if (d.kind === 'cedge') { if (!d.accepted) { if (dotHit) { selectRat(d.dot, 'dot'); return; } if (st().arm === 'PRELABEL' && mode !== 'draw' && !showAll) objClick(d.u, d.v); return; }
+    d.kind = 'edge'; d.via = 'candidate_bbox'; }
+  if (d.kind === 'press' && d.wrong && !d.moved && st().arm !== 'PRELABEL') { toast(d.wrong === 'implant' ? MSG.wrong_implant : MSG.wrong_rat); log('wrong_mode_edit', {box: d.wrong}); return; }
+  if (d.kind === 'press') { if (!d.moved && dotHit) { selectRat(d.dot, 'dot'); return; }""")
+    j = _sub(j, """  if (d.kind === 'edge') { const o = obj(), b = normBox([o.box[0], o.box[1]], [o.box[2], o.box[3]]); const moved = b.some((x, i) => Math.abs(x - d.b0[i]) > 0.5);
+    if (moved) { const nb = b.map(x => Math.round(x * 10) / 10); o.box = d.b0; snap(); o.box = nb; o.edge_moves++; log('edge_move', {from: d.b0, to: nb, edges: d.edges}); } else o.box = d.b0; draw(); } });""",
+             """  if (d.kind === 'edge') { const o = obj(), b = normBox([o.box[0], o.box[1]], [o.box[2], o.box[3]]);
+    if (b[2] - b[0] < 2) b[2] = b[0] + 2; if (b[3] - b[1] < 2) b[3] = b[1] + 2;
+    const moved = b.some((x, i) => Math.abs(x - d.b0[i]) > 0.5);
+    if (moved) { const nb = b.map(x => Math.round(x * 10) / 10); o.box = d.b0; snap(); o.box = nb; o.edge_moves++;
+      log('edge_move', {from: d.b0, to: nb, edges: d.edges, handle: !!d.handle, via: d.via || 'box'}); } else o.box = d.b0; draw(); } });""")
+    # ---- drawing: hover highlight; handles of the active box (filled) and of an un-accepted candidate's bbox (hollow, yellow)
+    j = _sub(j, """      drawnMasks = 1; ctx.lineWidth = 2 * lw; ctx.strokeStyle = '#ffd400'; ctx.strokeRect(m.b[0], m.b[1], m.b[2] - m.b[0], m.b[3] - m.b[1]); ctx.setLineDash([]); }""",
+             """      drawnMasks = 1; ctx.lineWidth = 2 * lw; ctx.strokeStyle = '#ffd400'; ctx.strokeRect(m.b[0], m.b[1], m.b[2] - m.b[0], m.b[3] - m.b[1]); ctx.setLineDash([]); }
+    if (hoverMask !== null && f.masks[hoverMask]) { const m = f.masks[hoverMask];
+      m.p.forEach(p => { const P = polyPath(p); ctx.globalAlpha = 0.35; ctx.fillStyle = '#ffffff'; ctx.fill(P); ctx.globalAlpha = 1; ctx.lineWidth = 4 * lw; ctx.strokeStyle = '#ffffff'; ctx.stroke(P);
+        ctx.lineWidth = 1.5 * lw; ctx.strokeStyle = '#000'; ctx.stroke(P); }); lastHL = hoverMask; }""")
+    j = _sub(j, """  const lw = 1 / view.s; drawnMasks = 0;""", """  const lw = 1 / view.s; drawnMasks = 0; lastHL = null;""")
+    j = _sub(j, "  ctx.setTransform(1, 0, 0, 1, 0, 0);\n  panel();\n}",
+             """  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (!showAll) { const r = rat(), o = obj(); if (r && !r.deleted && o) { const c = curCand();
+    if (c !== null && !candInBox(o, c) && st().arm === 'PRELABEL') drawHandles(f.masks[c].b, '#ffd400', true); if (o.box) drawHandles(o.box, STYLE[S.cur.obj].box, false); } }
+  panel();
+}
+function drawHandles(b, col, hollow){ handlesOf(b).forEach(h => { const z = h.mid ? 8 : 10; ctx.fillStyle = hollow ? 'rgba(0,0,0,0.45)' : col;
+  ctx.fillRect(h.x - z / 2, h.y - z / 2, z, z); ctx.lineWidth = 1.5; ctx.strokeStyle = hollow ? col : '#000'; ctx.strokeRect(h.x - z / 2, h.y - z / 2, z, z); }); }""")
+    # ---- status per object: "Box 框" and "Last click 上次点击" kept apart
+    i0 = j.index("function objText(r, k){")
+    i1 = j.index("  return t; }", i0) + len("  return t; }")
+    j = j[:i0] + """function objText(r, k){ const o = r[k], pre = st().arm === 'PRELABEL';
+  if (k === 'implant' && o.hidden) return '<span class="st-box">implant hidden 植入体看不见 (H)</span>';
+  let b = 'Box 框: ';
+  if (o.box) { b += '✓ done — ' + (o.source === 'manual' ? 'hand-drawn' : o.source === 'joined' ? (o.pieces || []).length + ' joined masks' : '1 mask (candidate ' + o.rank + ')')
+      + (o.edge_moves ? ', ' + o.edge_moves + ' edge move(s)' : '');
+    const fl = o.source === 'joined' ? (o.obj_flags || {}) : (o.rank ? (o.cand_flags[o.rank] || {}) : {});
+    if (k === 'rat' && (fl.merged || fl.partial)) b += ', flagged ' + [fl.merged ? 'merged' : '', fl.partial ? 'partial' : ''].filter(Boolean).join(' + '); }
+  else b += '— not yet 未标';
+  let c = 'Last click 上次点击: ';
+  if (!pre) c += '— (SCRATCH: draw by hand 手画)';
+  else if (!o.click) c += 'no click yet 还没点' + (k === 'implant' ? (o.cand.length ? ' — head dot: ' + (o.k < o.cand.length ? (o.k + 1) + ' of ' + o.cand.length + ' candidates' : 'none usable of ' + o.cand.length) : ' — no mask at the head dot') : '');
+  else if (!o.cand.length) c += 'no mask under this point (box unchanged) 这里没有 mask，框没变';
+  else c += o.k < o.cand.length ? (o.k + 1) + ' of ' + o.cand.length + ' candidates' + (candInBox(o, o.cand[o.k]) ? ' (in the box 已含)' : '') : 'none usable shown — N cycles 无可用 (N 切换)';
+  return '<span class="st-box">' + b + '</span><br>&emsp;<span class="st-click">' + c + '</span>'; }""" + j[i1:]
+    # ---- messages
+    j = _sub(j, """  nocand: 'no candidate here — click another spot, or draw by hand (B) · 这里没有候选: 点别处或手画 (B)',""",
+             """  nocand: 'no mask under this point (box unchanged 框没变) — click another spot, or draw by hand (B) · 这里没有 mask',
+  nocand_head: 'no mask at the head dot — click on the object, or draw by hand (B) · 头点没有 mask: 点该物体或手画 (B)',
+  wrong_implant: 'switch to ① IMPLANT (press 1) to edit this box 按 1 切到植入体模式再改',
+  wrong_rat: 'switch to ② RAT (press 2) to edit this box 按 2 切到整鼠模式再改',""")
+    j = _sub(j, "  if (!o.cand.length) return MSG.nocand; if (o.k >= o.cand.length) return MSG.none; return null; }",
+             "  if (!o.cand.length) return o.click ? MSG.nocand : MSG.nocand_head; if (o.k >= o.cand.length) return MSG.none; return null; }")
+    # ---- join from the panel; piece removal; clearing a hand-drawn box; picking a candidate
+    j = _sub(j, "function join(){", "function join(via){")
+    j = _sub(j, "n_pieces: o.pieces.length, box: o.box}); draw(); }", "n_pieces: o.pieces.length, box: o.box, via: via || 'key'}); draw(); }")
+    j = _sub(j, "function addRat(u, v){", """function pickCand(i, via){ const o = obj(); if (!o || i < 0 || i >= o.cand.length || o.k === i) return; snap(); o.k = i;
+  log('cand_pick', {rank: i + 1, mask: o.cand[i], via: via}); draw(); }
+function removePiece(i){ const o = obj(); if (!o || !(o.pieces || []).length || i < 0 || i >= o.pieces.length || o.source === 'manual') return; snap();
+  const pc = o.pieces.splice(i, 1)[0], had = Object.assign({}, o.obj_flags || {});
+  if (!o.pieces.length) { o.box = null; o.source = null; o.rank = null; o.mask = null; o.union_box = null; o.obj_flags = {}; }
+  else { o.box = unionBox(o.pieces); o.union_box = o.box.slice();
+    if (o.pieces.length === 1) { o.source = 'cand'; o.rank = o.pieces[0].rank; o.mask = o.pieces[0].mask; o.obj_flags = {}; } else { o.source = 'joined'; o.rank = null; o.mask = null; } }
+  hoverMask = null; log('piece_remove', {mask: pc.mask, rank: pc.rank, n_pieces_left: o.pieces.length, box: o.box, flags_cleared: o.pieces.length < 2 && Object.keys(had).length ? had : undefined}); draw(); }
+function clearBox(){ const o = obj(); if (!o || !o.box) return; snap(); const from = o.source; o.box = null; o.source = null; o.rank = null; o.mask = null; o.pieces = [];
+  o.union_box = null; o.obj_flags = {}; hoverMask = null; log('box_clear', {from: from}); draw(); }
+function mInfo(f, j){ const m = f.masks[j]; return 'area ' + m.a.toLocaleString('en-US') + ' px · score ' + m.s.toFixed(2); }
+function objPanel(){ const f = fr(), s = st(), r = rat(), k = S.cur.obj, o = r ? r[k] : null;
+  let h = '<div class="op-h obj-' + k + '">' + (k === 'implant' ? 'IMPLANT box 植入体框' : 'RAT box 整鼠框') + (r ? ' · rat ' + r.num : '') + '</div>';
+  if (!r || r.deleted || !o) h += '<div class="op-note">no rat selected 没有选中的鼠</div>';
+  else if (k === 'implant' && o.hidden) h += '<div class="op-note">implant hidden (H) 植入体看不见</div>';
+  else { h += '<div class="op-t">In this box 当前框包含的 mask</div>';
+    if (o.box && o.source === 'manual') h += '<div class="op-row op-in" data-kind="manual"><span>hand-drawn 手画 [' + o.box.map(x => Math.round(x)).join(', ') + ']</span>'
+      + '<button type="button" class="op-x" data-act="clear" title="clear this box 清除">×</button></div>';
+    else if (o.box && (o.pieces || []).length) o.pieces.forEach((p, i) => { h += '<div class="op-row op-in" data-mask="' + p.mask + '"><span>#' + (p.rank || '?') + ' · ' + mInfo(f, p.mask) + '</span>'
+      + '<button type="button" class="op-x" data-act="rm" data-i="' + i + '" title="remove this mask from the box 移除">×</button></div>'; });
+    else h += '<div class="op-note">empty 空 — A accept / J join / + a candidate, or B draw</div>';
+    if (o.box && o.source !== 'manual' && o.union_box && o.box.some((x, i) => Math.abs(x - o.union_box[i]) > 0.5)) h += '<div class="op-note">edges adjusted by hand 已手动调边 (× refits to the masks 移除后按 mask 重算)</div>';
+    if (s.arm === 'PRELABEL') { h += '<div class="op-t">Candidates at ' + (o.click ? 'your click 点击处候选' : 'the head dot 头点候选') + '</div>';
+      if (k === 'rat' && !o.click) h += '<div class="op-note">click the rat\\'s body first 先点鼠身体</div>';
+      else if (!o.cand.length) h += '<div class="op-note">' + (o.click ? 'no mask under this point 这里没有 mask' : 'no mask at the head dot 头点没有 mask') + '</div>';
+      else o.cand.forEach((jm, i) => { const inb = candInBox(o, jm); h += '<div class="op-row op-c' + (i === o.k ? ' cur' : '') + (inb ? ' inb' : '') + '" data-mask="' + jm + '" data-i="' + i + '"><span>#' + (i + 1) + ' · '
+        + mInfo(f, jm) + (inb ? ' · in box 已含' : '') + (i === o.k ? ' · current 当前' : '') + '</span>'
+        + (inb ? '' : '<button type="button" class="op-x op-plus" data-act="join" data-i="' + i + '" title="join into the box 拼接 (= J)">+</button>') + '</div>'; }); }
+    else h += '<div class="op-note">SCRATCH: no candidates, draw by hand 手画</div>'; }
+  if (h !== lastPanel) { $('objpanel').innerHTML = h; lastPanel = h; } }
+function addRat(u, v){""")
+    j = _sub(j, "  if (chips !== lastChips) { $('ratchips').innerHTML = chips; lastChips = chips; }",
+             "  if (chips !== lastChips) { $('ratchips').innerHTML = chips; lastChips = chips; }\n  objPanel();")
+    j = _sub(j, "$('ratchips').addEventListener('click', e => {", """$('objpanel').addEventListener('mousedown', e => e.preventDefault());
+$('objpanel').addEventListener('mouseover', e => { const row = e.target.closest('[data-mask]'); const m = row ? +row.dataset.mask : null; if (m !== hoverMask) { hoverMask = m; draw(); } });
+$('objpanel').addEventListener('mouseleave', () => { if (hoverMask !== null) { hoverMask = null; draw(); } });
+$('objpanel').addEventListener('click', e => { touch(); const b = e.target.closest('[data-act]');
+  if (b) { const i = +b.dataset.i; if (b.dataset.act === 'rm') removePiece(i); else if (b.dataset.act === 'clear') clearBox();
+    else if (b.dataset.act === 'join') { pickCand(i, 'panel_plus'); join('panel'); hoverMask = null; draw(); } return; }
+  const row = e.target.closest('.op-c'); if (row) pickCand(+row.dataset.i, 'panel'); });
+$('ratchips').addEventListener('click', e => {""")
+    # ---- test hooks
+    j = _sub(j, "  dotAtImg: (u, v) => { const [x, y] = toCv(u, v); return dotAt(x, y); }};",
+             """  dotAtImg: (u, v) => { const [x, y] = toCv(u, v); return dotAt(x, y); },
+  hover: () => hoverMask, hl: () => lastHL, statusText: () => $('status').textContent, origin: () => [view.ox, view.oy], scale: () => view.s,
+  handlesClient: (which, k) => { const r = rat(), r0 = cv.getBoundingClientRect(); let b = null;
+    if (which === 'box') { const o = r ? r[k || S.cur.obj] : null; b = o && o.box; } else { const c = curCand(); b = c !== null ? fr().masks[c].b : null; }
+    return b ? handlesOf(b).map(h => ({x: h.x + r0.left, y: h.y + r0.top, e: h.e, mid: !!h.mid})) : []; },
+  grabInfo: (cx, cy) => { const r0 = cv.getBoundingClientRect(), x = cx - r0.left, y = cy - r0.top; return {box: grabBox(x, y), cand: grabCand(x, y), other: grabOther(x, y)}; }};""")
+    assert "edgeAt(" not in j
+    return j
+
+
+PAGE_JS_V24 = _make_js_v24()
+
+
+def page_html_v24(run_name: str) -> str:
+    h = page_html_v23(run_name).replace(PAGE_JS_V23, PAGE_JS_V24)
+    h = _sub(h, "<title>In-box pre-label edit v2.3</title>", "<title>In-box pre-label edit v2.4</title>")
+    h = _sub(h, "· v2.3: two modes (implant / rat), join pieces · 预标注编辑 v2.3</h1>", "· v2.4: two modes, mask panel, drag handles · 预标注编辑 v2.4</h1>")
+    h = _sub(h, "In a mode every click, key and drawn box acts on THAT box only 每个模式只改对应的框.<br>",
+             """In a mode every click, key and drawn box acts on THAT box only 每个模式只改对应的框.<br>
+<b>Right panel 右侧:</b> the masks in this box (× removes one; hover = highlight) and the candidates (click = show, + = join) 当前框的 mask (× 删除) 与候选 (+ 拼接).
+<b>Resize: drag the square handles</b> (corners move two edges) 拖方块调整框; dragging the yellow candidate box accepts it first 拖黄色候选框 = 先接受再调.<br>""")
+    h = _sub(h, '<div class="side"><div id="status"></div>', '<div class="side"><div id="status"></div><div id="objpanel"></div>')
+    h = _sub(h, '<div style="opacity:.55">faint = other rats 其他鼠</div></details>',
+             '<div><span class="sw" style="background:#fff;border:2px solid #fff"></span> hovered mask 悬停高亮</div>'
+             '<div><span class="sw" style="background:#ff9f1a;width:9px;border:1px solid #000"></span> drag handles 拖动方块 '
+             '(<span style="border:1px solid #ffd400;display:inline-block;width:8px;height:8px"></span> = candidate 候选)</div>'
+             '<div style="opacity:.55">faint = other rats / the other box 其他鼠 / 另一个框</div></details>')
+    h = _sub(h, "</style></head>", """
+#objpanel{border:1px solid #555;border-radius:6px;padding:4px 6px;font-size:13px;max-height:46vh;overflow:auto}
+#objpanel .op-h{font-weight:800;padding:2px 6px;border-radius:4px;color:#111;margin-bottom:4px}
+#objpanel .op-t{font-weight:700;margin:6px 0 2px}
+#objpanel .op-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 4px;border-radius:4px}
+#objpanel .op-row:hover{background:rgba(255,212,0,.25);outline:1px solid #ffd400}
+#objpanel .op-c{cursor:pointer}#objpanel .op-c.cur{font-weight:700;outline:1px dashed #ffd400}#objpanel .op-c.inb{opacity:.7}
+#objpanel .op-x{font-size:16px;font-weight:800;line-height:1;padding:1px 9px;border-radius:4px;border:1px solid #333;cursor:pointer;background:#c62828;color:#fff}
+#objpanel .op-plus{background:#2e7d32}#objpanel .op-note{opacity:.75;font-style:italic}
+#status .st-click{opacity:.85}
+</style></head>""")
+    return h
+
+
+def page_check_v24(new_dir: Path, data: dict, old_html: Path, old_data: Path) -> dict:
+    """Headless Chrome (throwaway profile). A: old-state test — the backed-up v2.3 page saves a state (implant click +
+    accept, a 2-piece joined rat box with a merged flag, a hidden implant + manual rat box, SCRATCH boxes); v2.4 loads it
+    under the same key and exports it unchanged apart from version / time / reload events. B: v2.4 — panel rows, click =
+    current, hover highlight, + joins (3 pieces), × removes one (box = union of 2), U restores; × on a single mask clears; edge
+    and corner drags of the implant box by its handles after A; a drag on an un-accepted candidate's bbox accepts and resizes;
+    the inactive box gives a toast and no pan; a small hand-drawn box at fit zoom resizes by a corner without collapsing, ×
+    clears it; the split status ("Box 框" / "Last click 上次点击") and the "box unchanged" toast; export; no network URL."""
+    import inbox_identity_page as ipage
+    html_t, js_t = (new_dir / "index.html").read_text(encoding="utf-8"), (new_dir / "pl_data.js").read_text(encoding="utf-8")
+    res = {"network_urls": re.findall(r"https?://[^\s\"'<>]+", html_t) + re.findall(r"https?://[^\s\"'<>]+", js_t)}
+    vdir = new_dir.parent if new_dir.name.startswith("_") else new_dir
+    tdir = vdir / "_v23_oldstate_test"
+    if tdir.exists():
+        shutil.rmtree(tdir)
+    tdir.mkdir()
+    shutil.copy2(old_html, tdir / "index.html")
+    od = _read_data_js(old_data)
+    for f in od["frames"]:
+        f["img"] = "../" + f["img"]
+    (tdir / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(od, separators=(",", ":")) + ";\n", encoding="utf-8")
+    prof = Path(tempfile.mkdtemp(prefix="pl24check_"))
+    p, wsu, bws = ipage._chrome((tdir / "index.html").resolve().as_uri(), prof, ipage._free_port())
+    c = None
+    fr = data["frames"]
+
+    def union(bs):
+        return [min(b[0] for b in bs), min(b[1] for b in bs), max(b[2] for b in bs), max(b[3] for b in bs)]
+
+    def area(b):
+        return (b[2] - b[0]) * (b[3] - b[1])
+
+    def close(a, b, tol=0.25):
+        return a is not None and b is not None and all(abs(x - y) <= tol for x, y in zip(a, b))
+
+    def cm(a, e, moved, s):
+        # moved edges follow the mouse (synthetic events land within ~1.5 screen px); the other edges must not move
+        return a is not None and all(abs(a[i] - e[i]) <= (1.5 / s if i in moved else 0.25) for i in range(4))
+    try:
+        c = ipage._CDP(wsu)
+        c.call("Runtime.enable")
+
+        def ready():
+            for _ in range(240):
+                try:
+                    if c.ev("!!window.__pl && window.__pl.ready()"):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+                time.sleep(0.25)
+            return False
+
+        def key(k):
+            c.ev(f"document.dispatchEvent(new KeyboardEvent('keydown', {{key: {json.dumps(k)}, bubbles: true}}))")
+
+        def mouse(kind, u, v):
+            c.ev(f"(() => {{ const [x, y] = window.__pl.imgToClient({u}, {v}); document.getElementById('cv').dispatchEvent("
+                 f"new MouseEvent({json.dumps(kind)}, {{clientX: x, clientY: y, button: 0, bubbles: true}})); }})()")
+
+        def mxy(kind, x, y):
+            c.ev(f"document.getElementById('cv').dispatchEvent(new MouseEvent({json.dumps(kind)}, {{clientX: {x}, clientY: {y}, button: 0, bubbles: true}}))")
+
+        def click(u, v):
+            mouse("mousedown", u, v)
+            mouse("mouseup", u, v)
+
+        def drag(u0, v0, u1, v1):
+            mouse("mousedown", u0, v0)
+            mouse("mousemove", (u0 + u1) / 2, (v0 + v1) / 2)
+            mouse("mousemove", u1, v1)
+            mouse("mouseup", u1, v1)
+
+        def drag_xy(x0, y0, dx, dy):
+            mxy("mousedown", x0, y0)
+            for t in (0.25, 0.5, 0.75, 1.0):
+                mxy("mousemove", x0 + dx * t, y0 + dy * t)
+            mxy("mouseup", x0 + dx, y0 + dy)
+
+        def R(i=None):
+            return c.ev("JSON.parse(JSON.stringify(window.__pl.rat()))" if i is None else
+                        f"JSON.parse(JSON.stringify(window.__pl.S().frames[window.__pl.frame().id].rats[{i}]))")
+
+        def cur():
+            return c.ev("window.__pl.cur()")
+
+        def n_events():
+            return c.ev("window.__pl.S().events.length")
+
+        def events_since(n):
+            return c.ev(f"window.__pl.S().events.slice({n})")
+
+        def qclick(sel):
+            return c.ev(f"(() => {{ const el = document.querySelector({json.dumps(sel)}); if (!el) return false; el.click(); return true; }})()")
+
+        def body_points(f, min_cand, away_from_dots=False):
+            out = []
+            for m in sorted(f["masks"], key=lambda m: -m["a"])[:40]:
+                for pts in m["p"]:
+                    x0, y0 = float(np.mean(pts[0::2])), float(np.mean(pts[1::2]))
+                    if _pip(x0, y0, pts):
+                        if away_from_dots and c.ev(f"window.__pl.dotAtImg({x0}, {y0})") is not None:
+                            break
+                        cand = c.ev(f"window.__pl.candidatesAt({x0}, {y0})")
+                        if len(cand) >= min_cand:
+                            out.append(((x0, y0), cand))
+                        break
+            return out
+        # ---------------- A. old-state test with the backed-up v2.3 page (sticky modes, implant click)
+        res["loaded_v23"] = ready()
+        res["v23_page_version"] = c.ev("window.__pl.D.page_version")
+        pre = [i for i, f in enumerate(fr) if f["arm"] == "PRELABEL" and len(f["cand"]) >= 2 and f["cand"][0] and f["cand"][1]]
+        fi, pt = None, None
+        for i in pre:
+            c.ev(f"window.__pl.goFrame({i})")
+            bp = body_points(fr[i], 2, away_from_dots=True)
+            if bp:
+                fi, pt = i, bp[0][0]
+                break
+        c.ev(f"window.__pl.goFrame({fi})")
+        ready()
+        f = fr[fi]
+        key("1")
+        click(*pt)                                   # v2.3: implant candidates at the click
+        key("a")
+        key("2")
+        click(*pt)
+        key("j")
+        key("n")
+        key("j")
+        key("m")
+        for _ in range(3):
+            c.ev("window.__pl.setLastInput(0)")
+            time.sleep(0.5)
+        key("Enter")
+        key("1")
+        key("h")
+        key("2")
+        hu, hv = f["heads"][1]["u"], f["heads"][1]["v"]
+        key("b")
+        drag(hu - 120, hv - 90, hu + 160, hv + 140)
+        fs = next(i for i, x in enumerate(fr) if x["arm"] == "SCRATCH")
+        c.ev(f"window.__pl.goFrame({fs})")
+        ready()
+        g = fr[fs]
+        gu, gv = g["heads"][0]["u"], g["heads"][0]["v"]
+        key("1")
+        drag(gu - 50, gv - 40, gu + 50, gv + 40)
+        key("2")
+        drag(gu - 180, gv - 140, gu + 220, gv + 180)
+        c.ev(f"window.__pl.goFrame({fi})")
+        c.ev("window.__pl.setLastInput(60000)")
+        ex_old = c.ev("window.__pl.exportJSON()")
+        c.ev("window.__pl.save()")
+        old_key = c.ev("window.__pl.key")
+        c.call("Page.navigate", url=(new_dir / "index.html").resolve().as_uri())
+        time.sleep(1.5)
+        res["loaded_v24"] = ready()
+        c.ev("window.__pl.setLastInput(60000)")
+        ex_new = c.ev("window.__pl.exportJSON()")
+        cmp = _compare_exports(ex_old, ex_new)
+        fo = next(x for x in ex_new["frames"] if x["frame_id"] == f["id"])
+        r1, r2 = fo["rats"][0], fo["rats"][1]
+        res["old_state"] = {**cmp, "same_storage_key": old_key == c.ev("window.__pl.key"),
+                            "rat1": [r1["implant"]["source"], r1["implant"].get("cand_src"), r1["rat"]["source"], r1["rat"]["n_pieces"], r1["rat"]["obj_flags"]],
+                            "rat2": [r2["implant"]["hidden"], r2["rat"]["source"]],
+                            "ok": cmp["ok"] and old_key == c.ev("window.__pl.key") and r1["implant"]["source"] == "cand" and r1["implant"].get("cand_src") == "click"
+                            and r1["rat"]["source"] == "joined" and r1["rat"]["n_pieces"] == 2 and r1["rat"]["obj_flags"].get("merged") is True
+                            and r2["implant"]["hidden"] is True and r2["rat"]["source"] == "manual"}
+        # ---------------- B. v2.4 on another PRELABEL frame: a body point with >= 3 candidates, rat 2 with head candidates
+        fj, pts = None, None
+        for i in pre:
+            if i == fi:
+                continue
+            c.ev(f"window.__pl.goFrame({i})")
+            b0 = fr[i]["masks"][fr[i]["cand"][0][0]]["b"]
+            s_ = c.ev("window.__pl.scale()")
+            if min(b0[2] - b0[0], b0[3] - b0[1]) * s_ < 40:
+                continue
+            bp = body_points(fr[i], 3, away_from_dots=True)
+            if bp:
+                fj, pts = i, bp[0]
+                break
+        c.ev(f"window.__pl.goFrame({fj})")
+        ready()
+        g = fr[fj]
+        s = c.ev("window.__pl.scale()")
+        (pu, pv), pc = pts
+        res["frame_B"] = {"fi": fj, "scale": s, "n_cand_at_point": len(pc)}
+        # 1. RAT mode: click -> candidate rows; row click = current; hover highlight; + joins three pieces
+        key("2")
+        click(pu, pv)
+        n_rows = c.ev("document.querySelectorAll('#objpanel .op-c').length")
+        qclick('#objpanel .op-c[data-i="1"] span')
+        k_after_row = R()["rat"]["k"]
+        ev_pick = c.ev("window.__pl.S().events.slice(-1)[0]")
+        c.ev("document.querySelector('#objpanel .op-c[data-i=\"2\"]').dispatchEvent(new MouseEvent('mouseover', {bubbles: true}))")
+        hv_, hl_ = c.ev("window.__pl.hover()"), c.ev("window.__pl.hl()")
+        c.ev("document.getElementById('objpanel').dispatchEvent(new MouseEvent('mouseleave'))")
+        hv_off = c.ev("window.__pl.hover()")
+        n0 = n_events()
+        for i in range(3):
+            qclick(f'#objpanel [data-act="join"][data-i="{i}"]')
+        r3 = R()["rat"]
+        joins = [e for e in events_since(n0) if e["ev"] == "join"]
+        bbs = [g["masks"][m]["b"] for m in pc[:3]]
+        box3 = union(bbs)
+        n_in_rows = c.ev("document.querySelectorAll('#objpanel [data-act=\"rm\"]').length")
+        res["panel_rows_hover_plus"] = {"n_cand_rows": n_rows, "k_after_row_click": k_after_row, "pick_event": ev_pick.get("ev"), "hover": hv_, "highlighted": hl_,
+                                        "hover_after_leave": hv_off, "n_pieces": len(r3["pieces"]), "join_via": [e.get("via") for e in joins], "in_box_rows": n_in_rows,
+                                        "ok": n_rows == len(pc) and k_after_row == 1 and ev_pick.get("ev") == "cand_pick" and hv_ == pc[2] and hl_ == pc[2]
+                                        and hv_off is None and len(r3["pieces"]) == 3 and r3["source"] == "joined" and close(r3["box"], box3)
+                                        and [e.get("via") for e in joins] == ["panel"] * 3 and n_in_rows == 3}
+        # 2. × removes the piece whose removal shrinks the union most; U restores
+        opts = [(area(union([b for k2, b in enumerate(bbs) if k2 != i])), i) for i in range(3)]
+        a_min, i_rm = min(opts)
+        qclick(f'#objpanel [data-act="rm"][data-i="{i_rm}"]')
+        r2p = R()["rat"]
+        ev_rm = c.ev("window.__pl.S().events.slice(-1)[0]")
+        exp2 = union([b for k2, b in enumerate(bbs) if k2 != i_rm])
+        key("u")
+        ru = R()["rat"]
+        res["piece_remove_undo"] = {"removed": i_rm, "box3": box3, "box2": r2p["box"], "expected2": exp2, "shrank": area(exp2) < area(box3), "event": ev_rm.get("ev"),
+                                    "after_undo_pieces": len(ru["pieces"]),
+                                    "ok": len(r2p["pieces"]) == 2 and r2p["source"] == "joined" and close(r2p["box"], exp2) and area(exp2) < area(box3)
+                                    and ev_rm.get("ev") == "piece_remove" and ev_rm.get("n_pieces_left") == 2 and len(ru["pieces"]) == 3 and close(ru["box"], box3)}
+        # 3. status split + "box unchanged" toast (RAT mode, a click on a point with no mask)
+        free = None
+        for gu_ in np.linspace(40, g["w"] - 40, 25):
+            for gv_ in np.linspace(40, g["h"] - 40, 19):
+                if c.ev(f"window.__pl.candidatesAt({gu_}, {gv_}).length") == 0 and c.ev(f"window.__pl.dotAtImg({gu_}, {gv_})") is None:
+                    xy = c.ev(f"window.__pl.imgToClient({gu_}, {gv_})")
+                    gi = c.ev(f"window.__pl.grabInfo({xy[0]}, {xy[1]})")
+                    if not gi["box"] and not gi["cand"] and not gi["other"]:
+                        free = (float(gu_), float(gv_))
+                        break
+            if free:
+                break
+        c.ev("window.__pl.clearToast()")
+        rb = R()["rat"]["box"]
+        click(*free)
+        st_txt = c.ev("window.__pl.statusText()")
+        t_free = c.ev("window.__pl.toast()")
+        res["status_split"] = {"status": st_txt, "toast": t_free,
+                               "ok": "Box 框: ✓ done — 3 joined masks" in st_txt and "Last click 上次点击: no mask under this point (box unchanged) 这里没有 mask，框没变" in st_txt
+                               and "(box unchanged 框没变)" in t_free and close(R()["rat"]["box"], rb)}
+        # 4. IMPLANT mode: A, × on the single mask clears, U restores; edge drag and corner drag by the handles
+        key("1")
+        key("a")
+        bA = R()["implant"]["box"]
+        qclick('#objpanel [data-act="rm"][data-i="0"]')
+        cleared = R()["implant"]
+        st_cleared = c.ev("window.__pl.statusText()")
+        ev_cl = c.ev("window.__pl.S().events.slice(-1)[0]")
+        key("u")
+        bU = R()["implant"]["box"]
+        hs = c.ev("window.__pl.handlesClient('box')")
+        hr = next(h for h in hs if h["e"] == [2])
+        drag_xy(hr["x"], hr["y"], -15, 0)
+        bE = R()["implant"]["box"]
+        hs = c.ev("window.__pl.handlesClient('box')")
+        htl = next(h for h in hs if h["e"] == [0, 1])
+        drag_xy(htl["x"], htl["y"], 10, 10)
+        bC = R()["implant"]["box"]
+        res["implant_single_clear_and_handles"] = {"box_after_A": bA, "cleared_box": cleared["box"], "cleared_event": ev_cl.get("ev"), "after_undo": bU,
+                                                   "after_edge_drag": bE, "after_corner_drag": bC, "n_handles": len(hs),
+                                                   "ok": bA is not None and cleared["box"] is None and cleared["source"] is None and ev_cl.get("n_pieces_left") == 0
+                                                   and "Box 框: — not yet 未标" in st_cleared and close(bU, bA) and len(hs) == 8
+                                                   and cm(bE, [bA[0], bA[1], bA[2] - 15 / s, bA[3]], (2,), s)
+                                                   and cm(bC, [bE[0] + 10 / s, bE[1] + 10 / s, bE[2], bE[3]], (0, 1), s)}
+        # 5. rat 2 (chip): drag the hollow handle of the un-accepted head candidate's bbox -> accepted, then resized
+        qclick('#ratchips [data-ri="1"]')
+        r2_ = R()
+        cb = g["masks"][r2_["implant"]["cand"][r2_["implant"]["k"]]]["b"]
+        hc = next(h for h in c.ev("window.__pl.handlesClient('cand')") if h["e"] == [2, 3])
+        n0 = n_events()
+        drag_xy(hc["x"], hc["y"], -12, -12)
+        bD = R()["implant"]["box"]
+        evd = [e["ev"] for e in events_since(n0)]
+        res["candidate_bbox_drag"] = {"cand_bbox": cb, "box": bD, "events": evd,
+                                      "ok": r2_["implant"]["box"] is None and evd == ["accept", "cand_drag_accept", "edge_move"]
+                                      and cm(bD, [cb[0], cb[1], cb[2] - 12 / s, cb[3] - 12 / s], (2, 3), s)}
+        # 6. wrong mode: RAT mode, drag the implant box's handle -> toast, no change, no pan
+        key("2")
+        c.ev("window.__pl.clearToast()")
+        hi = next(h for h in c.ev("window.__pl.handlesClient('box', 'implant')") if h["e"] == [2, 3])
+        gi = c.ev(f"window.__pl.grabInfo({hi['x']}, {hi['y']})")
+        o0 = c.ev("window.__pl.origin()")
+        drag_xy(hi["x"], hi["y"], -15, -15)
+        o1 = c.ev("window.__pl.origin()")
+        t_w = c.ev("window.__pl.toast()")
+        res["wrong_mode_toast"] = {"grab": gi, "toast": t_w, "view_moved": [o1[0] - o0[0], o1[1] - o0[1]],
+                                   "ok": gi["other"] == "implant" and not gi["box"] and "switch to ① IMPLANT (press 1) to edit this box 按 1 切到植入体模式再改" in t_w
+                                   and close(R()["implant"]["box"], bD) and o0 == o1}
+        # 7. a small hand-drawn box at fit zoom: corners only, resizes without collapsing; × clears it
+        key("1")
+        key("z")
+        qclick('#objpanel [data-act="rm"][data-i="0"]')
+        s = c.ev("window.__pl.scale()")
+        hd = R()
+        key("b")
+        drag(hd["u"] - 4.5 / s, hd["v"] - 4.5 / s, hd["u"] + 4.5 / s, hd["v"] + 4.5 / s)
+        sb = R()["implant"]["box"]
+        hs = c.ev("window.__pl.handlesClient('box')")
+        hbr = next(h for h in hs if h["e"] == [2, 3])
+        drag_xy(hbr["x"], hbr["y"], 20, 20)
+        sb2 = R()["implant"]["box"]
+        hs2 = c.ev("window.__pl.handlesClient('box')")
+        hr2 = min((h for h in hs2 if h["e"] == [2, 3]), key=lambda h: h["x"])
+        drag_xy(hr2["x"] + 0.0, hr2["y"] - (hr2["y"] - hs2[0]["y"]) / 2, 0, 0)   # a plain press between handles: nothing changes
+        sb3 = R()["implant"]["box"]
+        qclick('#objpanel [data-act="clear"]')
+        ev_bc = c.ev("window.__pl.S().events.slice(-1)[0]")
+        res["small_box"] = {"box_screen_px": [(sb[2] - sb[0]) * s, (sb[3] - sb[1]) * s] if sb else None, "n_handles": len(hs), "before": sb, "after_corner": sb2,
+                            "after_plain_press": sb3, "clear_event": ev_bc.get("ev"), "after_clear": R()["implant"]["box"],
+                            "ok": sb is not None and (sb[2] - sb[0]) * s < 12 and len(hs) == 4 and cm(sb2, [sb[0], sb[1], sb[2] + 20 / s, sb[3] + 20 / s], (2, 3), s)
+                            and sb2[2] - sb2[0] > 2 and sb2[3] - sb2[1] > 2 and close(sb3, sb2) and ev_bc.get("ev") == "box_clear" and R()["implant"]["box"] is None}
+        # 8. status wording for an object without a box / without a click
+        key("2")
+        st2 = c.ev("window.__pl.statusText()")
+        res["status_empty"] = {"status": st2, "ok": "Box 框: — not yet 未标" in st2 and "Last click 上次点击: no click yet 还没点" in st2}
+        res["help_legend"] = {"ok": bool(c.ev("document.body.textContent.includes('drag the square handles') && document.body.textContent.includes('In this box 当前框包含的 mask')")
+                                         and c.ev("document.getElementById('legend').textContent.includes('hovered mask')"))}
+        ej = c.ev("window.__pl.exportJSON()")
+        n_rats = sum(len(x["rats"]) for x in ej["frames"])
+        csv_lines = c.ev("window.__pl.exportCSV().trim().split('\\n').length")
+        new_evs = [e["ev"] for e in ej["events"][len(ex_old["events"]):]]
+        res["export"] = {"version": ej["page_version"], "csv_lines": csv_lines, "event_kinds_new": sorted(set(new_evs)),
+                         "ok": ej["page_version"] == PAGE_VERSION_V24 and csv_lines == 2 * n_rats + 1
+                         and {"piece_remove", "cand_pick", "cand_drag_accept", "box_clear", "wrong_mode_edit", "edge_move", "join", "undo"} <= set(new_evs)}
+        c.ev("localStorage.clear()")
+    finally:
+        if c:
+            c.close()
+        ipage._close_chrome(p, bws)
+        shutil.rmtree(prof, ignore_errors=True)
+        shutil.rmtree(tdir, ignore_errors=True)
+    keys = ["old_state", "panel_rows_hover_plus", "piece_remove_undo", "status_split", "implant_single_clear_and_handles", "candidate_bbox_drag",
+            "wrong_mode_toast", "small_box", "status_empty", "help_legend", "export"]
+    res["verdict"] = "PASS" if (res.get("loaded_v23") and res.get("loaded_v24") and all(res[k]["ok"] for k in keys) and not res["network_urls"]) else "FAIL"
+    return res
+
+
+def update_v24(run: Path, check: bool = True) -> dict:
+    """In-place v2.3 -> v2.4 (mask panel, drag handles, split status). Same storage key; *.v2_3.bak backups first; payload
+    verified identical to v2.3; a staged copy is checked (incl. the old-state test) before the live files are replaced."""
+    out = run / "prelabel_edit_v2"
+    cur = _read_data_js(out / "pl_data.js")
+    if cur["page_version"] == PAGE_VERSION_V23:
+        for name in ("index.html", "pl_data.js", "page_check.json", "build_meta.json"):
+            src, bak = out / name, out / f"{name}.v2_3.bak"
+            if src.exists() and not bak.exists():
+                shutil.copy2(src, bak)
+    old = _read_data_js(out / "pl_data.js.v2_3.bak")
+    assert old["page_version"] == PAGE_VERSION_V23, f"the backup is not v2.3: {old['page_version']}"
+    key = old["storage_key"]
+    new = _v2_data(run, PAGE_VERSION_V24, key, [PAGE_VERSION_V2, PAGE_VERSION_V21, PAGE_VERSION_V22, PAGE_VERSION_V23, PAGE_VERSION_V24])
+    same = len(old["frames"]) == len(new["frames"]) and all(a[k] == b[k] for a, b in zip(old["frames"], new["frames"])
+                                                            for k in ("id", "domain", "arm", "pile_bin", "order", "img", "heads", "masks", "cand"))
+    if not same:
+        raise SystemExit("v2.4 payload differs from v2.3: not written, v2.3 left in place")
+    js_final = "window.PL_DATA = " + json.dumps(new, separators=(",", ":")) + ";\n"
+    html_final = page_html_v24(run.name)
+    pc = None
+    if check:
+        stg = out / "_v24_staging"
+        if stg.exists():
+            shutil.rmtree(stg)
+        stg.mkdir()
+        staged = json.loads(json.dumps(new))
+        for f in staged["frames"]:
+            f["img"] = "../" + f["img"]
+        (stg / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(staged, separators=(",", ":")) + ";\n", encoding="utf-8")
+        (stg / "index.html").write_text(html_final, encoding="utf-8")
+        try:
+            pc = page_check_v24(stg, new, out / "index.html.v2_3.bak", out / "pl_data.js.v2_3.bak")
+        finally:
+            shutil.rmtree(stg, ignore_errors=True)
+        print(f"v2.4 page check (staged): {pc['verdict']}", flush=True)
+        if pc["verdict"] != "PASS":
+            S.write_json(out / "page_check_v2_4_FAILED.json", pc)
+            raise SystemExit("v2.4 check failed: the live v2.3 page was NOT replaced (see page_check_v2_4_FAILED.json)")
+    (out / "pl_data.js").write_text(js_final, encoding="utf-8")
+    (out / "index.html").write_text(html_final, encoding="utf-8")
+    meta = json.loads((out / "build_meta.json.v2_3.bak").read_text(encoding="utf-8"))
+    meta["v2_4"] = {"made": datetime.now().isoformat(timespec="seconds"),
+                    "why": "right-side mask panel (× remove, + join, hover); drag handles + candidate-bbox drag; status split into Box / Last click",
+                    "page_version": PAGE_VERSION_V24, "storage_key": key, "payload_identical_to_v2_3": same,
+                    "backups": sorted(q.name for q in out.glob("*.bak")), "page_check": pc["verdict"] if pc else "not run", "git_commit": git_commit()}
+    if pc:
+        S.write_json(out / "page_check.json", pc)
+    S.write_json(out / "build_meta.json", meta)
+    return meta
+
+
 # ============================================================================================ selftest
 def selftest() -> int:
     ok_all = True
@@ -3736,13 +4329,29 @@ def selftest() -> int:
         s23["objects"]["implant"]["from_click"] == 1 and s23["objects"]["rat"]["from_click"] == 4,
         str((s23["objects"]["implant"]["from_click"], s23["objects"]["rat"]["from_click"])))
     rec("v2.3 markdown notes the mixed implant candidate sources", "came from a click in IMPLANT mode" in summary_md_v2(s23, "x.json"))
+    # ---------------- v2.4 (mask panel, drag handles, split status)
+    if node:
+        with tempfile.TemporaryDirectory() as td:
+            js = Path(td) / "pl24.js"
+            js.write_text(PAGE_JS_V24, encoding="utf-8")
+            r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True)
+            rec("v2.4 page script parses (node --check)", r.returncode == 0, r.stderr[-300:])
+    h24 = page_html_v24("x")
+    rec("v2.4 page: mask panel, handle help, legend, no network", 'id="objpanel"' in h24 and "drag the square handles" in h24
+        and "hovered mask" in h24 and not re.search(r"https?://", h24))
+    rec("v2.4 script: handles (nearest, 10 px) replace the multi-edge grab; piece_remove / box_clear / cand_drag_accept / wrong-mode toast",
+        "edgeAt(" not in PAGE_JS_V24 and "bd = 10" in PAGE_JS_V24
+        and all(m in PAGE_JS_V24 for m in ("log('piece_remove'", "log('box_clear'", "log('cand_drag_accept'", "log('wrong_mode_edit'", "switch to ① IMPLANT (press 1)")))
+    rec("v2.4 status split: 'Box 框' and 'Last click 上次点击', 'box unchanged' wording", all(m in PAGE_JS_V24 for m in (
+        "Box 框: ", "— not yet 未标", "Last click 上次点击: ", "no mask under this point (box unchanged) 这里没有 mask，框没变", "(box unchanged 框没变)", "no click yet 还没点")))
+    rec("v2.4 keeps the storage-key rule", "D.storage_key ||" in PAGE_JS_V24)
     print("SELFTEST", "PASS" if ok_all else "FAIL")
     return 0 if ok_all else 1
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", nargs="?", choices=["build", "summarize", "update-v21", "update-v22", "update-v23"])
+    ap.add_argument("cmd", nargs="?", choices=["build", "summarize", "update-v21", "update-v22", "update-v23", "update-v24"])
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--run", type=Path, default=RUN_DEFAULT)
     ap.add_argument("--export", type=Path)
@@ -3752,6 +4361,10 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.cmd == "update-v24":
+        m = update_v24(a.run, check=not a.no_page_check)
+        print(json.dumps(m.get("v2_4"), indent=1, default=str))
+        return 0
     if a.cmd == "update-v23":
         m = update_v23(a.run, check=not a.no_page_check)
         print(json.dumps(m.get("v2_3"), indent=1, default=str))

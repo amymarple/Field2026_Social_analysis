@@ -163,3 +163,32 @@ the storage key and your progress are unchanged; the v2.2 files are kept as `*.v
 - New `cand_src` field: `click` when the candidates came from a click, else `head` for the implant (the CSV always fills
   it). Pieces carry `src`.
 - New events: `mode_set`, `implant_click`, `rat_select`, `rat_prev`.
+
+## v2.4 (2026-10-12) — the same page, updated in place: mask panel, drag handles, clearer status
+
+The page path, the storage key and your progress are unchanged; the v2.3 files are kept as `*.v2_3.bak`.
+
+**Right-side panel** (the active box only: implant in IMPLANT mode, rat box in RAT mode):
+- **"In this box 当前框包含的 mask":** one row per mask in the box (rank, area px, score).
+  - Hover a row to highlight that mask in white on the image.
+  - **×** removes the mask; the box is refit to the union of the rest (edge drags are dropped; U undoes).
+  - Removing the last mask clears the box. A hand-drawn box shows one row "hand-drawn 手画" whose × clears it.
+- **"Candidates at your click / the head dot":** one row per candidate. A click on a row shows that candidate, **+** joins
+  it (= J), and hover highlights it.
+
+**Resizing:**
+- The active box has square **handles**: corners move two edges, and mid-edge handles appear when a side is ≥ 30 screen
+  px. A handle is grabbed within 10 screen px and wins over the head dot and over click-for-candidates; an edge is grabbed
+  within 8 px. Only one handle or one edge moves at a time, and a box never gets smaller than 2 px.
+- Dragging the yellow box of a candidate you have not accepted (hollow yellow handles) accepts it, then resizes.
+- Dragging the other mode's box shows "switch to ① IMPLANT (press 1) to edit this box 按 1 切到植入体模式再改" (or ② RAT)
+  and no longer pans the image.
+
+**Status per object** is split into two parts:
+- **"Box 框:"** — "✓ done — 1 mask (candidate k)", "n joined masks" or "hand-drawn", plus the edge moves; or "— not yet
+  未标".
+- **"Last click 上次点击:"** — "k of n candidates", "no mask under this point (box unchanged) 这里没有 mask，框没变", or "no
+  click yet 还没点".
+
+**New events:** `piece_remove`, `box_clear`, `cand_pick`, `cand_drag_accept`, `wrong_mode_edit`. `edge_move` gains
+`handle` and `via`, and `join` gains `via` (key / panel). The data fields are unchanged.
