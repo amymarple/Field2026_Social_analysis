@@ -25,6 +25,8 @@ Usage:
   python cv/cv_field/inbox_prelabel_edit.py build [--run <SAM 3 run>] [--no-page-check]            # v1 page (prelabel_edit/)
   python cv/cv_field/inbox_prelabel_edit.py build --v2 [--run <SAM 3 run>]                         # v2 page (prelabel_edit_v2/):
          implant box (head-point candidates) + rat box (head + body, no tail; candidates from a body click), amendments B1 / B1a
+  python cv/cv_field/inbox_prelabel_edit.py update-v21 [--run <SAM 3 run>]                        # v2 -> v2.1 IN PLACE (amendment B2:
+         J joins pieces); same storage key, backups *.v2_0.bak, payload verified identical, old-state load test
   python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sam3_prelabel_edit_2026c/<file>.json [--run <run>]
 """
 from __future__ import annotations
@@ -761,6 +763,8 @@ def derive(t: pd.DataFrame) -> pd.DataFrame:
     t["usable1"] = (t.source == "cand") & (t["rank"] == 1) & ~t.acc_merged & ~t.acc_partial
     t["usable_any"] = (t.source == "cand") & ~t.acc_merged & ~t.acc_partial
     t["manual"] = t.source == "manual"
+    t["joined"] = t.source == "joined"
+    t["usable_any_join"] = t.source.isin(["cand", "joined"]) & ~t.acc_merged & ~t.acc_partial
     t["iou_prop_final"] = [box_iou(p, b) for p, b in zip(t.prop, t.box)]
     t["no_edit"] = (t.source == "cand") & (t["rank"] == 1) & (t.edge_moves == 0)
     t["edge_only"] = (t.source == "cand") & (t["rank"] == 1) & (t.edge_moves > 0)
@@ -780,6 +784,7 @@ def quality_block(d: pd.DataFrame) -> dict:
             "iou_q25": float(q.quantile(0.25)) if len(q) else np.nan, "iou_q75": float(q.quantile(0.75)) if len(q) else np.nan,
             "no_edit": d.no_edit.mean() if n else np.nan, "edge_only": d.edge_only.mean() if n else np.nan,
             "edge_shift_median_px": float(es.median()) if len(es) else np.nan, "other_candidate": d.other_cand.mean() if n else np.nan,
+            "joined": d.joined.mean() if (n and "joined" in d) else np.nan,
             "manual": d.manual.mean() if n else np.nan}
 
 
@@ -1074,10 +1079,11 @@ def write_summary(run: Path, export: Path, regenerate_report: bool = True, more:
     for e in [export] + list(more or []):
         exs.append(json.loads(Path(e).read_text(encoding="utf-8")))
     ver = exs[0].get("page_version")
-    if ver not in (PAGE_VERSION, PAGE_VERSION_V2) or any(x.get("page_version") != ver for x in exs):
+    v2s = (PAGE_VERSION_V2, PAGE_VERSION_V21)
+    if ver not in (PAGE_VERSION,) + v2s or any((x.get("page_version") in v2s) != (ver in v2s) for x in exs):
         raise SystemExit(f"not exports of one page version: {[x.get('page_version') for x in exs]}")
     meta = {"export": Path(export).as_posix(), "more_exports": [Path(m).as_posix() for m in (more or [])], "made": datetime.now().isoformat(timespec="seconds")}
-    if ver == PAGE_VERSION_V2:
+    if ver in v2s:
         d = run / "prelabel_edit_v2"
         d.mkdir(parents=True, exist_ok=True)
         sm = summarize_v2(exs[0], exs[1:])
@@ -1673,9 +1679,15 @@ def obj_table_v2(ex: dict) -> pd.DataFrame:
         for r in mp["rats"]:
             for k in OBJS:
                 o = r[k]
-                cf = o.get("cand_flags") or {}
-                acc = cf.get(str(o.get("rank")), {}) if o.get("rank") else {}
+                cf = dict(o.get("cand_flags") or {})
+                of = o.get("obj_flags") or {}
+                acc = cf.get(str(o.get("rank")), {}) if o.get("rank") else (of if o.get("source") == "joined" else {})
+                if of:
+                    cf["obj"] = of
+                pcs = o.get("pieces")
+                npc = len(pcs) if isinstance(pcs, list) else (1 if o.get("source") == "cand" else 0)
                 rows.append({"frame_id": f0["frame_id"], "domain": f0["domain"], "arm": f0["arm"], "pile_bin": f0["pile_bin"],
+                             "n_pieces": npc, "union_box": o.get("union_box"),
                              "completed": bool(mp["completed"]), "rat_id": r["id"], "origin": r["origin"], "deleted": bool(r["deleted"]),
                              "object": k, "hidden": bool(o.get("hidden")) if k == "implant" else False, "n_cand": len(o.get("cand") or []),
                              "source": o.get("source") or "", "rank": o.get("rank"), "boxed": o.get("box") is not None,
@@ -1695,7 +1707,13 @@ def obj_block_v2(d: pd.DataFrame) -> dict:
     n = len(pre)
     c3 = c3_table(d) if len(d) else pd.DataFrame()
     cb = c3_block(c3)
+    jt = pre[(pre.source == "joined") & pre.union_box.notna() & pre.box.notna()] if n else pre
+    cu = c3_block(pd.DataFrame([{**r, **edge_shifts(r["union_box"], r["box"])} for r in jt.to_dict("records")])) if len(jt) else c3_block(pd.DataFrame())
+    npc = pre.n_pieces.clip(upper=4) if n else pd.Series(dtype=int)
     return {"n_prelabel": n, "usable1": pre.usable1.mean() if n else np.nan, "usable_any": pre.usable_any.mean() if n else np.nan,
+            "usable_any_join": pre.usable_any_join.mean() if n else np.nan, "joined": pre.joined.mean() if n else np.nan,
+            "n_pieces_dist": {("4+" if k == 4 else str(int(k))): int(v) for k, v in npc.value_counts().sort_index().items()},
+            "union_shift": {"n": int(len(jt)), "edges": cu},
             "manual": pre.manual.mean() if n else np.nan, "merged": pre.any_merged.mean() if n else np.nan,
             "partial": pre.any_partial.mean() if n else np.nan, "no_candidate": (pre.n_cand == 0).mean() if n else np.nan,
             "quality": quality_block(d), "c3": {"n": int(len(c3)), "edges": cb, "padding_rule_frac": {e: cb[e]["frac"]["median"] for e in EDGES},
@@ -1732,7 +1750,11 @@ def summarize_v2(ex: dict, more: list | None = None) -> dict:
            "definition_note": ex.get("definition_note", "")}
     for k in OBJS:
         d = ev[ev.object == k] if len(ev) else ev
+        pd_ = d[(d.arm == "PRELABEL") & d.frame_id.isin(done)] if len(d) else d
+        by_src = {src: {"n": int((pd_.source == src).sum()), "s_per_object": float(pd_[pd_.source == src].time_s.mean()) if (pd_.source == src).any() else np.nan}
+                  for src in ("cand", "joined", "manual")} if len(d) else {}
         out["objects"][k] = {**(obj_block_v2(d) if len(d) else {"n_prelabel": 0}), "time": ({a: secs(d, a) for a in ("PRELABEL", "SCRATCH")} if len(d) else {}),
+                             "time_by_source": by_src,
                              "sizes": {"scratch": size_block(d[d.arm == "SCRATCH"].box) if len(d) else size_block([]),
                                        "accepted_mask_bbox": size_block([m for m in d[(d.arm == "PRELABEL") & (d.source == "cand")].prop]) if len(d) else size_block([])}}
         for dom in ("ir", "colour"):
@@ -1742,7 +1764,8 @@ def summarize_v2(ex: dict, more: list | None = None) -> dict:
                 row = {"object": k, "domain": dom, "pile_bin": b}
                 if len(x):
                     bl = obj_block_v2(x)
-                    row.update({kk: bl[kk] for kk in ("n_prelabel", "usable1", "usable_any", "manual", "merged", "partial")})
+                    row.update({kk: bl[kk] for kk in ("n_prelabel", "usable1", "usable_any", "usable_any_join", "joined", "manual", "merged", "partial")})
+                    row["n_pieces_dist"] = bl["n_pieces_dist"]
                     row.update({f"iou_{q}": bl["quality"][f"iou_{q}"] for q in ("median", "q25", "q75")})
                     row.update({f"pad_{e}": bl["c3"]["padding_rule_frac"][e] for e in EDGES})
                     row["uniform"] = bl["c3"]["uniformity"]["uniform"]
@@ -1796,11 +1819,18 @@ def summary_md_v2(sm: dict, export_name: str) -> str:
               f"**PRELABEL** ({o['n_prelabel']} boxes):",
               f"- usable@1 {S.pct(o['usable1'])}; usable@any {S.pct(o['usable_any'])}; manual {S.pct(o['manual'])}; no candidate "
               f"{S.pct(o['no_candidate'])}" + (f"; merged {S.pct(o['merged'])}, partial {S.pct(o['partial'])}." if k == "rat" else "."),
-              f"- IoU proposed → final: median {fx(q['iou_median'], 3)} [quartiles {fx(q['iou_q25'], 3)}, {fx(q['iou_q75'], 3)}];",
+              f"- **usable@any as a single mask {S.pct(o['usable_any'])}; with joins {S.pct(o.get('usable_any_join', np.nan))}** (joined boxes "
+              f"{S.pct(o.get('joined', np.nan))}); pieces per box: " + ", ".join(f"{kk}: {vv}" for kk, vv in (o.get("n_pieces_dist") or {}).items()) + ";",
+              f"- IoU proposed (first candidate of the first click) → final: median {fx(q['iou_median'], 3)} [quartiles {fx(q['iou_q25'], 3)}, {fx(q['iou_q75'], 3)}];",
               f"- no edit {S.pct(q['no_edit'])}; edge moves only {S.pct(q['edge_only'])} (median edge shift "
               f"{fx(q['edge_shift_median_px'])} px); another candidate {S.pct(q['other_candidate'])}.",
               f"- Seconds per box (per-object time slices, completed frames): PRELABEL {fx(tp.get('s_per_object', np.nan))} s "
-              f"(n {tp.get('n', 0)}), SCRATCH {fx(ts.get('s_per_object', np.nan))} s (n {ts.get('n', 0)}).", ""]
+              f"(n {tp.get('n', 0)}), SCRATCH {fx(ts.get('s_per_object', np.nan))} s (n {ts.get('n', 0)}); PRELABEL by source: "
+              + ", ".join(f"{src} {fx(v['s_per_object'])} s (n {v['n']})" for src, v in (o.get("time_by_source") or {}).items()) + ".", ""]
+        us = o.get("union_shift") or {}
+        if us.get("n"):
+            L += [f"Joined boxes ({us['n']}): per-edge shift from the union box (before edge drags) to the final box, px median [q25, q75]: "
+                  + ", ".join(f"{e} {us['edges'][e]['px']['median']:+.0f} [{us['edges'][e]['px']['q25']:+.0f}, {us['edges'][e]['px']['q75']:+.0f}]" for e in EDGES) + ".", ""]
 
         def cell(qq, pct_=False):
             if not qq["n"]:
@@ -1825,7 +1855,8 @@ def summary_md_v2(sm: dict, export_name: str) -> str:
                                         "aspect w / h": scell(v["aspect_w_over_h"], 2)}
                                        for nm, v in (("SCRATCH (by hand)", sz["scratch"]), ("accepted mask bboxes", sz["accepted_mask_bbox"]))])), ""]
         rows = [{"domain": r["domain"], "pile": r["pile_bin"], "PRELABEL n": r.get("n_prelabel", 0), "usable@1": S.pct(r.get("usable1", np.nan)),
-                 "usable@any": S.pct(r.get("usable_any", np.nan)), "manual": S.pct(r.get("manual", np.nan)),
+                 "usable@any single": S.pct(r.get("usable_any", np.nan)), "usable@any with joins": S.pct(r.get("usable_any_join", np.nan)),
+                 "joined": S.pct(r.get("joined", np.nan)), "manual": S.pct(r.get("manual", np.nan)),
                  **({"merged": S.pct(r.get("merged", np.nan)), "partial": S.pct(r.get("partial", np.nan))} if k == "rat" else
                     {"hidden": S.pct(r.get("hidden", np.nan))}),
                  "IoU median": fx(r.get("iou_median", np.nan), 3),
@@ -1847,13 +1878,692 @@ def summary_md_v2(sm: dict, export_name: str) -> str:
           "**implant hidden** = the user's H.",
           "- **Rat box** = head + body, no tail, visible parts only; candidates = the masks containing the user's body click "
           "(polygon or within 15 px), in score order. The proposed box is the first candidate of the latest body click.",
-          "- **usable@1 / usable@any:** per object type, as in v1. Merged / partial flags apply to the rat box only.",
+          "- **usable@1 / usable@any:** per object type, as in v1. Merged / partial flags apply to the rat box only; on a joined box they "
+          "apply to the whole box.",
+          "- **Joined box (v2.1, amendment B2):** the union bounding box of ≥ 2 SAM 3 masks the user joined with J. **usable@any with "
+          "joins** = the share whose final box came from one candidate or a join, with no flag; **usable@any as a single mask** counts "
+          "single candidates only. **Pieces per box** = the number of masks used (0 = drawn by hand).",
+          "- **Proposed box** = the first candidate of the first body click (implant: of the head point). For rat boxes labelled in "
+          "v2.0 with more than one body click, the stored proposal is the latest click's (v2.0 rule; `prop_rule` = latest_click_v2.0).",
           "- **IoU proposed → final**, **edge shifts**, **padding rule**, **uniformity flag:** as in v1 (C2 / C3), per object type.",
           "- **Seconds per box** = the object's active time slice (the clock runs for the active box only; it pauses when the tab "
           "is hidden or after 45 s without input), mean over the boxed objects on completed frames.",
           "- **Repeat check** per object type: rats paired by head point within 15 px, IoU of the two final boxes (hidden implants "
           "excluded).", ""]
     return "\n".join(L)
+
+
+PAGE_JS_V21 = r"""
+(function(){
+const D = window.PL_DATA;
+const KEY = D.storage_key || (D.page_version + '::' + D.run);          // v2.1 keeps the v2 storage key: the user's progress is kept
+const $ = id => document.getElementById(id);
+const iso = () => new Date().toISOString();
+const OBJ_NAME = {implant: 'IMPLANT box', rat: 'RAT box'};
+function newObj(f, cand, hidden){ return {cand: cand, k: 0, prop: cand.length ? f.masks[cand[0]].b.slice() : null, box: null, source: null, rank: null,
+  mask: null, cand_flags: {}, edge_moves: 0, next_presses: 0, time_ms: 0, hidden: !!hidden, click: null, clicks: [],
+  pieces: [], union_box: null, obj_flags: {}, prop_rule: 'first_click'}; }
+function initFrame(f){ return {arm: f.arm, active_ms: 0, showall_ms: 0, completed: false, visited: false, next_add: 1, marks: {}, passes: [],
+  rats: f.heads.map((h, i) => ({id: 'h' + (i + 1), num: i + 1, origin: 'click', click_id: h.c, u: h.u, v: h.v, deleted: false,
+    implant: newObj(f, f.cand[i], false), rat: newObj(f, [], false)}))}; }
+function fresh(){ const fr = {}; D.frames.forEach(f => fr[f.id] = initFrame(f));
+  return {v: 2, schema: '2.1', started_at: iso(), defnote: '', cur: {fi: 0, ri: 0, obj: 'implant'}, frames: fr, events: []}; }
+// ---------------------------------------------------------------- lazy migration v2.0 -> v2.1 (adds fields, never rewrites a v2.0 value)
+function migObj(f, o, kind){ if (!o) return; let ch = false;
+  if (!Array.isArray(o.pieces)) { o.pieces = (o.source === 'cand' && o.mask !== null && o.mask !== undefined) ? [{mask: o.mask, rank: o.rank, click: kind === 'rat' ? (o.click || null) : null}] : []; ch = true; }
+  if (o.union_box === undefined) { o.union_box = (o.source === 'cand' && o.mask !== null && o.mask !== undefined && f.masks[o.mask]) ? f.masks[o.mask].b.slice() : null; ch = true; }
+  if (!o.obj_flags) { o.obj_flags = {}; ch = true; }
+  if (!o.prop_rule) { o.prop_rule = (kind === 'rat' && (o.clicks || []).length > 1) ? 'latest_click_v2.0' : 'first_click'; ch = true; }
+  if (!Array.isArray(o.clicks)) { o.clicks = []; ch = true; }
+  return ch; }
+function migrate(st0){ let n = 0; D.frames.forEach(f => { const s = st0.frames[f.id]; if (!s) return;
+  const all = [s.rats].concat((s.passes || []).map(p => p.rats)); all.forEach(rs => (rs || []).forEach(r => { if (migObj(f, r.implant, 'implant')) n++; if (migObj(f, r.rat, 'rat')) n++; })); });
+  if (st0.schema !== '2.1') { st0.schema = '2.1'; st0.migrated_v21_at = iso(); st0.migrated_v21_objects = n; } return st0; }
+function load(){ try { const t = localStorage.getItem(KEY); if (t) { const o = JSON.parse(t); if (o && o.frames && o.v === 2) return migrate(o); } } catch (e) {} return null; }
+let saveT = null;
+function save(now){ const f = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { $('banner').textContent = 'could not save to this browser: export now'; } };
+  if (now) { f(); return; } clearTimeout(saveT); saveT = setTimeout(f, 250); }
+let S = load() || fresh();
+const fr = () => D.frames[S.cur.fi], st = () => S.frames[fr().id], rats = () => st().rats;
+const liveIdx = () => rats().map((r, i) => i).filter(i => !rats()[i].deleted);
+const rat = () => rats()[S.cur.ri];
+const obj = () => { const r = rat(); return r ? r[S.cur.obj] : null; };
+function log(ev, extra){ const r = rat(); S.events.push(Object.assign({t: iso(), frame: fr().id, arm: st().arm, rat: r ? r.id : null, obj: S.cur.obj, ev: ev}, extra || {})); save(); }
+let toastT = null;
+function toast(msg){ const el = $('toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => { el.style.display = 'none'; }, 3500); }
+// ---------------------------------------------------------------- undo (per frame, in memory)
+const undo = {};
+function snap(){ const id = fr().id; (undo[id] = undo[id] || []).push(JSON.stringify({rats: st().rats, marks: st().marks, next_add: st().next_add, ri: S.cur.ri, obj: S.cur.obj}));
+  if (undo[id].length > 200) undo[id].shift(); }
+function doUndo(){ const a = undo[fr().id]; if (!a || !a.length) return; const o = JSON.parse(a.pop());
+  st().rats = o.rats; st().marks = o.marks; st().next_add = o.next_add; S.cur.ri = Math.min(o.ri, st().rats.length - 1); S.cur.obj = o.obj; log('undo'); draw(); }
+// ---------------------------------------------------------------- geometry
+function pointInPoly(x, y, p){ let ins = false; for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+  const xi = p[i], yi = p[i + 1], xj = p[j], yj = p[j + 1];
+  if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) ins = !ins; } return ins; }
+function segDist(x, y, x1, y1, x2, y2){ const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy; let t = L ? ((x - x1) * dx + (y - y1) * dy) / L : 0;
+  t = Math.max(0, Math.min(1, t)); return Math.hypot(x - x1 - t * dx, y - y1 - t * dy); }
+function polyDist(x, y, p){ let d = Infinity; for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) d = Math.min(d, segDist(x, y, p[j], p[j + 1], p[i], p[i + 1])); return d; }
+function maskHit(m, x, y, tol){ for (const p of m.p) { if (pointInPoly(x, y, p)) return true; } if (tol > 0) { for (const p of m.p) if (polyDist(x, y, p) <= tol) return true; } return false; }
+function candidatesAt(x, y){ const out = []; fr().masks.forEach((m, j) => { if (maskHit(m, x, y, D.cover_px)) out.push(j); }); return out; }
+function unionBox(pieces){ const f = fr(); let b = null; pieces.forEach(p => { const m = f.masks[p.mask].b;
+  b = b ? [Math.min(b[0], m[0]), Math.min(b[1], m[1]), Math.max(b[2], m[2]), Math.max(b[3], m[3])] : m.slice(); }); return b; }
+// ---------------------------------------------------------------- view
+const cv = $('cv'), ctx = cv.getContext('2d');
+let view = null, mode = null, drag = null, spaceDown = false, showAll = false;
+const imgs = {};
+function img(){ const f = fr(); if (!imgs[f.img]) { const im = new Image(); im.onload = () => draw(); im.src = f.img; imgs[f.img] = im; } return imgs[f.img]; }
+function fit(){ const w = cv.clientWidth, h = cv.clientHeight, f = fr(); const s = Math.min(w / f.w, h / f.h); view = {s, ox: (w - f.w * s) / 2, oy: (h - f.h * s) / 2}; }
+const toImg = (x, y) => [(x - view.ox) / view.s, (y - view.oy) / view.s];
+const toCv = (u, v) => [u * view.s + view.ox, v * view.s + view.oy];
+function polyPath(p){ const P = new Path2D(); for (let i = 0; i < p.length; i += 2) { if (i === 0) P.moveTo(p[i], p[i + 1]); else P.lineTo(p[i], p[i + 1]); } P.closePath(); return P; }
+function colour(r){ return 'hsl(' + ((r * 137.508) % 360).toFixed(1) + ',90%,58%)'; }
+const STYLE = {implant: {box: '#ff9f1a', cand: '#00e5ff'}, rat: {box: '#39ff14', cand: '#ff4fd8'}};
+let drawnMasks = 0;
+function curCand(){ const r = rat(), o = obj(); if (!r || r.deleted || st().arm !== 'PRELABEL' || showAll || !o) return null;
+  if (S.cur.obj === 'implant' && o.hidden) return null; return o.k < o.cand.length ? o.cand[o.k] : null; }
+function draw(){
+  const f = fr(), s = st(); if (!f) return;
+  if (cv.width !== cv.clientWidth) cv.width = cv.clientWidth; if (cv.height !== cv.clientHeight) cv.height = cv.clientHeight;
+  if (!view) fit();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
+  const im = img(); if (im.complete && im.naturalWidth) ctx.drawImage(im, 0, 0, f.w, f.h);
+  const lw = 1 / view.s; drawnMasks = 0;
+  if (showAll) {
+    f.masks.forEach((m, j) => { const mk = s.marks[j]; const col = mk === 'garbage' ? '#ff3b3b' : mk === 'fragment' ? '#ffa500' : colour(j);
+      m.p.forEach(p => { const P = polyPath(p); if (mk) { ctx.globalAlpha = 0.35; ctx.fillStyle = col; ctx.fill(P); ctx.globalAlpha = 1; }
+        ctx.lineWidth = 1.5 * lw; ctx.strokeStyle = col; ctx.stroke(P); }); drawnMasks++; });
+  } else {
+    const r = rat();
+    if (r && !r.deleted) ['implant', 'rat'].forEach(k => (r[k].pieces || []).forEach(pc => { const m = f.masks[pc.mask]; if (!m) return;
+      m.p.forEach(p => { const P = polyPath(p); ctx.globalAlpha = 0.12; ctx.fillStyle = STYLE[k].box; ctx.fill(P); ctx.globalAlpha = 1;
+        ctx.lineWidth = 1.8 * lw; ctx.strokeStyle = STYLE[k].box; ctx.stroke(P); }); }));
+    const c = curCand();
+    if (c !== null) { const m = f.masks[c], col = STYLE[S.cur.obj].cand; ctx.setLineDash([7 * lw, 5 * lw]);
+      m.p.forEach(p => { const P = polyPath(p); ctx.globalAlpha = 0.12; ctx.fillStyle = col; ctx.fill(P); ctx.globalAlpha = 1; ctx.lineWidth = 2.5 * lw; ctx.strokeStyle = col; ctx.stroke(P); });
+      drawnMasks = 1; ctx.lineWidth = 2 * lw; ctx.strokeStyle = '#ffd400'; ctx.strokeRect(m.b[0], m.b[1], m.b[2] - m.b[0], m.b[3] - m.b[1]); ctx.setLineDash([]); }
+  }
+  s.rats.forEach((r, i) => { if (r.deleted) return; const cur = i === S.cur.ri;
+    ['rat', 'implant'].forEach(k => { const b = r[k].box; if (!b) return; const act = cur && S.cur.obj === k;
+      ctx.globalAlpha = cur ? 1 : 0.4; ctx.lineWidth = (act ? 3 : cur ? 1.8 : 1.3) * lw; ctx.strokeStyle = STYLE[k].box;
+      if (k === 'implant') ctx.setLineDash([4 * lw, 3 * lw]); ctx.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); ctx.setLineDash([]); ctx.globalAlpha = 1; });
+    if (cur) (r.rat.clicks || []).forEach((cl, n) => { const R = 8 * lw; ctx.lineWidth = 2.5 * lw; ctx.strokeStyle = STYLE.rat.cand; ctx.globalAlpha = n === r.rat.clicks.length - 1 ? 1 : 0.5;
+      ctx.beginPath(); ctx.moveTo(cl[0] - R, cl[1]); ctx.lineTo(cl[0] + R, cl[1]); ctx.moveTo(cl[0], cl[1] - R); ctx.lineTo(cl[0], cl[1] + R); ctx.stroke(); ctx.globalAlpha = 1; }); });
+  if (drag && drag.kind === 'draw' && drag.cur) { const b = normBox(drag.start, drag.cur); ctx.setLineDash([6 * lw, 4 * lw]); ctx.lineWidth = 2 * lw; ctx.strokeStyle = STYLE[S.cur.obj].box;
+    ctx.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); ctx.setLineDash([]); }
+  ctx.font = (16 * lw) + 'px system-ui, sans-serif';
+  s.rats.forEach((r, i) => { const cur = i === S.cur.ri, R = (cur ? 9 : 7) * lw;
+    ctx.beginPath(); if (r.origin === 'added') { ctx.moveTo(r.u, r.v - R); ctx.lineTo(r.u + R, r.v); ctx.lineTo(r.u, r.v + R); ctx.lineTo(r.u - R, r.v); ctx.closePath(); }
+    else ctx.arc(r.u, r.v, R, 0, 2 * Math.PI);
+    ctx.fillStyle = r.deleted ? '#777' : '#fff'; ctx.fill(); ctx.lineWidth = (cur ? 3 : 2) * lw; ctx.strokeStyle = cur ? '#ff2fd0' : '#000'; ctx.stroke();
+    if (r.deleted) { ctx.strokeStyle = '#ff3b3b'; ctx.beginPath(); ctx.moveTo(r.u - R, r.v - R); ctx.lineTo(r.u + R, r.v + R); ctx.moveTo(r.u + R, r.v - R); ctx.lineTo(r.u - R, r.v + R); ctx.stroke(); }
+    ctx.lineWidth = 3 * lw; ctx.strokeStyle = '#000'; ctx.strokeText(String(r.num), r.u + R + 3 * lw, r.v - R); ctx.fillStyle = cur ? '#ff2fd0' : '#fff'; ctx.fillText(String(r.num), r.u + R + 3 * lw, r.v - R); });
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  panel();
+}
+function objText(r, k){ const o = r[k], pre = st().arm === 'PRELABEL';
+  if (k === 'implant' && o.hidden) return 'implant hidden';
+  let t = '';
+  if (pre) { if (k === 'rat' && !o.click) t = 'click the rat\'s body'; else if (o.cand.length === 0) t = 'no candidate here — click another part, or draw (B)';
+    else t = o.k < o.cand.length ? 'candidate ' + (o.k + 1) + ' / ' + o.cand.length + ((o.pieces || []).some(p => p.mask === o.cand[o.k]) ? ' (joined)' : '') : 'none usable — draw (B)'; }
+  else t = 'draw by hand (drag)';
+  if (o.box) t += ' · box: ' + (o.source === 'manual' ? 'manual' : o.source === 'joined' ? 'joined ' + o.pieces.length + ' pieces' : 'candidate ' + o.rank)
+    + (o.edge_moves ? ', ' + o.edge_moves + ' edge move(s)' : '');
+  const fl = o.source === 'joined' ? (o.obj_flags || {}) : (pre && o.k < o.cand.length ? (o.cand_flags[o.k + 1] || {}) : {});
+  if (k === 'rat' && (fl.merged || fl.partial)) t += ' · flagged ' + [fl.merged ? 'merged' : '', fl.partial ? 'partial' : ''].filter(Boolean).join(' + ');
+  return t; }
+function panel(){
+  const f = fr(), s = st(), r = rat();
+  $('armtag').textContent = s.arm; $('armtag').className = s.arm; if ($('goto').value !== String(S.cur.fi)) $('goto').value = String(S.cur.fi);
+  $('objtag').textContent = OBJ_NAME[S.cur.obj]; $('objtag').className = 'obj-' + S.cur.obj;
+  $('ftitle').textContent = 'frame ' + (S.cur.fi + 1) + ' / ' + D.frames.length + ' · ' + (f.domain === 'ir' ? 'IR' : 'colour') + ' · ' + f.id + ((s.passes || []).length ? ' · pass ' + (s.passes.length + 1) : '');
+  const live = liveIdx();
+  $('status').innerHTML = r ? ('rat ' + r.num + (r.origin === 'added' ? ' (added)' : '') + ' · ' + (live.indexOf(S.cur.ri) + 1) + ' of ' + live.length + (r.deleted ? ' · deleted' : '')
+    + '<br><span class="obj-implant">IMPLANT</span> ' + objText(r, 'implant') + '<br><span class="obj-rat">RAT</span> ' + objText(r, 'rat')) : 'no rat on this frame';
+  $('banner').textContent = showAll ? 'SHOW ALL: every "rat" mask; click a mask: garbage → fragment → clear. Press S to go back. (显示全部)' : mode === 'draw' ? 'draw the ' + OBJ_NAME[S.cur.obj] + ': drag on the image (画框)' : mode === 'add' ? 'add a rat: click its visible body (加鼠)' : '';
+  const done = D.frames.filter(x => S.frames[x.id].completed).length; let nr = 0, nb = 0;
+  D.frames.forEach(x => S.frames[x.id].rats.forEach(q => { if (!q.deleted) { nr++; if (q.rat.box && (q.implant.box || q.implant.hidden)) nb++; } }));
+  $('progbar').style.width = (100 * done / D.frames.length).toFixed(1) + '%';
+  $('progtxt').textContent = done + ' / ' + D.frames.length + ' frames done · ' + nb + ' / ' + nr + ' rats with both boxes';
+  $('timetxt').textContent = 'active ' + (s.active_ms / 1000).toFixed(0) + ' s' + (s.showall_ms ? ' · show-all ' + (s.showall_ms / 1000).toFixed(0) + ' s' : '') + (idle() ? ' · paused' : '');
+}
+function normBox(a, b){ return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])]; }
+// ---------------------------------------------------------------- actions
+function startObj(r){ return r && r.implant.hidden ? 'rat' : 'implant'; }
+function goFrame(i){ S.cur.fi = Math.max(0, Math.min(D.frames.length - 1, i)); const live = liveIdx(); S.cur.ri = live.length ? live[0] : 0; S.cur.obj = startObj(rat());
+  st().visited = true; view = null; mode = null; showAll = false; $('showall').checked = false; log('frame_open'); draw(); }
+function nextRat(){ const live = liveIdx(), p = live.indexOf(S.cur.ri);
+  let nx = p >= 0 ? (p < live.length - 1 ? live[p + 1] : undefined) : live.find(i => i > S.cur.ri);
+  if (nx !== undefined) { S.cur.ri = nx; S.cur.obj = startObj(rat()); mode = null; log('rat_next'); draw(); return; }
+  st().completed = true; log('frame_done'); if (S.cur.fi < D.frames.length - 1) goFrame(S.cur.fi + 1); else { draw(); $('banner').textContent = 'last frame done — please export'; } }
+function advance(){ if (S.cur.obj === 'implant') { S.cur.obj = 'rat'; mode = null; log('obj_next'); draw(); } else nextRat(); }
+function back(){ if (S.cur.obj === 'rat' && rat() && !rat().implant.hidden) { S.cur.obj = 'implant'; mode = null; draw(); return; }
+  const live = liveIdx(), p = live.indexOf(S.cur.ri); if (p > 0) { S.cur.ri = live[p - 1]; S.cur.obj = 'rat'; mode = null; draw(); } else if (S.cur.fi > 0) goFrame(S.cur.fi - 1); }
+function accept(){ const o = obj(), c = curCand(); if (!o || c === null) return; snap(); const m = fr().masks[c];
+  const had = (o.pieces || []).length; if (had > 1 || (had === 1 && o.pieces[0].mask !== c)) toast('replaced ' + had + ' joined piece(s) with this one mask (U undoes)');
+  o.pieces = [{mask: c, rank: o.k + 1, click: S.cur.obj === 'rat' ? o.click : null}]; o.union_box = m.b.slice(); o.obj_flags = {};
+  o.box = m.b.slice(); o.source = 'cand'; o.rank = o.k + 1; o.mask = c;
+  log('accept', {rank: o.rank, mask: c, mask_score: m.s, box: o.box, flags: o.cand_flags[o.rank] || {}, click: S.cur.obj === 'rat' ? o.click : undefined, replaced_pieces: had}); draw(); }
+function join(){ const o = obj(), c = curCand(); if (!o || c === null) return;
+  if ((o.pieces || []).some(p => p.mask === c)) { toast('this piece is already joined'); return; }
+  snap(); const m = fr().masks[c];
+  if (o.source === 'manual' || !o.pieces) { if (o.source === 'manual') toast('the hand-drawn box is replaced by the joined pieces (U undoes)'); o.pieces = []; }
+  o.pieces.push({mask: c, rank: o.k + 1, click: S.cur.obj === 'rat' ? o.click : null});
+  o.box = unionBox(o.pieces); o.union_box = o.box.slice();
+  if (o.pieces.length >= 2) { o.source = 'joined'; o.rank = null; o.mask = null; } else { o.source = 'cand'; o.rank = o.k + 1; o.mask = c; }
+  log('join', {mask: c, rank: o.k + 1, mask_score: m.s, click: S.cur.obj === 'rat' ? o.click : undefined, n_pieces: o.pieces.length, box: o.box}); draw(); }
+function next(){ const o = obj(), r = rat(); if (!o || !r || r.deleted || st().arm !== 'PRELABEL' || showAll) return; if (S.cur.obj === 'implant' && o.hidden) return;
+  if (S.cur.obj === 'rat' && !o.click) return; snap(); o.k = o.k < o.cand.length ? o.k + 1 : 0; o.next_presses++;
+  log('next', {to: o.k < o.cand.length ? o.k + 1 : 'none'}); draw(); }
+function flag(kind){ if (S.cur.obj !== 'rat') return; const o = obj(); if (!o) return;
+  if (o.source === 'joined') { snap(); o.obj_flags = o.obj_flags || {}; o.obj_flags[kind] = !o.obj_flags[kind]; log('flag', {object_level: true, flag: kind, value: o.obj_flags[kind], n_pieces: o.pieces.length}); draw(); return; }
+  if (curCand() === null) return; snap(); const fl = o.cand_flags[o.k + 1] = o.cand_flags[o.k + 1] || {}; fl[kind] = !fl[kind];
+  log('flag', {rank: o.k + 1, flag: kind, value: fl[kind]}); draw(); }
+function setManual(b){ const r = rat(), o = obj(); if (!r || r.deleted || !o) return; snap(); o.box = b.map(x => Math.round(x * 10) / 10); o.source = 'manual'; o.rank = null; o.mask = null;
+  o.pieces = []; o.union_box = null; o.obj_flags = {}; if (S.cur.obj === 'implant') o.hidden = false; log('manual_box', {box: o.box}); mode = null; draw(); }
+function fitToMask(){ const r = rat(), o = obj(); if (!r || r.deleted || !o || !(o.pieces || []).length || o.source === 'manual') return; const b = unionBox(o.pieces);
+  if (o.box && o.box.every((x, i) => x === b[i])) return; snap(); const from = o.box; o.box = b.slice(); log('fit_to_mask', {from: from, to: o.box, rank: o.rank, n_pieces: o.pieces.length}); draw(); }
+function hideImplant(){ const r = rat(); if (!r || r.deleted) return; snap(); const o = r.implant; o.hidden = !o.hidden;
+  if (o.hidden) { o.box = null; o.source = null; o.rank = null; o.mask = null; o.pieces = []; o.union_box = null; o.obj_flags = {}; if (S.cur.obj === 'implant') S.cur.obj = 'rat'; }
+  log('implant_hidden', {value: o.hidden}); draw(); }
+function bodyClick(u, v){ const r = rat(); if (!r || r.deleted) return; snap(); const o = r.rat, f = fr(); o.click = [Math.round(u * 10) / 10, Math.round(v * 10) / 10];
+  o.clicks.push(o.click.slice()); o.cand = candidatesAt(u, v); o.k = 0;
+  if (!o.prop && o.cand.length) { o.prop = f.masks[o.cand[0]].b.slice(); o.prop_rule = 'first_click'; }       // C2 / C3: the first candidate of the first click
+  log('body_click', {u: o.click[0], v: o.click[1], n_cand: o.cand.length, n_click: o.clicks.length}); draw(); }
+function addRat(u, v){ snap(); const s = st(), f = fr(); const r = {id: 'a' + s.next_add, num: s.rats.length + 1, origin: 'added', click_id: null,
+  u: Math.round(u * 10) / 10, v: Math.round(v * 10) / 10, deleted: false, implant: newObj(f, [], true), rat: newObj(f, [], false)};
+  if (s.arm === 'PRELABEL') { r.rat.click = [r.u, r.v]; r.rat.clicks = [[r.u, r.v]]; r.rat.cand = candidatesAt(u, v); r.rat.prop = r.rat.cand.length ? f.masks[r.rat.cand[0]].b.slice() : null; }
+  s.next_add++; s.rats.push(r); S.cur.ri = s.rats.length - 1; S.cur.obj = 'rat'; mode = null; log('add_rat', {u: r.u, v: r.v, n_cand: r.rat.cand.length}); draw(); }
+function delDot(){ const r = rat(); if (!r) return; snap(); r.deleted = !r.deleted; log(r.deleted ? 'delete_dot' : 'undelete_dot'); draw(); }
+function redoFrame(skipConfirm){ const f = fr(), s = st();
+  if (!skipConfirm && !confirm('Label this frame again from the start? The current labels are kept as pass ' + ((s.passes || []).length + 1) + '.')) return;
+  s.passes = (s.passes || []).concat([{rats: s.rats, active_ms: s.active_ms, showall_ms: s.showall_ms, completed: s.completed, marks: s.marks, archived_at: iso()}]);
+  const nf = initFrame(f); s.rats = nf.rats; s.active_ms = 0; s.showall_ms = 0; s.completed = false; s.marks = {}; s.next_add = 1; undo[f.id] = [];
+  S.cur.ri = 0; S.cur.obj = startObj(rat()); log('redo_frame', {pass: s.passes.length + 1}); draw(); }
+function toggleShowAll(on){ showAll = on === undefined ? !showAll : on; $('showall').checked = showAll; mode = null; log('show_all', {on: showAll}); draw(); }
+function markMask(u, v){ const f = fr(), s = st(); let best = -1, ba = Infinity;
+  f.masks.forEach((m, j) => { if (maskHit(m, u, v, 0) && m.a < ba) { best = j; ba = m.a; } }); if (best < 0) return; snap();
+  const cur = s.marks[best], nx = !cur ? 'garbage' : cur === 'garbage' ? 'fragment' : null; if (nx) s.marks[best] = nx; else delete s.marks[best];
+  log('showall_mark', {mask: best, mark: nx || 'clear'}); draw(); }
+// ---------------------------------------------------------------- timing (frame clock + per-object time slices)
+let lastInput = performance.now(), lastTick = performance.now();
+const idle = () => document.visibilityState !== 'visible' || performance.now() - lastInput > D.idle_ms;
+function touch(){ lastInput = performance.now(); }
+setInterval(() => { const now = performance.now(), dt = now - lastTick; lastTick = now;
+  if (!idle() && dt < 5000) { const s = st(); if (showAll) s.showall_ms += dt; else { s.active_ms += dt; const r = rat(); if (r && !r.deleted) r[S.cur.obj].time_ms += dt; } }
+  panel(); if (Math.random() < 0.1) save(); }, 500);
+document.addEventListener('visibilitychange', () => { log('visibility', {state: document.visibilityState}); save(true); });
+window.addEventListener('beforeunload', () => save(true));
+// ---------------------------------------------------------------- mouse
+function edgeAt(x, y){ const o = obj(), r = rat(); if (!r || !o || !o.box || r.deleted || showAll) return null; const b = o.box, [u, v] = toImg(x, y), t = 8 / view.s;
+  const inY = v > b[1] - t && v < b[3] + t, inX = u > b[0] - t && u < b[2] + t, e = [];
+  if (inY && Math.abs(u - b[0]) < t) e.push(0); if (inY && Math.abs(u - b[2]) < t) e.push(2); if (inX && Math.abs(v - b[1]) < t) e.push(1); if (inX && Math.abs(v - b[3]) < t) e.push(3);
+  return e.length ? e : null; }
+function canDraw(){ const r = rat(); if (!r || r.deleted) return false; if (mode === 'draw') return true;
+  return st().arm === 'SCRATCH' && !(S.cur.obj === 'implant' && r.implant.hidden); }
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mousedown', e => { touch(); const r0 = cv.getBoundingClientRect(), x = e.clientX - r0.left, y = e.clientY - r0.top, [u, v] = toImg(x, y);
+  if (e.button === 2 || e.button === 1 || spaceDown) { drag = {kind: 'pan', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy}; return; }
+  if (showAll) { markMask(u, v); return; }
+  if (mode === 'add') { addRat(u, v); return; }
+  const ed = edgeAt(x, y); if (ed) { drag = {kind: 'edge', edges: ed, b0: obj().box.slice()}; return; }
+  if (canDraw()) { drag = {kind: 'draw', start: [u, v], cur: null}; return; }
+  drag = {kind: 'press', x0: e.clientX, y0: e.clientY, ox: view.ox, oy: view.oy, u: u, v: v, moved: false}; });
+window.addEventListener('mousemove', e => { if (e.target === cv) touch(); const r0 = cv.getBoundingClientRect(), x = e.clientX - r0.left, y = e.clientY - r0.top;
+  if (!drag) { cv.style.cursor = showAll ? 'pointer' : edgeAt(x, y) ? 'move' : (canDraw() || mode === 'add' || (S.cur.obj === 'rat' && st().arm === 'PRELABEL')) ? 'crosshair' : 'grab'; return; }
+  if (drag.kind === 'press') { if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 4) drag.moved = true; if (drag.moved) { view.ox = drag.ox + e.clientX - drag.x0; view.oy = drag.oy + e.clientY - drag.y0; draw(); } return; }
+  if (drag.kind === 'pan') { view.ox = drag.ox + e.clientX - drag.x0; view.oy = drag.oy + e.clientY - drag.y0; draw(); return; }
+  const [u, v] = toImg(x, y);
+  if (drag.kind === 'draw') { drag.cur = [u, v]; draw(); return; }
+  if (drag.kind === 'edge') { const b = obj().box; drag.edges.forEach(k => { b[k] = (k % 2 === 0) ? u : v; }); draw(); } });
+window.addEventListener('mouseup', e => { if (!drag) return; const d = drag; drag = null;
+  if (d.kind === 'press') { if (!d.moved && st().arm === 'PRELABEL' && S.cur.obj === 'rat') bodyClick(d.u, d.v); return; }
+  if (d.kind === 'draw') { if (d.cur) { const b = normBox(d.start, d.cur); if (b[2] - b[0] >= 5 && b[3] - b[1] >= 5) { setManual(b); return; } } draw(); return; }
+  if (d.kind === 'edge') { const o = obj(), b = normBox([o.box[0], o.box[1]], [o.box[2], o.box[3]]); const moved = b.some((x, i) => Math.abs(x - d.b0[i]) > 0.5);
+    if (moved) { const nb = b.map(x => Math.round(x * 10) / 10); o.box = d.b0; snap(); o.box = nb; o.edge_moves++; log('edge_move', {from: d.b0, to: nb, edges: d.edges}); } else o.box = d.b0; draw(); } });
+cv.addEventListener('wheel', e => { e.preventDefault(); touch(); const r0 = cv.getBoundingClientRect(), mx = e.clientX - r0.left, my = e.clientY - r0.top;
+  const z = Math.exp(-e.deltaY * 0.0015), s2 = Math.min(Math.max(view.s * z, 0.05), 20);
+  view.ox = mx - (mx - view.ox) * s2 / view.s; view.oy = my - (my - view.oy) * s2 / view.s; view.s = s2; draw(); }, {passive: false});
+window.addEventListener('resize', () => { view = null; draw(); });
+// ---------------------------------------------------------------- keys
+document.addEventListener('keyup', e => { if (e.key === ' ') spaceDown = false; });
+document.addEventListener('keydown', e => { touch(); const tg = e.target.tagName; if (tg === 'TEXTAREA' || tg === 'SELECT' || (tg === 'INPUT' && e.target.type === 'text')) return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (k === ' ') { spaceDown = true; e.preventDefault(); return; }
+  if (k === 's') { toggleShowAll(); return; } if (k === 'z') { view = null; draw(); return; } if (k === 'u') { doUndo(); return; }
+  if (k === 'PageDown') { goFrame(S.cur.fi + 1); e.preventDefault(); return; } if (k === 'PageUp') { goFrame(S.cur.fi - 1); e.preventDefault(); return; }
+  if (showAll) return;
+  if (k === 'Enter' || k === 'ArrowRight') { advance(); e.preventDefault(); return; } if (k === 'ArrowLeft') { back(); e.preventDefault(); return; }
+  if (k === 'Tab') { const r = rat(); S.cur.obj = (S.cur.obj === 'implant' || (r && r.implant.hidden)) ? 'rat' : 'implant'; mode = null; draw(); e.preventDefault(); return; }
+  if (k === 'Escape') { mode = null; draw(); return; }
+  const pre = st().arm === 'PRELABEL';
+  if (k === 'a' && pre) accept(); else if (k === 'j' && pre) join(); else if (k === 'n' && pre) next(); else if (k === 'm' && pre) flag('merged'); else if (k === 'p' && pre) flag('partial');
+  else if (k === 'h') hideImplant();
+  else if (k === 'b') { if (S.cur.obj === 'implant' && rat() && rat().implant.hidden) rat().implant.hidden = false; mode = mode === 'draw' ? null : 'draw'; log('draw_mode', {on: mode === 'draw'}); draw(); }
+  else if (k === 'r') { mode = mode === 'add' ? null : 'add'; log('add_mode', {on: mode === 'add'}); draw(); }
+  else if (k === 'x') delDot();
+  else if (k === 'f') fitToMask(); });
+// ---------------------------------------------------------------- export / import
+function objOut(f, o){ return Object.assign({}, o, {mask_cache_index: o.mask === null || o.mask === undefined ? null : f.masks[o.mask].i,
+  mask_score: o.mask === null || o.mask === undefined ? null : f.masks[o.mask].s, n_pieces: (o.pieces || []).length,
+  pieces: (o.pieces || []).map(p => Object.assign({}, p, {mask_cache_index: f.masks[p.mask].i, mask_score: f.masks[p.mask].s})),
+  cand_cache_index: o.cand.map(j => f.masks[j].i), cand_scores: o.cand.map(j => f.masks[j].s)}); }
+function ratOut(f, r){ return Object.assign({}, r, {implant: objOut(f, r.implant), rat: objOut(f, r.rat)}); }
+function marksOut(f, mk){ return Object.entries(mk || {}).map(([j, m]) => ({mask: +j, mask_cache_index: f.masks[+j].i, mask_score: f.masks[+j].s, mark: m})); }
+function exportJSON(){ return {page_version: D.page_version, schema: '2.1', storage_key: KEY, run: D.run, plan: D.plan, seed: D.seed, exported_at: iso(),
+  started_at: S.started_at, migrated_v21_at: S.migrated_v21_at || null, migrated_v21_objects: S.migrated_v21_objects || 0,
+  definitions: D.definitions, definition_note: S.defnote, idle_ms: D.idle_ms, objects: ['implant', 'rat'],
+  coords: 'full-resolution pixels, origin top-left; box = [x0, y0, x1, y1]',
+  frames: D.frames.map(f => { const s = S.frames[f.id]; return {frame_id: f.id, domain: f.domain, arm: s.arm, pile_bin: f.pile_bin, order: f.order,
+    active_s: +(s.active_ms / 1000).toFixed(3), showall_s: +(s.showall_ms / 1000).toFixed(3), visited: s.visited, completed: s.completed,
+    rats: s.rats.map(r => ratOut(f, r)), showall_marks: marksOut(f, s.marks),
+    passes: (s.passes || []).map((ps, i) => ({pass: i + 1, active_s: +(ps.active_ms / 1000).toFixed(3), showall_s: +(ps.showall_ms / 1000).toFixed(3),
+      completed: ps.completed, archived_at: ps.archived_at, rats: ps.rats.map(r => ratOut(f, r)), showall_marks: marksOut(f, ps.marks)}))}; }),
+  events: S.events}; }
+function rows(){ const out = []; D.frames.forEach(f => { const s = S.frames[f.id];
+  const passes = (s.passes || []).map((ps, i) => ({n: i + 1, rats: ps.rats, active_ms: ps.active_ms, showall_ms: ps.showall_ms, completed: ps.completed}))
+    .concat([{n: (s.passes || []).length + 1, rats: s.rats, active_ms: s.active_ms, showall_ms: s.showall_ms, completed: s.completed}]);
+  passes.forEach(ps => ps.rats.forEach(r => ['implant', 'rat'].forEach(k => { const o = r[k], fl = o.rank ? (o.cand_flags[o.rank] || {}) : (o.source === 'joined' ? (o.obj_flags || {}) : {});
+    const any = q => Object.values(o.cand_flags).some(x => x && x[q]) || !!(o.obj_flags || {})[q];
+    const ub = o.union_box;
+    out.push({frame_id: f.id, pass: ps.n, domain: f.domain, arm: s.arm, pile_bin: f.pile_bin, frame_order: f.order, rat_id: r.id, origin: r.origin,
+      click_id: r.click_id || '', head_u: r.u, head_v: r.v, deleted: r.deleted, object: k, hidden: k === 'implant' ? o.hidden : '',
+      body_click_u: o.click ? o.click[0] : '', body_click_v: o.click ? o.click[1] : '', n_body_clicks: (o.clicks || []).length, n_candidates: o.cand.length,
+      source: o.source || '', rank: o.rank || '', n_pieces: (o.pieces || []).length, pieces_cache_index: (o.pieces || []).map(p => f.masks[p.mask].i).join(';'),
+      mask_index: o.mask === null || o.mask === undefined ? '' : o.mask, mask_cache_index: o.mask === null || o.mask === undefined ? '' : f.masks[o.mask].i,
+      mask_score: o.mask === null || o.mask === undefined ? '' : f.masks[o.mask].s,
+      box_x0: o.box ? o.box[0] : '', box_y0: o.box ? o.box[1] : '', box_x1: o.box ? o.box[2] : '', box_y1: o.box ? o.box[3] : '',
+      union_x0: ub ? ub[0] : '', union_y0: ub ? ub[1] : '', union_x1: ub ? ub[2] : '', union_y1: ub ? ub[3] : '',
+      prop_x0: o.prop ? o.prop[0] : '', prop_y0: o.prop ? o.prop[1] : '', prop_x1: o.prop ? o.prop[2] : '', prop_y1: o.prop ? o.prop[3] : '', prop_rule: o.prop_rule || '',
+      flag_merged: !!fl.merged, flag_partial: !!fl.partial, any_merged: any('merged'), any_partial: any('partial'), edge_moves: o.edge_moves,
+      next_presses: o.next_presses, object_s: +(o.time_ms / 1000).toFixed(2), frame_active_s: +(ps.active_ms / 1000).toFixed(2),
+      frame_showall_s: +(ps.showall_ms / 1000).toFixed(2), frame_completed: ps.completed}); }))); }); return out; }
+function csvCell(v){ v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function exportCSV(){ const rs = rows(); const cols = Object.keys(rs[0] || {frame_id: ''}); return [cols.join(',')].concat(rs.map(r => cols.map(c => csvCell(r[c])).join(','))).join('\n') + '\n'; }
+function stamp(){ const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+function download(name, text, type){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+function strip(r){ const q = JSON.parse(JSON.stringify(r)); ['implant', 'rat'].forEach(k => { ['mask_cache_index', 'mask_score', 'cand_cache_index', 'cand_scores', 'n_pieces'].forEach(x => delete q[k][x]);
+  (q[k].pieces || []).forEach(p => { delete p.mask_cache_index; delete p.mask_score; }); }); return q; }
+$('ej').addEventListener('click', () => { log('export'); download(D.export_prefix + stamp() + '.json', JSON.stringify(exportJSON()), 'application/json'); });
+$('ec').addEventListener('click', () => download(D.export_prefix + stamp() + '.csv', exportCSV(), 'text/csv'));
+$('ij').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const o = JSON.parse(t);
+  if (!o.frames || o.run !== D.run || !(D.accept_versions || [D.page_version]).includes(o.page_version)) { alert('not a v2 / v2.1 export of this page'); return; }
+  o.frames.forEach(x => { if (!S.frames[x.frame_id]) return; const s = S.frames[x.frame_id]; s.active_ms = x.active_s * 1000; s.showall_ms = x.showall_s * 1000;
+    s.visited = x.visited; s.completed = x.completed; s.rats = x.rats.map(strip); s.marks = {}; (x.showall_marks || []).forEach(m => s.marks[m.mask] = m.mark);
+    s.next_add = 1 + s.rats.filter(r => r.origin === 'added').length;
+    s.passes = (x.passes || []).map(ps => { const mk = {}; (ps.showall_marks || []).forEach(m => mk[m.mask] = m.mark);
+      return {rats: ps.rats.map(strip), active_ms: ps.active_s * 1000, showall_ms: ps.showall_s * 1000, completed: ps.completed, marks: mk, archived_at: ps.archived_at}; }); });
+  S.events = o.events || []; S.defnote = o.definition_note || ''; $('defnote').value = S.defnote; migrate(S); save(true); draw(); }); });
+$('defnote').value = S.defnote || '';
+$('defnote').addEventListener('input', e => { S.defnote = e.target.value; save(); });
+$('defnote').addEventListener('change', () => log('definition_note', {text: S.defnote}));
+$('showall').addEventListener('change', e => toggleShowAll(e.target.checked));
+$('redo').addEventListener('click', () => redoFrame(false));
+$('goto').innerHTML = D.frames.map((f, i) => '<option value="' + i + '">' + (i + 1) + ' · ' + (f.domain === 'ir' ? 'IR' : 'col') + ' · ' + f.arm + '</option>').join('');
+$('goto').addEventListener('change', e => goFrame(+e.target.value));
+const keepObj = S.cur.obj, keepRi = S.cur.ri; goFrame(S.cur.fi); S.cur.ri = Math.max(0, Math.min(keepRi, rats().length - 1)); S.cur.obj = keepObj || 'implant'; draw();
+window.__pl = {S: () => S, D, goFrame, cur: () => ({fi: S.cur.fi, ri: S.cur.ri, obj: S.cur.obj}), rat: () => rat(), frame: () => fr(), drawn: () => drawnMasks,
+  candidatesAt, exportJSON, exportCSV, key: KEY, redoFrame, setLastInput: dt => { lastInput = performance.now() - dt; },
+  imgToClient: (u, v) => { const r0 = cv.getBoundingClientRect(), [x, y] = toCv(u, v); return [x + r0.left, y + r0.top]; },
+  ready: () => { const im = img(); return im.complete && im.naturalWidth > 0; }, save: () => save(true), visible: () => document.visibilityState,
+  setCur: (ri, o) => { S.cur.ri = ri; S.cur.obj = o; draw(); }, toast: () => $('toast').style.display === 'block' ? $('toast').textContent : ''};
+})();
+"""
+
+
+# ============================================================================================ v2.1: join pieces (amendment B2)
+PAGE_VERSION_V21 = "inbox_sam3_prelabel_edit_2026c_v2.1"
+
+
+def page_html_v21(run_name: str) -> str:
+    """v2 layout + J (join) in the help, a toast line; same definitions."""
+    h = page_html_v2(run_name).replace(PAGE_JS_V2, PAGE_JS_V21)
+    h = h.replace("<title>In-box pre-label edit v2</title>", "<title>In-box pre-label edit v2.1</title>")
+    h = h.replace("· v2: implant box + rat box · 预标注编辑 v2</h1>", "· v2.1: implant box + rat box, join pieces · 预标注编辑 v2.1</h1>")
+    h = h.replace("""M / P flag merged / partial (rat box) 合并 / 不完整 · B draw by hand 手画框 · F fit back to the mask 恢复 mask 框<br>""",
+                  """M / P flag merged / partial (rat box; on a joined box: the whole box) 合并 / 不完整 · B draw by hand 手画框 ·
+F fit back to the mask(s) 恢复 mask 框<br>
+<b>J join this piece 拼接</b> (click another part → N → J): the box becomes the union of all joined pieces; every piece is outlined,
+the candidate not yet joined is dashed · U undoes the last step (e.g. the last join) · A on a candidate = that ONE mask only<br>""")
+    h = h.replace('<div id="banner"></div>', '<div id="banner"></div><div id="toast" style="display:none;font-weight:600;color:var(--acc)"></div>')
+    return h
+
+
+def _v2_data(run: Path, page_version: str, storage_key: str | None, accept_versions: list | None = None) -> dict:
+    frames = pd.read_csv(run / "frames.csv")
+    heads = pd.read_csv(run / "heads.csv")
+    arms = assign_arms(frames, heads)
+    data = {"page_version": page_version, "run": run.name, "plan": PLAN, "seed": SEED, "idle_ms": IDLE_MS, "cover_px": S.COVER_PX,
+            "definitions": [{"term": k, "text": v} for k, v in DEFINITIONS_V2], "export_prefix": "v2_inbox_sam3_prelabel_edit_2026c_",
+            "frames": []}
+    if storage_key:
+        data["storage_key"] = storage_key
+    if accept_versions:
+        data["accept_versions"] = accept_versions
+    for r in arms.itertuples():
+        H = heads[heads.frame_id == r.frame_id].sort_values(["u", "click_id"]).reset_index(drop=True)
+        pl = frame_payload(run, r.frame_id, H)
+        data["frames"].append({"id": r.frame_id, "domain": r.domain, "arm": r.arm, "pile_bin": r.pile_bin, "order": int(r.order),
+                               "img": f"frames/{Path(r.path).name}", "w": S.IMG_W, "h": S.IMG_H,
+                               "heads": [{"c": h.click_id, "u": round(float(h.u), 1), "v": round(float(h.v), 1)} for h in H.itertuples()],
+                               "masks": pl["masks"], "cand": pl["cand"]})
+    return data
+
+
+def _read_data_js(p: Path) -> dict:
+    t = p.read_text(encoding="utf-8").strip()
+    assert t.startswith("window.PL_DATA = ") and t.endswith(";")
+    return json.loads(t[len("window.PL_DATA = "):-1])
+
+
+def update_v21(run: Path, check: bool = True) -> dict:
+    """In-place update of <run>/prelabel_edit_v2 to v2.1 (amendment B2). The user's progress lives in their browser under the
+    v2 storage key, which v2.1 keeps (data.storage_key). Before anything is written: index.html, pl_data.js, page_check.json
+    and build_meta.json are copied to *.v2_0.bak (an existing backup is never overwritten), and the new frame payload is
+    verified identical to v2.0 (frames, order, arms, heads, masks, candidate lists), so every stored mask id keeps its
+    meaning. The frames/ folder is not touched."""
+    out = run / "prelabel_edit_v2"
+    assert (out / "pl_data.js").exists() and (out / "index.html").exists(), "no v2 page to update"
+    for name in ("index.html", "pl_data.js", "page_check.json", "build_meta.json"):
+        src, bak = out / name, out / f"{name}.v2_0.bak"
+        if src.exists() and not bak.exists():
+            shutil.copy2(src, bak)
+    old = _read_data_js(out / "pl_data.js.v2_0.bak")
+    key = old["page_version"] + "::" + old["run"]
+    assert old["page_version"] == PAGE_VERSION_V2, f"the backup is not v2.0: {old['page_version']}"
+    new = _v2_data(run, PAGE_VERSION_V21, key, [PAGE_VERSION_V2, PAGE_VERSION_V21])
+    same = all(a[k] == b[k] for a, b in zip(old["frames"], new["frames"]) for k in ("id", "domain", "arm", "pile_bin", "order", "img", "heads", "masks", "cand")) \
+        and len(old["frames"]) == len(new["frames"])
+    if not same:
+        raise SystemExit("v2.1 payload differs from v2.0 (frames / masks / candidates): not written, v2.0 left in place")
+    js_final = "window.PL_DATA = " + json.dumps(new, separators=(",", ":")) + ";\n"
+    html_final = page_html_v21(run.name)
+    pc = None
+    if check:                       # test a staged copy first; the live files are replaced only on PASS
+        stg = out / "_v21_staging"
+        if stg.exists():
+            shutil.rmtree(stg)
+        stg.mkdir()
+        staged = json.loads(json.dumps(new))
+        for f in staged["frames"]:
+            f["img"] = "../" + f["img"]
+        (stg / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(staged, separators=(",", ":")) + ";\n", encoding="utf-8")
+        (stg / "index.html").write_text(html_final, encoding="utf-8")
+        try:
+            pc = page_check_v21(stg, new, out / "index.html.v2_0.bak", out / "pl_data.js.v2_0.bak")
+        finally:
+            shutil.rmtree(stg, ignore_errors=True)
+        print(f"v2.1 page check (staged): {pc['verdict']}", flush=True)
+        if pc["verdict"] != "PASS":
+            S.write_json(out / "page_check_v2_1_FAILED.json", pc)
+            raise SystemExit("v2.1 check failed: the live v2.0 page was NOT replaced (see page_check_v2_1_FAILED.json)")
+    (out / "pl_data.js").write_text(js_final, encoding="utf-8")
+    (out / "index.html").write_text(html_final, encoding="utf-8")
+    meta = json.loads((out / "build_meta.json.v2_0.bak").read_text(encoding="utf-8")) if (out / "build_meta.json.v2_0.bak").exists() else {}
+    meta["v2_1"] = {"made": datetime.now().isoformat(timespec="seconds"), "amendment": "B2", "page_version": PAGE_VERSION_V21, "storage_key": key,
+                    "payload_identical_to_v2_0": same, "backups": sorted(q.name for q in out.glob("*.v2_0.bak")),
+                    "size": {"pl_data_js_bytes": (out / "pl_data.js").stat().st_size, "index_html_bytes": (out / "index.html").stat().st_size},
+                    "page_check": pc["verdict"] if pc else "not run", "git_commit": git_commit()}
+    if pc:
+        S.write_json(out / "page_check.json", pc)
+    S.write_json(out / "build_meta.json", meta)
+    return meta
+
+
+def _strip_new(o):
+    """Recursively drop the fields v2.1 adds, so a v2.1 export can be compared with a v2.0 export of the same state."""
+    new_obj = {"pieces", "union_box", "obj_flags", "prop_rule", "n_pieces"}
+    new_top = {"schema", "storage_key", "migrated_v21_at", "migrated_v21_objects"}
+    if isinstance(o, dict):
+        return {k: _strip_new(v) for k, v in o.items() if k not in new_obj and k not in new_top}
+    if isinstance(o, list):
+        return [_strip_new(v) for v in o]
+    return o
+
+
+def page_check_v21(out: Path, data: dict, old_html: Path, old_data: Path) -> dict:
+    """Headless Chrome (throwaway profile; the user's own browser storage is never touched).
+    A. Old-state test: the backed-up v2.0 page (served from a temporary sibling folder, images from ../frames) saves a state
+       with finished rats (candidate, manual, hidden implant, flags, time slices, events); the v2.1 page then loads it under
+       the same storage key; every rat, box, flag, time slice and log entry must be intact, and its export must equal the
+       v2.0 export apart from the new fields (and the clock / frame_open entries the reload itself adds).
+    B. Joins on the v2.1 page: 2 and 3 pieces, J on a joined mask is a no-op, U undoes a join, F refits after an edge drag,
+       A replaces the pieces (toast), M on a joined box is object-level, J on the implant box; export; no network URL."""
+    import inbox_identity_page as ipage
+    html_t, js_t = (out / "index.html").read_text(encoding="utf-8"), (out / "pl_data.js").read_text(encoding="utf-8")
+    res = {"network_urls": re.findall(r"https?://[^\s\"'<>]+", html_t) + re.findall(r"https?://[^\s\"'<>]+", js_t)}
+    tdir = out.parent / "_v20_oldstate_test" if out.name == "_v21_staging" else out / "_v20_oldstate_test"
+    if tdir.exists():
+        shutil.rmtree(tdir)
+    tdir.mkdir()
+    shutil.copy2(old_html, tdir / "index.html")
+    od = _read_data_js(old_data)
+    for f in od["frames"]:
+        f["img"] = "../" + f["img"]
+    (tdir / "pl_data.js").write_text("window.PL_DATA = " + json.dumps(od, separators=(",", ":")) + ";\n", encoding="utf-8")
+    prof = Path(tempfile.mkdtemp(prefix="pl21check_"))
+    p, wsu, bws = ipage._chrome((tdir / "index.html").resolve().as_uri(), prof, ipage._free_port())
+    c = None
+    fr = data["frames"]
+    try:
+        c = ipage._CDP(wsu)
+        c.call("Runtime.enable")
+
+        def ready():
+            for _ in range(240):
+                try:
+                    if c.ev("!!window.__pl && window.__pl.ready()"):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+                time.sleep(0.25)
+            return False
+
+        def key(k):
+            c.ev(f"document.dispatchEvent(new KeyboardEvent('keydown', {{key: {json.dumps(k)}, bubbles: true}}))")
+
+        def mouse(kind, u, v):
+            c.ev(f"(() => {{ const [x, y] = window.__pl.imgToClient({u}, {v}); document.getElementById('cv').dispatchEvent("
+                 f"new MouseEvent({json.dumps(kind)}, {{clientX: x, clientY: y, button: 0, bubbles: true}})); }})()")
+
+        def click(u, v):
+            mouse("mousedown", u, v)
+            mouse("mouseup", u, v)
+
+        def drag(u0, v0, u1, v1):
+            mouse("mousedown", u0, v0)
+            mouse("mousemove", (u0 + u1) / 2, (v0 + v1) / 2)
+            mouse("mousemove", u1, v1)
+            mouse("mouseup", u1, v1)
+
+        def R():
+            return c.ev("JSON.parse(JSON.stringify(window.__pl.rat()))")
+
+        def interior_points(f, min_cand):
+            pts_out = []
+            for m in sorted(f["masks"], key=lambda m: -m["a"])[:25]:
+                for pts in m["p"]:
+                    x0, y0 = float(np.mean(pts[0::2])), float(np.mean(pts[1::2]))
+                    if _pip(x0, y0, pts):
+                        cand = c.ev(f"window.__pl.candidatesAt({x0}, {y0})")
+                        if len(cand) >= min_cand:
+                            pts_out.append(((x0, y0), cand))
+                        break
+            return pts_out
+        # ---------------- A. old-state test with the v2.0 page
+        res["loaded_v20"] = ready()
+        res["v20_page_version"] = c.ev("window.__pl.D.page_version")
+        pre = [i for i, f in enumerate(fr) if f["arm"] == "PRELABEL" and len(f["cand"]) >= 2 and f["cand"][0]]
+        fi = pre[0]
+        c.ev(f"window.__pl.goFrame({fi})")
+        ready()
+        f = fr[fi]
+        bp = interior_points(f, 1)[0][0]
+        key("a")                                   # rat 1: implant candidate 1
+        key("Enter")
+        click(*bp)                                 # body click -> candidates
+        key("m")                                   # flag candidate 1 merged
+        key("a")
+        for _ in range(3):
+            c.ev("window.__pl.setLastInput(0)")
+            time.sleep(0.5)
+        key("Enter")                               # rat 2
+        key("h")                                   # implant hidden
+        hu, hv = f["heads"][1]["u"], f["heads"][1]["v"]
+        key("b")
+        drag(hu - 120, hv - 90, hu + 160, hv + 140)  # manual rat box
+        fs = next(i for i, x in enumerate(fr) if x["arm"] == "SCRATCH")
+        c.ev(f"window.__pl.goFrame({fs})")
+        ready()
+        g = fr[fs]
+        gu, gv = g["heads"][0]["u"], g["heads"][0]["v"]
+        drag(gu - 50, gv - 40, gu + 50, gv + 40)
+        key("Enter")
+        drag(gu - 180, gv - 140, gu + 220, gv + 180)
+        c.ev(f"window.__pl.goFrame({fi})")
+        c.ev("window.__pl.setLastInput(60000)")      # idle before the switch, so the reload adds as little clock as possible
+        ex_old = c.ev("window.__pl.exportJSON()")
+        c.ev("window.__pl.save()")
+        old_key = c.ev("window.__pl.key")
+        c.call("Page.navigate", url=(out / "index.html").resolve().as_uri())
+        time.sleep(1.5)
+        res["loaded_v21"] = ready()
+        c.ev("window.__pl.setLastInput(60000)")
+        ex_new = c.ev("window.__pl.exportJSON()")
+        new_key = c.ev("window.__pl.key")
+        a, b = _strip_new(ex_old), _strip_new(ex_new)
+        diffs = []
+        for k in set(a) | set(b):
+            if k in ("page_version", "exported_at", "events", "frames"):
+                continue
+            if a.get(k) != b.get(k):
+                diffs.append(k)
+        fr_diff = []
+        for fa, fb in zip(a["frames"], b["frames"]):
+            for k in fa:
+                if k in ("active_s",):
+                    if not (fb[k] >= fa[k] - 1e-9 and fb[k] - fa[k] < 3.0):
+                        fr_diff.append((fa["frame_id"], k, fa[k], fb[k]))
+                    continue
+                if k == "rats":
+                    for ra, rb in zip(fa["rats"], fb["rats"]):
+                        for kk in ra:
+                            if kk in ("implant", "rat"):
+                                for k3 in ra[kk]:
+                                    if k3 == "time_ms":
+                                        if not (rb[kk][k3] >= ra[kk][k3] - 1e-9 and rb[kk][k3] - ra[kk][k3] < 3000):
+                                            fr_diff.append((fa["frame_id"], ra["id"], kk, k3))
+                                    elif ra[kk][k3] != rb[kk].get(k3):
+                                        fr_diff.append((fa["frame_id"], ra["id"], kk, k3, ra[kk][k3], rb[kk].get(k3)))
+                            elif ra[kk] != rb.get(kk):
+                                fr_diff.append((fa["frame_id"], ra["id"], kk))
+                    continue
+                if fa[k] != fb[k]:
+                    fr_diff.append((fa["frame_id"], k))
+        ev_old, ev_new = ex_old["events"], ex_new["events"]
+        extra_ev = [e["ev"] for e in ev_new[len(ev_old):]]
+        f_new = next(x for x in ex_new["frames"] if x["frame_id"] == f["id"])
+        r1, r2 = f_new["rats"][0], f_new["rats"][1]
+        res["old_state"] = {"same_storage_key": old_key == new_key, "top_level_diffs": diffs, "frame_diffs": fr_diff[:10],
+                            "events_prefix_intact": ev_new[:len(ev_old)] == ev_old, "events_added_by_reload": extra_ev,
+                            "migrated_objects": ex_new.get("migrated_v21_objects"),
+                            "rat1_implant": [r1["implant"]["source"], r1["implant"]["n_pieces"], r1["implant"]["union_box"] == r1["implant"]["box"]],
+                            "rat1_rat": [r1["rat"]["source"], r1["rat"]["cand_flags"], r1["rat"]["n_pieces"], r1["rat"]["pieces"][0]["click"] == r1["rat"]["click"]],
+                            "rat2": [r2["implant"]["hidden"], r2["implant"]["n_pieces"], r2["rat"]["source"], r2["rat"]["n_pieces"], r2["rat"]["union_box"]],
+                            "ok": old_key == new_key and not diffs and not fr_diff and ev_new[:len(ev_old)] == ev_old
+                            and set(extra_ev) <= {"frame_open", "visibility"} and len(extra_ev) <= 3
+                            and r1["implant"]["source"] == "cand" and r1["implant"]["n_pieces"] == 1 and r1["rat"]["n_pieces"] == 1
+                            and r1["rat"]["cand_flags"].get("1", {}).get("merged") is True and r2["implant"]["hidden"] is True
+                            and r2["rat"]["source"] == "manual" and r2["rat"]["n_pieces"] == 0 and r2["rat"]["union_box"] is None}
+        res["v1_storage_untouched_note"] = "the throwaway profile held no v1 data; v2.1 reads only the v2 key"
+        # ---------------- B. joins on the v2.1 page (another PRELABEL frame)
+        fj, pts = None, None
+        for i in pre[1:]:
+            c.ev(f"window.__pl.goFrame({i})")
+            cand_pts = interior_points(fr[i], 2)
+            if len(cand_pts) >= 2:
+                (p1, c1), (p2, c2) = cand_pts[0], cand_pts[1]
+                if any(x not in c1[:2] for x in c2):
+                    fj, pts = i, cand_pts
+                    break
+        c.ev(f"window.__pl.goFrame({fj})")
+        ready()
+        g = fr[fj]
+        (p1, c1), (p2, c2) = pts[0], pts[1]
+        key("Enter")                              # implant -> rat
+        click(*p1)
+        key("j")                                  # piece 1 = candidate 1 at p1
+        key("n")
+        key("j")                                  # piece 2 = candidate 2 at p1
+        r2p = R()["rat"]
+        ub2 = [min(g["masks"][c1[0]]["b"][0], g["masks"][c1[1]]["b"][0]), min(g["masks"][c1[0]]["b"][1], g["masks"][c1[1]]["b"][1]),
+               max(g["masks"][c1[0]]["b"][2], g["masks"][c1[1]]["b"][2]), max(g["masks"][c1[0]]["b"][3], g["masks"][c1[1]]["b"][3])]
+        key("j")                                  # J on an already joined mask: no-op
+        r2b = R()["rat"]
+        click(*p2)
+        k3 = next(j for j, x in enumerate(c2) if x not in c1[:2])
+        for _ in range(k3):
+            key("n")
+        key("j")                                  # piece 3
+        r3p = R()["rat"]
+        res["join"] = {"two": [r2p["source"], len(r2p["pieces"]), r2p["box"] == ub2, r2p["union_box"] == ub2],
+                       "rejoin_noop": len(r2b["pieces"]) == 2, "toast_rejoin": c.ev("window.__pl.toast()"),
+                       "three": [r3p["source"], len(r3p["pieces"]), [pc["click"] for pc in r3p["pieces"]]],
+                       "ok": r2p["source"] == "joined" and len(r2p["pieces"]) == 2 and r2p["box"] == ub2 and len(r2b["pieces"]) == 2
+                       and r3p["source"] == "joined" and len(r3p["pieces"]) == 3 and r3p["pieces"][2]["click"] is not None
+                       and r3p["pieces"][0]["click"] != r3p["pieces"][2]["click"]}
+        key("u")                                  # undo the last join
+        ru = R()["rat"]
+        res["undo_join"] = {"n_pieces": len(ru["pieces"]), "box_back_to_two": ru["box"] == ub2, "ok": len(ru["pieces"]) == 2 and ru["box"] == ub2}
+        b = ru["box"]
+        drag(b[2], (b[1] + b[3]) / 2, b[2] + 50, (b[1] + b[3]) / 2)
+        rd = R()["rat"]
+        key("f")
+        rf = R()["rat"]
+        res["fit_after_join"] = {"dragged": rd["box"] != ub2, "union_kept": rd["union_box"] == ub2, "fitted": rf["box"] == ub2,
+                                 "ok": rd["box"] != ub2 and rd["union_box"] == ub2 and rf["box"] == ub2 and rd["edge_moves"] == 1}
+        key("m")                                  # flag on a joined box = object level
+        rm = R()["rat"]
+        res["flag_joined"] = {"obj_flags": rm["obj_flags"], "ok": rm["obj_flags"].get("merged") is True}
+        c.ev(f"(() => {{ const S = window.__pl.S(); S.cur.obj = 'rat'; }})()")
+        key("a")                                  # A on the shown candidate replaces the pieces
+        ra = R()["rat"]
+        res["accept_replaces"] = {"source": ra["source"], "n_pieces": len(ra["pieces"]), "toast": c.ev("window.__pl.toast()"), "obj_flags": ra["obj_flags"],
+                                  "ok": ra["source"] == "cand" and len(ra["pieces"]) == 1 and "replaced" in c.ev("window.__pl.toast()")
+                                  and ra["box"] == g["masks"][ra["mask"]]["b"]}
+        # J on the implant box
+        ji = next((j for j, x in enumerate(g["cand"]) if len(x) >= 2), None)
+        if ji is not None:
+            c.ev(f"window.__pl.setCur({ji}, 'implant')")
+            key("j")
+            key("n")
+            key("j")
+            ri = R()["implant"]
+            res["implant_join"] = {"source": ri["source"], "n_pieces": len(ri["pieces"]), "ok": ri["source"] == "joined" and len(ri["pieces"]) == 2}
+        else:
+            res["implant_join"] = {"ok": True, "note": "no head with >= 2 candidates on this frame"}
+        # export
+        ej = c.ev("window.__pl.exportJSON()")
+        n_rats = sum(len(x["rats"]) for x in ej["frames"])
+        csv_lines = c.ev("window.__pl.exportCSV().trim().split('\\n').length")
+        evk = sorted({e["ev"] for e in ej["events"]})
+        fj_out = next(x for x in ej["frames"] if x["frame_id"] == g["id"])
+        res["export"] = {"version": ej["page_version"], "schema": ej.get("schema"), "csv_lines": csv_lines, "event_kinds": evk,
+                         "pieces_have_cache_index": all("mask_cache_index" in pc for r in fj_out["rats"] for k in OBJS for pc in r[k]["pieces"]),
+                         "ok": ej["page_version"] == PAGE_VERSION_V21 and csv_lines == 2 * n_rats + 1 and "join" in evk
+                         and all("mask_cache_index" in pc for r in fj_out["rats"] for k in OBJS for pc in r[k]["pieces"])}
+        c.ev("localStorage.clear()")
+    finally:
+        if c:
+            c.close()
+        ipage._close_chrome(p, bws)
+        shutil.rmtree(prof, ignore_errors=True)
+        shutil.rmtree(tdir, ignore_errors=True)
+    keys = ["old_state", "join", "undo_join", "fit_after_join", "flag_joined", "accept_replaces", "implant_join", "export"]
+    res["verdict"] = "PASS" if (res.get("loaded_v20") and res.get("loaded_v21") and all(res[k]["ok"] for k in keys) and not res["network_urls"]) else "FAIL"
+    return res
 
 
 # ============================================================================================ selftest
@@ -2064,13 +2774,57 @@ def selftest() -> int:
         pp.write_text(json.dumps(ex2), encoding="utf-8")
         out2 = write_summary(run, pp, regenerate_report=False)
         rec("v2 write_summary -> prelabel_edit_v2/summary_B.md", out2 == run / "prelabel_edit_v2" / "summary_B.md" and out2.exists())
+    # ---------------- v2.1 (joins)
+    if node:
+        with tempfile.TemporaryDirectory() as td:
+            js = Path(td) / "pl21.js"
+            js.write_text(PAGE_JS_V21, encoding="utf-8")
+            r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True)
+            rec("v2.1 page script parses (node --check)", r.returncode == 0, r.stderr[-300:])
+    h21 = page_html_v21("x")
+    rec("v2.1 page: J help line, toast, keeps the v2 layout, no network", "J join this piece 拼接" in h21 and 'id="toast"' in h21
+        and PAGE_JS_V21 in h21 and not re.search(r"https?://", h21))
+    rec("v2.1 storage key is the v2 key (data.storage_key wins in the script)", "D.storage_key ||" in PAGE_JS_V21)
+
+    def O21(src, rank=None, npc=0, flags=None, obj_flags=None, t=10.0, ub=None, box=(0, 0, 10, 10), prop=(0, 0, 10, 10)):
+        pcs = [{"mask": i, "rank": i + 1, "click": [1, 1]} for i in range(npc)]
+        return {"cand": [0, 1, 2], "k": 0, "prop": list(prop), "box": list(box) if src else None, "source": src, "rank": rank,
+                "mask": 0 if src == "cand" else None, "cand_flags": {str(a): b for a, b in (flags or {}).items()}, "obj_flags": obj_flags or {},
+                "edge_moves": 0, "next_presses": 0, "time_ms": t * 1000, "hidden": False, "click": [1, 1], "clicks": [[1, 1]], "pieces": pcs,
+                "union_box": list(ub) if ub else (list(box) if src in ("cand", "joined") else None)}
+    ex21 = {"page_version": PAGE_VERSION_V21, "definition_note": "", "frames": [
+        {"frame_id": "J", "domain": "ir", "arm": "PRELABEL", "pile_bin": "4+", "completed": True, "visited": True, "active_s": 100.0, "showall_s": 0.0,
+         "showall_marks": [], "passes": [], "rats": [
+             RR(1, O21("cand", 1, 1), O21("cand", 1, 1, t=5)),
+             RR(2, O21("cand", 1, 1), O21("joined", None, 2, t=20, ub=(0, 0, 20, 20), box=(-2, 0, 20, 20))),
+             RR(3, O21("cand", 1, 1), O21("joined", None, 3, obj_flags={"merged": True}, t=30, ub=(0, 0, 30, 30), box=(0, 0, 30, 30))),
+             RR(4, O21("cand", 1, 1), O21("manual", None, 0, t=12, box=(0, 0, 40, 20)))]}]}
+    sj = summarize_v2(ex21)
+    rr_ = sj["objects"]["rat"]
+    rec("v2.1 rat: usable@any single 1/4, with joins 2/4 (merged joined box excluded), joined 2/4",
+        abs(rr_["usable_any"] - 0.25) < 1e-12 and abs(rr_["usable_any_join"] - 0.5) < 1e-12 and abs(rr_["joined"] - 0.5) < 1e-12,
+        str({k: rr_[k] for k in ("usable_any", "usable_any_join", "joined")}))
+    rec("v2.1 rat: n_pieces distribution 0:1, 1:1, 2:1, 3:1", rr_["n_pieces_dist"] == {"0": 1, "1": 1, "2": 1, "3": 1}, str(rr_["n_pieces_dist"]))
+    rec("v2.1 rat: seconds single 5, joined 25, manual 12", abs(rr_["time_by_source"]["cand"]["s_per_object"] - 5) < 1e-9
+        and abs(rr_["time_by_source"]["joined"]["s_per_object"] - 25) < 1e-9 and abs(rr_["time_by_source"]["manual"]["s_per_object"] - 12) < 1e-9,
+        str(rr_["time_by_source"]))
+    rec("v2.1 rat: union-box shifts of joined boxes (left +2 / 0 -> median +1 px)", rr_["union_shift"]["n"] == 2
+        and rr_["union_shift"]["edges"]["left"]["px"]["median"] == 1.0, str(rr_["union_shift"]["edges"]["left"]))
+    ex20 = json.loads(json.dumps(ex2))
+    ex20["page_version"] = PAGE_VERSION_V2
+    sv20 = summarize_v2(ex20)
+    rec("v2.1 summary still reads v2.0 exports (no pieces field: single = 1 piece)", sv20["objects"]["rat"]["n_pieces_dist"].get("1", 0) >= 1
+        and abs(sv20["objects"]["rat"]["usable_any_join"] - sv20["objects"]["rat"]["usable_any"]) < 1e-12)
+    md21 = summary_md_v2(sj, "synthetic_v21.json")
+    rec("v2.1 markdown: single vs joins, pieces per box, union shifts", "with joins" in md21 and "pieces per box" in md21 and "union box" in md21)
+    rec("strip of v2.1-only fields", _strip_new({"a": 1, "pieces": [], "x": {"union_box": 1, "b": 2}, "schema": "2.1"}) == {"a": 1, "x": {"b": 2}})
     print("SELFTEST", "PASS" if ok_all else "FAIL")
     return 0 if ok_all else 1
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", nargs="?", choices=["build", "summarize"])
+    ap.add_argument("cmd", nargs="?", choices=["build", "summarize", "update-v21"])
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--run", type=Path, default=RUN_DEFAULT)
     ap.add_argument("--export", type=Path)
@@ -2080,6 +2834,10 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.cmd == "update-v21":
+        m = update_v21(a.run, check=not a.no_page_check)
+        print(json.dumps(m.get("v2_1"), indent=1, default=str))
+        return 0
     if a.cmd == "build" and a.v2:
         m = build_v2(a.run, check=not a.no_page_check)
         print(json.dumps({k: m[k] for k in ("n_prelabel", "n_scratch", "arms_identical_to_v1", "frames_hard_linked", "size")}, indent=1))

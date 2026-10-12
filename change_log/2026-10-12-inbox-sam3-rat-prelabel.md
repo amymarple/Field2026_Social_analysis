@@ -169,3 +169,64 @@ the implant) plus a rat box (head + body, no tail).
 - **Body clicks:** a new click replaces the candidate list. The proposed rat box is the first candidate of the latest
   click; every click is logged.
 - **Navigation:** Tab switches implant / rat; ← steps back.
+
+## Addendum 2026-10-12 — page v2.1 in place: join several masks into one box (plan amendment B2)
+
+**Why.** The user, while labelling v2: "很多是 这个几个mask一个鼠" ("many of these are one rat split over several masks").
+
+**The user's progress is kept:**
+- `inbox_prelabel_edit.py update-v21` updates `prelabel_edit_v2/` in place: the same folder, file names and frames, and
+  **the same localStorage key** (`inbox_sam3_prelabel_edit_2026c_v2::<run>`, pinned in `pl_data.js` as `storage_key`).
+- The data's `page_version` is now v2.1.
+- New fields are added lazily when a v2.0 state loads; no v2.0 value is rewritten.
+- Before writing:
+  - `index.html`, `pl_data.js`, `page_check.json` and `build_meta.json` were copied to `*.v2_0.bak`;
+  - the regenerated payload (frames, order, arms, heads, masks, candidate lists) was verified identical to v2.0, so every
+    stored mask id keeps its meaning;
+  - the new page was tested from a staged copy and replaced the live files only after the check passed. The backups are
+    byte-identical to the v2.0 files (MD5).
+
+**Join:**
+- **J** adds the current candidate to the active object's pieces (rat box and implant box). The box becomes the union bbox
+  of all pieces.
+  - Every piece is outlined in the object's colour; the not-yet-joined candidate is dashed.
+  - J on an already-joined mask does nothing (a toast says so).
+- **U** undoes the last step, e.g. the last join. **F** refits the box to the union.
+- **A** replaces the pieces with one mask, with a toast if pieces existed.
+- Edge drags still work; the union box before any drag is recorded.
+- M / P on a joined box flag the whole object.
+- **Proposed box:** the first candidate of the first body click. Rat boxes made in v2.0 with more than one click keep their
+  stored (latest-click) proposal, labelled `prop_rule` = latest_click_v2.0.
+- **Help line:** "J join this piece 拼接 (click another part → N → J)".
+
+**Logging and export:**
+- source = cand / joined / manual;
+- `pieces` (mask, rank, click point, cache index, score), `n_pieces`, `union_box`, `obj_flags`, `prop_rule`;
+- the CSV adds n_pieces, pieces_cache_index, union_* and prop_rule.
+
+**`summarize`** (it accepts v2.0 and v2.1 exports), per object type, domain and pile:
+- usable@any as a single mask AND with joins; the joined share;
+- the n_pieces distribution;
+- seconds per box by source (single / joined / manual);
+- for joined boxes, the per-edge shift from the union box to the final box.
+
+Tested on synthetic exports only.
+
+**Checks:**
+- `--selftest`: 47 / 47 (v1 26 + v2 11 + v2.1 10).
+- **Headless Chrome: PASS** (`prelabel_edit_v2/page_check.json`).
+  - **Old-state test:** the backed-up v2.0 page saved finished rats:
+    - an implant candidate;
+    - a rat box from a body click, flagged merged and accepted;
+    - a hidden implant with a manual rat box;
+    - two manual boxes on a SCRATCH frame;
+    - time slices and events.
+
+    The v2.1 page then loaded them under the same key, in the same throwaway profile:
+    - the export equals the v2.0 export apart from the new fields;
+    - time grew only by the reload's few seconds;
+    - the event log is intact, with only `visibility` / `frame_open` from the reload added;
+    - 568 objects migrated.
+  - **Joins:** join 2 pieces (box = union) → J again = no-op → a 3rd piece from a second click → U back to 2 → an edge drag
+    then F → the union → M on the joined box (object level) → A replaces the pieces (toast) → J on an implant (2 pieces).
+  - **Export:** v2.1, CSV = 2 × rats + 1, `join` events, pieces with cache indices; no network URL.

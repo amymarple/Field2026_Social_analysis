@@ -110,3 +110,25 @@ same frames, arms (39 PRELABEL / 19 SCRATCH) and order as v1, and its own storag
 
 **Summary:** `python cv/cv_field/inbox_prelabel_edit.py summarize --export cv/configs/inbox_sam3_prelabel_edit_2026c/v2_<file>.json`
 writes the per-object B section of the SAM 3 report. A v2 summary takes precedence over a v1 one.
+
+## v2.1 (plan amendment B2, 2026-10-12) — the same page, updated in place
+
+Many rats come as several SAM 3 masks, so v2.1 lets you build one box from several of them.
+- **J** joins the shown candidate as a piece; the box becomes the union of all pieces. To add the next piece, click another
+  part → N → J.
+- **U** undoes the last step, **F** refits the box to the union, and **A** replaces the pieces with one mask.
+
+**Same page, same progress:**
+- The page path and the storage key are unchanged, so v2 progress is kept: new fields are added when an old state loads.
+- The v2.0 files are kept as `*.v2_0.bak` next to the page.
+
+**Export changes** (still prefix `v2_`):
+- `page_version` is `inbox_sam3_prelabel_edit_2026c_v2.1`, with `schema` "2.1".
+- Each object adds:
+  - `pieces` ({mask, rank, click} + `mask_cache_index` / `mask_score`) and `n_pieces`;
+  - `union_box`: the union box before any edge drag;
+  - `obj_flags`: M / P on a joined box;
+  - `prop_rule`.
+- `source` is cand / joined / manual. The proposed box is the first candidate of the first click (`prop_rule` first_click;
+  `latest_click_v2.0` for rat boxes made in v2.0 with more than one body click).
+- The CSV adds `n_pieces`, `pieces_cache_index`, `union_*` and `prop_rule`.
