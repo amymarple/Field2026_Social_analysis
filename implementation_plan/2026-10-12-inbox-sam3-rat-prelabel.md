@@ -271,3 +271,13 @@ The user: SAM 3 masks look very tight, and their own hand-drawn boxes would be m
 - **Metrics:** everything in B, C1, C2 and C3 is computed per object type (head box, body box). Adoption in C is decided
   per object type: either box can be adopted alone.
 - **Page:** v2 with its own storage key. A v1 export, if the user made one, is kept but not used for B.
+
+**B1a (same day, the user's alternative, "或者植入体 +（头和身体）") — adopted, supersedes the box split of B1:**
+- **Implant box:** the implant only, which carries the IR identity marks. It is the small box, from the head-point
+  candidates; SAM 3's first candidate there is usually implant-sized.
+- **Rat box:** head + body, without the tail, from a body click.
+- **No separate head box**, so the head / implant boundary never has to be drawn.
+- **When the implant is not visible:** no implant box; the rat is flagged "implant hidden".
+
+The mechanics of B1 are unchanged; only the definition of the small box changes. Metrics and adoption are per object
+type (implant box, rat box).
