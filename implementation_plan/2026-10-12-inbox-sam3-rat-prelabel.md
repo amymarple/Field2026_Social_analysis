@@ -243,3 +243,31 @@ The user: SAM 3 masks look very tight, and their own hand-drawn boxes would be m
      padding is not used. The freeze then records that the mask misses parts, and the fix stays manual.
 4. **The P3 comparison uses the padded boxes,** so the C2 test measures agreement with the user's own convention and
    not a difference of convention. The unpadded IoU is reported too.
+
+## Amendment B1 — 2026-10-12, two boxes per rat: head (+ implant) and body (the user, after a first look at the B page; before any B export)
+
+- **What the user saw.** On the B page, the first candidate at a head was the implant mask ("这个implant简直完美"). They
+  had seen SAM 3 outline whole bodies in the prompt GUI, and asked whether the page dropped those.
+- **The numbers** (agent, from `pl_data.js`, no image judged):
+  - first candidates are small: area quartiles 20 k / 24 k / 28 k px, i.e. implant / head sized;
+  - only 80 of the 234 heads with any candidate are offered a mask ≥ 40 k px;
+  - every one of the 284 heads has a mask ≥ 40 k px within 200 px that the 15-px head rule does not offer. Not all of
+    these are bodies.
+  - So head anchoring hides body masks that do not reach the head point. The user was right that the page left them out.
+- **The user's decisions** (2026-10-12):
+  - label implant + head + body;
+  - put the implant and the head in ONE box, because they are sometimes hard to separate ("植入体和头一个框不然有时候很难分开");
+  - the IR identity marks are all on the implant ("IR标记都在植入体上"), so the head box is also the identity crop.
+- **Labels per rat, from now on:**
+  1. **Head point:** the user's click, kept as the keypoint.
+  2. **Head box:** the head including the implant.
+     - Candidates = the masks covering the head point (the current 15-px rule, score order).
+     - Keys as before: accept / next / edge drag / fit / manual.
+  3. **Body box:** the visible body including the head, without the tail; occluded parts are not inferred.
+     - The user clicks on the body. Candidates = the masks containing that click (polygon + 15 px), in score order, with
+       next / accept / edge drag / fit / manual.
+     - No body candidate is shown before the body click.
+- **Arms unchanged:** PRELABEL / SCRATCH, the same frames and seed. SCRATCH draws both boxes by hand.
+- **Metrics:** everything in B, C1, C2 and C3 is computed per object type (head box, body box). Adoption in C is decided
+  per object type: either box can be adopted alone.
+- **Page:** v2 with its own storage key. A v1 export, if the user made one, is kept but not used for B.
