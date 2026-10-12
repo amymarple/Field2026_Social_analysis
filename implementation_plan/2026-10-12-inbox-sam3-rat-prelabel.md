@@ -281,3 +281,18 @@ The user: SAM 3 masks look very tight, and their own hand-drawn boxes would be m
 
 The mechanics of B1 are unchanged; only the definition of the small box changes. Metrics and adoption are per object
 type (implant box, rat box).
+
+## Amendment B2 — 2026-10-12, one rat in several masks (the user, while labelling B v2)
+
+- **The user:** many rats come as several masks — "很多是 这个几个mask一个鼠" — so a rat box must be buildable from more
+  than one mask.
+- **Page v2.1:**
+  - **J (join)** adds the current candidate to the rat's piece list.
+  - The box is the union bounding box of the pieces, and every piece is outlined.
+  - To add the next piece, click on another part of the rat, choose with N, and press J again.
+  - U removes the last piece. A on a single candidate still means one mask.
+  - J also works on the implant box.
+  - Progress made in v2 is kept: same storage key, with the new fields added lazily.
+- **Logged per object:** source = cand / joined / manual; the pieces (mask, rank, click point); n_pieces.
+- **Metrics:** usable@any is reported twice, as a single mask and with joins (rats whose box was built from ≥ 2 SAM 3
+  masks), together with the distribution of n_pieces. Which version is P1 in C is fixed at the freeze.
