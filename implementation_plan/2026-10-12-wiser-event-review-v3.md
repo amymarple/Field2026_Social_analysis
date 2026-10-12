@@ -52,3 +52,90 @@ v1 and v2 stay reproducible).
 New run folder (`clips/`, `clips_reveal/`, `panels/`, `index.html`, `projection_coverage.csv`, `circles_summary.json`),
 `change_log/2026-10-12-wiser-event-review-v3.md`, an updated `wiser/configs/wiser_event_review_2026c/README.md` (v3 fields).
 The main session updates CLAUDE.md and both index READMEs and commits.
+
+## Amendment 1 (2026-10-12, implementation; written before any v3 verdict exists)
+
+These are places where the plan could not be followed literally or was ambiguous. Each entry gives the closest
+faithful choice. The agent never opened a frame; every number below comes from WISER, the projection or the tables.
+
+1. **Day corrections exist only for CH05–CH08.**
+   - The correction table covers CH01–CH04 at night only, 21:00 → 04:20 (`CAMERA_GEOMETRY_2026c.md` rule 3). It has no
+     daytime track run for them.
+   - "Real day corrections replace the nearest-night fallback" therefore holds for the house cameras only: CH05 / CH06
+     hourly by day, CH07 / CH08 per lid segment.
+   - Day and twilight frames on CH01–CH04 keep v2's nearest-night correction, flagged in the clip as before.
+   - Day corrections for CH01–CH04 would need `landmark_track.py --times …` runs. Those write into
+     `results/2026c/cv_field/`, outside this task's files; the main session may schedule them.
+2. **Corner swap: "has it" means the mapped ground, otherwise the image frame.**
+   - In all six named corner events the mapped start position lies **beyond the paddock wall**, in inches: W02
+     (10.9, −10.5), W04 (−12.0, −0.2), W27 (−11.9, −2.5), W33 (−12.2, −20.6), W30 (477.8, 11.1), W51 (477.4, 5.4).
+   - That is 9–36 in from the nearest mapped cell of CH03 / CH04, so no camera's verified ground holds it. The literal
+     rule would never swap.
+   - Rule used: (a) the end camera whose mapped ground holds the start position (p0 `Support` at the onset); otherwise
+     (b) the end camera whose image contains it.
+   - (b) uses the camera model's own inverse, `Corrections.camera_model(cam, target_frame).to_paddock_inv` (z 60 mm),
+     plus the frame correction, with no support limit. It never draws a circle: circles are still drawn only on the
+     verified mapped ground.
+   - The plan says to replace "the panorama without it", but neither panorama has it. The replaced panorama is the one
+     with fewer of the clip's target positions (V3 per 0.25-s step, mapped) in its mapped ground. Ties go to the one
+     whose nearest mapped cell is farther from the start position, then to CH02.
+   - An end camera without video in the clip is not used.
+   - The end camera keeps its aspect, centred in the replaced panorama's slot. The canvas size is unchanged.
+3. **CH05 / CH07 / CH08 need the cohort ties loaded.**
+   - `Corrections.camera_model` imports the recording repo's `cohort_tie` lazily. After `import_p0` restores
+     `sys.path` that import fails silently, and CH05 / CH07 / CH08 come back refused as "not calibrated".
+   - `--v3` preloads every tied camera while `calibration_qc/` is on `sys.path`: CH05 09-04 03:01 and 12:00, and the
+     CH07 / CH08 floor models.
+   - Without `--v3` the old behaviour (refused) stays, so `--circles` still rebuilds GUI v2. This was checked
+     byte-identical on 12 events (W01 W02 W03 W06 W07 W13 W17 W19 W35 W40 W49 W78): blind and reveal overlays,
+     `events.json` and `selection.csv`.
+   - GUI v1 (no flag) was checked on all 80 events: overlays, `events.json` and `selection.csv`.
+   - Both checks are in `<run>/repro_check/`.
+4. **Lid and missing corrections are handled per frame.**
+   - Each 0.25-s step is checked at its whole second. A correction flag containing `lid` gives status `lid`; a refused
+     correction gives `no correction`.
+   - Either way the step gets no circle and the reveal clip shows a note. The start circle at the onset follows the
+     same rule.
+   - None of the 80 clips (± the 5-min margins) overlaps a lid event, so no step carries it in this run. The self-test
+     covers it.
+5. **In-box views (CH07 / CH08).**
+   - The 14-in circle is wider than the house floor (60 × 43 cm), and the floor model is NaN off the floor. Only the
+     arcs on the floor can be drawn.
+   - A `+` marks the circle centre: white for the start, yellow for WISER, cyan for the other rats.
+   - Notes: "the 14-in circle is wider than the house floor: + marks its centre, arcs only on the floor" in both clips;
+     "in a house WISER tells who is inside, not where in the pile" in the reveal clip.
+6. **New status "edge of ground", and a tighter Newton tolerance.**
+   - p0's 1-in support raster overshoots its mapped 40-px cells. A target in that band sends Newton off the mapped
+     ground (NaN forward).
+   - v3 labels this case `edge of ground`: not drawn, and counted separately in `projection_coverage.csv`
+     (`steps_edge_of_ground`, `targets_edge_of_ground`). `inverse failed` is kept for genuine non-convergence.
+   - The Newton tolerance is 0.005 in. p0's default of 0.02 in is up to 1.6 px at CH07 / CH08's 80 px / in.
+7. **Other animals.**
+   - Drawn: every identity label of the production tracks (SF07–SF12, SF12_tag12376) except the target animal's own.
+     Masked rows are excluded as in v1 / v2, including SF11 after 09-07 06:10:45 (`m_off_animal`).
+   - Each animal is placed on its own aligned clock t_al, by p0's `Tracks` (gap ≤ 5 s).
+   - A second tag of the same animal only fills steps where the primary tag is not located, and is labelled with the
+     animal id.
+   - Drawn under the target ring with a thin stroke.
+   - The five females released 09-11 19:40 have no tag and are not drawn.
+   - Neither drawn in the blind clip nor named on the page before the reveal.
+8. **Map status placement.**
+   - One line per view in both clips; the blind wording has no "WISER". The same line is in the page's Circles box.
+   - The reveal line adds "if the dashed circle misses the rat at the onset, the map is off, not WISER".
+   - CH01 / CH02:
+     - The night is 12:00 → 12:00, named by its dusk date.
+     - Only an onset within 21:00–04:20 uses that night's kit row (`real_within14_share`, verdict pass / fails).
+     - Other hours read "map not validated at this hour".
+     - Nights without a kit row read "map not validated on night MM-DD (<reason>)": 09-05 frozen test night, 09-11
+       population change.
+   - The status is taken per camera at the event onset.
+9. **Page and export.**
+   - `gui: "v3"`; the schema and the CSV columns are unchanged.
+   - Import of a v2 export merges judgements by W id. Each imported judgement is marked
+     `imported_from: "<gui> <run_id>"`, inside `judgements` only.
+   - Events that newly have a circle reopen the circle question (status `revealed`).
+   - `event_summary.csv` gains `camera_swap` and `other_rats_drawn` (v3 only).
+10. **Round trip.**
+    - Computed per projected event-camera at its onset (120-px grid, as v2), plus stand-alone grids for every camera at
+      09-06 02:00 and 14:00. Results are in `roundtrip_by_camera.csv`.
+    - p99 and max are reported both overall and outside the panorama seam band |u − 3840| < 150 px (v2 Amendment 1.6).

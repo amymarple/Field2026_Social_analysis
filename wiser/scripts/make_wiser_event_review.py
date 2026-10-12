@@ -61,12 +61,24 @@ evaluated at each 0.25-s overlay step's whole second; the ring = 48 paddock poin
   Both clips come from one ffmpeg decode (split -> two subtitle passes). Extra outputs: `clips_reveal/`,
   `overlay_ass_reveal/`, `projection_coverage.csv` (per event and camera: circle shares, convergence, round trip).
 
+GUI v3 (--v3, implies --circles; plan implementation_plan/2026-10-12-wiser-event-review-v3.md + its amendments): the same
+80 events, W ids and order, with circles on EVERY camera of a clip, day and night, since `Corrections(c).to_paddock` maps
+CH01-CH08 (CH05 through the recording repo's cohort tie, the in-box CH07 / CH08 through its house-floor model, z above
+the house floor; the ties are loaded while calibration_qc/ is on sys.path). Per 0.25-s step a frame whose correction is
+flagged 'lid' (house lid lifted) or that has no correction gets no circle and a note. Open-field events where neither
+panorama's mapped ground holds the start position: CH03 or CH04 (whichever holds it) replaces the panorama with fewer of
+the clip's target positions in its mapped ground. The REVEAL clip also draws the other tagged animals (production tracks,
+masks excluded, their own aligned clocks) as thin cyan circles labelled with their id; the BLIND clip keeps only the
+target's static start circle. Each view carries the map status: CH01 / CH02 the night's WISER pixel kit validation
+(share of detections within 14 in, pass / fails / not validated), CH03-CH08 "map validated on CH01 only". Extra outputs:
+`roundtrip_by_camera.csv`; the export adds `gui: "v3"`; v2 answers carry over through Import (same W ids).
+
 Usage (base Python + matplotlib + ffmpeg; node for the self-test and the page check):
   python wiser/scripts/make_wiser_event_review.py --cohort 2026c [--audit-run <dir>] [--root F:\3rd_rat] [--workers 3]
-         [--encoder auto|nvenc|x264] [--no-clips] [--only W03 W17] [--circles [--map-run <p0 run>]]
+         [--encoder auto|nvenc|x264] [--no-clips] [--only W03 W17] [--circles [--map-run <p0 run>]] [--v3 [--kit-run <kit>]]
   python wiser/scripts/make_wiser_event_review.py --html-only <run_dir>      # rebuild index.html from events.json
   python wiser/scripts/make_wiser_event_review.py --selftest                 # synthetic data and video, no field data
-Without --circles the run is GUI v1 (identical clips, page and export).
+Without --circles the run is GUI v1 (identical clips, page and export); --circles without --v3 is GUI v2.
 """
 from __future__ import annotations
 
@@ -84,7 +96,8 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
+from datetime import time as dtime
 from pathlib import Path
 
 import numpy as np
@@ -678,12 +691,17 @@ class CamProjector:
     """Paddock inches -> upright pixels of one camera around one time: Newton inverse (wiser_assist_p0.invert_mapper, round
     trip <= 1 in) of mapper(t, uv) -> (paddock (n, 2) | None, info), started at the nearest mapped grid centre of p0's
     Support (40-px cells, built at t_ref); the forward map is evaluated at each target's whole second (as p0's clips).
-    mapper = Corrections.to_paddock (real run) or a synthetic camera (self-test). Not projectable when the mapper refuses."""
+    mapper = Corrections.to_paddock (real run) or a synthetic camera (self-test). Not projectable when the mapper refuses.
+    GUI v3 (v3=True): the correction of every target's whole second is checked first - a second whose correction is
+    flagged 'lid' (house lid lifted) or that has none gets status 'lid' / 'no correction' and no inverse; tol = the Newton
+    tolerance in paddock inches (None = p0's default 0.02 in, as GUI v2)."""
 
-    def __init__(self, P0, cam: str, mapper, t_ref_ms: int, size: tuple, grid_px: int = 40):
+    def __init__(self, P0, cam: str, mapper, t_ref_ms: int, size: tuple, grid_px: int = 40, tol: float | None = None,
+                 v3: bool = False):
         self.P0, self.cam, self.mapper, self.size = P0, cam, mapper, (int(size[0]), int(size[1]))
         self.ok, self.reason, self.info, self.sup, self.flag = False, "", {}, None, ""
         self.day, self.day_used = False, ""
+        self.tol, self.v3, self._sec = tol, bool(v3), {}
         if mapper is None:
             self.reason = f"{cam}: no mapper"
             return
@@ -693,7 +711,7 @@ class CamProjector:
         self.info = {k: v for k, v in dict(info).items() if not str(k).startswith("_")}
         self.flag = str(info.get("flag", ""))
         if p is None:
-            why = NO_PROJ_WHY.get(cam, "")
+            why = "" if self.v3 else NO_PROJ_WHY.get(cam, "")
             self.reason = f"{cam}: to_paddock refuses ({self.flag})" + (f" - {why}" if why else "")
             return
         prm = replace(P0.Params(), width=W, height=H, grid_px=grid_px)
@@ -721,9 +739,20 @@ class CamProjector:
             return np.full((len(q), 2), np.nan) if p is None else np.asarray(p, float).reshape(-1, 2)
         return f
 
+    def _inv_kw(self) -> dict:
+        return {"tol": float(self.tol)} if self.tol else {}
+
+    def sec_state(self, s_ms: int) -> str:
+        """GUI v3: 'ok' / 'lid' (correction flagged lid: a house lid is lifted) / 'no correction' (the mapper refuses)."""
+        s_ms = int(s_ms)
+        if s_ms not in self._sec:
+            p, info = self.mapper(MV.ms_to_dt(s_ms), np.array([[self.size[0] / 2.0, self.size[1] / 2.0]]))
+            self._sec[s_ms] = "no correction" if p is None else ("lid" if "lid" in str(info.get("flag", "")) else "ok")
+        return self._sec[s_ms]
+
     def project(self, t_ms, P: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """t_ms (n,) ms; P (n, k, 2) paddock in -> uv (n, k, 2) upright px (NaN = none), status (n, k) in
-        {ok, out of view, inverse failed, no projection, no target}, round-trip err (n, k) in."""
+        {ok, out of view, inverse failed, no projection, no target} (+ GUI v3: lid, no correction), round-trip err (n, k) in."""
         P = np.asarray(P, float)
         n, k = P.shape[:2]
         uv = np.full((n, k, 2), np.nan)
@@ -737,6 +766,10 @@ class CamProjector:
         if fin.any():
             insup[fin] = self.sup.contains(P[fin])
         sec = (np.round(np.asarray(t_ms, float) / 1000.0) * 1000.0).astype(np.int64)
+        blocked = None
+        if self.v3:
+            blocked = np.array([self.sec_state(int(s)) for s in sec], dtype=object)
+            insup &= (blocked == "ok")[:, None]
         for s in np.unique(sec):
             rows = np.flatnonzero(sec == s)
             fi, fj = np.nonzero(insup[rows])
@@ -744,13 +777,19 @@ class CamProjector:
                 continue
             tgt = P[rows[fi], fj]
             u0, _ = self.sup.nearest_px(tgt)
-            u_, _J, e_ = self.P0.invert_mapper(self.fwd_at(int(s)), tgt, u0.astype(float))
+            u_, _J, e_ = self.P0.invert_mapper(self.fwd_at(int(s)), tgt, u0.astype(float), **self._inv_kw())
             uv[rows[fi], fj] = u_
             err[rows[fi], fj] = e_
         good = np.isfinite(uv).all(2)
         status[fin & ~insup] = "out of view"
         status[insup & good] = "ok"
         status[insup & ~good] = "inverse failed"
+        if blocked is not None:
+            # v3: a failure whose last Newton iterate maps to nothing (NaN forward) left the mapped ground - a target in the
+            # rasterised support's edge band (the 1-in raster overshoots the mapped 40-px cells), not a convergence failure
+            status[insup & ~good & ~np.isfinite(err)] = "edge of ground"
+            for lab in ("lid", "no correction"):
+                status[fin & (blocked == lab)[:, None]] = lab
         return uv, status, err
 
     def roundtrip(self, t_ms: int, step: int = RT_STEP_PX, off=RT_OFF_PX) -> dict:
@@ -767,7 +806,7 @@ class CamProjector:
         if not keep.any():
             return {"rt_n": 0}
         u0, _ = self.sup.nearest_px(P[keep])
-        uh, _J, _e = self.P0.invert_mapper(f, P[keep], u0.astype(float))
+        uh, _J, _e = self.P0.invert_mapper(f, P[keep], u0.astype(float), **self._inv_kw())
         d = np.hypot(uh[:, 0] - uv[keep, 0], uh[:, 1] - uv[keep, 1])
         conv = np.isfinite(d)
         seam = (np.abs(uv[keep, 0] - W / 2.0) < SEAM_BAND_PX) if self.cam in PANO_CAMS else np.zeros(len(d), bool)
@@ -779,7 +818,9 @@ class CamProjector:
                 "rt_max_px": round(float(dc.max()), 4) if dc.size else None,
                 "rt_le1_share": round(float(np.sum(d <= 1.0) / len(d)), 4),
                 "rt_gt1_n": int(np.sum(conv & (d > 1.0))), "rt_gt1_seam_n": int(np.sum(conv & seam & (d > 1.0))),
-                "rt_max_px_off_seam": round(float(d[off_seam].max()), 4) if off_seam.any() else None}
+                "rt_max_px_off_seam": round(float(d[off_seam].max()), 4) if off_seam.any() else None,
+                "rt_p99_px_off_seam": round(float(np.percentile(d[off_seam], 99)), 4) if off_seam.any() else None,
+                "rt_n_off_seam": int(off_seam.sum())}
 
 
 def day_frame(info: dict, t: datetime) -> tuple[bool, str]:
@@ -802,11 +843,33 @@ class CircleCtx:
         self.P0, self.map, self.L, self.mappers, self.native, self.desc, self.map_run = P0, m, float(L), mappers, dict(native), desc, map_run
         self._proj, self._size = {}, {}
         self.size_notes = []
+        # GUI v3 (set by load_circle_ctx(v3=True) or the self-test): per-second lid / correction states, Newton tolerance,
+        # the WISER pixel kit's per-night validation of CH01 / CH02, and per camera the camera model's own inverse
+        # (paddock -> cohort-frame px at a time, NO verified-support limit) for the corner swap's image-frame test
+        self.v3, self.tol, self.kit, self.kit_excluded, self.kit_run = False, None, {}, {}, ""
+        self.inverses = {}
+
+    def in_frame(self, cam: str, t_ms: int, P) -> np.ndarray:
+        """Is each paddock point (z = Z_MM) inside the camera's image at t (camera model inverse + correction; no support
+        limit)? False where no inverse exists or it does not converge."""
+        P = np.asarray(P, float).reshape(-1, 2)
+        f = self.inverses.get(cam)
+        if f is None:
+            return np.zeros(len(P), bool)
+        uv = f(MV.ms_to_dt(t_ms), P)
+        if uv is None:
+            return np.zeros(len(P), bool)
+        uv = np.asarray(uv, float).reshape(-1, 2)
+        W, H = self.native.get(cam, (0, 0))
+        return np.isfinite(uv).all(1) & (uv[:, 0] >= 0) & (uv[:, 0] < W) & (uv[:, 1] >= 0) & (uv[:, 1] < H)
 
     def projector(self, cam: str, t_ref_ms: int, size: tuple) -> CamProjector:
         k = (cam, int(t_ref_ms), tuple(size))
         if k not in self._proj:
-            self._proj[k] = CamProjector(self.P0, cam, self.mappers.get(cam), int(t_ref_ms), size)
+            if self.v3:
+                self._proj[k] = CamProjector(self.P0, cam, self.mappers.get(cam), int(t_ref_ms), size, tol=self.tol, v3=True)
+            else:
+                self._proj[k] = CamProjector(self.P0, cam, self.mappers.get(cam), int(t_ref_ms), size)
         return self._proj[k]
 
     def native_size(self, cam: str, parts: list, ffprobe: str | None) -> tuple:
@@ -830,9 +893,12 @@ class CircleCtx:
         return got
 
 
-def import_p0(with_corrections: str | None = None):
+def import_p0(with_corrections: str | None = None, with_ties: bool = False):
     """wiser_assist_p0 (and, if a cohort is given, frame_correction.Corrections(cohort) with its calibration loaded), imported
-    unchanged with cv/ on sys.path only while importing / loading. -> (P0 module, Corrections or None)."""
+    unchanged with cv/ on sys.path only while importing / loading. -> (P0 module, Corrections or None).
+    with_ties (GUI v3): also load the recording repo's cohort ties (CH05's tied camera, the in-box CH07 / CH08 floor models)
+    while calibration_qc/ is still on sys.path - Corrections.camera_model imports cohort_tie lazily and would otherwise find
+    it missing and refuse CH05 / CH07 / CH08 as 'not calibrated'."""
     saved = list(sys.path)
     for p in (str(REPO / "cv" / "cv_field"), str(REPO / "cv")):
         if p not in sys.path:
@@ -844,14 +910,26 @@ def import_p0(with_corrections: str | None = None):
             import frame_correction as FC  # noqa: E402  (Corrections.to_paddock; imported unchanged)
             C = FC.Corrections(with_corrections)
             C.to_paddock("CH01", datetime(2026, 9, 6, 21, 30), np.array([[3840.0, 1500.0]]), z_mm=Z_MM, units="in")  # loads paddock_map
+            if with_ties:
+                tied = sorted({r.get("target_frame", "") for r in C.rows if not str(r.get("target_frame", "")).startswith("09-18")})
+                for r_cam in sorted({r["camera"] for r in C.rows if r.get("target_frame", "") in tied}):
+                    for tf in tied:
+                        C.camera_model(r_cam, tf)               # imports cohort_tie (+ inbox_floor_fit) and caches the models
+                T = C._ties
+                if T:
+                    for cam_ in T.d["cameras"]:
+                        for fr in T.frames(cam_):
+                            T.camera(cam_, fr)
     finally:
         sys.path[:] = saved
     return P0, C
 
 
-def load_circle_ctx(map_run: str, cohort: str) -> CircleCtx:
-    """Read the accepted map of --map-run; one mapper per camera = Corrections(cohort).to_paddock (z 60 mm, inches)."""
-    P0, C = import_p0(with_corrections=cohort)
+def load_circle_ctx(map_run: str, cohort: str, v3: bool = False, kit_run: str | None = None) -> CircleCtx:
+    """Read the accepted map of --map-run; one mapper per camera = Corrections(cohort).to_paddock (z 60 mm, inches).
+    v3: the cohort ties are preloaded (CH05 / CH07 / CH08 map), per-second lid states, Newton tolerance V3_TOL_IN, and the
+    WISER pixel kit's validation table of --kit-run."""
+    P0, C = import_p0(with_corrections=cohort, with_ties=bool(v3))
     mj = json.loads((Path(map_run) / "mapping.json").read_text(encoding="utf-8"))
     if not mj.get("accepted"):
         raise SystemExit(f"{map_run}: the WISER -> paddock map was not accepted - no circles")
@@ -868,7 +946,26 @@ def load_circle_ctx(map_run: str, cohort: str) -> CircleCtx:
 
     def mk(cam):
         return lambda tt, uv: C.to_paddock(cam, tt, np.asarray(uv, float), z_mm=Z_MM, units="in")
-    return CircleCtx(P0, m, L, {cam: mk(cam) for cam in NATIVE}, NATIVE, desc, str(map_run))
+    ctx = CircleCtx(P0, m, L, {cam: mk(cam) for cam in NATIVE}, NATIVE, desc, str(map_run))
+    if v3:
+        ctx.v3, ctx.tol = True, V3_TOL_IN
+        ctx.kit, ctx.kit_excluded = kit_tables(kit_run or KIT_RUN)
+        ctx.kit_run = str(kit_run or KIT_RUN)
+
+        def mk_inv(cam):
+            def f(tt, P):
+                B, info = C.correction(cam, tt)                  # cohort-frame px -> reference-frame px
+                if B is None:
+                    return None
+                model = C.camera_model(cam, info.get("target_frame", ""))
+                if model is None:
+                    return None
+                uv_ref = np.asarray(model.to_paddock_inv(np.asarray(P, float).reshape(-1, 2), z_mm=Z_MM, units="in"), float).reshape(-1, 2)
+                A = np.linalg.inv(np.vstack([B, [0.0, 0.0, 1.0]]))[:2]          # reference-frame px -> cohort-frame px
+                return uv_ref @ A[:, :2].T + A[:, 2]
+            return f
+        ctx.inverses = {cam: mk_inv(cam) for cam in NATIVE}
+    return ctx
 
 
 def start_position(ev: dict, clip: dict, F: pd.DataFrame) -> np.ndarray:
@@ -1248,6 +1345,771 @@ def render_pair(ffmpeg: str, ffprobe: str, job: dict, workdir: Path, enc: str) -
     return res
 
 
+# ====================================================================================================== GUI v3 (--v3)
+PLAN_V3 = "implementation_plan/2026-10-12-wiser-event-review-v3.md"
+KIT_RUN = r"D:/Field2026_analysis_out/2026c/wiser_pixel_kit_20261006_1952"
+V3_TOL_IN = 0.005               # Newton tolerance (paddock in): <= 0.4 px on the in-box cameras (~80 px / in at head height)
+END_CAMS = ("CH03", "CH04")     # RLC-1212A at the two paddock ends (CH03 looks to x = 0, CH04 to x = 480)
+END_ROLE = {"CH03": "end camera (x = 0 end)", "CH04": "end camera (x = 480 end)"}
+INBOX_CAMS = {"CH07", "CH08"}
+NIGHT_ONLY_CAMS = {"CH01", "CH02", "CH03", "CH04"}     # correction table: nights 21:00 -> 04:20 only (CAMERA_GEOMETRY_2026c rule 3)
+KIT_CAMS = ("CH01", "CH02")                            # the WISER pixel kit validated the map per night on these
+KIT_T0, KIT_T1 = dtime(21, 0), dtime(4, 20)            # its night window (kit.json night_window)
+OTHER_COL = "#00e5ff"                                  # the other tagged rats (reveal clip only)
+LABEL_RE = re.compile(r"^(SF\d\d)(?:_tag\d+)?$")       # production-track labels with an identity (tag_<id> labels have none)
+MAP_CH01_ONLY = "map validated on CH01 only"
+LEGEND_REVEAL_V3 = ("solid yellow = WISER V3 track of this rat (14 in) · red dot = raw WISER fix · dashed white = start position · "
+                    "thin cyan = the other tagged rats (id)")
+REVEAL_MAP_HINT = "if the dashed circle misses the rat at the onset, the map is off, not WISER"
+INBOX_NOTE = "the 14-in circle is wider than the house floor: + marks its centre, arcs only on the floor"
+INBOX_ROSTER = "in a house WISER tells who is inside, not where in the pile"
+START_WHY = {"out of view": "start position outside this camera's mapped ground", "lid": "house lid open at the onset",
+             "no correction": "no camera correction at the onset", "inverse failed": "inverse failed at the start position",
+             "edge of ground": "start position at the edge of this camera's mapped ground",
+             "no start position": "no start position", "no projection": "no projection"}
+DYN_NOTE_V3 = {**DYN_NOTE, "lid": "house lid open (lifted): no circle", "no correction": "no camera correction for this time: no circle",
+               "edge of ground": "circle at the edge of this camera's mapped ground — use the IR mark"}
+RT_GRID_TIMES = ("2026-09-06 02:00:00", "2026-09-06 14:00:00")   # stand-alone per-camera round-trip grids (night / day)
+
+
+def kit_tables(kit_run: str) -> tuple[dict, dict]:
+    """WISER pixel kit: {(camera, night): validation row} and {excluded night: short reason}."""
+    k = json.loads((Path(kit_run) / "kit.json").read_text(encoding="utf-8"))
+    tab = {(str(r["camera"]), str(r["night"])): r for r in k.get("validation_table", [])}
+    exc = {}
+    for n, t in (k.get("excluded_nights") or {}).items():
+        s = str(t).split(" (")[0].split(" - ")[0]
+        exc[str(n)] = s.split(": ")[0].strip()
+    return tab, exc
+
+
+def night_of_dt(t: datetime):
+    """A night runs 12:00 -> 12:00 and is named by its dusk date (frame_correction / the kit)."""
+    return t.date() if t.hour >= 12 else (t - timedelta(days=1)).date()
+
+
+def map_status(cam: str, t_ms: int, kit: dict, kit_exc: dict) -> dict:
+    """The map status line of one view: CH01 / CH02 the kit's validation of that camera and night (share of mapped detections
+    within 14 in; pass / fails / not validated), CH03-CH08 'map validated on CH01 only'. No WISER word (blind clip)."""
+    if cam not in KIT_CAMS:
+        return {"text": MAP_CH01_ONLY, "verdict": "CH01 only", "share": None, "night": ""}
+    t = MV.ms_to_dt(t_ms)
+    n = f"{night_of_dt(t)}"
+    if not (t.time() >= KIT_T0 or t.time() <= KIT_T1):
+        return {"text": f"map not validated at this hour (the pixel kit checked {cam} on nights 21:00–04:20)", "verdict": "not validated",
+                "share": None, "night": n}
+    r = kit.get((cam, n))
+    if r is None:
+        return {"text": f"map not validated on night {n[5:]} ({kit_exc.get(n, 'night not in the pixel kit')})", "verdict": "not validated",
+                "share": None, "night": n}
+    share = float(r["real_within14_share"])
+    ok = str(r.get("verdict")) == "pass"
+    return {"text": f"map check {cam} night {n[5:]}: {100 * share:.0f} % of detections within 14 in — " + ("passes" if ok else "FAILS (circles may be off)"),
+            "verdict": "pass" if ok else "fails", "share": round(share, 4), "night": n}
+
+
+def label_animal(label: str) -> str | None:
+    m = LABEL_RE.match(str(label))
+    return m.group(1) if m else None
+
+
+def list_track_labels(tracks_root: str) -> list:
+    """Production-track labels with an identity (SF07 ... SF12, <animal>_tag<id>)."""
+    root = Path(tracks_root)
+    return sorted(p.name for p in root.iterdir() if p.is_dir() and label_animal(p.name)) if root.exists() else []
+
+
+def track_window(cache: "TrackCache", label: str, lo_ms: float, hi_ms: float, tau_ms: float) -> pd.DataFrame:
+    """Unmasked production-track rows of one label on its own aligned clock (t_al) in [lo, hi] (TrackCache's rule, no IMU)."""
+    days = sorted({f"{MV.ms_to_dt(t):%Y-%m-%d}" for t in (lo_ms + tau_ms - 2000, hi_ms + tau_ms + 2000, lo_ms, hi_ms)})
+    F = pd.concat([cache.track_day(label, d) for d in days], ignore_index=True)
+    return F[(F["t_al"] >= lo_ms) & (F["t_al"] <= hi_ms)].sort_values("t_al").reset_index(drop=True)
+
+
+def others_tracks(cache: "TrackCache", labels: list, ev: dict, clip: dict) -> list:
+    """[(label, animal, rows)] of every other tagged animal with rows in the clip (± GAP_MAX_S + 1 s); the target animal's
+    own labels (e.g. SF12_tag12376 for SF12) are left out."""
+    pad = 1000.0 * (GAP_MAX_S + 1)
+    out = []
+    for lab in labels:
+        a = label_animal(lab)
+        if a is None or a == ev["animal"]:
+            continue
+        F = track_window(cache, lab, clip["lo_ms"] - pad, clip["hi_ms"] + pad, float(ev["tau_ms"]))
+        if len(F):
+            out.append((lab, a, F))
+    return out
+
+
+def _steps(clip: dict) -> tuple[int, float, int, np.ndarray]:
+    lo = int(clip["lo_ms"])
+    D = float(clip["dur_s"])
+    nb = int(math.ceil(D / DYN_STEP_S - 1e-9))
+    tc = lo + np.round((np.arange(nb) + 0.5) * DYN_STEP_S * 1000.0).astype(np.int64)      # step centres, aligned ms
+    return lo, D, nb, tc
+
+
+def _track_at(F: pd.DataFrame, label: str, lo: int, tc: np.ndarray, circ: CircleCtx) -> tuple[np.ndarray, np.ndarray]:
+    """V3 position (WISER in) of one label at the step centres, linear between rows <= GAP_MAX_S apart (p0's Tracks, as v2)."""
+    Fv = F.dropna(subset=["x", "y"]).sort_values("t_al")
+    data = pd.DataFrame({"s": (Fv["t_al"].to_numpy(float) - lo) / 1000.0, "x": Fv["x"].to_numpy(float), "y": Fv["y"].to_numpy(float),
+                         "imu_state": Fv["imu_state"].fillna(-1).to_numpy(float).astype(int)})
+    X, _S, okx = circ.P0.Tracks({label: data}, GAP_MAX_S).at((tc - lo) / 1000.0 + circ.L)
+    ok = okx[:, 0]
+    return np.where(ok[:, None], X[:, 0, :], np.nan), ok
+
+
+def _raw_at(F: pd.DataFrame, tc: np.ndarray, circ: CircleCtx) -> np.ndarray:
+    """The unmasked raw fix nearest each step centre, if within ± RAW_WIN_S (as v2)."""
+    nb = len(tc)
+    Fr = F.dropna(subset=["x_raw", "y_raw"]).sort_values("t_al")
+    tr = Fr["t_al"].to_numpy(float)
+    raw = np.full((nb, 2), np.nan)
+    if len(tr):
+        i = np.searchsorted(tr, tc + 1000.0 * circ.L)
+        cand = np.stack([np.clip(i - 1, 0, len(tr) - 1), np.clip(i, 0, len(tr) - 1)], 1)
+        dt = np.abs(tr[cand] - (tc + 1000.0 * circ.L)[:, None])
+        j = cand[np.arange(nb), np.argmin(dt, 1)]
+        near = dt.min(1) <= RAW_WIN_S * 1000.0
+        raw[near] = np.column_stack([Fr["x_raw"].to_numpy(float), Fr["y_raw"].to_numpy(float)])[j[near]]
+    return raw
+
+
+def merge_others(others: list, lo: int, tc: np.ndarray, circ: CircleCtx) -> list:
+    """Per other animal: paddock position per step (primary label first; a second tag of the same animal only fills steps
+    where the primary is not located) -> [{"id", "labels", "P" (nb, 2), "located" (nb,)}], sorted by id."""
+    by = {}
+    for lab, animal, F in others:
+        W, ok = _track_at(F, lab, lo, tc, circ)
+        if ok.any():
+            by.setdefault(animal, []).append((lab != animal, lab, W, ok))
+    out = []
+    for animal in sorted(by):
+        Wm = np.full((len(tc), 2), np.nan)
+        loc = np.zeros(len(tc), bool)
+        labs = []
+        for _sec, lab, W, ok in sorted(by[animal], key=lambda r: (r[0], r[1])):
+            fill = ok & ~loc
+            if fill.any():
+                labs.append(lab)
+            Wm[fill] = W[fill]
+            loc |= ok
+        out.append({"id": animal, "labels": labs, "P": circ.map.fwd(Wm), "located": loc})
+    return out
+
+
+def choose_cams_v3(ev: dict, clip: dict, F: pd.DataFrame, zone: str, circ: CircleCtx, has_video=None) -> tuple[list, dict]:
+    """Cameras of a v3 clip. Houses: as v2. Open field: CH01 + CH02, unless NEITHER panorama's mapped ground (p0 Support at
+    the onset) holds the start position; then the end camera (CH03 / CH04) that holds it (and has video) replaces the panorama
+    with fewer of the clip's target positions in its mapped ground (tie: the one farther from the start position, then CH02).
+    -> (cams [(cam, role)], swap info)."""
+    cams = [tuple(c) for c in MV.CAMS[zone]]
+    if zone != "outside":
+        return cams, {"swapped": False, "zone": zone, "why": "house: cameras as in v2"}
+    t_on = int(round(float(ev["t0"]) * 1000.0))
+    p0w = start_position(ev, clip, F)
+    if not np.isfinite(p0w).all():
+        return cams, {"swapped": False, "zone": zone, "why": "no start position"}
+    Ps = circ.map.fwd(p0w[None, :])[0]
+    lo, _D, _nb, tc = _steps(clip)
+    Xw, located = _track_at(F, ev["animal"], lo, tc, circ)
+    Pc = circ.map.fwd(Xw)
+    st = {}
+    for cam in ("CH01", "CH02") + END_CAMS:
+        pr = circ.projector(cam, t_on, circ.native[cam])
+        if pr.ok:
+            has = bool(pr.sup.contains(Ps[None, :])[0])
+            steps = int(pr.sup.contains(Pc[located]).sum()) if located.any() else 0
+            dist = float(pr.sup.nearest_px(Ps[None, :])[1][0])
+        else:
+            has, steps, dist = False, 0, float("inf")
+        st[cam] = {"projectable": bool(pr.ok), "start_in_support": has, "steps_in_support": steps,
+                   "start_to_support_in": round(dist, 1) if np.isfinite(dist) else None, "reason": pr.reason}
+        if cam in END_CAMS:
+            st[cam]["start_in_frame"] = bool(circ.in_frame(cam, t_on, Ps[None, :])[0])
+    base = {"swapped": False, "zone": zone, "start_paddock_in": [round(float(Ps[0]), 1), round(float(Ps[1]), 1)], "status": st,
+            "steps": int(len(tc)), "steps_located": int(located.sum())}
+    if st["CH01"]["start_in_support"] or st["CH02"]["start_in_support"]:
+        return cams, {**base, "why": "a panorama's mapped ground holds the start position"}
+    vid = (lambda c: True) if has_video is None else has_video
+    basis = "mapped ground"
+    ends = [c for c in END_CAMS if st[c]["start_in_support"]]
+    if not ends:                                              # Amendment 1.2: no camera's verified ground holds it (beyond the wall)
+        basis = "image frame"
+        ends = [c for c in END_CAMS if st[c]["start_in_frame"]]
+    ends_v = [c for c in ends if vid(c)]
+    if not ends_v:
+        return cams, {**base, "why": ("neither panorama's mapped ground holds the start position; " +
+                                      (f"{', '.join(ends)} would ({basis}), but has no video here" if ends
+                                       else "nor does CH03's or CH04's mapped ground or image frame"))}
+    dist = lambda c: st[c]["start_to_support_in"] if st[c]["start_to_support_in"] is not None else 1e9  # noqa: E731
+    end = max(ends_v, key=lambda c: (st[c]["steps_in_support"], -dist(c)))
+    repl = min(("CH01", "CH02"), key=lambda c: (st[c]["steps_in_support"], -dist(c), c == "CH01"))
+    kept = "CH02" if repl == "CH01" else "CH01"
+    i = [c for c, _ in cams].index(repl)
+    cams[i] = (end, END_ROLE[end])
+    holds = ("holds it on its mapped ground" if basis == "mapped ground" else
+             f"has it in its image (outside every camera's mapped ground, ~{dist(end):.0f} in from {end}'s nearest mapped cell: no "
+             "circle there)")
+    return cams, {**base, "swapped": True, "end_camera": end, "replaced": repl, "kept": kept, "basis": basis,
+                  "why": (f"corner: neither panorama's mapped ground holds the start position; {end} {holds} and replaces {repl} "
+                          f"(target positions in the mapped ground: {repl} {st[repl]['steps_in_support']}, {kept} "
+                          f"{st[kept]['steps_in_support']}, {end} {st[end]['steps_in_support']} of {len(tc)} steps)"),
+                  "note": (f"corner event: {end} ({END_ROLE[end]}) replaces {repl} — neither panorama sees the start position on its "
+                           f"mapped ground; {end} " + ("does" if basis == "mapped ground" else "has it in view (beyond its mapped ground)"))}
+
+
+def layout_v3(zone: str, cams: list, scale: float = 1.0) -> dict:
+    """make_imu_video_review's layout; an end camera taking a panorama slot keeps its own aspect, centred in the slot."""
+    lay = MV.layout(zone, scale)
+    if zone != "outside":
+        return lay
+    views = []
+    for (cam, _r), v in zip(cams, lay["views"]):
+        if cam in PANO_CAMS:
+            views.append(v)
+            continue
+        W0, H0 = NATIVE.get(cam, (4512, 2512))
+        w = min(v["w"], int(round(v["h"] * W0 / H0 / 2.0)) * 2)
+        x = v["x"] + int(round((v["w"] - w) / 4.0)) * 2
+        views.append({"x": x, "y": v["y"], "w": w, "h": v["h"], "pano": False})
+    return {**lay, "views": views}
+
+
+def event_circles_v3(ev: dict, clip: dict, F: pd.DataFrame, cams: list, lay: dict, circ: CircleCtx, sizes: list,
+                     others: list) -> list:
+    """GUI v3 per view: the target's static start ring (at the onset) and moving ring + raw dot per 0.25-s step (as v2) plus
+    the other tagged animals' rings, statuses incl. 'lid' / 'no correction', the map status and the coverage counts."""
+    lo, D, nb, tc = _steps(clip)
+    t_on = int(round(float(ev["t0"]) * 1000.0))
+    Xw, located = _track_at(F, ev["animal"], lo, tc, circ)
+    raw = _raw_at(F, tc, circ)
+    p0w = start_position(ev, clip, F)
+    phi = np.linspace(0.0, 2.0 * np.pi, RING_N, endpoint=False)
+    ring = CIRCLE_R_IN * np.column_stack([np.cos(phi), np.sin(phi)])
+    Pc, Pr = circ.map.fwd(Xw), circ.map.fwd(raw)
+    Ps = circ.map.fwd(p0w[None, :])[0] if np.isfinite(p0w).all() else np.array([np.nan, np.nan])
+    oth = merge_others(others, lo, tc, circ)
+    blocks = [Pc[:, None, :], Pc[:, None, :] + ring[None, :, :], Pr[:, None, :]]
+    for o in oth:
+        blocks += [o["P"][:, None, :], o["P"][:, None, :] + ring[None, :, :]]
+    tgtM = np.concatenate(blocks, axis=1)
+    k_t = RING_N + 2                                          # target columns: centre, ring, raw
+    views = []
+    for (cam, role), v, size in zip(cams, lay["views"], sizes):
+        pr = circ.projector(cam, t_on, size)
+        vw = {"cam": cam, "role": role, "projectable": pr.ok, "reason": pr.reason, "flag": pr.flag, "day": bool(pr.day),
+              "day_used": pr.day_used, "size": list(size), "nb": nb, "located": located.copy(),
+              "start_pos_ok": bool(np.isfinite(Ps).all()), "inbox": cam in INBOX_CAMS,
+              "map": map_status(cam, t_on, circ.kit, circ.kit_excluded),
+              "model": str(pr.info.get("model") or ("release calibration" if pr.ok else "")),
+              "target_frame": str(pr.info.get("target_frame", ""))}
+        tgtS = (Ps[None, None, :] + np.vstack([[0.0, 0.0], ring])[None, :, :])
+        uvS, stS, errS = pr.project(np.array([t_on]), tgtS)
+        vw["start_status"] = "no start position" if not vw["start_pos_ok"] else str(stS[0, 0])
+        vw["start_ok"] = vw["start_status"] == "ok"
+        vw["start_centre"] = to_view(uvS[0, 0], v, size) if vw["start_ok"] else None
+        vw["start_ring"] = to_view(uvS[0, 1:], v, size) if vw["start_ok"] else None
+        vw["start_ring_px"] = uvS[0, 1:] if vw["start_ok"] else None
+        vw["start_centre_px"] = uvS[0, 0] if vw["start_ok"] else None
+        uvM, stM, errM = pr.project(tc, tgtM)
+        st_c = np.where(located, stM[:, 0], "not located").astype(object)
+        vw["st_centre"] = st_c
+        vw["st_raw"] = np.where(np.isfinite(Pr).all(1), stM[:, k_t - 1], "no raw fix").astype(object)
+        vw["centre"] = to_view(uvM[:, 0], v, size)
+        vw["ring"] = to_view(uvM[:, 1:k_t - 1], v, size)
+        vw["ring_px"] = uvM[:, 1:k_t - 1]
+        vw["centre_px"] = uvM[:, 0]
+        vw["raw"] = to_view(uvM[:, k_t - 1], v, size)
+        vw["paddock_centre"] = Pc
+        vw["others"] = []
+        for j, o in enumerate(oth):
+            a = k_t + j * (RING_N + 1)
+            vw["others"].append({"id": o["id"], "labels": o["labels"], "st": np.where(o["located"], stM[:, a], "not located").astype(object),
+                                 "centre": to_view(uvM[:, a], v, size), "ring": to_view(uvM[:, a + 1:a + 1 + RING_N], v, size),
+                                 "centre_px": uvM[:, a]})
+        stT, errT = stM[:, :k_t], errM[:, :k_t]
+        insup = np.isin(stT, ["ok", "inverse failed"])
+        insS = np.isin(stS, ["ok", "inverse failed"])
+        n_in = int(insup.sum() + insS.sum())
+        n_ok = int((stT == "ok").sum() + (stS == "ok").sum())
+        e_ok = np.r_[errT[stT == "ok"], errS[stS == "ok"]]
+        stO = stM[:, k_t:]
+        inO = int(np.isin(stO, ["ok", "inverse failed"]).sum())
+        okO = int((stO == "ok").sum())
+        seam = (np.abs(uvM[:, 0, 0] - size[0] / 2.0) < SEAM_BAND_PX) & (st_c == "ok") if cam in PANO_CAMS else np.zeros(nb, bool)
+        vw["seam"] = seam
+        drawn_o = np.array([np.asarray(o["st"], dtype=object) == "ok" for o in vw["others"]]) if vw["others"] else np.zeros((0, nb), bool)
+        vw["counts"] = {"steps": nb, "steps_located": int(located.sum()), "steps_circle": int(np.sum(st_c == "ok")),
+                        "steps_seam": int(seam.sum()),
+                        "steps_out_of_view": int(np.sum(st_c == "out of view")), "steps_inverse_failed": int(np.sum(st_c == "inverse failed")),
+                        "steps_lid": int(np.sum(st_c == "lid")), "steps_no_correction": int(np.sum(st_c == "no correction")),
+                        "steps_edge_of_ground": int(np.sum(st_c == "edge of ground")),
+                        "targets_edge_of_ground": int((stT == "edge of ground").sum() + (stS == "edge of ground").sum()),
+                        "steps_raw_dot": int(np.sum(vw["st_raw"] == "ok")),
+                        "ring_points_drawn_share": round(float(np.mean(stM[st_c == "ok"][:, 1:k_t - 1] == "ok")), 4) if np.any(st_c == "ok") else None,
+                        "targets_in_support": n_in, "targets_converged": n_ok,
+                        "convergence_rate": round(n_ok / n_in, 4) if n_in else None,
+                        "inverse_err_max_in": round(float(e_ok.max()), 4) if e_ok.size else None,
+                        "others_located": [o["id"] for o in oth if o["located"].any()],
+                        "others_in_view": [o["id"] for o, d in zip(vw["others"], drawn_o) if d.any()],
+                        "steps_with_other_circle": int(drawn_o.any(0).sum()) if len(drawn_o) else 0,
+                        "other_circles_drawn": int(drawn_o.sum()), "others_convergence_rate": round(okO / inO, 4) if inO else None}
+        vw["roundtrip"] = pr.roundtrip(t_on) if pr.ok else {}
+        views.append(vw)
+    return views
+
+
+def ass_cross(c, r: float, w: float) -> str:
+    """'+' of half-length r and stroke w at c (view px) as three non-overlapping filled quads (\\p3 units)."""
+    c = np.asarray(c, float)
+    if c.shape != (2,) or not np.isfinite(c).all():
+        return ""
+    x, y, h = float(c[0]), float(c[1]), w / 2.0
+    quads = [((x - r, y - h), (x + r, y - h), (x + r, y + h), (x - r, y + h)),
+             ((x - h, y - r), (x + h, y - r), (x + h, y - h), (x - h, y - h)),
+             ((x - h, y + h), (x + h, y + h), (x + h, y + r), (x - h, y + r))]
+    return " ".join("m {} {} l {} {} {} {} {} {}".format(*[_q4(cc) for p in q for cc in p]) for q in quads)
+
+
+def static_notes_v3(vw: dict, phase: str) -> list:
+    n = []
+    if not vw["projectable"]:
+        n.append(NOTE_NOPROJ + f" ({str(vw['reason']).split(': ', 1)[-1]})")
+        return n
+    if phase == "blind" and not vw["start_ok"]:
+        n.append("no start circle: " + START_WHY.get(vw["start_status"], vw["start_status"]))
+    if vw["day"]:
+        n.append(f"outside the corrected night hours: nearest night correction ({vw['day_used']}) — circles approximate"
+                 if vw["cam"] in NIGHT_ONLY_CAMS else
+                 f"nearest camera correction sample ({vw['day_used']}) is > 30 min away — circles approximate")
+    fl = [f for f in str(vw["flag"]).split("+") if f and f not in ("ok", "lid")]
+    if fl:
+        n.append("correction flag: " + "+".join(fl))
+    if vw["inbox"]:
+        n.append(INBOX_NOTE)
+    return n
+
+
+def write_circle_overlays_v3(blind_path: Path, reveal_path: Path, lay: dict, views: list, D: float, fonts: dict,
+                             step: float = DYN_STEP_S) -> dict:
+    """GUI v3 overlays (blind_path holds v1's blind overlay): blind = + the target's static start ring (+ a centre cross on the
+    in-box views), the legend, the map status and the notes; reveal = + the moving target ring, raw dot, the other animals'
+    thin cyan rings with their ids, the legend, map status, notes and the per-step notes (incl. lid / no correction)."""
+    base = blind_path.read_text(encoding="utf-8")
+    sc = lay["scale"]
+    m = max(8, int(round(24 * sc)))
+    w = max(2.0, 3.0 * sc)
+    w_o = max(1.0, 1.4 * sc)
+    bord = max(1.0, 1.5 * sc)
+    fs_note, fs_lab, fs_oth = 34 * sc, 32 * sc, 26 * sc
+    rc, rc_o = max(6.0, 16.0 * sc), max(4.0, 10.0 * sc)
+    T = {"blind_start": [], "reveal_start": [], "reveal_moving": [], "reveal_raw": [], "reveal_others": [], "blind_others": [],
+         "notes": {"blind": [], "reveal": []}, "dyn": [], "text": {"blind": [], "reveal": []}, "cross": {"blind": [], "reveal": []}}
+    out = {"blind": [], "reveal": []}
+
+    def note(phase, vi, v, row, txt, a=0.0, b=D):
+        y = v["y"] + m + int(round((64 + 46 * row) * sc))
+        s = MV.fit_size(txt, fs_note, False, v["w"] - 2 * m, fonts)
+        out[phase].append(f"Dialogue: 4,{MV.ass_time(a)},{MV.ass_time(b)},Label,,0,0,0,,{{\\pos({v['x'] + m},{y})\\fs{s:.0f}"
+                          f"\\1c{MV.ass_c(CIRC_COL['note'] if row else '#ffffff')}}}{MV.ass_escape(txt)}")
+        T["text"][phase].append(txt)
+        return (vi, a, b, txt)
+
+    def label(phase, ring, centre, txt, col, a, b, fs):
+        f = np.isfinite(ring).all(1) if ring is not None else np.zeros(0, bool)
+        if f.sum() >= 3:
+            x, y = float(np.mean(ring[f, 0])), float(np.min(ring[f, 1])) - 4 * sc
+        elif centre is not None and np.isfinite(centre).all():
+            x, y = float(centre[0]), float(centre[1]) - rc - 4 * sc
+        else:
+            return
+        out[phase].append(f"Dialogue: 4,{MV.ass_time(a)},{MV.ass_time(b)},Static,,0,0,0,,{{\\an2\\pos({x:.0f},{y:.0f})\\fs{fs:.0f}"
+                          f"\\bord{max(1.0, 2 * sc):.1f}\\1c{MV.ass_c(col)}\\3c&H000000&}}{MV.ass_escape(txt)}")
+        T["text"][phase].append(txt)
+
+    def cross(phase, vi, c, col, a, b, r, ww, layer=3):
+        dr = ass_cross(c, r, ww)
+        if dr:
+            out[phase].append(f"Dialogue: {layer},{MV.ass_time(a)},{MV.ass_time(b)},Static,,0,0,0,,{_draw_tag(col, bord)}{dr}{{\\p0}}")
+            T["cross"][phase].append((vi, a, b, col))
+
+    for vi, (vw, v) in enumerate(zip(views, lay["views"])):
+        inbox = bool(vw["inbox"])
+        for phase in ("blind", "reveal"):
+            if vw["start_ok"]:
+                dr = ass_ring(vw["start_ring"], dashed=True, w=w)
+                if dr:
+                    out[phase].append(f"Dialogue: 3,{MV.ass_time(0)},{MV.ass_time(D)},Static,,0,0,0,,{_draw_tag(CIRC_COL['start'], bord)}{dr}{{\\p0}}")
+                T[f"{phase}_start"].append((vi, 0.0, D, tuple(vw["start_centre"])))
+                if inbox:
+                    cross(phase, vi, vw["start_centre"], CIRC_COL["start"], 0.0, D, rc, w)
+                label(phase, vw["start_ring"], vw["start_centre"], "start", CIRC_COL["start"], 0.0, D, fs_lab)
+            row = 0
+            if phase == "blind" and vw["start_ok"]:
+                note(phase, vi, v, row, LEGEND_BLIND)
+                row += 1
+            if phase == "reveal" and vw["projectable"]:
+                note(phase, vi, v, row, LEGEND_REVEAL_V3)
+                row += 1
+            row = max(row, 1)
+            note(phase, vi, v, row, vw["map"]["text"] + (f" · {REVEAL_MAP_HINT}" if phase == "reveal" and vw["projectable"] else ""))
+            row += 1
+            sn = static_notes_v3(vw, phase)
+            if sn:
+                T["notes"][phase].append(note(phase, vi, v, row, " · ".join(sn)))
+                row += 1
+            if phase == "reveal" and inbox and vw["projectable"]:
+                note(phase, vi, v, row, INBOX_ROSTER)
+                row += 1
+            if phase == "reveal" and vw["projectable"]:
+                for k0, k1, lab in _runs(np.asarray(vw["st_centre"], dtype=object)):
+                    if lab in DYN_NOTE_V3:
+                        T["dyn"].append(note(phase, vi, v, row, DYN_NOTE_V3[lab], k0 * step, min(D, k1 * step)))
+        for k in range(vw["nb"]):
+            a, b = k * step, min(D, (k + 1) * step)
+            if b <= a:
+                continue
+            for o in vw["others"]:                              # reveal only, under the target (layer 2)
+                if o["st"][k] != "ok":
+                    continue
+                dr = ass_ring(o["ring"][k], dashed=False, w=w_o)
+                if dr:
+                    out["reveal"].append(f"Dialogue: 2,{MV.ass_time(a)},{MV.ass_time(b)},Static,,0,0,0,,"
+                                         f"{_draw_tag(OTHER_COL, max(0.6, 0.6 * bord))}{dr}{{\\p0}}")
+                if inbox:
+                    cross("reveal", vi, o["centre"][k], OTHER_COL, a, b, rc_o, w_o, layer=2)
+                label("reveal", o["ring"][k], o["centre"][k], o["id"], OTHER_COL, a, b, fs_oth)
+                T["reveal_others"].append((vi, a, b, o["id"], tuple(o["centre"][k])))
+            if vw["st_centre"][k] == "ok":
+                dr = ass_ring(vw["ring"][k], dashed=False, w=w)
+                if dr:
+                    out["reveal"].append(f"Dialogue: 3,{MV.ass_time(a)},{MV.ass_time(b)},Static,,0,0,0,,{_draw_tag(CIRC_COL['track'], bord)}{dr}{{\\p0}}")
+                T["reveal_moving"].append((vi, a, b, tuple(vw["centre"][k])))
+                if inbox:
+                    cross("reveal", vi, vw["centre"][k], CIRC_COL["track"], a, b, rc, w)
+                label("reveal", vw["ring"][k], vw["centre"][k], "WISER", CIRC_COL["track"], a, b, fs_lab)
+            if vw["st_raw"][k] == "ok":
+                out["reveal"].append(f"Dialogue: 3,{MV.ass_time(a)},{MV.ass_time(b)},Static,,0,0,0,,{_draw_tag(CIRC_COL['raw'], bord)}"
+                                     f"{ass_disc(vw['raw'][k], max(3.0, 6.0 * sc))}{{\\p0}}")
+                T["reveal_raw"].append((vi, a, b, tuple(vw["raw"][k])))
+    reveal_path.parent.mkdir(parents=True, exist_ok=True)
+    reveal_path.write_text(base + "\n".join(out["reveal"]) + ("\n" if out["reveal"] else ""), encoding="utf-8")
+    blind_path.write_text(base + "\n".join(out["blind"]) + ("\n" if out["blind"] else ""), encoding="utf-8")
+    return T
+
+
+def swap_public(swap: dict) -> dict:
+    """What the page may show of the camera choice (neutral wording; the step counts stay in the coverage table)."""
+    if swap.get("swapped"):
+        return {"swapped": True, "end_camera": swap["end_camera"], "replaced": swap["replaced"], "note": swap["note"]}
+    return {"swapped": False}
+
+
+def circles_payload_v3(views: list, reveal_file: str, swap: dict) -> dict:
+    cams = []
+    for vw in views:
+        c = vw["counts"]
+        share = c["steps_circle"] / c["steps"] if c["steps"] else 0.0
+        ms = vw["map"]
+        oth = list(c["others_in_view"])
+        extra = [x for x in static_notes_v3(vw, "reveal") if x != INBOX_NOTE] if vw["projectable"] else []
+        if not vw["projectable"]:
+            tb = tr = f"{NOTE_NOPROJ} — {vw['reason']}"
+        else:
+            tb = "; ".join(["start circle" if vw["start_ok"] else f"no start circle ({START_WHY.get(vw['start_status'], vw['start_status'])})"]
+                           + extra + ([INBOX_NOTE] if vw["inbox"] else []))
+            parts = [("start circle" if vw["start_ok"] else "no start circle") +
+                     f"; WISER circle in {_pct(share)} of the clip (WISER located {_pct(c['steps_located'] / c['steps'] if c['steps'] else None)})"]
+            if c["steps_lid"]:
+                parts.append(f"house lid open in {c['steps_lid']} of {c['steps']} steps (no circle)")
+            if c["steps_no_correction"]:
+                parts.append(f"no camera correction in {c['steps_no_correction']} steps")
+            parts.append("other tagged rats drawn (cyan): " + (", ".join(oth) if oth else "none in this view"))
+            if vw["inbox"]:
+                parts += [INBOX_NOTE, INBOX_ROSTER]
+            tr = "; ".join(parts + extra)
+        cams.append({"cam": vw["cam"], "role": vw["role"], "projectable": bool(vw["projectable"]), "reason": vw["reason"],
+                     "flag": vw["flag"], "day_frame": bool(vw["day"]), "day_used": vw["day_used"], "start": bool(vw["start_ok"]),
+                     "share": round(share, 4), "text_blind": f"{tb} · {ms['text']}", "text_reveal": f"{tr} · {ms['text']}",
+                     "map_status": ms["text"], "map_verdict": ms["verdict"], "map_share": ms["share"], "inbox": bool(vw["inbox"]),
+                     "others": oth, "share_others": round(c["steps_with_other_circle"] / c["steps"], 4) if c["steps"] else 0.0,
+                     "steps_lid": c["steps_lid"]})
+    any_start = any(k["start"] for k in cams)
+    any_moving = any(k["share"] > 0 for k in cams)
+    why = ""
+    if not any_start and not any_moving:
+        pc = np.asarray(views[0]["paddock_centre"], float) if views else np.zeros((0, 2))
+        pc = pc[np.isfinite(pc).all(1)] if len(pc) else pc
+        where = (f" (the mapped WISER position, median paddock ({np.median(pc[:, 0]):.0f}, {np.median(pc[:, 1]):.0f}) in, is outside the "
+                 "camera's mapped ground)") if len(pc) else ""
+        why = "; ".join((vw["reason"] if not vw["projectable"] else
+                         f"{vw['cam']}: no start circle ({START_WHY.get(vw['start_status'], vw['start_status'])}), moving circle in 0 of "
+                         f"{vw['counts']['steps']} steps (located {vw['counts']['steps_located']}, lid {vw['counts']['steps_lid']}, "
+                         f"no correction {vw['counts']['steps_no_correction']})" + where) for vw in views)
+        if swap.get("zone") == "outside" and not swap.get("swapped"):
+            why += f"; corner check: {swap.get('why', '')}"
+    return {"reveal_file": reveal_file, "reveal_ok": False, "any_start": any_start, "any_moving": any_moving, "cams": cams,
+            "no_circle_reason": why, "camera_swap": swap_public(swap), "others_any": any(k["others"] for k in cams)}
+
+
+COVERAGE_COLS_V3 = ["camera_swap", "correction_model", "target_frame", "start_lid", "steps_lid", "steps_no_correction",
+                    "steps_edge_of_ground", "targets_edge_of_ground", "map_status",
+                    "map_verdict", "map_share", "others_located", "others_in_view", "steps_with_other_circle", "other_circles_drawn",
+                    "others_convergence_rate", "rt_n_off_seam", "rt_p99_px_off_seam"]
+
+
+def coverage_rows_v3(payload: dict, views: list, swap: dict) -> list:
+    rows = coverage_rows(payload, views)
+    if swap.get("swapped"):
+        sw = f"{swap['end_camera']} replaces {swap['replaced']}"
+    elif swap.get("zone") == "outside" and swap.get("why", "").startswith("neither"):
+        sw = "no swap: " + swap["why"]
+    else:
+        sw = ""
+    for r, vw in zip(rows, views):
+        c, rt = vw["counts"], vw["roundtrip"]
+        r.update({"camera_swap": sw, "correction_model": vw["model"], "target_frame": vw["target_frame"],
+                  "start_lid": vw["start_status"] == "lid", "steps_lid": c["steps_lid"], "steps_no_correction": c["steps_no_correction"],
+                  "steps_edge_of_ground": c["steps_edge_of_ground"], "targets_edge_of_ground": c["targets_edge_of_ground"],
+                  "map_status": vw["map"]["text"], "map_verdict": vw["map"]["verdict"], "map_share": vw["map"]["share"],
+                  "others_located": ";".join(c["others_located"]), "others_in_view": ";".join(c["others_in_view"]),
+                  "steps_with_other_circle": c["steps_with_other_circle"], "other_circles_drawn": c["other_circles_drawn"],
+                  "others_convergence_rate": c["others_convergence_rate"], "rt_n_off_seam": rt.get("rt_n_off_seam"),
+                  "rt_p99_px_off_seam": rt.get("rt_p99_px_off_seam")})
+    return rows
+
+
+def build_event_v3(ev: dict, info: dict, houses: list, ids: pd.DataFrame, root: Path, ffprobe: str, out_dir: Path, fonts: dict,
+                   cache: TrackCache, circ: CircleCtx, labels: list, scale: float = 1.0, audit_run: str = "") -> tuple[dict, dict]:
+    """GUI v3 counterpart of build_event (+ the --circles block): same banner, panel and payload keys; cameras by zone with
+    the corner swap; circles on every camera; the other animals in the reveal clip."""
+    t0_ms = int(round(float(ev["t0"]) * 1000.0))
+    t1_ms = int(round(float(ev["t1"]) * 1000.0))
+    clip = clip_window(t0_ms, t1_ms)
+    clip_lo, clip_hi = MV.ms_to_dt(clip["lo_ms"]), MV.ms_to_dt(clip["hi_ms"])
+    clip_lo_sod = clip_lo.hour * 3600 + clip_lo.minute * 60 + clip_lo.second + clip_lo.microsecond / 1e6
+    ident = identity(ids, ev["animal"], t0_ms)
+    zone, why = camera_zone(ev, houses)
+    pad = 1000 * (GAP_MAX_S + 1)
+    Fc, _ = cache.window(ev["animal"], clip["lo_ms"] - pad, clip["hi_ms"] + pad, float(ev["tau_ms"]))
+    parts_cache = {}
+
+    def parts_of(cam):
+        if cam not in parts_cache:
+            parts_cache[cam] = MV.view_parts(root, cam, clip_lo, clip_hi, ffprobe)
+        return parts_cache[cam]
+    cams, swap = choose_cams_v3(ev, clip, Fc, zone, circ, has_video=lambda c: len(parts_of(c)[0]) > 0)
+    lay = layout_v3(zone, cams, scale)
+    vparts, vgaps, labels_v = [], [], []
+    for cam, role in cams:
+        parts, gaps = parts_of(cam)
+        vparts.append(parts)
+        vgaps.append(gaps)
+        labels_v.append(f"{cam} · {role}")
+    if zone == "outside":
+        cams_text = (f"{swap['kept']} panorama + {swap['end_camera']} end camera (corner)" if swap.get("swapped")
+                     else f"{cams[0][0]} + {cams[1][0]} panoramas")
+    else:
+        cams_text = f"{cams[0][0]} in-box + {cams[1][0]} top-down"
+    rid = ev["review_id"]
+    st = MV.ms_to_dt(t0_ms)
+    stem = f"{rid}_{ev['type']}_{ev['animal']}_{st:%Y%m%d_%H%M%S}"
+    rows = overlay_rows(rid, ev["animal"], ident, zone, cams_text, clip)
+    T = write_ass_blind(out_dir / "overlay_ass" / f"{stem}.ass", lay, rows, clip["dur_s"], (clip["ev_t0_s"], clip["ev_t1_s"]),
+                        labels_v, vgaps, clip_lo_sod, fonts)
+    has_video = any(len(p) for p in vparts)
+    missing = ""
+    if not has_video:
+        missing = f"no video file of {cams[0][0]} or {cams[1][0]} covers {clip_lo:%Y-%m-%d %H:%M:%S} → {clip_hi:%H:%M:%S} under {root}"
+    cam_notes = [f"{c} has no frames {', '.join(f'{a:.1f}–{b:.1f} s' for a, b in g)}" for (c, _), g in zip(cams, vgaps) if g]
+    if swap.get("swapped"):
+        cam_notes.insert(0, swap["note"])
+    panel_file = f"{stem}.png"
+    F, I = cache.window(ev["animal"], clip["lo_ms"], clip["hi_ms"], float(ev["tau_ms"]))
+    panel = make_panel(ev, clip, F, I, houses, out_dir / "panels" / panel_file)
+    pop = (f"after {FEMALES_LOCAL[:16]}: five non-implanted females (no marks stated) are also in the paddock"
+           if t0_ms >= females_ms() else "")
+    q = QUESTIONS[ev["type"]]
+    facts = reveal_facts(ev, info, clip, zone, why, panel)
+    if zone == "outside":
+        facts.append(["camera choice (v3)", swap.get("why", "")])
+    payload = {
+        "idx": int(ev["review_idx"]), "id": rid, "type": ev["type"], "question": q, "animal": ev["animal"],
+        "event_key": f"{ev['animal']}|V3|{ev['type']}|{int(ev['event_id'])}", "audit_event_id": int(ev["event_id"]),
+        "selection": ev["selection"], "selection_rank": ev["selection_rank"],
+        "size_quartile": None if ev["size_quartile"] is None else int(ev["size_quartile"]),
+        "onset_local": fmt_local(t0_ms), "end_local": fmt_local(t1_ms), "onset_al_ms": t0_ms, "end_al_ms": t1_ms,
+        "tau_ms": float(ev["tau_ms"]), "identity": ident, "zone": zone, "zone_label": ZONE_LABEL.get(zone, zone),
+        "zone_why": why, "cams_text": cams_text, "overlay_static": rows, "population_note": pop,
+        "cams": [{"cam": c, "role": r, "parts": [{k: p[k] for k in ("file", "offset_s", "dur_s", "clip_t0_s", "seg_start", "seg_end_by_name",
+                                                                     "file_duration_s")} for p in pp], "gaps": gg}
+                 for (c, r), pp, gg in zip(cams, vparts, vgaps)],
+        "cam_notes": cam_notes,
+        "clip": {"file": f"{stem}.mp4", "ok": False, "missing_reason": missing, "lo_local": fmt_local(clip["lo_ms"], 3),
+                 "hi_local": fmt_local(clip["hi_ms"], 3), "lo_ms": clip["lo_ms"], "hi_ms": clip["hi_ms"], "lo_sod": round(clip_lo_sod, 3),
+                 "dur_s": clip["dur_s"], "ev_t0_s": clip["ev_t0_s"], "ev_t1_s": clip["ev_t1_s"], "truncated": clip["truncated"],
+                 "continues_s": clip["continues_s"], "event_s": clip["event_s"], "fps": MV.FPS, "width": lay["W"], "height": lay["H"]},
+        "panel": {"file": panel_file, "ok": bool(panel), **({"summary": panel} if panel else {})},
+        "reveal": {"facts": facts},
+        "audit_run": audit_run,
+    }
+    job = {"id": rid, "out": str(out_dir / "clips" / f"{stem}.mp4"), "layout": lay, "view_parts": vparts, "D": clip["dur_s"],
+           "ass_rel": f"overlay_ass/{stem}.ass", "fonts_rel": "_fonts", "timing": T, "has_video": has_video}
+    sizes = [circ.native_size(c, pp, ffprobe) for (c, _), pp in zip(cams, vparts)]
+    others = others_tracks(cache, labels, ev, clip)
+    views = event_circles_v3(ev, clip, Fc, cams, lay, circ, sizes, others)
+    Tc = write_circle_overlays_v3(out_dir / "overlay_ass" / f"{stem}.ass", out_dir / "overlay_ass_reveal" / f"{stem}.ass", lay, views,
+                                  clip["dur_s"], fonts)
+    payload["circles"] = circles_payload_v3(views, f"{stem}.mp4", swap)
+    job.update({"out_reveal": str(out_dir / "clips_reveal" / f"{stem}.mp4"), "ass_reveal_rel": f"overlay_ass_reveal/{stem}.ass",
+                "circle_timing": Tc, "coverage": coverage_rows_v3(payload, views, swap), "swap": swap})
+    return payload, job
+
+
+def roundtrip_grid(circ: CircleCtx, times=RT_GRID_TIMES) -> list:
+    """Stand-alone pixel -> paddock -> pixel grid check per camera at fixed times (night / day), every camera of NATIVE."""
+    rows = []
+    for cam in sorted(circ.native):
+        for ts in times:
+            t_ms = int(pd.Timestamp(ts).tz_localize(TZ).value // 10**6)
+            pr = circ.projector(cam, t_ms, circ.native[cam])
+            rt = pr.roundtrip(t_ms) if pr.ok else {}
+            rows.append({"camera": cam, "source": f"grid at {ts}", "event_cameras": None, "projectable": bool(pr.ok),
+                         "reason": pr.reason, "correction_flag": pr.flag, "day_frame": bool(pr.day),
+                         **{k: rt.get(k) for k in ("rt_n", "rt_converged_share", "rt_med_px", "rt_p99_px", "rt_max_px", "rt_n_off_seam",
+                                                   "rt_p99_px_off_seam", "rt_max_px_off_seam", "rt_gt1_n", "rt_gt1_seam_n")}})
+    return rows
+
+
+RT_COLS = ["camera", "source", "event_cameras", "projectable", "reason", "correction_flag", "day_frame", "rt_n", "rt_converged_share",
+           "rt_med_px", "rt_p99_px", "rt_max_px", "rt_n_off_seam", "rt_p99_px_off_seam", "rt_max_px_off_seam", "rt_gt1_n", "rt_gt1_seam_n"]
+
+
+def roundtrip_by_camera(cov: pd.DataFrame, grid_rows: list) -> pd.DataFrame:
+    """Per camera: the round trips of every projected event-camera at its onset (aggregated: points summed, median of the
+    medians, max of the p99s and maxima, outside the pano seam band separately) + the stand-alone grids."""
+    rows = []
+    pj = cov[cov["projectable"].astype(bool)] if len(cov) else cov
+    for cam, g in (pj.groupby("camera") if len(pj) else []):
+        rows.append({"camera": cam, "source": "event onsets", "event_cameras": int(len(g)), "projectable": True, "reason": "",
+                     "correction_flag": ";".join(sorted(set(g["correction_flag"].astype(str)))), "day_frame": bool(g["day_frame"].astype(bool).any()),
+                     "rt_n": int(g["rt_n"].fillna(0).sum()), "rt_converged_share": float(g["rt_converged_share"].min()),
+                     "rt_med_px": float(g["rt_med_px"].median()), "rt_p99_px": float(g["rt_p99_px"].max()), "rt_max_px": float(g["rt_max_px"].max()),
+                     "rt_n_off_seam": int(g["rt_n_off_seam"].fillna(0).sum()), "rt_p99_px_off_seam": float(g["rt_p99_px_off_seam"].max()),
+                     "rt_max_px_off_seam": float(g["rt_max_px_off_seam"].max()), "rt_gt1_n": int(g["rt_gt1_n"].fillna(0).sum()),
+                     "rt_gt1_seam_n": int(g["rt_gt1_seam_n"].fillna(0).sum())})
+    return pd.DataFrame(rows + list(grid_rows), columns=RT_COLS)
+
+
+def circle_summary_v3(evs: list, cov: pd.DataFrame, rtc: pd.DataFrame, jobs: dict) -> dict:
+    s = circle_summary(evs, cov)
+    by_cam = []
+    if len(cov):
+        for cam, g in cov.groupby("camera"):
+            pj = g[g["projectable"].astype(bool)]
+            by_cam.append({"camera": cam, "event-cameras": int(len(g)), "projectable": int(len(pj)),
+                           "with start circle": int(g["start_circle"].astype(bool).sum()),
+                           "with any moving circle": int((g["steps_circle"] > 0).sum()),
+                           "events with a circle": int((g["start_circle"].astype(bool) | (g["steps_circle"] > 0)).groupby(g["review_id"]).any().sum()),
+                           "median share of steps with a target circle": round(float(pj["share_circle"].median()), 3) if len(pj) else None,
+                           "median share of located steps": round(float(pj["share_circle_of_located"].median()), 3) if len(pj) else None,
+                           "steps lid": int(g["steps_lid"].sum()), "steps no correction": int(g["steps_no_correction"].sum()),
+                           "event-cameras with other circles": int((g["steps_with_other_circle"] > 0).sum())})
+    s["by_camera"] = by_cam
+    s["swaps"] = [{"review_id": p["id"], **{k: jobs[p["id"]]["swap"].get(k) for k in ("end_camera", "replaced", "why")}}
+                  for p in evs if jobs[p["id"]]["swap"].get("swapped")]
+    s["no_swap_corner"] = [{"review_id": p["id"], "why": jobs[p["id"]]["swap"].get("why")} for p in evs
+                           if p["zone"] == "outside" and not jobs[p["id"]]["swap"].get("swapped")
+                           and str(jobs[p["id"]]["swap"].get("why", "")).startswith("neither")]
+    if len(cov):
+        mv = cov[cov["camera"].isin(KIT_CAMS)].groupby(["camera", "map_verdict"]).size()
+        s["map_verdicts_event_cameras"] = {f"{c} {v}": int(n) for (c, v), n in mv.items()}
+        s["others"] = {"events_with_other_circles": int(sum(1 for p in evs if p["circles"].get("others_any"))),
+                       "other_circles_drawn": int(cov["other_circles_drawn"].sum()),
+                       "min_others_convergence": (float(cov["others_convergence_rate"].dropna().min())
+                                                  if cov["others_convergence_rate"].notna().any() else None)}
+    s["rt_by_camera"] = rtc.to_dict("records") if len(rtc) else []
+    return s
+
+
+def _fmt(v, nd=3):
+    return "—" if v is None or (isinstance(v, float) and not np.isfinite(v)) else (f"{v:.{nd}f}" if isinstance(v, float) else str(v))
+
+
+def write_circle_readme_v3(out: Path, evs: list, cov: pd.DataFrame, circ: CircleCtx, summ: dict, rtc: pd.DataFrame) -> None:
+    """Append the GUI v3 section to the run README."""
+    cv = summ.get("conv", {})
+    n_rev = sum(1 for p in evs if p["circles"]["reveal_ok"])
+    L = ["", "## Circles (GUI v3, `--v3`)", "",
+         f"Plan `{PLAN_V3}` (+ amendments). Same 80 events, W ids and order as GUI v1 / v2. `clips/` = the blind clip with the static "
+         "dashed start circle of the reviewed rat on **every camera that maps, day and night** (CH01–CH08); `clips_reveal/` = the clip "
+         "shown after the first answer, with the moving WISER circle (V3, solid yellow), the raw fix (red dot), the start circle and "
+         f"**the other tagged rats as thin cyan circles with their id** ({n_rev} of {len(evs)} reveal clips rendered). Second question "
+         f"\"{CIRCLE_QUESTION['text']}\" → `circle_verdict`; tick \"start circle off\" → `map_flag`. The export adds `gui: \"v3\"`; "
+         "answers from GUI v2 carry over through **Import** of a v2 JSON export (same W ids; marked `imported_from` in `judgements`).", "",
+         f"**{circles_page_info_v3(circ)['caveat']}**", "",
+         f"Map: {circ.desc['text']} (run `{circ.map_run}`); per-night validation: WISER pixel kit `{circ.kit_run}` (`kit.json` → "
+         "`validation_table`, share of mapped detections within 14 in). Pixels: Newton inverse of "
+         f"`Corrections(\"2026c\").to_paddock(cam, t, uv, z_mm={Z_MM:g})` (tolerance {V3_TOL_IN:g} in), the recording repo's cohort "
+         "ties loaded for CH05 and the in-box CH07 / CH08 floor models (z above the house floor; NaN off the floor). A step whose "
+         "correction is flagged `lid` or that has no correction gets no circle and a note. Open-field events where neither panorama's "
+         "mapped ground holds the start position: CH03 / CH04 (whichever holds it) replaces the panorama with fewer of the clip's target "
+         "positions in its mapped ground. CH01–CH04 corrections exist only 21:00–04:20; other hours use the nearest night sample "
+         "(flagged in the clip).", "",
+         "### Projection coverage", "",
+         f"Events with a circle on at least one camera: **{len(summ['any_circle'])} / {summ['n_events']}**. Per event and camera: "
+         "`projection_coverage.csv`.", "",
+         "| camera | event-cameras | projectable | with start circle | with any moving circle | events with a circle | median share of steps with a target circle | median share of located steps | steps lid | event-cameras with other circles |",
+         "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for r in summ.get("by_camera", []):
+        L.append(f"| {r['camera']} | {r['event-cameras']} | {r['projectable']} | {r['with start circle']} | {r['with any moving circle']} | "
+                 f"{r['events with a circle']} | {r['median share of steps with a target circle']} | {r['median share of located steps']} | "
+                 f"{r['steps lid']} | {r['event-cameras with other circles']} |")
+    L += ["", "Corner swaps (CH03 / CH04 replacing a panorama):", ""]
+    L += [f"- {s['review_id']}: {s['why']}" for s in summ.get("swaps", [])] or ["- none"]
+    if summ.get("no_swap_corner"):
+        L += ["", "Open-field events where neither panorama holds the start position and no swap was possible:", ""]
+        L += [f"- {s['review_id']}: {s['why']}" for s in summ["no_swap_corner"]]
+    L += ["", "Events without any circle:", ""]
+    L += [f"- {i} ({z}, {c}): {w}" for i, z, c, w in summ["no_circle"]] or ["- none"]
+    L += ["", "### Round trip pixel → paddock → pixel per camera (`roundtrip_by_camera.csv`)", "",
+          f"Grid {RT_STEP_PX} px (offset {RT_OFF_PX}); per projected event-camera at its onset, and stand-alone grids at {', '.join(RT_GRID_TIMES)}. "
+          f"Pano values 'outside the seam band' exclude |u − 3840| < {SEAM_BAND_PX:g} px (two pixels map to one ground point there).", "",
+          "| camera | source | event-cameras | points | converged share (min) | median px | p99 px | max px | p99 px outside seam | max px outside seam |",
+          "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for r in rtc.to_dict("records"):
+        L.append(f"| {r['camera']} | {r['source']} | {_fmt(r['event_cameras'], 0)} | {_fmt(r['rt_n'], 0)} | {_fmt(r['rt_converged_share'])} | "
+                 f"{_fmt(r['rt_med_px'], 4)} | {_fmt(r['rt_p99_px'], 4)} | {_fmt(r['rt_max_px'], 4)} | {_fmt(r['rt_p99_px_off_seam'], 4)} | "
+                 f"{_fmt(r['rt_max_px_off_seam'], 4)} |")
+    L += ["", "### Other checks", "",
+          f"- Inverse convergence (target points inside a camera's mapped ground): {cv.get('converged')} / {cv.get('targets')}; per "
+          f"clip-camera median {cv.get('median')}, lowest {cv.get('min')}; largest round-trip error of a drawn point {cv.get('inverse_err_max_in')} in.",
+          f"- Other rats: {summ.get('others', {})}.",
+          f"- Map status of the panorama event-cameras: {summ.get('map_verdicts_event_cameras', {})}.",
+          f"- Day-frame event-cameras (CH01–CH04 nearest night correction, or a roof camera far from its sample): "
+          f"{summ.get('day_event_cameras')}; projectable event-cameras with a non-ok correction flag: {summ.get('flagged_event_cameras')}."]
+    if circ.size_notes:
+        L += [f"- Camera size mismatches: {sorted(set(circ.size_notes))}"]
+    with open(out / "README.md", "a", encoding="utf-8") as f:
+        f.write("\n".join(L) + "\n")
+
+
+def circles_page_info_v3(circ: CircleCtx) -> dict:
+    passing = [float(r["real_within14_share"]) for r in circ.kit.values() if str(r.get("verdict")) == "pass"]
+    failing = sorted(f"{c} {n[5:]}" for (c, n), r in circ.kit.items() if str(r.get("verdict")) != "pass")
+    tm = circ.desc.get("test_median_in")
+    rng_ = f"{100 * min(passing):.0f}–{100 * max(passing):.0f} %" if passing else "—"
+    cav = (f"Map caveat: the WISER → paddock map was fitted and accepted on ONE hour of CH01 (2026-09-06 21–22 h, test median residual "
+           f"{float(tm) if tm is not None else float('nan'):.1f} in). The WISER pixel kit checked it per night on CH01 / CH02: {rng_} of the "
+           f"mapped detections within 14 in on passing nights; fails: {', '.join(failing) or 'none'}. Each camera line gives that night's "
+           "result; CH03–CH08 are extrapolations (map validated on CH01 only). If the dashed start circle is not on the rat at the onset, "
+           "the map (not WISER) is off for this clip — tick 'start circle off' (m).")
+    return {"plan": PLAN_V3, "map_run": circ.map_run, "map_text": circ.desc["text"], "caveat": cav, "question": CIRCLE_QUESTION,
+            "legend_blind": LEGEND_BLIND, "legend_reveal": LEGEND_REVEAL_V3, "radius_in": CIRCLE_R_IN, "z_mm": Z_MM, "step_s": DYN_STEP_S,
+            "v3": True, "kit_run": circ.kit_run, "other_colour": OTHER_COL}
+
+
 # ====================================================================================================== HTML
 HTML_TEMPLATE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -1445,7 +2307,7 @@ function exportObject(){
     note: "verdict_blind = the first saved verdict, given before the panel was shown; verdict_final = the answer at export time",
     rows: exportRows(), judgements: J};
   if (CIRC) {
-    o.gui = "v2 (WISER circles)"; o.circles = {plan: CIRC.plan, map_run: CIRC.map_run, map: CIRC.map_text, caveat: CIRC.caveat};
+    o.gui = CIRC.v3 ? "v3" : "v2 (WISER circles)"; o.circles = {plan: CIRC.plan, map_run: CIRC.map_run, map: CIRC.map_text, caveat: CIRC.caveat};
     o.note += "; circle_verdict = the answer to '" + CIRC.question.text + "' (after the reveal; no_circle = the reveal clip had no circle); " +
       "map_flag = the reviewer ticked 'start circle off' (blank = no start circle on either camera)";
   }
@@ -1458,7 +2320,8 @@ function csvText(){
 }
 function importObject(o){
   const src = (o && o.judgements) || {}; let n = 0;
-  Object.keys(src).forEach(id => { if (src[id] && evById(id)) { J[id] = Object.assign(jget(id), src[id]); n++; } });
+  const from = (CIRC && CIRC.v3) ? String((o && o.gui) || "v1") + ((o && o.run_id) ? " " + o.run_id : "") : "";
+  Object.keys(src).forEach(id => { if (src[id] && evById(id)) { J[id] = Object.assign(jget(id), src[id]); if (from && !J[id].imported_from) J[id].imported_from = from; n++; } });
   if (o && o.reviewer && !reviewer) reviewer = o.reviewer;
   return n;
 }
@@ -1709,7 +2572,7 @@ function renderStatic(){
       ["Enter", "save the verdict and reveal the panel; Enter again = next event"], ["? / Esc", "this help"]];
   if (CIRC) {
     keys.splice(7, 0, ["7 8 9", "after the reveal: the WISER circle is on the rat / drifts off the rat / cannot tell"], ["m", "start circle off (the dashed circle is not on the rat at the onset)"]);
-    $("ttl").textContent = "WISER event review (blind, WISER circles) · cohort " + DATA.cohort;
+    $("ttl").textContent = "WISER event review (blind, WISER circles" + (CIRC.v3 ? " v3" : "") + ") · cohort " + DATA.cohort;
     const o = document.createElement("option"); o.value = "revealed"; o.textContent = "saved, circle question open"; $("fStatus").appendChild(o);
   }
   $("helpcard").innerHTML = "<h3 style='margin-top:0'>How to review</h3><p>" + DATA.help.map(esc).join("</p><p>") + "</p>" +
@@ -1757,7 +2620,34 @@ def page_payload(cohort: str, run_dir: Path, events: list, ids: pd.DataFrame, se
     out = {"cohort": cohort, "run_id": run_dir.name, "run_dir": str(run_dir), "tool": TOOL, "plan": PLAN, "audit_run": audit_run,
            "generated": time.strftime("%Y-%m-%d %H:%M"), "selection": sel_info, "reasons": REASONS,
            "identity": identity_rows(ids), "help": help_, "events": events}
-    if circles is not None:
+    if circles is not None and circles.get("v3"):
+        help_[0] = help_[0].replace("nothing the tracker or the IMU computed.",
+                                    "nothing the tracker or the IMU computed — except the dashed start circle (below).")
+        help_[3] += (" Corner events (GUI v3): when neither panorama sees the rat's start position on its mapped ground, the end camera "
+                     "that does — CH03 at the x = 0 end or CH04 at the x = 480 end — replaces one panorama (the note above the video says so).")
+        help_[1:1] = [
+            "Circles (GUI v3). Before your first answer each clip shows only a dashed white circle labelled 'start': 14 in around the rat's "
+            "position before the EVENT (the reference WISER position), projected into EVERY camera of the clip that maps — CH01–CH08, day and "
+            "night. It helps you find the right rat; it does not show where WISER went. After you save the first verdict the clip is replaced "
+            "by a version with the moving WISER circle (solid yellow, V3 track, every 0.25 s), the raw WISER fix (red dot), the start circle "
+            "and the OTHER tagged rats as thin cyan circles labelled with their id — use them to judge whether the yellow circle sits on the "
+            "right rat. A second question opens: does the WISER circle stay on the rat? (7 on the rat / 8 drifts off the rat / 9 cannot tell; "
+            "saved as circle_verdict). Your first answer stays the blind verdict.",
+            "Where there is no circle the clip says why: a house lid is open (battery rounds), the position is outside the camera's mapped "
+            "ground, or there is no camera correction for that time. In the in-box CH07 / CH08 views the 14-in circle is wider than the house "
+            "floor: a + marks its centre and only the arcs on the floor are drawn; in a house WISER tells who is inside, not where in the "
+            "pile. CH01–CH04 corrections exist only for 21:00–04:20; at other hours the nearest night correction is used (flagged in the clip: "
+            "circles can be tens of pixels off).",
+            "Map check: each camera line (in the clip and in the Circles box) says whether the WISER → paddock map passed the WISER pixel "
+            "kit's check on that camera and night (CH01 / CH02: share of mapped detections within 14 in; 'not validated' outside the checked "
+            "nights 21:00–04:20); for CH03–CH08 it reads 'map validated on CH01 only'.",
+            circles["caveat"],
+            "Answers from GUI v2 carry over: Import a v2 JSON export (the W ids are the same). Imported answers keep their blind verdict, "
+            "circle answer and start-circle flag; each is marked imported_from in the exported judgements. Events that now have a circle for "
+            "the first time ask the circle question again.",
+        ]
+        out.update({"circles": circles, "help": help_})
+    elif circles is not None:
         help_[0] = help_[0].replace("nothing the tracker or the IMU computed.",
                                     "nothing the tracker or the IMU computed — except the dashed start circle (below).")
         help_[1:1] = [
@@ -1813,12 +2703,14 @@ def coverage_text(r: dict) -> str:
 
 def write_tables(out: Path, evs: list) -> None:
     circ = bool(evs) and all("circles" in p for p in evs)
+    v3 = circ and all("camera_swap" in p["circles"] for p in evs)
     with open(out / "event_summary.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["review_id", "type", "animal", "event_key", "selection", "selection_rank", "size_quartile", "onset_local", "end_local",
                     "onset_al_ms", "end_al_ms", "zone", "cameras", "clip", "clip_ok", "clip_s", "clip_mb", "event_s", "truncated", "missing_reason",
                     "cam_notes", "panel", "panel_ok"]
-                   + (["reveal_clip", "reveal_ok", "reveal_mb", "start_circle_any_camera", "moving_circle_any_camera", "no_circle_reason"] if circ else []))
+                   + (["reveal_clip", "reveal_ok", "reveal_mb", "start_circle_any_camera", "moving_circle_any_camera", "no_circle_reason"] if circ else [])
+                   + (["camera_swap", "other_rats_drawn"] if v3 else []))
         for p in evs:
             c = p["clip"]
             row = [p["id"], p["type"], p["animal"], p["event_key"], p["selection"], p["selection_rank"], p["size_quartile"], p["onset_local"],
@@ -1829,6 +2721,10 @@ def write_tables(out: Path, evs: list) -> None:
                 q = p["circles"]
                 row += [q["reveal_file"], q["reveal_ok"], round((q.get("reveal_size_bytes") or 0) / 1e6, 1), q["any_start"], q["any_moving"],
                         q["no_circle_reason"]]
+            if v3:
+                sw = q["camera_swap"]
+                row += [f"{sw['end_camera']} replaces {sw['replaced']}" if sw.get("swapped") else "",
+                        ";".join(sorted({i for k in q["cams"] for i in k.get("others", [])}))]
             w.writerow(row)
 
 
@@ -1872,7 +2768,8 @@ def write_readme(out: Path, cohort: str, evs: list, sel_info: dict, enc: str, au
     (out / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-CAM_TYPE = {"CH01": "panorama", "CH02": "panorama", "CH05": "top-down", "CH06": "top-down", "CH07": "in-box", "CH08": "in-box"}
+CAM_TYPE = {"CH01": "panorama", "CH02": "panorama", "CH03": "end camera", "CH04": "end camera", "CH05": "top-down", "CH06": "top-down",
+            "CH07": "in-box", "CH08": "in-box"}
 
 
 def circle_summary(evs: list, cov: pd.DataFrame) -> dict:
@@ -1968,17 +2865,27 @@ def load_audit(audit: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, d
 def run(args) -> int:
     t_start = time.time()
     cohort = args.cohort
+    v3 = bool(getattr(args, "v3", False))
+    if v3:
+        args.circles = True                                      # --v3 implies --circles
     audit = Path(args.audit_run)
     out = Path(args.out) if args.out else output_paths.run_dir(NAME, cohort, make_figures=False)
     subs = ("clips", "panels", "overlay_ass", "_fonts") + (("clips_reveal", "overlay_ass_reveal") if args.circles else ())
     for sub in subs:
         (out / sub).mkdir(parents=True, exist_ok=True)
     fh = open(out / "log.txt", "a", encoding="utf-8")
-    log(f"{NAME}: out {out}; audit {audit}; root {args.root}; git {MV.git_commit()}" + (f"; CIRCLES (GUI v2), map run {args.map_run}" if args.circles else ""), fh)
+    log(f"{NAME}: out {out}; audit {audit}; root {args.root}; git {MV.git_commit()}"
+        + ((f"; CIRCLES (GUI v3), map run {args.map_run}, kit {args.kit_run}" if v3 else f"; CIRCLES (GUI v2), map run {args.map_run}")
+           if args.circles else ""), fh)
     circ = None
+    labels = []
     if args.circles:
-        circ = load_circle_ctx(args.map_run, cohort)
-        log(f"circles: {circ.desc['text']}; z {Z_MM:g} mm; ring {RING_N} points x {CIRCLE_R_IN:g} in; step {DYN_STEP_S} s", fh)
+        circ = load_circle_ctx(args.map_run, cohort, v3=v3, kit_run=getattr(args, "kit_run", None))
+        log(f"circles: {circ.desc['text']}; z {Z_MM:g} mm; ring {RING_N} points x {CIRCLE_R_IN:g} in; step {DYN_STEP_S} s"
+            + (f"; v3 tol {circ.tol} in; kit {len(circ.kit)} camera-nights" if v3 else ""), fh)
+    if v3:
+        labels = list_track_labels(args.tracks_root)
+        log(f"v3: other-animal labels {labels}", fh)
     fonts = MV.find_fonts()
     if "regular" not in fonts or "bold" not in fonts:
         raise SystemExit("DejaVu Sans (DejaVuSans.ttf / DejaVuSans-Bold.ttf) not found - needed for the overlay glyphs")
@@ -2003,11 +2910,16 @@ def run(args) -> int:
     cache = TrackCache(args.tracks_root, args.imu_seconds_root)
     payloads, jobs = [], {}
     for ev in events:
-        pl, job = build_event(ev, sel_info, houses, ids, Path(args.root), ffprobe, out, fonts, cache, audit_run=str(audit), circ=circ)
+        if v3:
+            pl, job = build_event_v3(ev, sel_info, houses, ids, Path(args.root), ffprobe, out, fonts, cache, circ, labels, audit_run=str(audit))
+        else:
+            pl, job = build_event(ev, sel_info, houses, ids, Path(args.root), ffprobe, out, fonts, cache, audit_run=str(audit), circ=circ)
         payloads.append(pl)
         jobs[pl["id"]] = job
         if circ is not None:
-            log("    circles: " + "; ".join(coverage_text(r) for r in job["coverage"]), fh)
+            log("    circles: " + "; ".join(coverage_text(r) for r in job["coverage"])
+                + (f"; swap: {job['swap'].get('why')}" if v3 and pl["zone"] == "outside" else "")
+                + (f"; others {sorted({i for r in job['coverage'] for i in str(r['others_in_view']).split(';') if i})}" if v3 else ""), fh)
         log(f"  {pl['id']} {pl['type']} {pl['animal']} {pl['onset_local']} ({pl['selection']}): {pl['zone_label']} -> {pl['cams_text']}; "
             f"clip {pl['clip']['dur_s']:.0f} s, EVENT {pl['clip']['ev_t0_s']:.0f}-{pl['clip']['ev_t1_s']:.0f} s; parts "
             f"{[len(c['parts']) for c in pl['cams']]}, gaps {[c['gaps'] for c in pl['cams']]}; panel fixes {pl['panel'].get('summary', {}).get('n_fix')}"
@@ -2044,7 +2956,8 @@ def run(args) -> int:
                 args.no_clips and jobs[p["id"]]["has_video"] and (out / "clips_reveal" / p["circles"]["reveal_file"]).exists())
             p["circles"].update({"reveal_size_bytes": rv.get("size_bytes"), "reveal_duration_probe_s": rv.get("duration_s")})
     payloads.sort(key=lambda p: p["idx"])
-    page = page_payload(cohort, out, payloads, ids, sel_info, str(audit), circles=circles_page_info(circ) if circ is not None else None)
+    cinfo = None if circ is None else (circles_page_info_v3(circ) if v3 else circles_page_info(circ))
+    page = page_payload(cohort, out, payloads, ids, sel_info, str(audit), circles=cinfo)
     (out / "events.json").write_text(json.dumps(page, ensure_ascii=False, indent=1), encoding="utf-8")
     html = write_html(out, page)
     ok_js, msg = check_js(html)
@@ -2054,7 +2967,23 @@ def run(args) -> int:
     n_ok = sum(1 for p in payloads if p["clip"]["ok"])
     miss = [f"{p['id']} {p['event_key']}: {p['clip']['missing_reason']}" for p in payloads if not p["clip"]["ok"]]
     n_rev = len(payloads)
-    if circ is not None:
+    if circ is not None and v3:
+        cov = pd.DataFrame([r for p in payloads for r in jobs[p["id"]]["coverage"]], columns=COVERAGE_COLS + COVERAGE_COLS_V3)
+        cov.to_csv(out / "projection_coverage.csv", index=False)
+        rtc = roundtrip_by_camera(cov, roundtrip_grid(circ))
+        rtc.to_csv(out / "roundtrip_by_camera.csv", index=False)
+        summ = circle_summary_v3(payloads, cov, rtc, jobs)
+        (out / "circles_summary.json").write_text(json.dumps(summ, indent=1, default=str), encoding="utf-8")
+        write_circle_readme_v3(out, payloads, cov, circ, summ, rtc)
+        n_rev = sum(1 for p in payloads if p["circles"]["reveal_ok"])
+        log(f"circles v3: events with a circle {len(summ['any_circle'])}/{summ['n_events']}; by camera {summ['by_camera']}; swaps "
+            f"{summ['swaps']}; no swap possible {summ['no_swap_corner']}; others {summ.get('others')}; map {summ.get('map_verdicts_event_cameras')}; "
+            f"no circle {summ['no_circle']}; reveal clips {n_rev}/{len(payloads)}"
+            + (f"; SIZE MISMATCH {sorted(set(circ.size_notes))}" if circ.size_notes else ""), fh)
+        log("round trip by camera: " + "; ".join(f"{r['camera']} {r['source']}: n {r['rt_n']}, p99 {r['rt_p99_px']}, max {r['rt_max_px']}, "
+                                                  f"p99 off seam {r['rt_p99_px_off_seam']}, max off seam {r['rt_max_px_off_seam']}"
+                                                  for r in rtc.to_dict("records")), fh)
+    elif circ is not None:
         cov = pd.DataFrame([r for p in payloads for r in jobs[p["id"]]["coverage"]], columns=COVERAGE_COLS)
         cov.to_csv(out / "projection_coverage.csv", index=False)
         summ = circle_summary(payloads, cov)
@@ -2383,6 +3312,7 @@ def selftest() -> int:
             check("GUI v1 page (no --circles): export columns unchanged (no circle fields)",
                   not ({"circle_verdict", "map_flag", "circle_available"} & set(row1)) and "circles" not in O and "gui" not in O)
     ok_all &= selftest_circles(check, ids, taus)
+    ok_all &= selftest_v3(check, ids, taus)
     print("PASS - make_wiser_event_review self-test" if ok_all else "FAIL - make_wiser_event_review self-test")
     return 0 if ok_all else 1
 
@@ -2649,6 +3579,343 @@ def selftest_circles(check, ids: pd.DataFrame, taus: dict) -> bool:
     return ok0
 
 
+def _syn_floor_mapper(W: int, H: int, cx: float, cy: float, s: float, hx: float, hy: float):
+    """Synthetic in-box camera (CH07 / CH08-like): the image is the paddock rotated 180 deg (image right -> paddock -x, image down ->
+    paddock +y), s px / in, NaN off the floor rectangle |x - cx| <= hx, |y - cy| <= hy (and off the frame)."""
+    def mapper(t, uv):
+        uv = np.asarray(uv, float).reshape(-1, 2)
+        p = np.column_stack([cx - (uv[:, 0] - W / 2.0) / s, cy + (uv[:, 1] - H / 2.0) / s])
+        bad = ~((uv[:, 0] >= -0.5) & (uv[:, 0] < W - 0.5) & (uv[:, 1] >= -0.5) & (uv[:, 1] < H - 0.5))
+        bad |= ~((np.abs(p[:, 0] - cx) <= hx) & (np.abs(p[:, 1] - cy) <= hy))
+        p[bad] = np.nan
+        return p, {"flag": "ok", "target_frame": "09-04 12:00 (user-labelled frame)", "used": "median of 5 samples of segment 3",
+                   "model": "synthetic floor model"}
+    return mapper
+
+
+def _syn_box_mapper(W: int, H: int, x0: float, y0: float, x1: float, y1: float, lid=None, support=None):
+    """Synthetic camera seeing the paddock rectangle [x0, x1] x [y0, y1] linearly (image right -> +x, down -> +y), NaN outside;
+    lid = (a_ms, b_ms): the correction flag reads 'ok+lid' for field-PC times in [a, b); support = (sx0, sy0, sx1, sy1): the
+    verified ground (NaN outside it although in the frame)."""
+    def mapper(t, uv):
+        uv = np.asarray(uv, float).reshape(-1, 2)
+        p = np.column_stack([x0 + (uv[:, 0] + 0.5) * (x1 - x0) / W, y0 + (uv[:, 1] + 0.5) * (y1 - y0) / H])
+        bad = ~((uv[:, 0] >= -0.5) & (uv[:, 0] < W - 0.5) & (uv[:, 1] >= -0.5) & (uv[:, 1] < H - 0.5))
+        if support is not None:
+            bad |= ~((p[:, 0] >= support[0]) & (p[:, 1] >= support[1]) & (p[:, 0] <= support[2]) & (p[:, 1] <= support[3]))
+        p[bad] = np.nan
+        flag = "ok"
+        if lid is not None:
+            tm = int(pd.Timestamp(t).tz_localize(TZ).tz_convert("UTC").value // 10**6)
+            if lid[0] <= tm < lid[1]:
+                flag = "ok+lid"
+        return p, {"flag": flag, "target_frame": "09-18 (calibration)", "used": ["2026-09-05 01:00:00", "2026-09-05 02:00:00"]}
+    return mapper
+
+
+def _syn_box_inverse(W: int, H: int, x0: float, y0: float, x1: float, y1: float):
+    """The camera-model inverse of _syn_box_mapper (paddock -> px over the whole frame, no support limit)."""
+    def inv(t, P):
+        P = np.asarray(P, float).reshape(-1, 2)
+        return np.column_stack([(P[:, 0] - x0) * W / (x1 - x0) - 0.5, (P[:, 1] - y0) * H / (y1 - y0) - 0.5])
+    return inv
+
+
+def selftest_v3(check, ids: pd.DataFrame, taus: dict) -> bool:
+    """GUI v3: CH07 / CH08-like floor model (rotation 180 deg, NaN off the floor), the corner-camera swap and its layout, other
+    animals' circles only in the reveal clip, lid-flagged frames without a circle, the map status lines, the v3 page (gui v3,
+    import of a v2 export); one synthetic render of a swapped layout checked numerically (never viewed)."""
+    ok0 = True
+
+    def chk(name, cond, info=""):
+        nonlocal ok0
+        ok0 &= bool(cond)
+        check("v3: " + name, cond, info)
+
+    P0, _ = import_p0()
+    m = P0.Map(-270.0, -600.0, np.radians(0.2), 0.97, 500.0, 760.0)
+    t0 = int(pd.Timestamp("2026-09-05 01:30:00").tz_localize(TZ).value // 10**6)
+
+    def ctx(mappers, native):
+        c = CircleCtx(P0, m, 0.0, mappers, native, {"text": "synthetic map", "test_median_in": 4.39}, "synthetic")
+        c.v3, c.tol = True, V3_TOL_IN
+        c.kit = {("CH01", "2026-09-03"): {"real_within14_share": 0.316, "verdict": "pass"},
+                 ("CH02", "2026-09-01"): {"real_within14_share": 0.086, "verdict": "fail"},
+                 ("CH01", "2026-09-04"): {"real_within14_share": 0.689, "verdict": "pass"},
+                 ("CH02", "2026-09-04"): {"real_within14_share": 0.436, "verdict": "pass"}}
+        c.kit_excluded = {"2026-09-05": "frozen test night"}
+        return c
+
+    def ev_static(pos, lo_ms, t_on, typ="I1", animal="SF07", rid="W01"):
+        w0 = m.inv(np.array([pos]))[0]
+        return {"review_id": rid, "type": typ, "animal": animal, "t0": t_on / 1000.0, "ref_x": w0[0], "ref_y": w0[1], "tau_ms": 150.0}
+
+    def rows_at(path_fn, lo_ms, s0=-6.0, s1=40.0):
+        ss = np.arange(s0, s1 + 1e-9, 0.25)
+        Wp = m.inv(np.array([path_fn(s) for s in ss]))
+        return pd.DataFrame({"t_al": lo_ms + np.round(ss * 1000.0), "x": Wp[:, 0], "y": Wp[:, 1], "x_raw": Wp[:, 0], "y_raw": Wp[:, 1],
+                             "imu_state": 1, "anchors_used": 8})
+
+    # ---------------------------------------------------------------- 1. in-box floor model
+    Wf, Hf, sf = 1280, 960, 40.0
+    hxf, hyf = 12.5, 9.0                                     # floor half sizes (in); p0's 40-px support cells keep +-12 x +-9 in
+    floor = _syn_floor_mapper(Wf, Hf, 342.0, 118.0, sf, hxf, hyf)
+    cf = ctx({"CH07": floor}, {"CH07": (Wf, Hf)})
+    pr = cf.projector("CH07", t0, (Wf, Hf))
+    phi = np.linspace(0.0, 2.0 * np.pi, RING_N, endpoint=False)
+    ring = CIRCLE_R_IN * np.column_stack([np.cos(phi), np.sin(phi)])
+    c0 = np.array([342.0, 118.0])
+    uv, st, _ = pr.project(np.full(1, t0), np.vstack([c0, c0 + ring, c0 + [5.0, 0.0], c0 + [0.0, 5.0]])[None])
+    chk("floor model: centre inverts to the image centre (< 0.05 px)", st[0, 0] == "ok" and np.hypot(*(uv[0, 0] - [Wf / 2, Hf / 2])) < 0.05,
+        f"{np.round(uv[0, 0], 3)}")
+    du_x, dv_y = uv[0, -2] - uv[0, 0], uv[0, -1] - uv[0, 0]
+    chk("floor model: image = paddock rotated 180 deg (+5 in x -> 200 px left, +5 in y -> 200 px down)",
+        abs(du_x[0] + 5 * sf) < 0.1 and abs(du_x[1]) < 0.1 and abs(dv_y[1] - 5 * sf) < 0.1 and abs(dv_y[0]) < 0.1, f"{du_x} {dv_y}")
+    on_floor = (np.abs(ring[:, 0]) <= hxf) & (np.abs(ring[:, 1]) <= hyf)
+    st_r = st[0, 1:1 + RING_N]
+    chk("floor model: no ring point off the floor is drawn (NaN off the floor; out of view or at the edge of the ground), some on it are",
+        (~on_floor).sum() > 20 and (st_r == "ok").sum() > 0 and not np.any((st_r == "ok") & ~on_floor)
+        and all(s in ("ok", "out of view", "edge of ground") for s in st_r),
+        f"off {(~on_floor).sum()}, ok {int((st_r == 'ok').sum())}, {dict(zip(*np.unique(st_r.astype(str), return_counts=True)))}")
+    rt = pr.roundtrip(t0, step=80, off=(17.0, 11.0))
+    chk("floor model: round trip <= 1 px on a grid of the floor", rt.get("rt_n", 0) > 50 and rt["rt_max_px"] <= 1.0 and rt["rt_converged_share"] == 1.0,
+        str(rt))
+    # in a house_2 clip: the start circle's centre cross on the in-box view, both phases
+    cw = clip_window(t0, t0 + 6_000)
+    lo = cw["lo_ms"]
+    lay_h = MV.layout("house_2", scale=0.25)
+    top = _syn_box_mapper(640, 480, 300.0, 80.0, 400.0, 160.0)
+    ch = ctx({"CH07": floor, "CH06": top}, {"CH07": (Wf, Hf), "CH06": (640, 480)})
+    Fh = rows_at(lambda s: (342.0, 118.0) if s < 12 else (345.0, 120.0), lo)
+    evh = ev_static((342.0, 118.0), lo, t0)
+    vh = event_circles_v3(evh, cw, Fh, [("CH07", "in-box"), ("CH06", "top-down")], lay_h, ch, [(Wf, Hf), (640, 480)], [])
+    chk("floor model in a clip: in-box view projectable, start + moving circle centre drawn, ring clipped by the floor",
+        vh[0]["inbox"] and vh[0]["start_ok"] and vh[0]["counts"]["steps_circle"] == vh[0]["nb"]
+        and 0 < vh[0]["counts"]["ring_points_drawn_share"] < 0.5 and vh[0]["counts"]["convergence_rate"] == 1.0
+        and vh[0]["counts"]["targets_edge_of_ground"] > 0, str(vh[0]["counts"]))
+    # ---------------------------------------------------------------- 2. corner swap (+ layout)
+    Wp_, Hp_ = 640, 200
+    native = {"CH01": (Wp_, Hp_), "CH02": (Wp_, Hp_), "CH03": (480, 280), "CH04": (480, 280)}
+    cs = ctx({"CH01": _syn_box_mapper(Wp_, Hp_, 100.0, 0.0, 420.0, 240.0), "CH02": _syn_box_mapper(Wp_, Hp_, 60.0, 120.0, 380.0, 240.0),
+              "CH03": _syn_box_mapper(480, 280, 0.0, 0.0, 110.0, 240.0), "CH04": _syn_box_mapper(480, 280, 370.0, 0.0, 480.0, 240.0)}, native)
+    Fs = rows_at(lambda s: (30.0, 60.0) if s < 10 else (min(150.0, 30.0 + 15.0 * (s - 10)), 60.0), lo)
+    evc = ev_static((30.0, 60.0), lo, t0, typ="I1")
+    cams_c, sw = choose_cams_v3(evc, cw, Fs, "outside", cs)
+    chk("corner swap: start in neither panorama -> CH03 (holds it) replaces CH02 (fewer target steps in its ground)",
+        sw["swapped"] and sw["end_camera"] == "CH03" and sw["replaced"] == "CH02" and [c for c, _ in cams_c] == ["CH01", "CH03"]
+        and sw["status"]["CH01"]["steps_in_support"] > sw["status"]["CH02"]["steps_in_support"], str({k: sw.get(k) for k in ("why", "status")}))
+    cams_n, swn = choose_cams_v3(ev_static((250.0, 100.0), lo, t0), cw, rows_at(lambda s: (250.0, 100.0), lo), "outside", cs)
+    cams_x, swx = choose_cams_v3(ev_static((470.0, 245.0), lo, t0), cw, rows_at(lambda s: (470.0, 245.0), lo), "outside", cs)
+    cams_v, swv = choose_cams_v3(evc, cw, Fs, "outside", cs, has_video=lambda c: c != "CH03")
+    cams_h, swh = choose_cams_v3(evc, cw, Fs, "house_2", cs)
+    chk("corner swap: none when a panorama holds the start, when no camera does, when CH03 has no video, and never for houses",
+        not swn["swapped"] and [c for c, _ in cams_n] == ["CH01", "CH02"] and not swx["swapped"] and "nor does" in swx["why"]
+        and not swv["swapped"] and "no video" in swv["why"] and not swh["swapped"] and [c for c, _ in cams_h] == ["CH07", "CH06"],
+        f"{swn.get('why')} | {swx.get('why')} | {swv.get('why')}")
+    # beyond the wall: no camera's verified ground holds the start, but CH03's image frame does (Amendment 1.2)
+    cs2 = ctx({"CH01": _syn_box_mapper(Wp_, Hp_, 100.0, 0.0, 420.0, 240.0), "CH02": _syn_box_mapper(Wp_, Hp_, 60.0, 120.0, 380.0, 240.0),
+               "CH03": _syn_box_mapper(480, 280, -30.0, -20.0, 110.0, 240.0, support=(0.0, 0.0, 110.0, 240.0)),
+               "CH04": _syn_box_mapper(480, 280, 370.0, 0.0, 480.0, 240.0)}, native)
+    cs2.inverses = {"CH03": _syn_box_inverse(480, 280, -30.0, -20.0, 110.0, 240.0), "CH04": _syn_box_inverse(480, 280, 370.0, 0.0, 480.0, 240.0)}
+    evb = ev_static((-12.0, -5.0), lo, t0, typ="I2")
+    Fb = rows_at(lambda s: (-12.0, -5.0), lo)
+    cams_b, swb = choose_cams_v3(evb, cw, Fb, "outside", cs2)
+    vb3 = event_circles_v3(evb, cw, Fb, cams_b, layout_v3("outside", cams_b, 0.25), cs2,
+                           [native[c] for c, _ in cams_b], [])
+    chk("corner swap beyond the wall: no verified ground holds the start; CH03's image does -> CH03 replaces a panorama, but draws "
+        "no circle outside its verified ground", swb["swapped"] and swb["end_camera"] == "CH03" and swb.get("basis") == "image frame"
+        and not swb["status"]["CH03"]["start_in_support"] and swb["status"]["CH03"]["start_in_frame"]
+        and not swb["status"]["CH04"]["start_in_frame"]
+        and all(not v["start_ok"] and v["counts"]["steps_circle"] == 0 for v in vb3), str({k: swb.get(k) for k in ("why", "basis")}))
+    lay_s = layout_v3("outside", cams_c, scale=0.25)
+    v1_, v0_ = lay_s["views"][1], MV.layout("outside", scale=0.25)["views"][1]
+    chk("corner layout: the end camera keeps its aspect, centred in the replaced panorama's slot; the kept panorama is unchanged",
+        not v1_["pano"] and v1_["h"] == v0_["h"] and abs(v1_["w"] / v1_["h"] - NATIVE["CH03"][0] / NATIVE["CH03"][1]) < 0.01
+        and abs((v1_["x"] + v1_["w"] / 2) - (v0_["x"] + v0_["w"] / 2)) <= 2 and lay_s["views"][0] == MV.layout("outside", scale=0.25)["views"][0],
+        str(v1_))
+    # ---------------------------------------------------------------- 3. lid frames + other animals (reveal only)
+    lid = (lo + 12_000, lo + 16_000)                         # clip seconds 12-16: the house lid is lifted
+    roof = _syn_box_mapper(640, 480, 150.0, 60.0, 350.0, 210.0, lid=lid)
+    cl = ctx({"CH06": roof, "CH07": floor}, {"CH06": (640, 480), "CH07": (Wf, Hf)})
+    Ft = rows_at(lambda s: (200.0, 100.0), lo)
+    Fo = rows_at(lambda s: (260.0, 150.0), lo)
+    evl = ev_static((200.0, 100.0), lo, t0)
+    others = [("SF09", "SF09", Fo), ("SF12_tag12376", "SF12", rows_at(lambda s: (300.0, 120.0), lo))]
+    vl = event_circles_v3(evl, cw, Ft, [("CH07", "in-box"), ("CH06", "top-down")], lay_h, cl, [(Wf, Hf), (640, 480)], others)
+    s_mid = (np.arange(vl[1]["nb"]) + 0.5) * DYN_STEP_S
+    in_lid = (np.round(s_mid + (lo % 1000) / 1000.0) >= 12) & (np.round(s_mid + (lo % 1000) / 1000.0) < 16)
+    stc = np.asarray(vl[1]["st_centre"], dtype=object)
+    chk("lid: steps whose correction is flagged 'lid' get status lid (no circle); every other step is drawn",
+        in_lid.any() and (stc[in_lid] == "lid").all() and (stc[~in_lid] == "ok").all() and vl[1]["counts"]["steps_lid"] == int(in_lid.sum()),
+        f"lid steps {int(in_lid.sum())}, statuses {dict(zip(*np.unique(stc.astype(str), return_counts=True)))}")
+    o_ids = [o["id"] for o in vl[1]["others"]]
+    chk("others: other animals projected per step (second tag merged under its animal id), not drawn while the lid is open",
+        o_ids == ["SF09", "SF12"] and all((np.asarray(o["st"], dtype=object)[~in_lid] == "ok").all() for o in vl[1]["others"])
+        and all((np.asarray(o["st"], dtype=object)[in_lid] == "lid").all() for o in vl[1]["others"]), str(o_ids))
+    evl2 = ev_static((200.0, 100.0), lo, lo + 13_000)       # onset inside the lid window
+    vl2 = event_circles_v3(evl2, cw, Ft, [("CH07", "in-box"), ("CH06", "top-down")], lay_h, cl, [(Wf, Hf), (640, 480)], [])
+    chk("lid: an onset inside a lid event gets no start circle (status lid, blind note)", vl2[1]["start_status"] == "lid" and not vl2[1]["start_ok"]
+        and any("lid" in x for x in static_notes_v3(vl2[1], "blind")), vl2[1]["start_status"])
+    fonts = MV.find_fonts()
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        for sub in ("overlay_ass", "overlay_ass_reveal", "clips", "clips_reveal", "_fonts"):
+            (out / sub).mkdir()
+        for f in fonts.values():
+            shutil.copy2(f, out / "_fonts" / f.name)
+        ident = identity(ids, "SF07", t0)
+        rows = overlay_rows("W01", "SF07", ident, "house_2", "CH07 in-box + CH06 top-down", cw)
+        lo_dt = MV.ms_to_dt(lo)
+        sod = lo_dt.hour * 3600 + lo_dt.minute * 60 + lo_dt.second
+        write_ass_blind(out / "overlay_ass" / "l.ass", lay_h, rows, cw["dur_s"], (cw["ev_t0_s"], cw["ev_t1_s"]),
+                        ["CH07 · in-box · house_2", "CH06 · top-down · house_2"], [[], []], sod, fonts)
+        Tl = write_circle_overlays_v3(out / "overlay_ass" / "l.ass", out / "overlay_ass_reveal" / "l.ass", lay_h, vl, cw["dur_s"], fonts)
+        tb = (out / "overlay_ass" / "l.ass").read_text(encoding="utf-8")
+        trv = (out / "overlay_ass_reveal" / "l.ass").read_text(encoding="utf-8")
+        cyan = MV.ass_c(OTHER_COL)
+        body = "\n".join(x for x in tb.splitlines() if x.startswith("Dialogue"))
+        leaks = [w_ for w_ in FORBIDDEN_OVERLAY if w_ in body]
+        chk("others only in the reveal clip: cyan rings + ids there, none in the blind clip; the blind clip stays blind",
+            len(Tl["reveal_others"]) > 0 and not Tl["blind_others"] and cyan in trv and cyan not in tb and "SF09" in trv and "SF09" not in body
+            and "SF12" in trv and not leaks, f"others {len(Tl['reveal_others'])}, leaks {leaks}")
+        lid_a = {round(k * DYN_STEP_S, 6) for k in np.flatnonzero(in_lid)}
+        chk("others drawn per step only where projected (never while the lid is open): 2 animals x the non-lid steps",
+            all(round(a, 6) not in lid_a for _, a, _b, _i, _c in Tl["reveal_others"])
+            and len(Tl["reveal_others"]) == 2 * int((~in_lid).sum()), f"{len(Tl['reveal_others'])} vs 2 x {int((~in_lid).sum())}")
+        chk("lid: the reveal clip names it ('house lid open') over the lid steps; the moving circle skips them",
+            any("lid" in t[3] for t in Tl["dyn"]) and len([t for t in Tl["reveal_moving"] if t[0] == 1]) == int((~in_lid).sum()),
+            str([t[3] for t in Tl["dyn"]]))
+        write_ass_blind(out / "overlay_ass" / "h.ass", lay_h, rows, cw["dur_s"], (cw["ev_t0_s"], cw["ev_t1_s"]),
+                        ["CH07 · in-box · house_2", "CH06 · top-down · house_2"], [[], []], sod, fonts)
+        Th = write_circle_overlays_v3(out / "overlay_ass" / "h.ass", out / "overlay_ass_reveal" / "h.ass", lay_h, vh, cw["dur_s"], fonts)
+        thb = (out / "overlay_ass" / "h.ass").read_text(encoding="utf-8")
+        thr = (out / "overlay_ass_reveal" / "h.ass").read_text(encoding="utf-8")
+        chk("in-box view: + at the circle centre in both phases; the in-box note in the blind clip and the roster note in the reveal clip",
+            any(t[0] == 0 for t in Th["cross"]["blind"]) and any(t[0] == 0 for t in Th["cross"]["reveal"]) and INBOX_NOTE in thb
+            and INBOX_ROSTER in thr and INBOX_ROSTER not in thb, f"cross {len(Th['cross']['blind'])} / {len(Th['cross']['reveal'])}")
+        chk("map status line on every view in both clips (CH03-CH08: 'map validated on CH01 only')",
+            tb.count(MAP_CH01_ONLY) == 2 and trv.count(MAP_CH01_ONLY) == 2 and REVEAL_MAP_HINT in trv and REVEAL_MAP_HINT not in tb)
+        pl = circles_payload_v3(vl, "l.mp4", {"swapped": False, "zone": "house_2"})
+        chk("payload: per camera map status, other ids, lid steps; page text names the others only after the reveal",
+            pl["others_any"] and pl["cams"][1]["others"] == ["SF09", "SF12"] and pl["cams"][1]["steps_lid"] == int(in_lid.sum())
+            and "SF09" in pl["cams"][1]["text_reveal"] and "SF09" not in pl["cams"][1]["text_blind"]
+            and pl["cams"][1]["map_status"] == MAP_CH01_ONLY, str(pl["cams"][1]))
+        # ---- a swapped open-field layout: the end camera's source lands where to_view predicts (synthetic, numeric)
+        ffmpeg, ffprobe = GF.find_ffmpeg()
+        W3, H3 = 452, 252
+        src = out / "syn_end.mp4"
+        subprocess.run([ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i", f"color=c=gray:s={W3}x{H3}:r=20:d=2",
+                        "-vf", "drawbox=x=300:y=60:w=8:h=8:color=white:t=fill", "-c:v", "libx264", "-pix_fmt", "yuv420p", str(src)], check=True)
+        lay_r = layout_v3("outside", [("CH01", "panorama (upright)"), ("CH03", END_ROLE["CH03"])], scale=0.25)
+        write_ass_blind(out / "overlay_ass" / "e.ass", lay_r, ["W01 · test", "row 2"], 2.0, (0.5, 1.0), ["CH01 · pano", "CH03 · end"],
+                        [[], []], 0.0, fonts)
+        shutil.copy2(out / "overlay_ass" / "e.ass", out / "overlay_ass_reveal" / "e.ass")
+        job = {"id": "e", "out": str(out / "clips" / "e.mp4"), "out_reveal": str(out / "clips_reveal" / "e.mp4"), "layout": lay_r,
+               "view_parts": [[], [{"path": str(src), "offset_s": 0.0, "dur_s": 2.0, "clip_t0_s": 0.0}]], "D": 2.0,
+               "ass_rel": "overlay_ass/e.ass", "ass_reveal_rel": "overlay_ass_reveal/e.ass", "fonts_rel": "_fonts"}
+        r = render_pair(ffmpeg, ffprobe, job, out, "nvenc" if MV.nvenc_works(ffmpeg) else "x264")
+        if r["ok"]:
+            p = subprocess.run([ffmpeg, "-v", "error", "-i", job["out"], "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True)
+            fr = np.frombuffer(p.stdout, np.uint8).reshape(-1, lay_r["H"], lay_r["W"])[10]
+            ex = to_view(np.array([303.5, 63.5]), lay_r["views"][1], (W3, H3)) - 0.5
+            win = fr[int(ex[1]) - 8:int(ex[1]) + 9, int(ex[0]) - 8:int(ex[0]) + 9].astype(float)
+            yy, xx = np.nonzero(win > 200)
+            cen = (xx.mean() + int(ex[0]) - 8, yy.mean() + int(ex[1]) - 8) if len(xx) else (np.nan, np.nan)
+            chk("swapped layout render: an end-camera source marker lands where to_view predicts (< 1 px)",
+                len(xx) >= 1 and math.hypot(cen[0] - ex[0], cen[1] - ex[1]) < 1.0, f"measured {np.round(cen, 2)}, expected {np.round(ex, 2)}")
+        else:
+            chk("swapped layout render", False, r.get("error", "")[-300:])
+    # ---------------------------------------------------------------- 4. map status
+    k_, e_ = cs.kit, cs.kit_excluded
+    ms = lambda cam, ts: map_status(cam, int(pd.Timestamp(ts).tz_localize(TZ).value // 10**6), k_, e_)  # noqa: E731
+    a1, a2, a3, a4, a5 = (ms("CH01", "2026-09-04 01:00:00"), ms("CH02", "2026-09-01 23:00:00"), ms("CH01", "2026-09-06 02:00:00"),
+                          ms("CH01", "2026-09-04 10:00:00"), ms("CH05", "2026-09-04 01:00:00"))
+    chk("map status: pass with the night's share / FAILS / not validated (excluded night, outside 21:00-04:20) / CH03-CH08 line",
+        a1["verdict"] == "pass" and "32 %" in a1["text"] and "09-03" in a1["text"] and a2["verdict"] == "fails" and "FAILS" in a2["text"]
+        and a3["verdict"] == "not validated" and "frozen test night" in a3["text"] and a4["verdict"] == "not validated"
+        and "21:00" in a4["text"] and a5["text"] == MAP_CH01_ONLY and not any("WISER" in a["text"] for a in (a1, a2, a3, a4, a5)),
+        f"{a1['text']} | {a2['text']} | {a3['text']} | {a4['text']}")
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / "kit.json").write_text(json.dumps({"validation_table": [{"camera": "CH01", "night": "2026-09-03", "real_within14_share": 0.3,
+                                                                             "verdict": "pass"}],
+                                                       "excluded_nights": {"2026-09-05": "frozen test night: no model on its frames, no validation",
+                                                                           "2026-09-11": "population change 09-11 19:40 (five untagged females) - after the cut"}}),
+                                           encoding="utf-8")
+        kt, ke = kit_tables(td)
+    chk("kit tables: rows by (camera, night); short reasons of the excluded nights", ("CH01", "2026-09-03") in kt
+        and ke == {"2026-09-05": "frozen test night", "2026-09-11": "population change 09-11 19:40"}, str(ke))
+    chk("labels: identity labels only (SF07 ... SF12, <animal>_tag<id>), the second tag mapped to its animal",
+        label_animal("SF12_tag12376") == "SF12" and label_animal("SF07") == "SF07" and label_animal("tag_12409") is None)
+    # ---------------------------------------------------------------- 5. v3 page: gui v3, import of a v2 export, UI flow
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        E2, L12, L22 = _synth_events()
+        evs_s, info_s = select_events(E2, L12, L22, taus)
+        pls = []
+        for j_, e in enumerate(evs_s[:3]):
+            cw_ = clip_window(int(e["t0"] * 1000), int(e["t1"] * 1000))
+            circ_ev = {"reveal_file": f"r{j_}.mp4", "reveal_ok": True, "any_start": j_ != 1, "any_moving": j_ != 1, "no_circle_reason": "",
+                       "camera_swap": {"swapped": False}, "others_any": True,
+                       "cams": [{"cam": "CH01", "role": "pano", "projectable": j_ != 1, "reason": "", "flag": "ok", "day_frame": False, "day_used": "",
+                                 "start": j_ != 1, "share": 0.8 if j_ != 1 else 0.0, "text_blind": "start circle · map check", "text_reveal": "circle 80 %",
+                                 "map_status": "map check", "map_verdict": "pass", "map_share": 0.3, "inbox": False, "others": ["SF09"],
+                                 "share_others": 0.5, "steps_lid": 0}]}
+            pls.append({"idx": e["review_idx"], "id": e["review_id"], "type": e["type"], "question": QUESTIONS[e["type"]], "animal": e["animal"],
+                        "event_key": f"{e['animal']}|V3|{e['type']}|{int(e['event_id'])}", "audit_event_id": int(e["event_id"]),
+                        "selection": e["selection"], "selection_rank": e["selection_rank"], "size_quartile": e["size_quartile"],
+                        "onset_local": fmt_local(cw_["lo_ms"] + 10_000), "end_local": fmt_local(cw_["hi_ms"]), "onset_al_ms": cw_["lo_ms"] + 10_000,
+                        "end_al_ms": cw_["hi_ms"], "tau_ms": 150.0, "identity": identity(ids, e["animal"], cw_["lo_ms"]), "zone": "outside",
+                        "zone_label": "open field", "zone_why": "test", "cams_text": "CH01 + CH02 panoramas", "overlay_static": ["a", "b"],
+                        "population_note": "", "cam_notes": [], "cams": [{"cam": "CH01", "role": "pano", "parts": [], "gaps": []}],
+                        "clip": {"file": f"b{j_}.mp4", "ok": True, "missing_reason": "", "lo_local": "2026-09-05 01:59:54.000",
+                                 "hi_local": "2026-09-05 02:00:20.000", "lo_ms": cw_["lo_ms"], "hi_ms": cw_["hi_ms"], "lo_sod": 7194.0,
+                                 "dur_s": cw_["dur_s"], "ev_t0_s": cw_["ev_t0_s"], "ev_t1_s": cw_["ev_t1_s"], "truncated": cw_["truncated"],
+                                 "continues_s": cw_["continues_s"], "event_s": cw_["event_s"], "fps": 20, "width": 960, "height": 414},
+                        "panel": {"file": "a.png", "ok": True}, "reveal": {"facts": [["selection", "secret"]]}, "audit_run": "x", "circles": circ_ev})
+        info_c = circles_page_info_v3(cs)
+        page = page_payload("2026c", out, pls, ids, info_s, "x", circles=info_c)
+        html = write_html(out, page)
+        okj, msg = check_js(html)
+        chk("v3 page: both script blocks pass node --check; help names the other rats, the corner swap and the v2 import",
+            okj and any("OTHER tagged rats" in h for h in page["help"]) and any("Corner events" in h for h in page["help"])
+            and any("Import a v2 JSON export" in h for h in page["help"]), msg)
+        id0 = pls[0]["id"]
+        harness = script_blocks(html)[0] + r"""
+;(function(){
+  const a = EV[0].id, c = EV[2].id, res = {};
+  const v2 = {schema: "wiser_event_review_labels/1", gui: "v2 (WISER circles)", run_id: "wiser_event_review_v2run", reviewer: "hc",
+    judgements: {[a]: {verdict: EV[0].question.options[0][0], verdict_blind: EV[0].question.options[0][0], reason: "", reason_blind: "",
+                       saved_at: "2026-10-07T00:00:00Z", revealed_at: "2026-10-07T00:00:00Z", circle_verdict: "on_rat", map_flag: true},
+                 [c]: {verdict: "cannot_tell", verdict_blind: "cannot_tell", saved_at: "2026-10-07T00:00:00Z", revealed_at: "2026-10-07T00:00:00Z"}}};
+  res.n = importObject(v2);
+  res.stA = status(a); res.stC = status(c); res.cvC = circleVerdict(c);
+  process.stdout.write(JSON.stringify({res: res, obj: exportObject()}));
+})();
+"""
+        jsf = out / "harness_v3.js"
+        jsf.write_text(harness, encoding="utf-8")
+        pr_ = subprocess.run([node_exe(), str(jsf)], capture_output=True, text=True, encoding="utf-8")
+        try:
+            got = json.loads(pr_.stdout)
+        except Exception:  # noqa: BLE001
+            got = None
+        chk("v3 page logic runs in node", got is not None, (pr_.stderr or "")[-400:])
+        if got is not None:
+            R, O = got["res"], got["obj"]
+            r0 = O["rows"][0]
+            chk("v3 export: gui 'v3', schema unchanged; a v2 export imports by W id with its blind verdict, circle answer and map flag "
+                "(marked imported_from); an event newly circled asks the circle question",
+                O.get("gui") == "v3" and O["schema"] == "wiser_event_review_labels/1" and R["n"] == 2 and R["stA"] == "done"
+                and r0["verdict_blind"] == pls[0]["question"]["options"][0][0] and r0["circle_verdict"] == "on_rat" and r0["map_flag"] is True
+                and O["judgements"][id0]["imported_from"] == "v2 (WISER circles) wiser_event_review_v2run" and R["stC"] == "revealed"
+                and R["cvC"] == "", f"{O.get('gui')} {R}")
+        ui = ui_flow(page, out)
+        chk("v3 UI flow: blind clip first, reveal clip + circle question after Enter, Enter held until answered",
+            ui.get("src0") == "clips/b0.mp4" and ui.get("src1") == "clips_reveal/r0.mp4" and ui.get("circleOpen") is True
+            and ui.get("curBlocked") == 0 and ui.get("cv") == "drifts_off" and ui.get("cur2") == 1 and ui.get("caveat") is True, str(ui))
+    return ok0
+
+
 UI_STUB = r"""
 function El(id){ this.id = id; this.innerHTML = ""; this.textContent = ""; this.hidden = false; this.value = ""; this.style = {};
   this.children = []; this.listeners = {}; this.checked = false; this.src = ""; this.paused = true; this.currentTime = 0; this.duration = 30;
@@ -2720,6 +3987,10 @@ def main(argv=None) -> int:
     ap.add_argument("--circles", action="store_true",
                     help=f"GUI v2: WISER circles (static start circle blind, moving circle after the first answer); plan {PLAN_V2}")
     ap.add_argument("--map-run", default=MAP_RUN, help="wiser_assist_p0 run whose mapping.json holds the accepted WISER -> paddock map")
+    ap.add_argument("--v3", action="store_true",
+                    help=f"GUI v3 (implies --circles): circles on all eight cameras day and night, corner-event camera swap, other "
+                         f"animals in the reveal clip, per-view map status; plan {PLAN_V3}")
+    ap.add_argument("--kit-run", default=KIT_RUN, help="WISER pixel kit run whose kit.json validation_table gives the per-night map status (v3)")
     ap.add_argument("--html-only", default=None, help="rebuild index.html of an existing run from its events.json")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args(argv)

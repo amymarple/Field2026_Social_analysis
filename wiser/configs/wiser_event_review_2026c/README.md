@@ -28,6 +28,24 @@ the reviewer ticks "start circle off" (`map_flag`). Answers stored in v1's brows
 storage key is per run). Export them from v1 first; **Import** of a v1 export into v2 works because the W ids are the
 same.
 
+**GUI v3 (circles on all eight cameras, day and night, 2026-10-12;** plan
+[`implementation_plan/2026-10-12-wiser-event-review-v3.md`](../../../implementation_plan/2026-10-12-wiser-event-review-v3.md)
++ its Amendment 1, change log
+[`change_log/2026-10-12-wiser-event-review-v3.md`](../../../change_log/2026-10-12-wiser-event-review-v3.md); page
+`D:\Field2026_analysis_out\2026c\wiser_event_review_20261012_1054\index.html`): the same 80 events, W ids and order, built
+with `--v3`.
+- Circles are drawn on every camera that maps: CH01–CH08, including CH05 and the in-box CH07 / CH08.
+- In the in-box views the 14-in circle is wider than the house floor; a `+` marks its centre.
+- Frames with a house lid open or with no camera correction get no circle; the clip says so.
+- Open-field corner events show CH03 or CH04 in place of one panorama.
+- After the first answer the clip also shows the **other tagged rats** as thin cyan circles with their id.
+- Each camera line gives the map status: CH01 / CH02 = that night's WISER pixel-kit validation; CH03–CH08 = "map
+  validated on CH01 only".
+- CH01–CH04 still use the nearest night correction outside 21:00–04:20, flagged in the clip.
+- **Answers from v2 carry over:** Import the v2 JSON export into the v3 page (same W ids). Each imported judgement gets
+  `imported_from` = `"<gui> <run_id>"` of the file it came from. An event that newly has a circle asks the circle
+  question again (status `revealed`).
+
 ## Student copy on the H: drive — PAUSED 2026-10-07 (incomplete; the user scores first)
 
 Target `H:\wiser_event_review_2026c_student\` (SanDisk Extreme 2 TB external SSD, exFAT; `H:\wiser_label_loop\` on the same
@@ -84,6 +102,15 @@ Answers: I1 `moved` / `stayed` / `cannot_tell`; I2 `turned` / `ran_straight` / `
 GUI v2 exports keep `schema: wiser_event_review_labels/1` (the columns above are added at the end; the v1 columns are
 unchanged) and add `gui: "v2 (WISER circles)"` and `circles` (`plan`, `map_run`, `map`, `caveat`) to the JSON.
 
+GUI v3 exports have the same schema and the same columns as v2. They differ in three ways:
+- `gui: "v3"`.
+- `circles.plan` = the v3 plan, and `circles.caveat` = the v3 caveat (with the pixel-kit validation range).
+- A judgement imported from an earlier export carries `imported_from` in `judgements`.
+
+In v3, `circle_verdict` was answered while the other tagged rats were visible as cyan circles.
+`circle_available` / `start_circle_available` count every camera, CH05–CH08 included. Several v2 `no_circle` events
+now have a circle.
+
 ## How to use them
 
 - The verdicts are the ground truth for the return test (Part 1, `analyze_wiser_i1_return.py --with-verdicts <file>`):
@@ -92,4 +119,9 @@ unchanged) and add `gui: "v2 (WISER circles)"` and `circles` (`plan`, `map_run`,
 - `circle_verdict` is a separate, post-reveal judgement of the projected WISER track. It is never the return test's
   ground truth. Exclude `map_flag = true` clips before reading it as a statement about WISER, because there the map
   (accepted on one CH01 hour) is off. `no_circle` is not an answer.
+- **v3 caveats for `circle_verdict`:**
+  - Inside a house WISER gives the roster, not the position in the pile. On CH07 / CH08 the circle is wider than the
+    floor.
+  - A camera line that reads "FAILS" or "not validated" means the map itself is uncertain for that clip.
+  - Keep the GUI version (`gui`) and `imported_from` with every verdict you use.
 - Clip time is the video file-name time (field-PC, ±1 s); the burnt-in camera clock (≈ 59½ min behind) is never used.
