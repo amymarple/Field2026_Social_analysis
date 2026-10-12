@@ -189,3 +189,38 @@ cv env, RTX 5070 Ti); intermediates stay in the run folder and are never re-extr
    - (a) Is a quality loss of up to 10 points (P3 lower CI > −0.10) acceptable in exchange for faster labelling, or is a
      smaller margin required?
    - (b) Who is the second reader (the undergrad?).
+
+## Amendment C2 — 2026-10-12, the user: quality is computed from their own corrections, not scored by a person (before any C frame); supersedes C1 items 6 and 9(a) and the P3 of C item 5
+
+The user does not want to set a quality tolerance or score boxes by eye: "score 10点这种，我不是很会判断咋整，这个score不如你根据我的更正自己算？"
+
+So quality is measured from the user's own labels, against the user's own consistency.
+
+1. **How good the proposals are.** On PRELABEL frames, for each rat, compare the proposed box (the bounding box of the
+   first offered candidate) with the user's final box:
+   - IoU proposed → final;
+   - the share accepted with no edit;
+   - the share needing a manual box;
+   - the share of edge-move-only fixes and the median edge shift in px.
+
+   These are descriptive, not a gate.
+2. **Whether pre-labels pull the final boxes off — P3, the new quality criterion.**
+   - **Crossover set:** 20 of the 60 frames, drawn with the main list, are labelled in BOTH arms in separate sessions.
+     Half are done SCRATCH first, half PRELABEL first (seeded). There is ≥ 1 day or ≥ 30 other frames between the two
+     passes of a frame.
+   - **Repeat set:** 10 further frames are labelled SCRATCH twice under the same separation. This measures the user's
+     own box-to-box consistency.
+   - Per rat: a = IoU(PRELABEL final, SCRATCH); r = IoU(SCRATCH, SCRATCH repeat).
+   - **P3 passes if the median of a is not below the median of r by more than 0.05**: the 95 % cluster-bootstrap CI of
+     median(a) − median(r) has its lower bound > −0.05. In plain words: boxes made from pre-labels agree with the user's
+     hand-drawn boxes about as well as the user's hand-drawn boxes agree with each other.
+   - 0.05 IoU is about a 2–3 % shift of each edge of a ~600 px box. The margin is set by the agent and is not tuned
+     after data.
+   - Also reported: the share of rats with a < 0.5 vs r < 0.5 (gross disagreements).
+3. **The second reader is no longer needed for P3.** It stays optional: if the undergrad is available, they re-judge
+   30 % of the verdict pass (C1 item 4) and agreement is reported; otherwise the verdict pass is reported as single-reader.
+4. **Decision rule (replaces C item 6):**
+   - **Adopt:** P1 ≥ 0.80 with a lower CI ≥ 0.70, the P2 upper CI < 1.0, and P3 as above.
+   - **Do not adopt:** any of them clearly fails (its CI lies entirely on the wrong side).
+   - **Insufficient evidence:** otherwise.
+5. **Cost to the user:** + about 30 extra frame passes (~25 min).
