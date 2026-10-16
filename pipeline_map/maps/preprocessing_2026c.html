@@ -1,0 +1,466 @@
+<title>Preprocessing Tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Generated page: pipeline_map/map_template.html + data from pipeline_map/graphs/<id>.yaml (pipeline_map.py build). */
+:root{
+  --bg:#f2f4f6; --surface:#ffffff; --surface2:#f7f8fa; --sunk:#e8ebef;
+  --ink:#162029; --muted:#55616f; --faint:#86909c; --line:#d5dbe2; --line2:#b8c1cb;
+  --q:#2f56c8; --q-bg:#e6ecfb; --on-q:#ffffff;
+  --done:#187549; --done-bg:#d9f0e2; --done-ink:#0e4f30;
+  --prog:#a35f05; --prog-bg:#fcecd2;
+  --wait:#6a3fd0; --wait-bg:#ece6fb;
+  --block:#b42318; --block-bg:#fbe4e1;
+  --plan:#4f6380; --plan-bg:#eef1f6;
+  --nots:#8a939e; --nots-bg:#f3f4f6;
+  --closed:#7c848d; --closed-bg:#ebedf0;
+  --cross:#b0399a;
+  --shadow:0 1px 2px rgba(22,32,41,.06),0 6px 18px rgba(22,32,41,.05);
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-cond:"IBM Plex Sans Condensed","Arial Narrow","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0d1115; --surface:#151b22; --surface2:#1a2129; --sunk:#0a0d11;
+    --ink:#e3e8ee; --muted:#a2adba; --faint:#6f7a88; --line:#29323d; --line2:#3a4552;
+    --q:#9ab0ff; --q-bg:#1c2443; --on-q:#0d1115;
+    --done:#47c08a; --done-bg:#0f3324; --done-ink:#bdf0d6;
+    --prog:#e7a94d; --prog-bg:#382810;
+    --wait:#b39bff; --wait-bg:#271f45;
+    --block:#f2786e; --block-bg:#3a1a18;
+    --plan:#9fb2cc; --plan-bg:#1d2430;
+    --nots:#7d8794; --nots-bg:#171c22;
+    --closed:#8a929b; --closed-bg:#1f242a;
+    --cross:#e07ccf;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1115; --surface:#151b22; --surface2:#1a2129; --sunk:#0a0d11;
+  --ink:#e3e8ee; --muted:#a2adba; --faint:#6f7a88; --line:#29323d; --line2:#3a4552;
+  --q:#9ab0ff; --q-bg:#1c2443; --on-q:#0d1115;
+  --done:#47c08a; --done-bg:#0f3324; --done-ink:#bdf0d6;
+  --prog:#e7a94d; --prog-bg:#382810;
+  --wait:#b39bff; --wait-bg:#271f45;
+  --block:#f2786e; --block-bg:#3a1a18;
+  --plan:#9fb2cc; --plan-bg:#1d2430;
+  --nots:#7d8794; --nots-bg:#171c22;
+  --closed:#8a929b; --closed-bg:#1f242a;
+  --cross:#e07ccf;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 18px rgba(0,0,0,.25);
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1560px;margin:0 auto;padding-inline:clamp(16px,3vw,36px);padding-block:22px 64px}
+h1,h2,h3{font-family:var(--f-cond);text-wrap:balance}
+h2{font-size:20px;font-weight:600;margin:0}
+code{font-family:var(--f-mono);font-size:.88em}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+button{font:inherit;color:inherit}
+.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line2);background:var(--surface);color:var(--ink);padding:8px 12px;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--q);color:var(--q)}
+.btn.tiny{padding:4px 7px;font-size:11.5px}
+.btn:focus-visible,.node:focus-visible,.linkish:focus-visible{outline:2px solid var(--q);outline-offset:2px}
+.linkish{background:none;border:0;padding:0;margin:0;cursor:pointer;color:inherit;text-align:left;font:inherit}
+.linkish:hover{color:var(--q);text-decoration:underline;text-underline-offset:3px}
+
+.top{display:flex;justify-content:space-between;gap:16px 28px;align-items:flex-end;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.eyebrow{font:600 12px/1 var(--f-cond);text-transform:uppercase;letter-spacing:.12em;color:var(--q)}
+h1{font-weight:700;font-size:clamp(28px,3.4vw,40px);line-height:1.05;margin:7px 0 6px;letter-spacing:-.01em}
+.sub{margin:0;color:var(--muted);max-width:80ch}
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tog{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer}
+.asof{font:600 13px/1 var(--f-cond);color:var(--q);background:var(--q-bg);padding:6px 10px;border-radius:999px;letter-spacing:.04em}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;padding:12px 0 4px;font-size:12.5px;color:var(--muted);align-items:center}
+.lg{display:inline-flex;gap:6px;align-items:center}
+.sw{display:inline-block;width:20px;height:13px;border-radius:3px;border:1.5px solid}
+.lg-e{display:inline-flex;gap:5px;align-items:center}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font:600 11.5px/1 var(--f-cond);letter-spacing:.03em;padding:3px 7px;border-radius:999px;white-space:nowrap}
+.s-done{color:var(--done);background:var(--done-bg)} .s-in_progress{color:var(--prog);background:var(--prog-bg)}
+.s-waiting_user{color:var(--wait);background:var(--wait-bg)} .s-blocked{color:var(--block);background:var(--block-bg)}
+.s-planned{color:var(--plan);background:var(--plan-bg)} .s-not_started{color:var(--nots);background:var(--nots-bg)}
+.s-closed{color:var(--closed);background:var(--closed-bg)}
+.own{display:inline-block;font:500 11px/1 var(--f-mono);padding:3px 5px;border-radius:3px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+
+.summary{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px}
+@media (max-width:1100px){.summary{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);min-width:0}
+.panel h2{font-size:17px;margin-bottom:8px}
+.tbar{margin:8px 0 12px}
+.tbar-h{display:flex;justify-content:space-between;gap:8px;font:600 13px/1.3 var(--f-cond)}
+.bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--sunk);margin:5px 0 4px}
+.bar span{display:block;height:100%}
+.b-done{background:var(--done)} .b-in_progress{background:var(--prog)} .b-waiting_user{background:var(--wait)}
+.b-blocked{background:var(--block)} .b-planned{background:var(--plan)} .b-not_started{background:var(--nots)} .b-closed{background:var(--closed)}
+.cnts{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.lst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:13.5px}
+.lst li{display:flex;gap:8px;align-items:baseline}
+.lst .k{font:600 12.5px/1.3 var(--f-cond);flex:none;min-width:0}
+.owners{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.owners div{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+
+.sec-h{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:24px 0 10px}
+.board-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.board{position:relative;display:grid;grid-template-columns:minmax(560px,1fr) minmax(560px,1fr);gap:22px;min-width:1140px}
+@media (max-width:1240px){.board{grid-template-columns:minmax(560px,1fr);min-width:580px}}
+svg.edges{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:3}
+.trunk{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px 14px;box-shadow:var(--shadow);position:relative}
+.trunk-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.trunk-h h2{font-size:19px}
+.trunk-note{margin:2px 0 10px;font-size:13px;color:var(--muted)}
+.grid{display:grid;gap:10px 14px;align-items:start}
+.lane-h{font:600 11.5px/1.2 var(--f-cond);text-transform:uppercase;letter-spacing:.09em;color:var(--faint);padding-bottom:2px;border-bottom:1px solid var(--line)}
+.layer-h{font:600 12px/1.25 var(--f-cond);color:var(--muted);padding-top:6px;writing-mode:horizontal-tb}
+.layer-h b{display:block;font:600 11px/1 var(--f-mono);color:var(--q);margin-bottom:3px}
+.cell{display:flex;flex-direction:column;gap:9px;min-width:0;position:relative;z-index:4}
+.cell.span{flex-direction:row;flex-wrap:wrap}
+.cell.span .node{flex:1 1 180px}
+.rowline{grid-column:1/-1;height:0;border-top:1px dashed var(--line);margin:2px 0}
+.node{border:1.5px solid var(--line2);border-radius:9px;padding:7px 9px 8px;background:var(--surface);cursor:pointer;min-width:0;position:relative;transition:opacity .15s}
+.node .nt{font:600 14px/1.25 var(--f-cond)}
+.node .ns{font-size:12px;line-height:1.35;color:var(--muted);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.node .nm{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:5px}
+.node.st-done{background:var(--done-bg);border-color:var(--done)}
+.node.st-done .nt{color:var(--done-ink)}
+.node.st-in_progress{background:var(--prog-bg);border-color:var(--prog)}
+.node.st-waiting_user{background:var(--wait-bg);border-color:var(--wait)}
+.node.st-blocked{background:var(--block-bg);border-color:var(--block)}
+.node.st-planned{background:var(--surface);border-color:var(--plan);border-style:dashed}
+.node.st-not_started{background:var(--surface2);border-color:var(--nots);border-style:dotted}
+.node.st-not_started .nt{color:var(--muted)}
+.node.st-closed{background:var(--closed-bg);border-color:var(--closed);opacity:.75}
+.node.st-closed .nt{text-decoration:line-through;text-decoration-color:var(--closed)}
+.node .own{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.needs{font:700 10.5px/1 var(--f-cond);text-transform:uppercase;letter-spacing:.08em;color:var(--on-q);background:var(--wait);padding:3px 5px;border-radius:3px}
+.edge{fill:none;stroke-width:1.6}
+.edge.requires{stroke:var(--line2);stroke-width:1.7}
+.edge.aids{stroke:var(--line2);stroke-dasharray:4 4;stroke-width:1.3}
+.edge.cross{stroke:var(--cross)}
+.edge.aids.hideaids{opacity:0}
+.mk{fill:var(--line2)} .mk.cross{fill:var(--cross)}
+.focusing .edge:not(.hl){opacity:.06}
+.focusing .edge.hl{opacity:1;stroke-width:2.4}
+.focusing .edge.aids.hl{opacity:.9}
+.focusing .node:not(.lit){opacity:.32}
+.flash{animation:flash 1.4s ease-out 1}
+@keyframes flash{0%{box-shadow:0 0 0 4px var(--q)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion: reduce){.node{transition:none}.flash{animation:none;outline:2px solid var(--q)}}
+
+.upd{display:flex;flex-direction:column;gap:10px}
+.upd article{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13.5px}
+details > summary{cursor:pointer}
+.idx-sum{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;list-style:none}
+.idx-sum::-webkit-details-marker{display:none}
+.idx-sum::before{content:"\25B8";color:var(--q)}
+details[open] > .idx-sum::before{content:"\25BE"}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 8px}
+.filters select,.filters input{font:inherit;font-size:13.5px;padding:6px 8px;border:1px solid var(--line2);border-radius:6px;background:var(--surface);color:var(--ink)}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table.idx{border-collapse:collapse;width:100%;font-size:13px}
+.idx th,.idx td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.idx th{font:600 11.5px/1.2 var(--f-cond);text-transform:uppercase;letter-spacing:.07em;color:var(--faint);background:var(--surface)}
+.idx tbody tr{cursor:pointer}
+.idx tbody tr:hover{background:var(--surface2)}
+.foot{margin-top:28px;font-size:12.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:12px}
+
+.scrim{position:fixed;inset:0;background:rgba(8,12,18,.3);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(500px,100vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-12px 0 30px rgba(0,0,0,.14);z-index:21;overflow-y:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 20px calc(26px + env(safe-area-inset-bottom,0px))}
+.dw-top{display:flex;gap:10px;align-items:center}
+.dw-top .grow{flex:1}
+.tchip{font:600 11px/1 var(--f-cond);text-transform:uppercase;letter-spacing:.1em;color:var(--q)}
+.nid{color:var(--muted)}
+.dw-t{font-size:21px;line-height:1.25;margin:10px 0 8px}
+.dw-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dsec{margin-top:14px}
+.h3{font:600 12px/1 var(--f-cond);text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:0 0 5px}
+.dsec p{margin:0;font-size:14px}
+.dsec ul{margin:0;padding-left:18px;font-size:13.5px;display:flex;flex-direction:column;gap:3px}
+.callout{border-radius:8px;padding:9px 11px;font-size:13.5px;margin-top:12px}
+.callout b{display:block;font:600 11.5px/1 var(--f-cond);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.c-wait{background:var(--wait-bg)} .c-wait b{color:var(--wait)}
+.c-block{background:var(--block-bg)} .c-block b{color:var(--block)}
+.c-next{background:var(--prog-bg)} .c-next b{color:var(--prog)}
+.c-closed{background:var(--closed-bg)} .c-closed b{color:var(--closed)}
+.srcl{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.srcl code{word-break:break-all}
+.srcl .anchor{color:var(--muted);font-size:12.5px;margin-top:2px}
+.srcl a{color:var(--q)}
+.rel li{list-style:none}
+.rel{padding:0;margin:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.dfig{margin:0 0 10px}
+.dfig img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff}
+.dfig figcaption{font-size:12.5px;color:var(--muted);margin-top:3px}
+</style>
+
+<div class="wrap">
+  <header class="top" id="top"></header>
+  <div class="legend" id="legend"></div>
+  <section class="summary" id="summary" aria-label="Progress summary"></section>
+  <div class="sec-h"><h2>The tree</h2><span class="muted small">Rows are levels (raw at the top), columns are branches. Solid arrows: a stage needs that input. Dashed: it helps. Pink: links across the two trunks. Hover a stage to trace it; click for outputs, validation, owner and sources.</span></div>
+  <div class="board-x"><section class="board" id="board" aria-label="Preprocessing tree"></section></div>
+  <section id="updates" aria-label="Update log"></section>
+  <section id="index" aria-label="All stages"></section>
+  <footer class="foot" id="foot"></footer>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden tabindex="-1" aria-label="Stage details"></aside>
+
+<script id="pm-data" type="application/json">{"meta":{"id":"preprocessing_2026c","title":"Preprocessing Tree","subtitle":"From raw recordings to the inputs research uses (cohort 2026c)","cohort":"2026c","as_of":"2026-10-12","repo_url":"https://github.com/amymarple/Field2026_Social_analysis","repo_urls":{"../Field_2026_Social_Recording/":"https://github.com/amymarple/Field_2026_Social_Recording"},"figure_dir":"results/2026c/ephys_spikes/figures","trunks":[{"id":"ephys","title":"Ephys (WILD neurologgers)","note":"Two branches from the raw logger data: the LFP branch (sleep states, SWR, delta, theta) and the spike branch (Kilosort \u2192 units \u2192 place cells \u2192 replay).","lanes":[{"id":"lfp","title":"LFP branch"},{"id":"body","title":"Logger body signals"},{"id":"spikes","title":"Spike branch"}],"layers":[{"id":"e0","title":"Raw data, QC and clocks"},{"id":"e1","title":"Signals extracted from raw"},{"id":"e2","title":"States and sorted spikes"},{"id":"e3","title":"Events and curated units"},{"id":"e4","title":"Cross-block units and theta subtypes"},{"id":"e5","title":"Place cells \u2192 replay"}]},{"id":"behavior","title":"Behaviour (video, WISER, IMU, mics)","note":"Camera geometry and the sensors (WISER, head IMU, mics) feed identity and tracking, which feed the behaviour layer (labels, syllables, head direction).","lanes":[{"id":"video","title":"Cameras \u2192 detection"},{"id":"identity","title":"Identity"},{"id":"sensors","title":"WISER \u00b7 IMU \u00b7 mics"}],"layers":[{"id":"b0","title":"Clocks and camera geometry"},{"id":"b1","title":"Position and body sensors"},{"id":"b2","title":"Identity and tracking"},{"id":"b3","title":"Behaviour"}]}]},"nodes":[{"id":"e.offload_qc","trunk":"ephys","lane":"all","layer":"e0","title":"Offload QC, session index and coverage","short":"Offload QC + index","done_when":"Every card checked and indexed; QC report and coverage written for all six loggers.","status":"done","summary":"Card size checks, ADC-lane quarantine, session index, offload QC report and coverage tables for all six loggers.","outputs":["results/2026c/ephys_spikes/reports/ephys_spikes_session_index_2026c.*","\u2026offload_qc_2026c.*","coverage tables"],"validation":"Card sizes vs offload; per-offload QC report and field requests (field2026-sync).","tools":"bash ephys/run_qc.sh 2026c 8 (stages 1a\u20131d)","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":207,"l1":212,"anchor":"session index"}]},{"id":"e.pc_time","trunk":"ephys","lane":"all","layer":"e0","title":"Field-PC time chain (pc_time.dat per session)","short":"Field-PC time","done_when":"Every session has a pc_time.dat with an accepted fit, on storage.","status":"done","summary":"Logger clock mapped to field-PC time through the Sync anchors and clock steps; one pc_time.dat per session.","outputs":["storage 3rd_rat/analysis/pc_time/ (429 sessions)"],"validation":"Chain fits per session (pc_time_fit.json); backup + regeneration script in field2026-sync.","requires":["e.offload_qc"],"tools":"ephys/pc_time_chain.py --write-pc-time","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":215,"l1":215,"anchor":"field-PC time chain"},{"path":"CLAUDE.md","l0":609,"l1":609,"anchor":"pc_time.dat"}]},{"id":"e.fm64","trunk":"ephys","lane":"all","layer":"e0","title":"Pre-FM65 (FM64) sessions: de-glitch salvage rule","short":"FM64 salvage","done_when":"A decision on whether FM64 sessions are usable, with its rule.","status":"done","summary":"FM64 sessions are sortable only with a template-shape filter (neighbour/peak ratio \u2265 0.4); delta on FM64 is on hold.","outputs":["ephys/template_width_check.py rule"],"validation":"Matched 3-h FM64 vs FM65 windows on SF12: residue units separated by the template ratio.","requires":["e.offload_qc"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-09-07-fm64-salvage-test.md","l0":3,"l1":3,"anchor":"VERDICT"}]},{"id":"e.channel_maps","trunk":"ephys","lane":"all","layer":"e0","title":"Channel maps: within-shank site order (lfporder XMLs, SF07-SF12)","short":"Channel maps","done_when":"A final site order per animal, validated blind on the user's correct-order templates, in configs/xml/.","status":"done","summary":"Shortest-path seriation of the NREM SWR layer profile (sharp wave, signed ripple, theta phase and power), multi-day consensus; SF09's 5-shank grouping by spectral clustering. SF09 columns 21, 51, 55 left unplaced by the user's decision.","outputs":["ephys/configs/xml/*_A4x16-Lin_lfporder_20261006.xml (SF07, SF08, SF10-SF12)","ephys/configs/xml/SF09_A5x12-16_lfporder_20261007.xml","storage bundle channel_maps_final_20261006 (+ MANIFEST sha256)"],"validation":"Blind on the user's correct-order templates HYC3 day26 (4 x 16) and WT2 day10 probe 3 (SF09's probe); SF09 grouping 98.4 % on the template.","requires":["e.offload_qc"],"aids":["e.lfp"],"owner":["deltawave"],"updated":"2026-10-11","changes":[{"date":"2026-10-11","what":"Added on the deltawave session's report (SWR, sorting and delta depend on it)."}],"sources":[{"path":"CLAUDE.md","l0":253,"l1":253,"anchor":"swr_layer_order.py --profiles"},{"path":"change_log/2026-09-29-sf07-order-from-lfp-reference-windows.md","l0":1,"l1":1,"anchor":"SF07 within-shank order re-derived"}]},{"id":"e.lfp","trunk":"ephys","lane":"lfp","layer":"e1","title":"LFP for every session (1250 Hz)","short":"LFP","done_when":"Every session's LFP on storage, verified against its MD5 manifest.","status":"done","summary":"203 sessions, de-glitched in the stream; on storage and verified.","outputs":["storage 3rd_rat/analysis/lfp/ (410 files, 736 GiB, VERIFY PASS)"],"validation":"Server and PC outputs byte-identical; MD5 manifest; O_DIRECT read-back of every file.","requires":["e.offload_qc"],"aids":["e.fm64"],"owner":["sleep-scoring"],"tools":"ephys/make_lfp.py; server run_make_lfp.sh; copy_to_storage.sh","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":219,"l1":219,"anchor":"LFP for every session"},{"path":"change_log/2026-10-06-lfp-sleep-to-storage.md","l0":14,"l1":16,"anchor":"analysis/lfp/"}]},{"id":"e.imu","trunk":"ephys","lane":"body","layer":"e1","title":"Head IMU: movement, turning, posture (make_imu)","short":"Head IMU","done_when":"Every session's IMU product written, with the axis map verified.","status":"done","summary":"6-axis attitude, VeDBA, turning and states per session at 50 Hz and per second, on the field-PC clock. The magnetometer is saturated (headstage magnet): no magnetic heading.","outputs":["<ar>/imu/<SFxx>/<session>.imu.npz + .imu_1s.csv (all 203 sessions)"],"validation":"Lab axis map verified; IMU states reproduced 100 % by the WISER seconds cache.","requires":["e.pc_time"],"tools":"ephys/make_imu.py","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":222,"l1":222,"anchor":"movement / 2D turning"},{"path":"implementation_plan/2026-09-28-imu-orientation.md","l0":3,"l1":3,"anchor":"v1 IMPLEMENTED"}]},{"id":"e.emg","trunk":"ephys","lane":"body","layer":"e1","title":"LFP-EMG per session (standard + 50 Hz)","short":"LFP-EMG","done_when":"Every session's LFP-EMG on storage, verified.","status":"done","summary":"The lab's EMGFromLFP per session plus a fast 50-Hz product on the IMU grid.","outputs":["storage 3rd_rat/analysis/emg_from_lfp/ (VERIFY PASS)"],"validation":"Outputs identical (array MD5) to the validated local run; pipeline's own function.","requires":["e.lfp","e.pc_time"],"tools":"ephys/emg_from_lfp.py; server run_emg_from_lfp.sh","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":220,"l1":220,"anchor":"LFP-EMG per session"}]},{"id":"e.sleep_scores","trunk":"ephys","lane":"lfp","layer":"e2","title":"Sleep scores (FINAL: imu_remclean + one substitution)","short":"Sleep scores","done_when":"Every usable session scored and reviewed by the user, with the final rule fixed.","status":"done","summary":"WAKE / NREM / REM per second for every session, the head IMU in the EMG slot, REM post-rules; reviewed by the user.","outputs":["storage 3rd_rat/analysis/sleep/ (FINAL rule in its README)","states_1s_final (local)","reports/\u2026sleep_review_2026c.csv"],"validation":"User's strict visual review of every session (186 ok, 7 noise, 3 bad); fixed-threshold control scoring; no manual epoch scoring (\u03ba) yet.","requires":["e.lfp","e.imu"],"owner":["sleep-scoring"],"tools":"ephys/score_sleep.py, sleep_final.py","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":225,"l1":225,"anchor":"FINAL sleep scores"}],"figs":[{"name":"ephys_spikes_sleep_quant_circadian_2026c.png","path":"results/2026c/ephys_spikes/figures/ephys_spikes_sleep_quant_circadian_2026c.png","pub":"figs/ephys_spikes_sleep_quant_circadian_2026c.png","cap":"Hour-of-day profile of NREM / REM (FINAL scores)"}]},{"id":"e.emg_ica","trunk":"ephys","lane":"body","layer":"e2","title":"EMG removal by ICA (validation tool)","short":"EMG-ICA","done_when":"The port matches the MATLAB toolbox on test data.","status":"done","summary":"Port of the Sirota-lab EMG_removing toolbox, matched to the MATLAB original; used to check awake ripples.","outputs":["ephys/emg_ica.py (seed-majority rule; SF09 cannot be cleaned)"],"validation":"Matched to the MATLAB toolbox in R2021b; Codex review.","requires":["e.lfp"],"owner":["SWRdetection"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":243,"l1":243,"anchor":"emg_ica.py"}]},{"id":"e.ks4","trunk":"ephys","lane":"spikes","layer":"e1","title":"Kilosort4 per session (first pipeline)","short":"Kilosort4","done_when":"Per-session KS4 sorts accepted (superseded before that).","status":"closed","summary":"Per-session KS4 sorting with the patched copy; replaced by Kilosort1 per block.","reason":"Superseded 2026-10-09: the sorter is Kilosort1 per block (lab settings).","requires":["e.offload_qc","e.channel_maps"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":245,"l1":245,"anchor":"run_sort_session.py"},{"path":"implementation_plan/2026-10-09-k1-block-sorting.md","l0":3,"l1":3,"anchor":"Kilosort1 (K1)"}]},{"id":"e.k1","trunk":"ephys","lane":"spikes","layer":"e2","title":"Spike sorting: Kilosort1 per block on BioHPC","short":"Kilosort1 per block","done_when":"Every block sorted on the server with its QC, and copied to storage.","status":"in_progress","summary":"135 blocks (1357 h) between handling events; lab settings, patched K1; production queue + storage part sort_k1 set up on 10-10.","evidence":"Commits 10-10: production queue + storage part sort_k1 (0896897), curation prep (680b5a8).","next":"Run / check the server queue (k1_queue_check through run_then_store.sh), then curation.","outputs":["storage 3rd_rat/analysis/sort_k1/ (as blocks finish)"],"requires":["e.offload_qc","e.fm64","e.channel_maps"],"aids":["e.drift"],"owner":["Kilosort"],"tools":"ephys/plan_blocks.py, server/build_block_dat.py, run_k1_block.py, server/k1_submit.sh","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":246,"l1":246,"anchor":"sort with Kilosort1 per block"},{"path":"implementation_plan/README.md","l0":14,"l1":14,"anchor":"IN PROGRESS: launcher"},{"path":"implementation_plan/2026-10-09-k1-block-sorting.md","l0":117,"l1":117,"anchor":"Pilot outcome and the post-hoc amendment"}]},{"id":"e.swr","trunk":"ephys","lane":"lfp","layer":"e3","title":"Sharp-wave ripples (SWR events + quality tiers)","short":"SWR events","done_when":"Events for every usable session on storage with per-session quality tiers, the detector validated against the user's scoring.","status":"done","summary":"181 sessions; per-session tiers (validated / good / check / low_contrast / exclude) and use_until; read the quality guide first.","outputs":["storage 3rd_rat/analysis/swr/ (VERIFY PASS)","reports/\u2026swr_quality_2026c.{md,csv}"],"validation":"F1 0.81\u20130.91 against the user's GUI scoring; server == local event for event.","waiting_on_user":"Short-bout blind reading (artifact YFG89wkHR29dyzjbSXMbtE) and the mentor's awake-ripple reading \u2014 research on top of SWR, not the SWR events.","requires":["e.lfp","e.sleep_scores","e.channel_maps"],"aids":["e.emg","e.imu"],"owner":["SWRdetection"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":227,"l1":227,"anchor":"sharp-wave ripples, automatic"},{"path":"implementation_plan/README.md","l0":25,"l1":25,"anchor":"production on storage"}],"figs":[{"name":"ephys_spikes_swr_rate_day_and_hour_2026c.png","path":"results/2026c/ephys_spikes/figures/ephys_spikes_swr_rate_day_and_hour_2026c.png","pub":"figs/ephys_spikes_swr_rate_day_and_hour_2026c.png","cap":"SWR rate per day and within a day"}]},{"id":"e.delta","trunk":"ephys","lane":"lfp","layer":"e3","title":"Delta waves (cortical DOWN states)","short":"Delta waves","done_when":"Events for every usable session on storage, each with the DOWN-state check.","status":"done","summary":"All six animals on storage (181 sessions); channels SF07 55, SF08 20, SF09 21, SF10 9, SF11 11, SF12 11; verified share per session median 0.43-0.56 (SF11 0.82). 34 FM64 sessions are detected but have no MUA check (testable = 0), on hold by the user.","outputs":["storage 3rd_rat/analysis/delta/ (VERIFY PASS)","reports/\u2026delta_sessions_2026c.{md,csv}"],"validation":"Exact port of the lab detector (recall 1.000 on 9 lab sessions); server == local on 10 reference sessions; per-event DOWN-state check with raw MUA.","requires":["e.lfp","e.sleep_scores","e.channel_maps"],"aids":["e.swr","e.fm64"],"owner":["deltawave"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":228,"l1":228,"anchor":"delta waves"},{"path":"implementation_plan/README.md","l0":23,"l1":23,"anchor":"DONE 10-10 for SF07"},{"path":"results/2026c/ephys_spikes/reports/ephys_spikes_delta_sessions_2026c.md","l0":4,"l1":4,"anchor":"VERIFY PASS"},{"path":"results/2026c/ephys_spikes/reports/ephys_spikes_delta_sessions_2026c.md","l0":16,"l1":16,"anchor":"FM64 sessions"}],"figs":[{"name":"ephys_spikes_delta_rate_day_and_hour_2026c.png","path":"results/2026c/ephys_spikes/figures/ephys_spikes_delta_rate_day_and_hour_2026c.png","pub":"figs/ephys_spikes_delta_rate_day_and_hour_2026c.png","cap":"Delta rate per day and within a day (verified events)"}]},{"id":"e.curation","trunk":"ephys","lane":"spikes","layer":"e3","title":"Curation in Phy + unit QC","short":"Curation","done_when":"Every block curated in Phy, with a unit-QC table.","status":"planned","summary":"Tool ready: k1_prepare_phy copies a block's Phy folder and points it at the raw file on storage (or rebuilds joined blocks).","requires":["e.k1"],"aids":["e.fm64"],"owner":["Kilosort"],"tools":"ephys/k1_prepare_phy.py","updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":246,"l1":246,"anchor":"k1_prepare_phy.py"}]},{"id":"e.phasic_rem","trunk":"ephys","lane":"lfp","layer":"e3","title":"Phasic vs tonic REM","short":"Phasic / tonic REM","done_when":"Detector validated (the user's blind review + MUA check) and run on all sessions.","status":"waiting_user","summary":"Mizuseki rule on the CA1 ripple site; cohort 24-h profile done; no probe reaches SLM / DG, so Montgomery's detector uses a substitute site.","waiting_on_user":"Blind review page (phasic_rem_review_20261009_1520) and the MUA check.","requires":["e.lfp","e.sleep_scores"],"aids":["e.swr","e.emg","e.imu"],"owner":["tonic/phasic theta"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":229,"l1":229,"anchor":"phasic vs tonic REM"},{"path":"implementation_plan/README.md","l0":17,"l1":17,"anchor":"blind review + MUA check open"}]},{"id":"e.drift","trunk":"ephys","lane":"lfp","layer":"e4","title":"Electrode movement from the LFP (session drift)","short":"Electrode drift","done_when":"A stability verdict per session and block, ready for K1 block joining.","status":"done","summary":"Per-session SWR profiles vs the block reference: which blocks are stable across rounds (input to K1 block joining).","outputs":["reports/\u2026swr_session_drift_2026c.md + CSVs"],"validation":"Whole-probe correlation and per-shank depth shift per session; within-session hourly trends.","requires":["e.lfp","e.swr"],"owner":["SWRdetection"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":242,"l1":242,"anchor":"electrode movement from the LFP"}]},{"id":"e.theta_cache","trunk":"ephys","lane":"lfp","layer":"e3","title":"Theta per second: frequency, theta-on, artefact controls","short":"Theta cache","done_when":"A per-second theta cache with artefact controls, and a phase-0 check that movement theta passes them.","status":"done","summary":"Per-second theta frequency (peak intervals + 2-s spectral peak), theta / delta, theta-on, with depth-profile and head-acceleration artefact controls; phase 0 on SF10 / SF12.","outputs":["$OUT_ROOT/2026c/theta_seconds/<SFxx>/<s>.theta_seconds.csv.gz (+ README)"],"validation":"Phase 0: movement theta has a REM-like depth profile and no acceleration coupling.","requires":["e.lfp","e.sleep_scores"],"aids":["e.emg","e.imu","e.phasic_rem"],"owner":["tonic/phasic theta"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":230,"l1":230,"anchor":"theta_seconds"},{"path":"implementation_plan/README.md","l0":13,"l1":13,"anchor":"per-second cache done 10-10"}]},{"id":"e.theta_types","trunk":"ephys","lane":"lfp","layer":"e4","title":"Slow vs fast theta (Type I / II candidates)","short":"Theta subtypes","done_when":"Slow / fast theta states labelled per second and checked against behaviour labels.","status":"blocked","summary":"The interpretation step on top of the theta cache: slow vs fast theta states against behaviour; no Type I / II naming without pharmacology.","blocker":"Interpretation waits for video behaviour labels (behaviour layer).","requires":["e.theta_cache","b.labels"],"aids":["e.phasic_rem","e.emg","e.imu"],"owner":["tonic/phasic theta"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":230,"l1":230,"anchor":"Type I / II"},{"path":"implementation_plan/README.md","l0":13,"l1":13,"anchor":"interpretation waits for video behaviour labels"}]},{"id":"e.unit_match","trunk":"ephys","lane":"spikes","layer":"e4","title":"Units matched across blocks","short":"Cross-block units","done_when":"Units chained across adjacent blocks per shank, with a matching-accuracy estimate.","status":"planned","summary":"Identity across blocks recovered by unit matching on adjacent blocks per shank; never across a probe move.","requires":["e.curation"],"aids":["e.drift"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-09-28-ephys-block-sorting-strategy.md","l0":12,"l1":12,"anchor":"Identity across blocks is recovered afterwards by unit matching"}]},{"id":"e.place_cells","trunk":"ephys","lane":"spikes","layer":"e5","title":"Place cells","short":"Place cells","done_when":"Place fields per matched unit, with stability checks.","status":"not_started","summary":"Needs matched units and the animal's position on the ephys clock (WISER now; video tracks once identity and the frame clock exist).","requires":["e.unit_match","b.wiser_tracks"],"aids":["b.video_clock","b.yolo_tracking","b.wiser_georef"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-05-video-clock-sync.md","l0":10,"l1":13,"anchor":"Place-cell and video-ephys analyses need every video frame on the ephys clock"}]},{"id":"e.replay","trunk":"ephys","lane":"spikes","layer":"e5","title":"Replay (place-cell sequences in SWRs)","short":"Replay","done_when":"Replay events decoded in SWRs, with shuffle controls.","status":"not_started","summary":"After place cells: sequences decoded inside the SWR events.","requires":["e.place_cells","e.swr"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-05-video-clock-sync.md","l0":10,"l1":13,"anchor":"Place-cell and video-ephys analyses"}]},{"id":"b.cam_calib","trunk":"behavior","lane":"video","layer":"b0","title":"Camera calibration \u2192 paddock (CH01\u2013CH06, rev g)","short":"Camera calibration","done_when":"Calibration of record frozen, with held-out error and bit-for-bit reproduction.","status":"done","summary":"ChArUco + drone + bundle adjustment; revision g frozen 2026-10-04 after a Fable freeze audit. Exploratory accuracy outside the verified support.","outputs":["recording repo calibration_qc/ (CALIBRATION_FINAL_2026-10-04.md is the calibration of record)"],"validation":"Held-out boards / cones; bit-for-bit reproduction of rev g; house check.","owner":["Calibration restart path"],"updated":"2026-10-10","sources":[{"path":"../Field_2026_Social_Recording/calibration_qc/README.md","l0":1149,"l1":1149,"anchor":"FINAL: revision g, frozen"},{"path":"CLAUDE.md","l0":573,"l1":573,"anchor":"The release is"}]},{"id":"b.cross_day","trunk":"behavior","lane":"video","layer":"b0","title":"Cross-day camera motion \u2192 frame corrections","short":"Cross-day motion","done_when":"A correction for every camera and cohort time needed (CH01-CH04 nights; CH05-CH08 all day), table rebuilt.","status":"done","summary":"Rigid-landmark tracking (the user's labels + automatic tracking) ties each cohort frame to a fixed reference frame. CH01-CH04: nights, hourly 21:00-04:20. CH05 / CH06 and CH07 / CH08: all day, segmented at the lid events. Table 1496 -> 2031 rows with the CH05 / CH06 day run. A daytime CH01-CH04 lookup still returns the nearest night sample (CH02 09-04 12:00: 30 px off); daytime corrections only if asked.","outputs":["results/2026c/cv_field/reports/cv_field_frame_corrections_2026c.{csv,md} (2031 rows)","cv/cv_field/frame_correction.py Corrections.correction / to_09_18 / to_paddock","cv/configs/landmarks/2026c/ (labels)","cv/configs/cohort3_lid_events.json"],"validation":"Leave-one-out held-out landmark error. Night pass = median of the first three dawn closure frames <= 3 px; samples <= 3 / 6 px (CH01 / 02 / 05 / 06) and <= 5 / 10 px (CH03 / 04 / 07 / 08), both rules approved by the user; selftests pass. CH01 98 ok / 26 failed-night rows (incl. 09-09 rain), CH02 116 / 8; CH05 day held-out median 0.5 px, CH06 1.5 px.","requires":["b.cam_calib"],"owner":["field2026-social-analysis-58 (motion correction)","Calibration restart path"],"updated":"2026-10-11","changes":[{"date":"2026-10-11","what":"in_progress -> done: the motion-correction session reports the requested coverage complete (commits 9c3edb5, dbe25a9); nothing waits on the user."}],"sources":[{"path":"CLAUDE.md","l0":332,"l1":332,"anchor":"Rigid-landmark correction"},{"path":"CLAUDE.md","l0":347,"l1":347,"anchor":"Use the correction, not the raw pixel"},{"path":"implementation_plan/2026-09-28-cohort3-camera-stability.md","l0":76,"l1":76,"anchor":"dawn closure"},{"path":"change_log/2026-10-10-ch05-ch08-paddock-mapping.md","l0":17,"l1":17,"anchor":"held-out median"},{"path":"change_log/2026-10-10-ch05-ch08-paddock-mapping.md","l0":23,"l1":23,"anchor":"With the day run"}]},{"id":"b.inbox_floor","trunk":"behavior","lane":"video","layer":"b0","title":"CH05\u2013CH08 \u2192 paddock (CH05 tie; in-box floor model)","short":"CH05\u2013CH08 mapping","done_when":"CH07 / CH08 floor model fitted and validated; to_paddock covers CH05-CH08.","status":"done","summary":"Corrections.to_paddock now covers CH01-CH08 at any cohort time. CH05 maps through the recording repo's house tie (house_1 was moved on 09-18); CH05 / CH06 all day, segmented at lid events; CH07 / CH08 through in-box floor models fitted on the user's floor labels (z above the house floor, NaN outside it). Both in-box images are the paddock rotated 180 deg, not mirrored. Not covered: the house ridge angle (~1 cm at the box ends), the 1/2-inch wall assumption (+-6 mm at the walls).","outputs":["cv/cv_field/frame_correction.py Corrections.to_paddock (CH01-CH08)","recording repo calibration_qc/inbox_floor_fit.py (commit 0220388) + cohort tie entries","F:/calibration/qc/inbox_floor/INBOX_FLOOR_FIT.txt"],"validation":"CH05 tie checked on CH06 (house_2 never moved): 5-7 mm median, 13-17 mm p90 at head height. Floor fit: click residuals 1-3 mm median, leave-one-item-out <= 10 mm (CH07) / 3 mm (CH08); 79.6 px/in at head height vs 79.3 from the independent WISER <-> clicks identity fit; WISER confirms the 180 deg orientation on 09-04 12:00.","requires":["b.cam_calib","b.cross_day"],"owner":["Calibration restart path (fork)"],"updated":"2026-10-12","changes":[{"date":"2026-10-12","what":"waiting_user -> done: floor labels received, CH07 / CH08 floor models fitted and hooked into to_paddock (commits a1a30eb, 01c0df3); reported by the calibration session."}],"sources":[{"path":"implementation_plan/2026-10-10-ch05-ch08-paddock-mapping.md","l0":3,"l1":3,"anchor":"DONE"},{"path":"change_log/2026-10-10-ch05-ch08-paddock-mapping.md","l0":51,"l1":51,"anchor":"Fit: click residuals"},{"path":"change_log/2026-10-10-ch05-ch08-paddock-mapping.md","l0":59,"l1":59,"anchor":"rotated 180 deg"},{"path":"change_log/2026-10-10-ch05-ch08-paddock-mapping.md","l0":60,"l1":60,"anchor":"Corrections.to_paddock"}]},{"id":"b.video_clock","trunk":"behavior","lane":"video","layer":"b0","title":"Video frames on the ephys clock","short":"Video \u2194 ephys clock","done_when":"Every video frame placed on the ephys clock with a measured error (target: one frame).","status":"planned","summary":"Per-camera clocks from the burned-in OSD, offsets from the head IMU; video is tied to the PC clock only to about \u00b11 s today.","aids":["e.imu","e.pc_time"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-05-video-clock-sync.md","l0":3,"l1":3,"anchor":"PLAN / handoff"}]},{"id":"b.wiser_georef","trunk":"behavior","lane":"sensors","layer":"b0","title":"WISER \u2192 paddock transform","short":"WISER georeference","done_when":"WISER -> paddock transform fitted on anchor <-> pole pairs, with held-out error.","status":"blocked","summary":"The WISER inch frame has an unverified offset; the transform is a no-op. A similarity map from WISER to the CH01 panorama was accepted on one hour only.","blocker":"The anchor layout (IDs, WISER XYZ, which pole) requested from the field PC; with it the transform is a direct fit on anchor \u2194 pole pairs.","aids":["b.cam_calib"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":159,"l1":159,"anchor":"Two coordinate frames"},{"path":"CLAUDE.md","l0":382,"l1":382,"anchor":"WISER-assisted YOLO phase 0"}]},{"id":"b.wiser_tracks","trunk":"behavior","lane":"sensors","layer":"b1","title":"WISER default tracks (V3 / B2) + QC flags","short":"WISER tracks","done_when":"Production tracks for all of cohort 3 with QC flags and reproduction. (The blind video verdicts validate the QC-event reading, not this acceptance.)","status":"done","summary":"V3 for the six implanted rats (IMU stillness ZUPT + locomotion boost), B2 elsewhere; per-fix QC flags from the IMU consistency audit.","outputs":["D:/Field2026_analysis_out/2026c/wiser_default_tracks/<label>/<date>.csv.gz (reader wiser/src/default_tracks.py)","wiser_default_tracks_qc/"],"validation":"Certified IMU stillness; clean-WISER speed (3-s p95 \u22122.1 % / \u22121.2 %); reproduction 4.4e-5 in.","waiting_on_user":"Blind video verdicts on 80 WISER events (wiser_event_review_20261006_1637/index.html) and the older IMU-video review (50 clips).","aids":["e.imu","b.wiser_georef"],"owner":["IMU-video\u6821\u51c6"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":437,"l1":437,"anchor":"build_wiser_default_tracks"}]},{"id":"b.imu_wiser","trunk":"behavior","lane":"sensors","layer":"b1","title":"WISER \u2194 head IMU (smoothing, consistency)","short":"WISER \u2194 IMU","done_when":"Each fusion route accepted or closed by its pre-registered test.","status":"done","summary":"The IMU makes WISER better (stillness, locomotion), and WISER checks the IMU; acceleration fusion (V6) and turn-aided smoothing were tested and closed.","outputs":["imu_seconds_cache/ (IMU state + head layer)","V3 tracks"],"validation":"Held-out and truth-referenced tests per variant; V6 worse than V3 at every horizon (line closed).","requires":["b.wiser_tracks","e.imu"],"owner":["IMU-video\u6821\u51c6"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":437,"l1":437,"anchor":"analyze_wiser_v6_fusion"}]},{"id":"b.imu_attitude","trunk":"behavior","lane":"sensors","layer":"b1","title":"Head attitude and turning (IMU only)","short":"Head attitude","done_when":"An attitude product passing its gate, with its drift law.","status":"done","summary":"Gate v2 passed on gentle bouts (drift \u2248 2\u00b0/min, bias-like); yaw is unobservable without a magnetometer, so no absolute heading.","outputs":["attitude16_cache/, imu16_cache/ (16-Hz attitude)"],"validation":"Strict still windows; pre-registered gate.","requires":["e.imu"],"owner":["IMU-video\u6821\u51c6"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":437,"l1":437,"anchor":"analyze_imu_attitude_gate_v2"}]},{"id":"b.audio","trunk":"behavior","lane":"sensors","layer":"b1","title":"In-house mics: levels, mic \u2194 IMU sync","short":"Mics","done_when":"Band levels for every mic file on storage; mic <-> house assignment and the mic clock confirmed.","status":"done","summary":"Per-second band levels on storage; MIC01 = house_2, MIC02 = house_1 confirmed by mic \u2194 IMU cross-correlation; mic timing good to ~20 ms.","outputs":["storage 3rd_rat/analysis/audio_levels/ (VERIFY PASS)"],"validation":"In-house rats couple 44 / 46, rats elsewhere 1 / 37.","waiting_on_user":"Listening check of sound candidates before any sound \u2192 wake claim.","aids":["e.imu"],"owner":["Mic"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":238,"l1":238,"anchor":"in-house mics"}]},{"id":"b.usv","trunk":"behavior","lane":"sensors","layer":"b1","title":"Ultrasonic vocalisations (USV) from the house mics","short":"USV","done_when":"A USV detector validated per mic against the user's labels and run on all files.","status":"waiting_user","summary":"DeepSqueak R1 batch gave false calls on the mics' steady 18-30 kHz tones, so whitened detectors were built. On the user's 260 labelled strips (36 with USV), thresholds chosen leave-one-window-out: v1 pooled 0.58 / 0.80 (sensitivity / specificity); v2 (20th-percentile background, contour linking, > 5-s line removal) MIC01 0.76 / 0.85 with precision 0.48, MIC02 <= 0.33. No per-mic rule adopted: precision too low. MIC01's drifting 18-21.5 kHz tone survives whitening. DINOv3 strip embeddings (Amendment 3, rule fixed before results): MIC01 AUC 0.88 vs v1 0.89 (at p >= 0.5: sensitivity 0.62, specificity 0.98, precision 0.87); MIC02 fails (AUC 0.12-0.35: its 15 positive strips lie in 3 windows). Not clearly better than v1, so by the rule: more labels first.","waiting_on_user":"A second labelling round (proposed by the Mic session): about 24 new 5-min windows, 12 per mic, spread over 08-31 -> 09-10, night-weighted, presence only.","next":"After the new labels: re-evaluate v1 / v2 / DINOv3 per mic; then a full run only for a mic that passes.","outputs":["ephys/usv/ (ds_batch.m, usv_whiten_detect.py, usv_detect_v2.py, usv_eval_v2.py)","ephys/configs/usv_review_2026c/usv_strip_labels.csv","D:/Field2026_analysis_out/2026c/usv_v2_sample/","D:/Field2026_analysis_out/2026c/usv_dino_presence/"],"requires":["b.audio"],"owner":["Mic"],"updated":"2026-10-11","changes":[{"date":"2026-10-11","what":"blocked -> waiting_user: the Mic session is back; v2 detector and the DINOv3 strip classifier (Amendment 3) both not clearly better than v1 -> a second labelling round (commit 0e64f98)."}],"sources":[{"path":"implementation_plan/2026-10-08-mic-imu-sync.md","l0":170,"l1":170,"anchor":"Amendment 2"},{"path":"implementation_plan/2026-10-08-mic-imu-sync.md","l0":203,"l1":203,"anchor":"precision 0.48"},{"path":"implementation_plan/2026-10-08-mic-imu-sync.md","l0":213,"l1":213,"anchor":"Amendment 3"},{"path":"implementation_plan/2026-10-08-mic-imu-sync.md","l0":234,"l1":234,"anchor":"Amendment 3"},{"path":"implementation_plan/2026-10-08-mic-imu-sync.md","l0":247,"l1":247,"anchor":"more labels first"},{"path":"ephys/usv/usv_whiten_detect.py","l0":1,"l1":4,"anchor":"USV candidates after removing the mics' steady background"}]},{"id":"b.inbox_identity","trunk":"behavior","lane":"identity","layer":"b2","title":"In-box identity (CH07 / CH08): colour flashes + WISER roster","short":"In-box identity","done_when":"Per-animal identity in the house frames, with accuracy measured against the user's clicks.","status":"waiting_user","summary":"Phase 0: WISER gives the house roster, not the order inside a pile (order test not accepted). SAM 3 / DINOv3 test done 10-11: SAM 3 text prompts do not find the rats zero-shot (best dev F1 0.25); one head click gives a mask on that head every time (100 %, spans a second head 4.3 %); frozen DINOv3 head crops carry identity within a day (50.3 % vs 26.7 % for the best control) but not across days.","waiting_on_user":"Two pages in D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320/: the blind mask review of 40 SAM 3 head-point masks (mask_review/index.html), and the exploratory prompt sweep (prompt_sweep/index.html: 10 prompts x whole / tiled on 10 daytime IR + 10 colour frames; descriptive only, changes no T1-T3 result).","next":"After the mask review: the identity strategy (tracklets + WISER + IMU events; re-ID within a day).","requires":["b.wiser_tracks"],"aids":["b.inbox_floor","b.cross_day"],"owner":["Yolo"],"updated":"2026-10-11","changes":[{"date":"2026-10-11","what":"SAM 3 / DINOv3 test done; status in_progress -> waiting_user (blind mask review); reported by Yolo, cited from the report."}],"sources":[{"path":"CLAUDE.md","l0":411,"l1":411,"anchor":"In-box CH07 / CH08 phase 0"},{"path":"implementation_plan/2026-10-11-inbox-sam3-dinov3-test.md","l0":3,"l1":3,"anchor":"DONE 2026-10-11"},{"path":"results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md","l0":31,"l1":36,"anchor":"SAM 3 text prompts do not find"},{"path":"results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md","l0":27,"l1":27,"anchor":"Blind mask review page for the user"},{"path":"results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md","l0":252,"l1":252,"anchor":"Exploratory prompt sweep (amendment 4"},{"path":"results/2026c/cv_field/reports/cv_field_inbox_sam3_dino_2026c.md","l0":350,"l1":350,"anchor":"prompt_sweep/index.html"}]},{"id":"b.identity_strategy","trunk":"behavior","lane":"identity","layer":"b2","title":"Identity-aware tracking strategy (tracklets + WISER + IMU + re-ID)","short":"Identity strategy","done_when":"Strategy approved by the user after the audits.","status":"planned","summary":"Proposed: evidence fusion over tracklets (WISER roster, head-IMU events, IR re-ID, continuity); Fable SOTA audit and Codex review recorded.","aids":["b.wiser_tracks","b.imu_attitude"],"owner":["Yolo"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-11-identity-tracking-strategy.md","l0":3,"l1":3,"anchor":"PROPOSED"}]},{"id":"b.yolo_pano","trunk":"behavior","lane":"video","layer":"b2","title":"Panorama rat detector (CH01 / CH02)","short":"Panorama detector","done_when":"Detector trained on cohort-3 labels, with test-night precision / recall reported.","status":"in_progress","summary":"Cohort-1 YOLO v5 transferred and reviewed; WISER-assisted mapping accepted on one CH01 hour; label round 1 (400 + 100 frames) delivered; round 2 keeps 60 suspected-miss frames per camera.","evidence":"social_label, 10-10: the round-1 package was handed over 10-07 and the undergrad is labelling (no progress files yet).","next":"The undergrad is labelling round 1 (handed over 10-07); then train and run round 2.","requires":["b.cross_day"],"aids":["b.wiser_tracks","b.wiser_georef"],"owner":["social_label","Yolo"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":365,"l1":365,"anchor":"Cohort-1 CH01/CH02 pano detector"},{"path":"CLAUDE.md","l0":399,"l1":399,"anchor":"WISER-guided labelling loop, round 1"}]},{"id":"b.yolo_tracking","trunk":"behavior","lane":"video","layer":"b2","title":"Multi-animal tracking with identity (field)","short":"Tracking with identity","done_when":"Identity-labelled tracks per animal, with measured identity accuracy.","status":"not_started","summary":"Detections linked into tracklets and assigned to animals with the identity strategy.","requires":["b.yolo_pano","b.identity_strategy"],"aids":["b.wiser_tracks","e.imu","b.video_clock"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-11-identity-tracking-strategy.md","l0":10,"l1":14,"anchor":"Per-animal, per-frame identity"}]},{"id":"b.pose","trunk":"behavior","lane":"video","layer":"b2","title":"Video head pose (head points on tracked, identified animals)","short":"Video head pose","done_when":"Head and body key points per tracked animal, with measured error.","status":"not_started","summary":"The identity strategy plans a YOLO-pose rat model with a head point; head direction and syllables need it.","requires":["b.yolo_tracking"],"aids":["b.inbox_identity"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-11-identity-tracking-strategy.md","l0":10,"l1":14,"anchor":"Per-animal, per-frame identity"}]},{"id":"b.labels","trunk":"behavior","lane":"video","layer":"b3","title":"Behaviour labels: ethogram v0 + WISER-assisted labelling tool","short":"Behaviour labels","done_when":"Ethogram fixed and the tool running end to end, with inter-rater agreement measured.","status":"waiting_user","summary":"Tool for the undergrads in their repo; ethogram drawn from all cohorts; production labelling waits for YOLO tracks and identity.","waiting_on_user":"Ethogram v0 decisions (4 layers, 7 / 6 / 5 / 2 keys), the window length and the day field windows (implementation_plan/2026-10-10-behavior-labelling-tool.md).","requires":["b.yolo_tracking"],"aids":["b.wiser_tracks"],"owner":["social_label"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-10-behavior-labelling-tool.md","l0":3,"l1":3,"anchor":"PLAN, awaiting the user"}]},{"id":"b.syllables","trunk":"behavior","lane":"video","layer":"b3","title":"Behaviour syllables","short":"Syllables","done_when":"Syllables defined and validated against the labels.","status":"not_started","summary":"Segmenting behaviour into syllables from labelled video, tracks and the head IMU.","requires":["b.labels","b.yolo_tracking"],"aids":["e.imu","b.pose"],"updated":"2026-10-10","sources":[{"path":"implementation_plan/2026-10-10-behavior-labelling-tool.md","l0":11,"l1":12,"anchor":"waits for YOLO tracks"}]},{"id":"b.head_direction","trunk":"behavior","lane":"sensors","layer":"b3","title":"Head direction","short":"Head direction","done_when":"Head direction per frame from a video pose, with an error estimate.","status":"blocked","summary":"The IMU route is closed: the magnetometer is saturated by the headstage magnet, yaw drifts unobservably (V6), and the gyro turn does not match the WISER path turn.","blocker":"Needs the video head pose (b.pose), which needs tracking with identity.","requires":["b.pose"],"aids":["b.imu_attitude"],"updated":"2026-10-10","sources":[{"path":"CLAUDE.md","l0":221,"l1":221,"anchor":"Magnetometer x saturated"},{"path":"CLAUDE.md","l0":437,"l1":437,"anchor":"analyze_imu_turn_vs_heading"}]}],"edges":[{"id":"e.offload_qc|requires|e.pc_time","src":"e.offload_qc","dst":"e.pc_time","rel":"requires","cross":false},{"id":"e.offload_qc|requires|e.fm64","src":"e.offload_qc","dst":"e.fm64","rel":"requires","cross":false},{"id":"e.offload_qc|requires|e.channel_maps","src":"e.offload_qc","dst":"e.channel_maps","rel":"requires","cross":false},{"id":"e.lfp|aids|e.channel_maps","src":"e.lfp","dst":"e.channel_maps","rel":"aids","cross":false},{"id":"e.offload_qc|requires|e.lfp","src":"e.offload_qc","dst":"e.lfp","rel":"requires","cross":false},{"id":"e.fm64|aids|e.lfp","src":"e.fm64","dst":"e.lfp","rel":"aids","cross":false},{"id":"e.pc_time|requires|e.imu","src":"e.pc_time","dst":"e.imu","rel":"requires","cross":false},{"id":"e.lfp|requires|e.emg","src":"e.lfp","dst":"e.emg","rel":"requires","cross":false},{"id":"e.pc_time|requires|e.emg","src":"e.pc_time","dst":"e.emg","rel":"requires","cross":false},{"id":"e.lfp|requires|e.sleep_scores","src":"e.lfp","dst":"e.sleep_scores","rel":"requires","cross":false},{"id":"e.imu|requires|e.sleep_scores","src":"e.imu","dst":"e.sleep_scores","rel":"requires","cross":false},{"id":"e.lfp|requires|e.emg_ica","src":"e.lfp","dst":"e.emg_ica","rel":"requires","cross":false},{"id":"e.offload_qc|requires|e.ks4","src":"e.offload_qc","dst":"e.ks4","rel":"requires","cross":false},{"id":"e.channel_maps|requires|e.ks4","src":"e.channel_maps","dst":"e.ks4","rel":"requires","cross":false},{"id":"e.offload_qc|requires|e.k1","src":"e.offload_qc","dst":"e.k1","rel":"requires","cross":false},{"id":"e.fm64|requires|e.k1","src":"e.fm64","dst":"e.k1","rel":"requires","cross":false},{"id":"e.channel_maps|requires|e.k1","src":"e.channel_maps","dst":"e.k1","rel":"requires","cross":false},{"id":"e.drift|aids|e.k1","src":"e.drift","dst":"e.k1","rel":"aids","cross":false},{"id":"e.lfp|requires|e.swr","src":"e.lfp","dst":"e.swr","rel":"requires","cross":false},{"id":"e.sleep_scores|requires|e.swr","src":"e.sleep_scores","dst":"e.swr","rel":"requires","cross":false},{"id":"e.channel_maps|requires|e.swr","src":"e.channel_maps","dst":"e.swr","rel":"requires","cross":false},{"id":"e.emg|aids|e.swr","src":"e.emg","dst":"e.swr","rel":"aids","cross":false},{"id":"e.imu|aids|e.swr","src":"e.imu","dst":"e.swr","rel":"aids","cross":false},{"id":"e.lfp|requires|e.delta","src":"e.lfp","dst":"e.delta","rel":"requires","cross":false},{"id":"e.sleep_scores|requires|e.delta","src":"e.sleep_scores","dst":"e.delta","rel":"requires","cross":false},{"id":"e.channel_maps|requires|e.delta","src":"e.channel_maps","dst":"e.delta","rel":"requires","cross":false},{"id":"e.swr|aids|e.delta","src":"e.swr","dst":"e.delta","rel":"aids","cross":false},{"id":"e.fm64|aids|e.delta","src":"e.fm64","dst":"e.delta","rel":"aids","cross":false},{"id":"e.k1|requires|e.curation","src":"e.k1","dst":"e.curation","rel":"requires","cross":false},{"id":"e.fm64|aids|e.curation","src":"e.fm64","dst":"e.curation","rel":"aids","cross":false},{"id":"e.lfp|requires|e.phasic_rem","src":"e.lfp","dst":"e.phasic_rem","rel":"requires","cross":false},{"id":"e.sleep_scores|requires|e.phasic_rem","src":"e.sleep_scores","dst":"e.phasic_rem","rel":"requires","cross":false},{"id":"e.swr|aids|e.phasic_rem","src":"e.swr","dst":"e.phasic_rem","rel":"aids","cross":false},{"id":"e.emg|aids|e.phasic_rem","src":"e.emg","dst":"e.phasic_rem","rel":"aids","cross":false},{"id":"e.imu|aids|e.phasic_rem","src":"e.imu","dst":"e.phasic_rem","rel":"aids","cross":false},{"id":"e.lfp|requires|e.drift","src":"e.lfp","dst":"e.drift","rel":"requires","cross":false},{"id":"e.swr|requires|e.drift","src":"e.swr","dst":"e.drift","rel":"requires","cross":false},{"id":"e.lfp|requires|e.theta_cache","src":"e.lfp","dst":"e.theta_cache","rel":"requires","cross":false},{"id":"e.sleep_scores|requires|e.theta_cache","src":"e.sleep_scores","dst":"e.theta_cache","rel":"requires","cross":false},{"id":"e.emg|aids|e.theta_cache","src":"e.emg","dst":"e.theta_cache","rel":"aids","cross":false},{"id":"e.imu|aids|e.theta_cache","src":"e.imu","dst":"e.theta_cache","rel":"aids","cross":false},{"id":"e.phasic_rem|aids|e.theta_cache","src":"e.phasic_rem","dst":"e.theta_cache","rel":"aids","cross":false},{"id":"e.theta_cache|requires|e.theta_types","src":"e.theta_cache","dst":"e.theta_types","rel":"requires","cross":false},{"id":"b.labels|requires|e.theta_types","src":"b.labels","dst":"e.theta_types","rel":"requires","cross":true},{"id":"e.phasic_rem|aids|e.theta_types","src":"e.phasic_rem","dst":"e.theta_types","rel":"aids","cross":false},{"id":"e.emg|aids|e.theta_types","src":"e.emg","dst":"e.theta_types","rel":"aids","cross":false},{"id":"e.imu|aids|e.theta_types","src":"e.imu","dst":"e.theta_types","rel":"aids","cross":false},{"id":"e.curation|requires|e.unit_match","src":"e.curation","dst":"e.unit_match","rel":"requires","cross":false},{"id":"e.drift|aids|e.unit_match","src":"e.drift","dst":"e.unit_match","rel":"aids","cross":false},{"id":"e.unit_match|requires|e.place_cells","src":"e.unit_match","dst":"e.place_cells","rel":"requires","cross":false},{"id":"b.wiser_tracks|requires|e.place_cells","src":"b.wiser_tracks","dst":"e.place_cells","rel":"requires","cross":true},{"id":"b.video_clock|aids|e.place_cells","src":"b.video_clock","dst":"e.place_cells","rel":"aids","cross":true},{"id":"b.yolo_tracking|aids|e.place_cells","src":"b.yolo_tracking","dst":"e.place_cells","rel":"aids","cross":true},{"id":"b.wiser_georef|aids|e.place_cells","src":"b.wiser_georef","dst":"e.place_cells","rel":"aids","cross":true},{"id":"e.place_cells|requires|e.replay","src":"e.place_cells","dst":"e.replay","rel":"requires","cross":false},{"id":"e.swr|requires|e.replay","src":"e.swr","dst":"e.replay","rel":"requires","cross":false},{"id":"b.cam_calib|requires|b.cross_day","src":"b.cam_calib","dst":"b.cross_day","rel":"requires","cross":false},{"id":"b.cam_calib|requires|b.inbox_floor","src":"b.cam_calib","dst":"b.inbox_floor","rel":"requires","cross":false},{"id":"b.cross_day|requires|b.inbox_floor","src":"b.cross_day","dst":"b.inbox_floor","rel":"requires","cross":false},{"id":"e.imu|aids|b.video_clock","src":"e.imu","dst":"b.video_clock","rel":"aids","cross":true},{"id":"e.pc_time|aids|b.video_clock","src":"e.pc_time","dst":"b.video_clock","rel":"aids","cross":true},{"id":"b.cam_calib|aids|b.wiser_georef","src":"b.cam_calib","dst":"b.wiser_georef","rel":"aids","cross":false},{"id":"e.imu|aids|b.wiser_tracks","src":"e.imu","dst":"b.wiser_tracks","rel":"aids","cross":true},{"id":"b.wiser_georef|aids|b.wiser_tracks","src":"b.wiser_georef","dst":"b.wiser_tracks","rel":"aids","cross":false},{"id":"b.wiser_tracks|requires|b.imu_wiser","src":"b.wiser_tracks","dst":"b.imu_wiser","rel":"requires","cross":false},{"id":"e.imu|requires|b.imu_wiser","src":"e.imu","dst":"b.imu_wiser","rel":"requires","cross":true},{"id":"e.imu|requires|b.imu_attitude","src":"e.imu","dst":"b.imu_attitude","rel":"requires","cross":true},{"id":"e.imu|aids|b.audio","src":"e.imu","dst":"b.audio","rel":"aids","cross":true},{"id":"b.audio|requires|b.usv","src":"b.audio","dst":"b.usv","rel":"requires","cross":false},{"id":"b.wiser_tracks|requires|b.inbox_identity","src":"b.wiser_tracks","dst":"b.inbox_identity","rel":"requires","cross":false},{"id":"b.inbox_floor|aids|b.inbox_identity","src":"b.inbox_floor","dst":"b.inbox_identity","rel":"aids","cross":false},{"id":"b.cross_day|aids|b.inbox_identity","src":"b.cross_day","dst":"b.inbox_identity","rel":"aids","cross":false},{"id":"b.wiser_tracks|aids|b.identity_strategy","src":"b.wiser_tracks","dst":"b.identity_strategy","rel":"aids","cross":false},{"id":"b.imu_attitude|aids|b.identity_strategy","src":"b.imu_attitude","dst":"b.identity_strategy","rel":"aids","cross":false},{"id":"b.cross_day|requires|b.yolo_pano","src":"b.cross_day","dst":"b.yolo_pano","rel":"requires","cross":false},{"id":"b.wiser_tracks|aids|b.yolo_pano","src":"b.wiser_tracks","dst":"b.yolo_pano","rel":"aids","cross":false},{"id":"b.wiser_georef|aids|b.yolo_pano","src":"b.wiser_georef","dst":"b.yolo_pano","rel":"aids","cross":false},{"id":"b.yolo_pano|requires|b.yolo_tracking","src":"b.yolo_pano","dst":"b.yolo_tracking","rel":"requires","cross":false},{"id":"b.identity_strategy|requires|b.yolo_tracking","src":"b.identity_strategy","dst":"b.yolo_tracking","rel":"requires","cross":false},{"id":"b.wiser_tracks|aids|b.yolo_tracking","src":"b.wiser_tracks","dst":"b.yolo_tracking","rel":"aids","cross":false},{"id":"e.imu|aids|b.yolo_tracking","src":"e.imu","dst":"b.yolo_tracking","rel":"aids","cross":true},{"id":"b.video_clock|aids|b.yolo_tracking","src":"b.video_clock","dst":"b.yolo_tracking","rel":"aids","cross":false},{"id":"b.yolo_tracking|requires|b.pose","src":"b.yolo_tracking","dst":"b.pose","rel":"requires","cross":false},{"id":"b.inbox_identity|aids|b.pose","src":"b.inbox_identity","dst":"b.pose","rel":"aids","cross":false},{"id":"b.yolo_tracking|requires|b.labels","src":"b.yolo_tracking","dst":"b.labels","rel":"requires","cross":false},{"id":"b.wiser_tracks|aids|b.labels","src":"b.wiser_tracks","dst":"b.labels","rel":"aids","cross":false},{"id":"b.labels|requires|b.syllables","src":"b.labels","dst":"b.syllables","rel":"requires","cross":false},{"id":"b.yolo_tracking|requires|b.syllables","src":"b.yolo_tracking","dst":"b.syllables","rel":"requires","cross":false},{"id":"e.imu|aids|b.syllables","src":"e.imu","dst":"b.syllables","rel":"aids","cross":true},{"id":"b.pose|aids|b.syllables","src":"b.pose","dst":"b.syllables","rel":"aids","cross":false},{"id":"b.pose|requires|b.head_direction","src":"b.pose","dst":"b.head_direction","rel":"requires","cross":false},{"id":"b.imu_attitude|aids|b.head_direction","src":"b.imu_attitude","dst":"b.head_direction","rel":"aids","cross":false}],"derived":{"counts":{"ephys":{"done":13,"in_progress":1,"waiting_user":1,"blocked":1,"planned":2,"not_started":2,"closed":1},"behavior":{"done":7,"in_progress":1,"waiting_user":3,"blocked":2,"planned":2,"not_started":3,"closed":0}},"waiting":[{"id":"e.swr","what":"Short-bout blind reading (artifact YFG89wkHR29dyzjbSXMbtE) and the mentor's awake-ripple reading \u2014 research on top of SWR, not the SWR events."},{"id":"e.phasic_rem","what":"Blind review page (phasic_rem_review_20261009_1520) and the MUA check."},{"id":"b.wiser_tracks","what":"Blind video verdicts on 80 WISER events (wiser_event_review_20261006_1637/index.html) and the older IMU-video review (50 clips)."},{"id":"b.audio","what":"Listening check of sound candidates before any sound \u2192 wake claim."},{"id":"b.usv","what":"A second labelling round (proposed by the Mic session): about 24 new 5-min windows, 12 per mic, spread over 08-31 -> 09-10, night-weighted, presence only."},{"id":"b.inbox_identity","what":"Two pages in D:/Field2026_analysis_out/2026c/cv_field_inbox_sam3_dino_20261010_2320/: the blind mask review of 40 SAM 3 head-point masks (mask_review/index.html), and the exploratory prompt sweep (prompt_sweep/index.html: 10 prompts x whole / tiled on 10 daytime IR + 10 colour frames; descriptive only, changes no T1-T3 result)."},{"id":"b.labels","what":"Ethogram v0 decisions (4 layers, 7 / 6 / 5 / 2 keys), the window length and the day field windows (implementation_plan/2026-10-10-behavior-labelling-tool.md)."}],"owners":{"deltawave":["e.channel_maps","e.delta"],"sleep-scoring":["e.lfp","e.sleep_scores"],"SWRdetection":["e.emg_ica","e.swr","e.drift"],"Kilosort":["e.k1","e.curation"],"tonic/phasic theta":["e.phasic_rem","e.theta_cache","e.theta_types"],"Calibration restart path":["b.cam_calib","b.cross_day"],"field2026-social-analysis-58 (motion correction)":["b.cross_day"],"Calibration restart path (fork)":["b.inbox_floor"],"IMU-video\u6821\u51c6":["b.wiser_tracks","b.imu_wiser","b.imu_attitude"],"Mic":["b.audio","b.usv"],"Yolo":["b.inbox_identity","b.identity_strategy","b.yolo_pano"],"social_label":["b.yolo_pano","b.labels"]},"figures":[{"name":"ephys_spikes_sleep_quant_circadian_2026c.png","path":"results/2026c/ephys_spikes/figures/ephys_spikes_sleep_quant_circadian_2026c.png","pub":"figs/ephys_spikes_sleep_quant_circadian_2026c.png","cap":"Hour-of-day profile of NREM / REM (FINAL scores)","nodes":["e.sleep_scores"]},{"name":"ephys_spikes_swr_rate_day_and_hour_2026c.png","path":"results/2026c/ephys_spikes/figures/ephys_spikes_swr_rate_day_and_hour_2026c.png","pub":"figs/ephys_spikes_swr_rate_day_and_hour_2026c.png","cap":"SWR rate per day and within a day","nodes":["e.swr"]},{"name":"ephys_spikes_delta_rate_day_and_hour_2026c.png","path":"results/2026c/ephys_spikes/figures/ephys_spikes_delta_rate_day_and_hour_2026c.png","pub":"figs/ephys_spikes_delta_rate_day_and_hour_2026c.png","cap":"Delta rate per day and within a day (verified events)","nodes":["e.delta"]}],"updates":[{"date":"2026-10-12","by":"field2026-social-analysis-ed","summary":"CH05-CH08 -> paddock done (calibration session): to_paddock covers CH01-CH08 at any cohort time; CH07 / CH08 floor models, orientation confirmed by WISER. Owner names: the IMU-video\u6821\u51c6 session is no longer listed under that name after the app restart.","nodes":["b.inbox_floor"]},{"date":"2026-10-11","by":"field2026-social-analysis-ed","summary":"Replies from the renamed sessions: deltawave (now field2026-social-analysis-44), Yolo (-3d), Mic (-a9), social_label (-ad, no change). New stage: final channel maps (deltawave's suggestion; SWR, sorting and delta now require it). Delta details (34 FM64 sessions without MUA check, on hold). In-box identity -> waiting_user (SAM 3 / DINOv3 test done, blind mask review). USV -> in_progress (v2 detector; DINOv3 strip classifier running).","nodes":["e.channel_maps","e.delta","e.swr","e.k1","b.inbox_identity","b.usv"]},{"date":"2026-10-11","by":"field2026-social-analysis-ed","summary":"Later the same day: USV -> waiting_user (the DINOv3 strip classifier is not clearly better than v1 -> a second labelling round, commit 0e64f98). In-box identity: + the exploratory SAM 3 prompt-sweep page (commit 51c5146). Cross-day motion -> done (motion-correction session -58: requested coverage complete, table 2031 rows).","nodes":["b.usv","b.inbox_identity","b.cross_day"]},{"date":"2026-10-10","by":"field2026-social-analysis-ed","summary":"Initial tree from the repo record (CLAUDE.md map, plan index, plans, change logs, the recording repo's calibration README) and the sessions' status replies: SWRdetection, IMU-video\u6821\u51c6, Calibration restart path, social_label; the sleep-schedule session (research, consumes these outputs) and KTH (another repo) are not preprocessing owners. USV from the repo (the Mic session was unreachable)."},{"date":"2026-10-10","by":"field2026-social-analysis-ed","summary":"astra text review folded in: every stage states what \"done\" covers (done_when); in_progress needs evidence of current work; theta cache (done) split from the theta-type interpretation (blocked); a video head-pose stage added under head direction; USV -> blocked (owner offline, no recorded next step); in-box identity kept in progress with its evidence (SAM 3 / DINOv3 test amendments 1-3); WISER tracks' scope separated from the video verdicts.","nodes":["e.theta_cache","e.theta_types","b.pose","b.head_direction","b.usv","b.inbox_identity","b.wiser_tracks"]}]},"generated":{"by":"pipeline_map/pipeline_map.py build","from":"pipeline_map/graphs/preprocessing_2026c.yaml","sha256_of_source":"3155aa43f0acf26372d8cbbafb6fc6819347e15aeea698e4e503abac5922d6f0"}}</script>
+<script>
+(function () {
+  'use strict';
+  var DATA = JSON.parse(document.getElementById('pm-data').textContent);
+  var M = DATA.meta, D = DATA.derived, NS = 'http://www.w3.org/2000/svg';
+  var N = {}, OUT = {}, IN = {};
+  DATA.nodes.forEach(function (n) { N[n.id] = n; });
+  DATA.edges.forEach(function (e) { (OUT[e.src] = OUT[e.src] || []).push(e); (IN[e.dst] = IN[e.dst] || []).push(e); });
+  var ORDER = ['done', 'in_progress', 'waiting_user', 'blocked', 'planned', 'not_started', 'closed'];
+  var LABEL = { done: 'done', in_progress: 'in progress', waiting_user: 'waiting on you', blocked: 'blocked', planned: 'planned', not_started: 'not started', closed: 'closed (route dropped)' };
+  var KEY = 'pm:' + M.id, S = { aids: false };
+  try { var sv = JSON.parse(localStorage.getItem(KEY) || 'null'); if (sv) S.aids = !!sv.aids; } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  function $(s, r) { return (r || document).querySelector(s); }
+  function el(tag, attrs) {
+    var e = document.createElement(tag), k, v, i;
+    if (attrs) for (k in attrs) { v = attrs[k]; if (v == null || v === false) continue;
+      if (k === 'class') e.className = v; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? '' : v); }
+    for (i = 2; i < arguments.length; i++) add(e, arguments[i]);
+    return e;
+  }
+  function add(e, c) { if (c == null || c === false) return; if (Array.isArray(c)) { c.forEach(function (x) { add(e, x); }); return; } e.appendChild(c.nodeType ? c : document.createTextNode(String(c))); }
+  function pill(s) { return el('span', { class: 'pill s-' + s }, LABEL[s] || s); }
+  function repoLink(path, l0, l1) {
+    var base = M.repo_url, p = path, m = M.repo_urls || {}, k;
+    for (k in m) if (path.indexOf(k) === 0) { base = m[k]; p = path.slice(k.length); }
+    return base + '/blob/main/' + p + '#L' + l0 + (l1 !== l0 ? '-L' + l1 : '');
+  }
+
+  function renderTop() {
+    add($('#top'), [
+      el('div', null, el('div', { class: 'eyebrow' }, 'Preprocessing progress \u00b7 cohort ' + M.cohort), el('h1', null, M.title), el('p', { class: 'sub' }, M.subtitle)),
+      el('div', { class: 'tools' }, el('span', { class: 'asof' }, 'as of ' + M.as_of),
+        el('label', { class: 'tog', for: 'tg-aids' }, el('input', { type: 'checkbox', id: 'tg-aids', onchange: function (e) { S.aids = e.target.checked; save(); draw(); } }), 'Show helper links'))
+    ]);
+    $('#tg-aids').checked = S.aids;
+    var lg = $('#legend');
+    ORDER.forEach(function (s) {
+      add(lg, el('span', { class: 'lg' }, el('span', { class: 'sw', style: 'background:var(--' + bgVar(s) + ');border-color:var(--' + fgVar(s) + ');border-style:' + (s === 'planned' ? 'dashed' : s === 'not_started' ? 'dotted' : 'solid') }), LABEL[s]));
+    });
+    add(lg, [el('span', { class: 'lg-e' }, line('requires'), 'needs'), el('span', { class: 'lg-e' }, line('aids'), 'helps'), el('span', { class: 'lg-e' }, line('requires cross'), 'across trunks')]);
+  }
+  function bgVar(s) { return { done: 'done-bg', in_progress: 'prog-bg', waiting_user: 'wait-bg', blocked: 'block-bg', planned: 'surface', not_started: 'surface2', closed: 'closed-bg' }[s]; }
+  function fgVar(s) { return { done: 'done', in_progress: 'prog', waiting_user: 'wait', blocked: 'block', planned: 'plan', not_started: 'nots', closed: 'closed' }[s]; }
+  function line(cls) {
+    var s = document.createElementNS(NS, 'svg'), l = document.createElementNS(NS, 'line');
+    s.setAttribute('width', '28'); s.setAttribute('height', '10'); s.setAttribute('aria-hidden', 'true');
+    l.setAttribute('x1', '1'); l.setAttribute('y1', '5'); l.setAttribute('x2', '27'); l.setAttribute('y2', '5'); l.setAttribute('class', 'edge ' + cls);
+    s.appendChild(l); return s;
+  }
+
+  function renderSummary() {
+    var trunks = M.trunks.map(function (t) {
+      var c = D.counts[t.id], tot = 0; ORDER.forEach(function (s) { tot += c[s]; });
+      return el('div', { class: 'tbar' },
+        el('div', { class: 'tbar-h' }, el('span', null, t.title), el('span', { class: 'muted' }, c.done + ' of ' + tot + ' done')),
+        el('div', { class: 'bar', role: 'img', 'aria-label': t.title + ' progress' }, ORDER.filter(function (s) { return c[s]; }).map(function (s) {
+          return el('span', { class: 'b-' + s, style: 'width:' + (100 * c[s] / tot).toFixed(2) + '%', title: c[s] + ' ' + LABEL[s] }); })),
+        el('div', { class: 'cnts' }, ORDER.filter(function (s) { return c[s]; }).map(function (s) { return el('span', null, c[s] + ' ' + LABEL[s]); })));
+    });
+    var waiting = el('ul', { class: 'lst' }, D.waiting.map(function (w) {
+      return el('li', null, el('button', { class: 'linkish k', onclick: function () { go(w.id); } }, N[w.id].short + ':'), el('span', null, w.what));
+    }));
+    var owners = el('div', { class: 'owners' }, Object.keys(D.owners).sort().map(function (o) {
+      return el('div', null, el('span', { class: 'own' }, o), D.owners[o].map(function (id, i) {
+        return [i ? ' \u00b7 ' : '', el('button', { class: 'linkish', onclick: function () { go(id); } }, N[id].short)]; }));
+    }));
+    add($('#summary'), [
+      el('div', { class: 'panel' }, el('h2', null, 'Progress'), trunks),
+      el('div', { class: 'panel' }, el('h2', null, 'Waiting on you (' + D.waiting.length + ')'), D.waiting.length ? waiting : el('p', { class: 'muted' }, 'Nothing.')),
+      el('div', { class: 'panel' }, el('h2', null, 'Who works on what'), owners, el('p', { class: 'muted small', style: 'margin:8px 0 0' }, 'Session names as reported on ' + M.as_of + '; sessions get new names when restarted.'))
+    ]);
+  }
+
+  function nodeBox(n) {
+    var own = (n.owner || []).map(function (o) { return el('span', { class: 'own' }, o); });
+    return el('div', { class: 'node st-' + n.status, 'data-id': n.id, tabindex: '0', role: 'button', 'aria-label': n.title + ' (' + LABEL[n.status] + ')' },
+      el('div', { class: 'nt' }, n.short),
+      el('div', { class: 'ns' }, n.summary),
+      el('div', { class: 'nm' }, pill(n.status), n.waiting_on_user ? el('span', { class: 'needs', title: n.waiting_on_user }, 'needs you') : null, own));
+  }
+  function renderBoard() {
+    var board = $('#board');
+    board.textContent = '';
+    var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'edges'); svg.setAttribute('aria-hidden', 'true');
+    board.appendChild(svg);
+    M.trunks.forEach(function (t) {
+      var lanes = t.lanes, cols = '96px repeat(' + lanes.length + ', minmax(0,1fr))';
+      var grid = el('div', { class: 'grid', style: 'grid-template-columns:' + cols });
+      add(grid, el('div', null, ''));
+      lanes.forEach(function (ln) { add(grid, el('div', { class: 'lane-h' }, ln.title)); });
+      t.layers.forEach(function (ly, li) {
+        if (li) add(grid, el('div', { class: 'rowline' }));
+        add(grid, el('div', { class: 'layer-h' }, el('b', null, ly.id), ly.title));
+        var spanNodes = DATA.nodes.filter(function (n) { return n.trunk === t.id && n.layer === ly.id && n.lane === 'all'; });
+        if (spanNodes.length) {
+          add(grid, el('div', { class: 'cell span', style: 'grid-column: 2 / -1' }, spanNodes.map(nodeBox)));
+        } else {
+          lanes.forEach(function (ln) {
+            add(grid, el('div', { class: 'cell' }, DATA.nodes.filter(function (n) { return n.trunk === t.id && n.layer === ly.id && n.lane === ln.id; }).map(nodeBox)));
+          });
+        }
+      });
+      var c = D.counts[t.id], tot = 0; ORDER.forEach(function (s) { tot += c[s]; });
+      add(board, el('div', { class: 'trunk' }, el('div', { class: 'trunk-h' }, el('h2', null, t.title), el('span', { class: 'muted small' }, c.done + ' / ' + tot + ' done')),
+        el('p', { class: 'trunk-note' }, t.note || ''), grid));
+    });
+    board.addEventListener('mouseover', onHover);
+    board.addEventListener('focusin', onHover);
+    board.addEventListener('mouseleave', unfocus);
+    board.addEventListener('click', function (ev) { var t = ev.target.closest('.node'); if (t) openDrawer(t.getAttribute('data-id')); });
+    board.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { var t = ev.target.closest('.node'); if (t) { ev.preventDefault(); openDrawer(t.getAttribute('data-id')); } } });
+    schedule();
+  }
+
+  var pending = false;
+  function schedule() { if (pending) return; pending = true; requestAnimationFrame(function () { pending = false; draw(); }); }
+  function draw() {
+    var board = $('#board'), svg = board.querySelector('svg.edges');
+    var W = board.scrollWidth, H = board.scrollHeight, base = board.getBoundingClientRect();
+    svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.innerHTML = '<defs><marker id="pm-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk"/></marker>' +
+      '<marker id="pm-ax" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk cross"/></marker></defs>';
+    function bx(id) { var x = board.querySelector('.node[data-id="' + id + '"]'); if (!x) return null; var r = x.getBoundingClientRect();
+      return { l: r.left - base.left, t: r.top - base.top, r: r.right - base.left, b: r.bottom - base.top, cx: (r.left + r.right) / 2 - base.left, cy: (r.top + r.bottom) / 2 - base.top }; }
+    DATA.edges.forEach(function (e) {
+      var a = bx(e.src), b = bx(e.dst); if (!a || !b) return;
+      var d;
+      if (!e.cross && b.t >= a.b - 2) {            // downward in the same trunk
+        var sy = a.b, ty = b.t, dy = Math.max(18, (ty - sy) * 0.5);
+        d = 'M' + a.cx + ' ' + sy + ' C' + a.cx + ' ' + (sy + dy) + ',' + b.cx + ' ' + (ty - dy) + ',' + b.cx + ' ' + (ty - 1);
+      } else {                                      // sideways or across trunks
+        var right = b.cx > a.cx, sx = right ? a.r : a.l, tx = right ? b.l : b.r, dx = Math.max(30, Math.abs(tx - sx) * 0.4) * (right ? 1 : -1);
+        d = 'M' + sx + ' ' + a.cy + ' C' + (sx + dx) + ' ' + a.cy + ',' + (tx - dx) + ' ' + b.cy + ',' + (tx - (right ? 1 : -1)) + ' ' + b.cy;
+      }
+      var p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d);
+      p.setAttribute('class', 'edge ' + e.rel + (e.cross ? ' cross' : '') + (e.rel === 'aids' && !S.aids ? ' hideaids' : ''));
+      if (e.rel === 'requires') p.setAttribute('marker-end', e.cross ? 'url(#pm-ax)' : 'url(#pm-a)');
+      p.setAttribute('data-src', e.src); p.setAttribute('data-dst', e.dst);
+      svg.appendChild(p);
+    });
+  }
+  function onHover(ev) {
+    var board = $('#board'), t = ev.target.closest('.node'); if (!t) return;
+    var id = t.getAttribute('data-id'); if (board.getAttribute('data-focus') === id) return;
+    board.setAttribute('data-focus', id); board.classList.add('focusing');
+    var lit = {}; lit[id] = 1;
+    Array.prototype.forEach.call(board.querySelectorAll('svg .edge'), function (p) {
+      var on = p.getAttribute('data-src') === id || p.getAttribute('data-dst') === id;
+      p.classList.toggle('hl', on);
+      if (on) { lit[p.getAttribute('data-src')] = 1; lit[p.getAttribute('data-dst')] = 1; }
+    });
+    Array.prototype.forEach.call(board.querySelectorAll('.node'), function (x) { x.classList.toggle('lit', !!lit[x.getAttribute('data-id')]); });
+  }
+  function unfocus() {
+    var board = $('#board'); board.classList.remove('focusing'); board.removeAttribute('data-focus');
+    Array.prototype.forEach.call(board.querySelectorAll('.hl,.lit'), function (x) { x.classList.remove('hl'); x.classList.remove('lit'); });
+  }
+
+  function sec(label, body) { return body ? el('div', { class: 'dsec' }, el('div', { class: 'h3' }, label), typeof body === 'string' ? el('p', null, body) : body) : null; }
+  function link(id, extra) {
+    var n = N[id]; return el('li', null, el('span', { class: 'pill s-' + n.status }, LABEL[n.status]), ' ',
+      el('button', { class: 'linkish', onclick: function () { go(id); } }, n.title), extra ? el('span', { class: 'muted small' }, ' \u2014 ' + extra) : null);
+  }
+  function figImg(f) {
+    var im = el('img', { src: f.pub, alt: f.cap, loading: 'lazy' });
+    im.addEventListener('error', function () { if (!im.getAttribute('data-fb')) { im.setAttribute('data-fb', '1'); im.src = '../../' + f.path; } });
+    return im;
+  }
+  var last = null;
+  function openDrawer(id) {
+    var n = N[id]; if (!n) return;
+    var d = $('#drawer'); last = document.activeElement; d.textContent = '';
+    var trunk = M.trunks.filter(function (t) { return t.id === n.trunk; })[0];
+    var lane = n.lane === 'all' ? 'all branches' : (trunk.lanes.filter(function (l) { return l.id === n.lane; })[0] || {}).title;
+    var layer = trunk.layers.filter(function (l) { return l.id === n.layer; })[0];
+    var ins = (IN[id] || []), outs = (OUT[id] || []);
+    add(d, [
+      el('div', { class: 'dw-top' }, el('span', { class: 'tchip' }, trunk.title), el('code', { class: 'nid' }, n.id), el('span', { class: 'grow' }), el('button', { class: 'btn', onclick: closeDrawer }, 'Close')),
+      el('h2', { class: 'dw-t' }, n.title),
+      el('div', { class: 'dw-meta' }, pill(n.status), el('span', { class: 'own' }, layer.id + ' \u00b7 ' + layer.title), el('span', { class: 'own' }, lane), (n.owner || []).map(function (o) { return el('span', { class: 'own' }, o); }), el('span', { class: 'muted small' }, 'updated ' + n.updated)),
+      sec('What it is / where it stands', n.summary),
+      sec('Done when (the scope this status refers to)', n.done_when),
+      n.evidence ? el('div', { class: 'callout c-next' }, el('b', null, 'Evidence of current work'), n.evidence) : null,
+      n.waiting_on_user ? el('div', { class: 'callout c-wait' }, el('b', null, 'Waiting on you'), n.waiting_on_user) : null,
+      n.blocker ? el('div', { class: 'callout c-block' }, el('b', null, 'Blocked by'), n.blocker) : null,
+      n.next ? el('div', { class: 'callout c-next' }, el('b', null, 'Next step'), n.next) : null,
+      n.reason ? el('div', { class: 'callout c-closed' }, el('b', null, 'Why it was closed'), n.reason) : null,
+      sec('Outputs', (n.outputs || []).length ? el('ul', null, n.outputs.map(function (o) { return el('li', null, el('code', null, o)); })) : null),
+      sec('How it was validated', n.validation),
+      sec('Tools', n.tools ? el('p', null, el('code', null, n.tools)) : null),
+      sec('Needs (inputs)', ins.length ? el('ul', { class: 'rel' }, ins.map(function (e) { return link(e.src, e.rel === 'aids' ? 'helps' : 'required'); })) : null),
+      sec('Feeds', outs.length ? el('ul', { class: 'rel' }, outs.map(function (e) { return link(e.dst, e.rel === 'aids' ? 'helps it' : 'required by it'); })) : null),
+      sec('Figures', (n.figs || []).length ? el('div', null, n.figs.map(function (f) { return el('figure', { class: 'dfig' }, figImg(f), el('figcaption', null, f.cap)); })) : null),
+      sec('Sources', el('ul', { class: 'srcl' }, (n.sources || []).map(function (s) {
+        var loc = s.l0 + (s.l1 !== s.l0 ? '-' + s.l1 : '');
+        return el('li', null, el('div', null, el('code', null, s.path + ':' + loc)), el('a', { href: repoLink(s.path, s.l0, s.l1), target: '_blank', rel: 'noopener' }, 'Open on GitHub'),
+          s.anchor ? el('div', { class: 'anchor' }, 'Anchor checked at build: \u201c' + s.anchor + '\u201d') : null);
+      }))),
+      (n.changes || []).length ? sec('History', el('ul', null, n.changes.map(function (c) { return el('li', null, c.date + ': ' + c.what); }))) : null
+    ]);
+    d.hidden = false; $('#scrim').hidden = false; d.scrollTop = 0; d.focus();
+    try { history.replaceState(null, '', '#' + id); } catch (e) {}
+  }
+  function closeDrawer() { $('#drawer').hidden = true; $('#scrim').hidden = true; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} if (last && last.focus) try { last.focus(); } catch (e) {} }
+  function go(id) {
+    openDrawer(id);
+    var x = document.querySelector('.node[data-id="' + id + '"]');
+    if (x) { x.scrollIntoView({ behavior: 'smooth', block: 'center' }); x.classList.remove('flash'); void x.offsetWidth; x.classList.add('flash'); }
+  }
+
+  function renderUpdates() {
+    add($('#updates'), [el('div', { class: 'sec-h' }, el('h2', null, 'Update log'), el('span', { class: 'muted small' }, 'Newest first. Stages are updated in place; a dropped route stays as "closed".')),
+      el('div', { class: 'upd' }, D.updates.map(function (u) {
+        return el('article', null, el('b', null, u.date + ' \u00b7 ' + u.by), el('p', { style: 'margin:4px 0 0' }, u.summary),
+          (u.nodes || []).length ? el('p', { class: 'muted small', style: 'margin:4px 0 0' }, 'Stages: ' + u.nodes.map(function (x) { return N[x].short; }).join(', ')) : null);
+      }))]);
+  }
+  function renderIndex() {
+    var fSt = el('select', { id: 'f-status', 'aria-label': 'Status' }, el('option', { value: '' }, 'All statuses'), ORDER.map(function (s) { return el('option', { value: s }, LABEL[s]); }));
+    var fTr = el('select', { id: 'f-trunk', 'aria-label': 'Trunk' }, el('option', { value: '' }, 'Both trunks'), M.trunks.map(function (t) { return el('option', { value: t.id }, t.title); }));
+    var fQ = el('input', { id: 'f-text', type: 'search', placeholder: 'Search stage or owner', 'aria-label': 'Search' });
+    var tbody = el('tbody');
+    function fill() {
+      var s = fSt.value, t = fTr.value, q = fQ.value.trim().toLowerCase();
+      tbody.textContent = '';
+      DATA.nodes.filter(function (n) { return (!s || n.status === s) && (!t || n.trunk === t) && (!q || (n.title + ' ' + (n.owner || []).join(' ') + ' ' + n.id).toLowerCase().indexOf(q) >= 0); })
+        .forEach(function (n) { tbody.appendChild(el('tr', { onclick: function () { go(n.id); } }, el('td', null, pill(n.status)), el('td', null, el('button', { class: 'linkish' }, n.title)),
+          el('td', null, n.layer), el('td', null, (n.owner || []).join(', ')), el('td', { class: 'small' }, n.waiting_on_user || n.blocker || n.next || ''))); });
+    }
+    fSt.onchange = fTr.onchange = fill; fQ.oninput = fill;
+    add($('#index'), el('details', null, el('summary', { class: 'idx-sum sec-h' }, el('h2', null, 'All stages'), el('span', { class: 'muted small' }, DATA.nodes.length + ' stages \u00b7 filter by status, trunk or owner')),
+      el('div', { class: 'filters' }, fSt, fTr, fQ), el('div', { class: 'tbl-wrap' }, el('table', { class: 'idx' }, el('thead', null, el('tr', null, ['Status', 'Stage', 'Level', 'Owner', 'Waiting / blocked / next'].map(function (h) { return el('th', null, h); }))), tbody))));
+    fill();
+  }
+  function renderFoot() {
+    var g = DATA.generated || {};
+    add($('#foot'), ['Generated from ', el('code', null, g.from || ''), ' by ', el('code', null, g.by || ''), ' (source SHA-256 ', el('code', null, (g.sha256_of_source || '').slice(0, 12)), '). The YAML is the only place this progress is written; every stage cites the record its status comes from.']);
+  }
+
+  renderTop(); renderSummary(); renderBoard(); renderUpdates(); renderIndex(); renderFoot();
+  $('#scrim').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#drawer').hidden) closeDrawer(); });
+  if (window.ResizeObserver) new ResizeObserver(schedule).observe($('#board'));
+  window.addEventListener('resize', schedule);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+  var h = (location.hash || '').slice(1); if (h && N[h]) go(h);
+})();
+</script>

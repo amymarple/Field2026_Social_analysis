@@ -149,7 +149,12 @@ research direction: one YAML logic graph per direction (questions → competing 
 judgments → next steps; typed edges, cited sources, rounds, conflicts), validated and rendered into an interactive map
 by `research_logic/logic_map.py` (`check` / `build` / `show` / `index`). It is updated only after research steps (never
 preprocessing) via the `research-logic` skill / agent. Current graph: `graphs/sleep_2026c.yaml` (map:
-https://claude.ai/artifact/F5rCafmi6VuoXspRbEuczS).
+https://claude.ai/artifact/F5rCafmi6VuoXspRbEuczS). Its twin for **preprocessing progress** is **`pipeline_map/`**: one
+YAML tree per cohort (`graphs/preprocessing_2026c.yaml`; ephys and behaviour trunks × branches × levels; per stage
+status, owner session, outputs, validation, what waits on the user, next step, `requires` / `aids`, cited sources),
+rendered by `pipeline_map/pipeline_map.py` (`check` / `build` / `show` / `index` / `figs`) into the progress page
+https://claude.ai/artifact/6YkHULY7zU691GaoJKG1rm; updated with the `preprocessing-status` skill ("更新预处理进度": poll
+the sessions → `preprocessing-tracker` agent).
 
 **Two coordinate frames that do not trivially convert.** WISER = inches in an unverified offset frame; CV = the
 paddock frame, origin pole A0, 609.6 × 1219.2 cm = 240 × 480 in (`cv/field_coords.py` works in cm; the newest camera
@@ -474,6 +479,8 @@ plane — a lower bound, not sleep; tag cutoffs apply only where `apply_tag_cuto
   roster. **`runs/detect/`** (root) and `yolo*.pt`: untracked Ultralytics debris — ignore.
 - **`.claude/`**: agents `analysis-result-bridge`, `analysis-status-simplifier`, `cv-measurement-auditor`,
   `wiser-measurement-auditor`, `recording-inquiry` (cited answers from the two sibling repos + the Notion cohort page),
+  `preprocessing-tracker` (Opus; keeps `pipeline_map/graphs/*.yaml` from the sessions' status replies and the repo
+  record; skill `preprocessing-status`),
   `research-logic` (Opus; keeps `research_logic/graphs/*.yaml` after each research phase; conflicts go to a Fable
   reviewer, the Codex "astra" session may review the logic as text only);
   skills `analysis-definitions`, `analysis-status`, `export-analysis-result`, `research-logic`,

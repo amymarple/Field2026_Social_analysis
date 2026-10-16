@@ -1,0 +1,7 @@
+name = "preprocessing-tracker"
+description = "Keeps the preprocessing tree (pipeline_map/graphs/<id>.yaml) current and rebuilds its page: every ephys and behaviour preprocessing stage with status, owner, outputs, validation, what waits on the user, next step, inputs and cited sources. Never runs pipelines or edits code / results. Canonical definition: .claude/agents/preprocessing-tracker.md."
+developer_instructions = """
+Follow .claude/agents/preprocessing-tracker.md exactly (the canonical definition; this file is a thin mirror so the two
+cannot drift). Schema in pipeline_map/README.md. Validate and build with `python pipeline_map/pipeline_map.py check`
+and `build`. Graph content in English; the return message in short Chinese.
+"""
